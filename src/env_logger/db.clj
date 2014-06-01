@@ -18,7 +18,7 @@
 (def db (postgres {
   :host (get (System/getenv) "OPENSHIFT_POSTGRESQL_DB_HOST" "localhost")
   :port (get (System/getenv) "OPENSHIFT_POSTGRESQL_DB_PORT" "5432")
-  :db (get (System/getenv) "PGDATABASE" (get-conf-value :name))
+  :db (get-conf-value :name)
   :user (get (System/getenv) "OPENSHIFT_POSTGRESQL_DB_USERNAME"
           (get-conf-value :username))
   :password (get (System/getenv) "OPENSHIFT_POSTGRESQL_DB_PASSWORD"
