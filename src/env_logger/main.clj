@@ -3,13 +3,13 @@
             [compojure.handler :refer [site]] 
       	    [compojure.core :refer [defroutes GET POST]]
       	    [org.httpkit.server :as kit]
-            [env-logger.db :as db]))
+            [env-logger.db :as db]
+            [clojure.data.json :as json]))
  
 (defroutes routes
   (GET "/" [] "Hello HTTP!")
-  (GET "/add" [] (db/insert-observation {:timestamp "2014-05-15T15:18:18.766910+03"
-                                      :temperature 22
-                                      :brightness 150}))
+  (GET "/add" [json-string] (db/insert-observation (json/read-str json-string
+                                    :key-fn keyword)))
   ;(route/files "/static/") ;; static file url prefix /static, in `public` folder
   (route/not-found "<p>Page not found.</p>"))
 

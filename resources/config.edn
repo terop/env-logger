@@ -1,6 +1,0 @@
-; Database settings
-; Example
-;{:database {:name "db_name"
-;			:username "foobar"
-;			:password "testpwd1!"}}
-
