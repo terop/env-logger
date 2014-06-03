@@ -3,11 +3,11 @@
 	:url "http://example.com/FIXME"
     :dependencies [[org.clojure/clojure "1.5.1"]
                    [http-kit "2.1.18"]
-                   [ring "1.2.2"]
+                   [ring "1.3.0"]
                    [compojure "1.1.8"]
                    [postgresql "9.3-1101.jdbc4"]
                    [korma "0.3.1"]
-                   [clj-time "0.6.0"]
+                   [clj-time "0.7.0"]
                    [org.clojure/data.json "0.2.4"]]
   :main env-logger.main
   :plugins [[lein-ring "0.8.10"]]

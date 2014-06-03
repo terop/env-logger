@@ -2,7 +2,7 @@
   (:require [clojure.edn :as edn]
             [korma.db :refer [postgres defdb]]
             [korma.core :refer [defentity insert values select fields]]
-            [clj-time [format :as tf] [coerce :as tc]]))
+            [clj-time [core :as tco] [coerce :as tc] [format :as tf]]))
             
 (defn load-config
   "Given a filename, load and return a config file"
@@ -47,4 +47,6 @@
     (merge row
       ; Reformat date
       {:recorded (tf/unparse (tf/formatters :mysql)
-        (tc/from-sql-date (:recorded row)))})))
+        ; Hack to change timezone from UTC to local time
+        (tco/to-time-zone (tc/from-sql-date (:recorded row))
+          (tco/time-zone-for-id "Europe/Helsinki")))})))
