@@ -10,6 +10,8 @@
   (GET "/" [] "Hello HTTP!")
   (GET "/add" [json-string] (db/insert-observation (json/read-str json-string
                                     :key-fn keyword)))
+  (GET "/fetch" [] {:headers {"Content-Type" "application/json"}
+                      :body (json/write-str (db/get-observations))})
   ;(route/files "/static/") ;; static file url prefix /static, in `public` folder
   (route/not-found "<p>Page not found.</p>"))
 

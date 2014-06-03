@@ -1,7 +1,7 @@
 (ns env-logger.db
   (:require [clojure.edn :as edn]
             [korma.db :refer [postgres defdb]]
-            [korma.core :refer [defentity insert values]] 
+            [korma.core :refer [defentity insert values select fields]]
             [clj-time [format :as tf] [coerce :as tc]]))
             
 (defn load-config
@@ -38,3 +38,13 @@
                              (tf/parse) tc/to-timestamp)
               :temperature (:inside_temp observation)
               :brightness (:inside_light observation)})))
+
+(defn get-observations
+  "Fetches all observations from the database"
+  []
+  (for [row (select observations
+          (fields :brightness :temperature :recorded))]
+    (merge row
+      ; Reformat date
+      {:recorded (tf/unparse (tf/formatters :mysql)
+        (tc/from-sql-date (:recorded row)))})))
