@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Plots</title>
+
+	<link type="text/css" rel="stylesheet" href="/static/css/rickshaw.css">
+
+	<script src="/static/js/d3.v3.min.js"></script>
+	<script src="/static/js/rickshaw.min.js"></script>	
+	<script src="/static/js/jquery-2.1.1.min.js"></script>
+</head>
+<body>
+	<h2>Inside temperature and humidity</h2>
+	<div id="chart"></div>
+
+	<span id="plotData" style="display: none"></span>
+
+	<script type="text/javascript">
+		$(function () {
+				// Transform data to Rickshaw presentable format
+				var transformData = function (data, variable) {
+					var newData = [],
+						dataJson = JSON.parse(data);
+
+					for (var i = 0; i < dataJson.length; i++) {
+						newData.push({
+							x: Date.parse(dataJson[i]['recorded']), 
+							y: dataJson[i][variable]
+						});
+					};
+					return newData;
+				};
+			
+			var graph = new Rickshaw.Graph({
+				element: document.querySelector("#chart"),
+				width: 1000,
+				height: 500,
+				renderer: 'line',
+				series: [{
+					data: transformData($('#plotData').text(), 'temperature'),
+					color: '#4682b4'
+				}, {
+					data: transformData($('#plotData').text(), 'brightness'),
+					color: '#9cc1e0'
+				}]
+			});
+			graph.render();
+
+			var hoverDetail = new Rickshaw.Graph.HoverDetail({
+				graph: graph
+			});
+
+			var axes = new Rickshaw.Graph.Axis.Time({
+				graph: graph
+			});
+			axes.render();
+		});
+	</script>
+</body>
+<html>

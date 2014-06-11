@@ -41,12 +41,13 @@
 
 (defn get-observations
   "Fetches all observations from the database"
-  []
-  (for [row (select observations
-          (fields :brightness :temperature :recorded))]
-    (merge row
-      ; Reformat date
-      {:recorded (tf/unparse (tf/formatters :mysql)
-        ; Hack to change timezone from UTC to local time
-        (tco/to-time-zone (tc/from-sql-date (:recorded row))
-          (tco/time-zone-for-id "Europe/Helsinki")))})))
+  [ & time-format]
+  (let [formatter (if time-format (nth time-format 0) :mysql)]
+    (for [row (select observations
+            (fields :brightness :temperature :recorded))]
+      (merge row
+        ; Reformat date
+        {:recorded (tf/unparse (tf/formatters formatter)
+          ; Hack to change timezone from UTC to local time
+          (tco/to-time-zone (tc/from-sql-date (:recorded row))
+            (tco/time-zone-for-id "Europe/Helsinki")))}))))
