@@ -17,8 +17,11 @@
   (GET "/" [] "Hello HTTP!")
   (GET "/add" [json-string] (db/insert-observation (json/read-str json-string
                                     :key-fn keyword)))
-  (GET "/fetch" [] {:headers {"Content-Type" "application/json"}
-                      :body (json/write-str (db/get-observations))})
+  (GET "/fetch" [ & date-format] {:headers {"Content-Type" "application/json"}
+                                  :body (json/write-str (db/get-observations
+                                    (let [df (get date-format :date-format "")]
+                                      ; TODO validate date format string
+                                      (if (not= df "") (keyword df) :mysql))))})
   (GET "/plots" [] (plots))
   (route/resources "/static/")
   (route/not-found "<h2>Page not found.</h2>"))
