@@ -29,9 +29,6 @@
 (defn insert-observation
   "Inserts a observation to the database"
   [observation]
-  ; (str (->> (:timestamp observation) (tf/parse) tc/to-timestamp) " "
-  ;       (:inside_temp observation) " "
-  ;       (:inside_light observation)))
   (insert observations
     (values {
               :recorded (->> (:timestamp observation) 
@@ -39,7 +36,15 @@
               :temperature (:inside_temp observation)
               :brightness (:inside_light observation)})))
 
-(defn get-observations
+(defn format-date
+  "Changes the timezone and formats the date with some formatter"
+  [date formatter]
+  (tf/unparse (tf/formatters formatter)
+    ; Hack to change timezone from UTC to local time
+    (tco/to-time-zone (tc/from-sql-date date)
+    (tco/time-zone-for-id "Europe/Helsinki"))))
+
+(defn get-all-observations
   "Fetches all observations from the database"
   [ & time-format]
   (let [formatter (if time-format (nth time-format 0) :mysql)]
@@ -47,7 +52,15 @@
             (fields :brightness :temperature :recorded))]
       (merge row
         ; Reformat date
-        {:recorded (tf/unparse (tf/formatters formatter)
-          ; Hack to change timezone from UTC to local time
-          (tco/to-time-zone (tc/from-sql-date (:recorded row))
-            (tco/time-zone-for-id "Europe/Helsinki")))}))))
+        {:recorded (format-date (:recorded row) formatter)}))))
+
+(defn get-observations-by-criteria
+  "Fetches the observations from the database which fullfil the given criteria"
+  [criteria & time-format]
+  (let [formatter (if time-format (nth time-format 0) :mysql)]
+    (for [row (select observations
+            (fields :brightness :temperature :recorded)
+            (select criteria))]
+      (merge row
+        ; Reformat date
+        {:recorded (format-date (:recorded row) formatter)}))))
