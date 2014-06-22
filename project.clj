@@ -8,7 +8,7 @@
                    [postgresql "9.3-1101.jdbc4"]
                    [korma "0.3.2"]
                    [clj-time "0.7.0"]
-                   [org.clojure/data.json "0.2.4"]
+                   [org.clojure/data.json "0.2.5"]
                    [enlive "1.1.5"]]
   :main env-logger.main
   :plugins [[lein-ring "0.8.10"]]
