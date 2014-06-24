@@ -15,7 +15,7 @@
                       (db/get-last-n-days-obs 3 :rfc822))))
 
 (defroutes routes
-  (GET "/" [] "Hello HTTP!")
+  (GET "/" [] "Welcome to the environment log viewer!")
   (GET "/add" [json-string] (db/insert-observation (json/read-str json-string
                                     :key-fn keyword)))
   (GET "/fetch" [ & date-format] {:headers {"Content-Type" "application/json"}
