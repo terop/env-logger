@@ -10,9 +10,12 @@
 
 ; Template for the 'plots' page
 (html/deftemplate plots "templates/plots.html"
-  []
-  [:span#plotData] (html/content (json/write-str
-                      (db/get-last-n-days-obs 3 :rfc822))))
+  [params]
+  [:span#plotData] (if (get params :all-data)
+    ; All data
+    (html/content (json/write-str (db/get-all-obs :rfc822)))
+    ; Default
+    (html/content (json/write-str (db/get-last-n-days-obs 3 :rfc822)))))
 
 (defroutes routes
   (GET "/" [] "Welcome to the environment log viewer!")
@@ -23,7 +26,7 @@
                                     (let [df (get date-format :date-format "")]
                                       ; TODO validate date format string
                                       (if (not= df "") (keyword df) :mysql))))})
-  (GET "/plots" [] (plots))
+  (GET "/plots" [ & params] (plots params))
   (route/resources "/static/")
   (route/not-found "<h2>Page not found.</h2>"))
 
