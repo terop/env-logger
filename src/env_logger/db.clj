@@ -1,8 +1,8 @@
 (ns env-logger.db
   (:require [clojure.edn :as edn]
             [korma.db :refer [postgres defdb]]
-            [korma.core :refer [defentity insert values select fields]]
-            [clj-time [core :as tco] [coerce :as tc] [format :as tf]]))
+            [korma.core :as kc]
+            [clj-time [core :as tco] [coerce :as tc] [format :as tf] [local :as tl]]))
             
 (defn load-config
   "Given a filename, load and return a config file"
@@ -24,43 +24,42 @@
   :password (get (System/getenv) "OPENSHIFT_POSTGRESQL_DB_PASSWORD"
               (get-conf-value :password))}))
 (defdb postgres-db db)
-(defentity observations)
+(kc/defentity observations)
 
 (defn insert-observation
   "Inserts a observation to the database"
   [observation]
-  (insert observations
-    (values {
+  (kc/insert observations
+    (kc/values {
               :recorded (->> (:timestamp observation) 
                              (tf/parse) tc/to-timestamp)
               :temperature (:inside_temp observation)
               :brightness (:inside_light observation)})))
 
 (defn format-date
-  "Changes the timezone and formats the date with some formatter"
+  "Changes the timezone and formats the date with a given formatter"
   [date formatter]
-  (tf/unparse (tf/formatters formatter)
-    ; Hack to change timezone from UTC to local time
-    (tco/to-time-zone (tc/from-sql-date date)
-    (tco/time-zone-for-id "Europe/Helsinki"))))
+  (tl/format-local-time (tco/to-time-zone (tc/from-sql-date date)
+      (tco/time-zone-for-id "Europe/Helsinki")) formatter))
 
-(defn get-all-observations
+(defn get-all-obs
   "Fetches all observations from the database"
   [ & time-format]
   (let [formatter (if time-format (nth time-format 0) :mysql)]
-    (for [row (select observations
-            (fields :brightness :temperature :recorded))]
+    (for [row (kc/select observations
+            (kc/fields :brightness :temperature :recorded))]
       (merge row
         ; Reformat date
         {:recorded (format-date (:recorded row) formatter)}))))
 
-(defn get-observations-by-criteria
-  "Fetches the observations from the database which fullfil the given criteria"
-  [criteria & time-format]
+(defn get-last-n-days-obs
+  "Fetches the observations from the last n days"
+  [n & time-format]
   (let [formatter (if time-format (nth time-format 0) :mysql)]
-    (for [row (select observations
-            (fields :brightness :temperature :recorded)
-            (select criteria))]
+    (for [row (kc/select observations
+            (kc/fields :brightness :temperature :recorded)
+            (kc/where {:recorded [>= (tc/to-sql-date (tco/minus (tco/now)
+                          (tco/days n)))]}))]
       (merge row
         ; Reformat date
         {:recorded (format-date (:recorded row) formatter)}))))

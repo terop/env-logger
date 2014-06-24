@@ -11,14 +11,15 @@
 ; Template for the 'plots' page
 (html/deftemplate plots "templates/plots.html"
   []
-  [:span#plotData] (html/content (json/write-str (db/get-all-observations :rfc822))))
+  [:span#plotData] (html/content (json/write-str
+                      (db/get-last-n-days-obs 3 :rfc822))))
 
 (defroutes routes
   (GET "/" [] "Hello HTTP!")
   (GET "/add" [json-string] (db/insert-observation (json/read-str json-string
                                     :key-fn keyword)))
   (GET "/fetch" [ & date-format] {:headers {"Content-Type" "application/json"}
-                                  :body (json/write-str (db/get-all-observations
+                                  :body (json/write-str (db/get-all-obs
                                     (let [df (get date-format :date-format "")]
                                       ; TODO validate date format string
                                       (if (not= df "") (keyword df) :mysql))))})
