@@ -8,16 +8,14 @@
 	<script src="/static/js/d3.v3.min.js"></script>
 	<script src="/static/js/rickshaw.min.js"></script>	
 	<script src="/static/js/jquery-2.1.1.min.js"></script>
+	<script src="/static/js/plots.js"></script>
 </head>
 <body>
-	<a id="allDataLink" href="/plots?all-data=true">Reload with all data</a>
-	<br>
-	<h2>Inside temperature and brightness</h2>
+	<div id="settings">
+		<a id="allDataLink" href="/plots?all-data=true">Reload with all data</a>
+	</div>
 
-	Temperature correction (&deg;C):
-	<input type="text" id="tempCorr" value="0" style="margin-right: 10px;">
-	<input type="button" id="correctTempBtn" value="Change temperature">
-	<br>
+	<h2>Inside temperature and brightness</h2>
 
 	<h3>Temperature (&deg; C)</h3>
 	<div id="tempChart"></div>
@@ -26,105 +24,5 @@
 	<div id="brightnessChart"></div>
 
 	<span id="plotData" style="display: none"></span>
-
-	<script type="text/javascript">
-		$(function () {
-				// Transform data to Rickshaw presentable format
-				var transformData = function (data, variable, tempCorrection) {
-					var newData = [],
-						dataJson = JSON.parse(data);
-
-					for (var i = 0; i < dataJson.length; i++) {
-						if (variable === 'temperature') {
-							newData.push({
-								x: Date.parse(dataJson[i]['recorded']) / 1000.0,
-								y: dataJson[i][variable] - parseFloat(tempCorrection)
-							});
-						} else {
-							newData.push({
-								x: Date.parse(dataJson[i]['recorded']) / 1000.0,
-								y: dataJson[i][variable]
-							});
-						}
-					};
-					return newData;
-				};
-			
-			// Temperature
-			var tempGraph = new Rickshaw.Graph({
-				element: document.querySelector('#tempChart'),
-				width: 1000,
-				height: 300,
-				renderer: 'line',
-				series: [{
-					data: transformData($('#plotData').text(), 'temperature',
-						$('#tempCorr').val()),
-					color: '#9cc1e0',
-					name: 'Temperature'
-				}]
-			});
-			tempGraph.render();
-
-			var hoverDetail = new Rickshaw.Graph.HoverDetail({
-				graph: tempGraph
-			});
-
-			var xAxis = new Rickshaw.Graph.Axis.Time({
-				graph: tempGraph,
-				timeUnit: new Rickshaw.Fixtures.Time().unit('day'),
-				timeFixture: new Rickshaw.Fixtures.Time()
-			});
-			xAxis.render();
-
-			var yAxis = new Rickshaw.Graph.Axis.Y({
-			    graph: tempGraph,
-			    tickFormat: Rickshaw.Fixtures.Number.formatKMBT
-			});
-			yAxis.render();
-
-			// Brightness
-			var brightGraph = new Rickshaw.Graph({
-				element: document.querySelector('#brightnessChart'),
-				width: 1000,
-				height: 400,
-				renderer: 'line',
-				series: [{
-					data: transformData($('#plotData').text(), 'brightness'),
-					color: '#9cc1e0',
-					name: 'Brightness'
-				}]
-			});
-			brightGraph.render();
-
-			var hoverDetail = new Rickshaw.Graph.HoverDetail({
-				graph: brightGraph
-			});
-
-			var xAxis = new Rickshaw.Graph.Axis.Time({
-				graph: brightGraph,
-				timeUnit: new Rickshaw.Fixtures.Time().unit('day'),
-				timeFixture: new Rickshaw.Fixtures.Time()
-			});
-			xAxis.render();
-
-			var yAxis = new Rickshaw.Graph.Axis.Y({
-			    graph: brightGraph,
-			    tickFormat: Rickshaw.Fixtures.Number.formatKMBT
-			});
-			yAxis.render();
-
-			// Corrects the temperature according to the given value
-			$('#correctTempBtn').click(function () {
-				tempGraph.configure({
-					series: [{
-						data: transformData($('#plotData').text(), 'temperature',
-							$('#tempCorr').val()),
-						color: '#9cc1e0',
-				 		name: 'Temperature'
-				 	}]});
-				tempGraph.render();
-			});
-		});
-	</script>
 </body>
 <html>
