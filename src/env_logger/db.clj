@@ -50,7 +50,8 @@
   [ & time-format]
   (let [formatter (if time-format (nth time-format 0) :mysql)]
     (for [row (kc/select observations
-            (kc/fields :brightness :temperature :recorded))]
+            (kc/fields :brightness :temperature :recorded)
+            (kc/order :id :ASC))]
       (merge row
         ; Reformat date
         {:recorded (format-date (:recorded row) formatter)}))))
@@ -62,7 +63,8 @@
     (for [row (kc/select observations
             (kc/fields :brightness :temperature :recorded)
             (kc/where {:recorded [>= (tc/to-sql-date (tco/minus (tco/now)
-                          (tco/days n)))]}))]
+                          (tco/days n)))]})
+            (kc/order :id :ASC))]
       (merge row
         ; Reformat date
         {:recorded (format-date (:recorded row) formatter)}))))
