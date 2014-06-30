@@ -10,31 +10,34 @@
   (edn/read-string (slurp filename)))
 
 (defn get-conf-value
-  "Return a property from the database configuration"
-  [property]
-  (property (:database (load-config
+  "Return a key value from the configuration"
+  [property config-key]
+  (config-key (property (load-config
     (clojure.java.io/resource "config.edn")))))
 
 (def db (postgres {
   :host (get (System/getenv) "OPENSHIFT_POSTGRESQL_DB_HOST" "localhost")
   :port (get (System/getenv) "OPENSHIFT_POSTGRESQL_DB_PORT" "5432")
-  :db (get-conf-value :name)
+  :db (get-conf-value :database :name)
   :user (get (System/getenv) "OPENSHIFT_POSTGRESQL_DB_USERNAME"
-          (get-conf-value :username))
+          (get-conf-value :database :username))
   :password (get (System/getenv) "OPENSHIFT_POSTGRESQL_DB_PASSWORD"
-              (get-conf-value :password))}))
+              (get-conf-value :database :password))}))
 (defdb postgres-db db)
 (kc/defentity observations)
 
 (defn insert-observation
-  "Inserts a observation to the database"
+  "Inserts a observation to the database. Optionally corrects the temperature
+  with an offset."
   [observation]
-  (kc/insert observations
-    (kc/values {
-              :recorded (->> (:timestamp observation) 
-                             (tf/parse) tc/to-timestamp)
-              :temperature (:inside_temp observation)
-              :brightness (:inside_light observation)})))
+  (let [offset (if (get-conf-value :correction :enabled)
+                        (get-conf-value :correction :offset) 0)]
+    (kc/insert observations
+      (kc/values {
+                :recorded (->> (:timestamp observation)
+                               (tf/parse) tc/to-timestamp)
+                :temperature (- (:inside_temp observation) offset)
+                :brightness (:inside_light observation)}))))
 
 (defn format-date
   "Changes the timezone and formats the date with a given formatter"
