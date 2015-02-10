@@ -1,12 +1,12 @@
-; Database settings
-; Example
-;{:database {:name "db_name"
-;			:username "foobar"
-;			:password "testpwd1!"}
-; Temperature correction offset in degree Celsius
-; :correction {:enabled false
-;			   :offset 9}}
+;; Database settings
+;; Example
+;; {:database {:name "db_name"
+;;		:username "foobar"
+;;		:password "testpwd1!"}
+;; Temperature correction offset in degree Celsius
+;; :correction {:enabled false
+;;		:offset 9}}
 
 {:database {:name "logger"}
  :correction {:enabled true
-			  :offset 11}}
+              :offset 11}}
