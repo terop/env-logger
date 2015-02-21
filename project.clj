@@ -3,8 +3,8 @@
   :url "https://github.com/terop/env-logger"
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [ring "1.3.2"]
-                 [http-kit "2.1.18"]
-                 [compojure "1.3.1"]
+                 [http-kit "2.1.19"]
+                 [compojure "1.3.2"]
                  [postgresql "9.3-1101.jdbc4"]
                  [korma "0.4.0"]
                  [clj-time "0.9.0"]
@@ -15,7 +15,7 @@
                                               com.sun.jdmk/jmxtools
                                               com.sun.jmx/jmxri]]]
   :main env-logger.main
-  :plugins [[lein-ring "0.8.10"]]
+  :plugins [[lein-ring "0.9.1"]]
   :ring {:handler env-logger.main/main
          :auto-reload? true}
   :profiles
