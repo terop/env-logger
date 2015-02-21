@@ -1,5 +1,5 @@
 (ns env-logger.main
-  (:require [compojure.route :as route]            
+  (:require [compojure.route :as route]
             [compojure.handler :refer [site]]
       	    [compojure.core :refer [defroutes GET POST]]
             [org.httpkit.server :as kit]
@@ -22,7 +22,7 @@
 (defroutes routes
   (GET "/" [] "Welcome to the environment log viewer!")
   (GET "/add" [json-string] (db/insert-observation (parse-string json-string
-                                                                 :key-fn keyword)))
+                                                                 true)))
   (GET "/fetch" [ & date-format] {:headers {"Content-Type" "application/json"}
                                   :body (generate-string
                                          (db/get-all-obs
@@ -36,7 +36,7 @@
   (route/not-found "<h2>Page not found.</h2>"))
 
 (defn in-dev?
-  "Checks in which environment (development or production) the program 
+  "Checks in which environment (development or production) the program
   is running"
   []
   (if (get (System/getenv) "OPENSHIFT_CLOJURE_HTTP_IP") false true))
