@@ -7,7 +7,10 @@ import pytz
 
 URL = 'http://192.168.1.10/'
 # Change this value when DB host changes
-DB_URL_BASE = 'http://localhost:8080/add'
+# OpenShift database URL
+DB_ADD_URL = 'http://logger-tpalohei.rhcloud.com/add'
+# Local database URL
+# DB_ADD_URL = 'http://localhost:8080/add'
 
 def main():
     """Module main function."""
@@ -31,7 +34,7 @@ def send_to_db(data):
     data['timestamp'] = datetime.now(
                             pytz.timezone('Europe/Helsinki')).isoformat()
     payload = {'json-string': json.dumps(data)}
-    r = requests.get(DB_URL_BASE, params=payload)
+    r = requests.get(DB_ADD_URL, params=payload)
 
 if __name__ == '__main__':
     main()
