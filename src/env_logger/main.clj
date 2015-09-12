@@ -2,8 +2,8 @@
   (:require [compojure.route :as route]
             [compojure.handler :refer [site]]
       	    [compojure.core :refer [defroutes GET POST]]
-            [org.httpkit.server :as kit]
-            [ring.middleware.reload :refer [wrap-reload]]
+            [ring.middleware.defaults :refer :all]
+            [immutant.web :as web]
             [cheshire.core :refer [generate-string parse-string]]
             [net.cgrand.enlive-html :as html]
             [env-logger.db :as db]))
@@ -35,19 +35,10 @@
   (route/resources "/static/")
   (route/not-found "<h2>Page not found.</h2>"))
 
-(defn in-dev?
-  "Checks in which environment (development or production) the program
-  is running"
+(defn start
+  "Starts the web server."
   []
-  (if (get (System/getenv) "OPENSHIFT_CLOJURE_HTTP_IP") false true))
-
-(defn -main [& args]
-  (let [port (Integer/parseInt (get (System/getenv)
+  (let [ip (get (System/getenv) "OPENSHIFT_CLOJURE_HTTP_IP" "localhost")
+        port (Integer/parseInt (get (System/getenv)
                                     "OPENSHIFT_CLOJURE_HTTP_PORT" "8080"))]
-    (let [ip (get (System/getenv) "OPENSHIFT_CLOJURE_HTTP_IP" "0.0.0.0")]
-      ;; Hack to enable reload in development mode
-      (let [handler (if (in-dev?)
-                      (wrap-reload (site #'routes))
-                      (site #'routes))]
-        (kit/run-server handler
-                        {:ip ip :port port})))))
+    (web/run (wrap-defaults routes site-defaults) {:host ip :port port})))

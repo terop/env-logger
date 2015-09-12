@@ -4,17 +4,16 @@
             [clj-time [core :as tco] [coerce :as tc] [format :as tf] [local :as tl]]
             [env-logger.util :refer :all]))
 
-(def db (postgres {:host (get (System/getenv)
-                              "OPENSHIFT_POSTGRESQL_DB_HOST" "localhost")
-                   :port (get (System/getenv)
-                              "OPENSHIFT_POSTGRESQL_DB_PORT" "5432")
-                   :db (get-conf-value :database :name)
-                   :user (get (System/getenv) "OPENSHIFT_POSTGRESQL_DB_USERNAME"
-                              (get-conf-value :database :username))
-                   :password (get (System/getenv)
-                                  "OPENSHIFT_POSTGRESQL_DB_PASSWORD"
-                                  (get-conf-value :database :password))}))
-(defdb postgres-db db)
+(defdb db (postgres {:host (get (System/getenv)
+                                "OPENSHIFT_POSTGRESQL_DB_HOST" "localhost")
+                     :port (get (System/getenv)
+                                "OPENSHIFT_POSTGRESQL_DB_PORT" "5432")
+                     :db (get-conf-value :database :name)
+                     :user (get (System/getenv) "OPENSHIFT_POSTGRESQL_DB_USERNAME"
+                                (get-conf-value :database :username))
+                     :password (get (System/getenv)
+                                    "OPENSHIFT_POSTGRESQL_DB_PASSWORD"
+                                    (get-conf-value :database :password))}))
 (defentity observations)
 
 (defn insert-observation
