@@ -2,7 +2,7 @@
   (:require [korma.db :refer [postgres defdb]]
             [korma.core :refer :all]
             [clj-time [core :as tco] [coerce :as tc] [format :as tf] [local :as tl]]
-            [env-logger.util :refer :all]))
+            [env-logger.config :refer [get-conf-value]]))
 
 (defdb db (postgres {:host (get (System/getenv)
                                 "OPENSHIFT_POSTGRESQL_DB_HOST" "localhost")

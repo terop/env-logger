@@ -1,4 +1,4 @@
-(ns env-logger.util
+(ns env-logger.config
   (:require [clojure.edn :as edn]))
 
 (defn load-config

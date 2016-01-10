@@ -6,6 +6,7 @@
             [immutant.web :refer [run run-dmc]]
             [cheshire.core :refer [generate-string parse-string]]
             [selmer.parser :refer [render-file]]
+            [env-logger.config :refer [get-conf-value]]
             [env-logger.db :as db]))
 
 (defroutes routes
@@ -36,4 +37,6 @@
   (let [ip (get (System/getenv) "OPENSHIFT_CLOJURE_HTTP_IP" "localhost")
         port (Integer/parseInt (get (System/getenv)
                                     "OPENSHIFT_CLOJURE_HTTP_PORT" "8080"))]
-    (run (wrap-defaults routes site-defaults) {:host ip :port port})))
+    (if (get-conf-value :in-production)
+      (run (wrap-defaults routes site-defaults) {:host ip :port port})
+      (run-dmc (wrap-defaults routes site-defaults) {:host ip :port port}))))
