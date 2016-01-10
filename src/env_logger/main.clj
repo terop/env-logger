@@ -1,23 +1,12 @@
 (ns env-logger.main
   (:require [compojure.route :as route]
             [compojure.handler :refer [site]]
-      	    [compojure.core :refer [defroutes GET POST]]
+            [compojure.core :refer [defroutes GET POST]]
             [ring.middleware.defaults :refer :all]
-            [immutant.web :as web]
+            [immutant.web :refer [run run-dmc]]
             [cheshire.core :refer [generate-string parse-string]]
-            [net.cgrand.enlive-html :as html]
+            [selmer.parser :refer [render-file]]
             [env-logger.db :as db]))
-
-;; Template for the 'plots' page
-(html/deftemplate plots "templates/plots.html"
-  [params]
-  [:span#plotData] (if (get params :all-data)
-                     ;; All data
-                     (html/content (generate-string (db/get-all-obs :rfc822)))
-                     ;; Default
-                     (html/content (generate-string
-                                    (db/get-last-n-days-obs 3
-                                                            :rfc822)))))
 
 (defroutes routes
   (GET "/" [] "Welcome to the environment log viewer!")
@@ -31,14 +20,20 @@
                                             ;; TODO validate date format string
                                             (if (not= df "")
                                               (keyword df) :mysql))))})
-  (GET "/plots" [ & params] (plots params))
-  (route/resources "/static/")
-  (route/not-found "<h2>Page not found.</h2>"))
+  (GET "/plots" [ & params] (render-file "templates/plots.html"
+                                         {:data (generate-string
+                                                 (if (:all-data params)
+                                                   (db/get-all-obs :rfc822)
+                                                   (db/get-last-n-days-obs 3
+                                                                           :rfc822)))}))
+  ;; Serve static files
+  (route/files "/" {:root "resources"})
+  (route/not-found "404 Not Found"))
 
-(defn start
+(defn -main
   "Starts the web server."
   []
   (let [ip (get (System/getenv) "OPENSHIFT_CLOJURE_HTTP_IP" "localhost")
         port (Integer/parseInt (get (System/getenv)
                                     "OPENSHIFT_CLOJURE_HTTP_PORT" "8080"))]
-    (web/run (wrap-defaults routes site-defaults) {:host ip :port port})))
+    (run (wrap-defaults routes site-defaults) {:host ip :port port})))

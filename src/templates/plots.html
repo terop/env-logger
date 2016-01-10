@@ -1,28 +1,28 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<title>Plots</title>
+        <title>Plots</title>
 
-	<link type="text/css" rel="stylesheet" href="/static/css/rickshaw.css">
+        <link type="text/css" rel="stylesheet" href="/css/rickshaw.css">
 
-	<script src="/static/js/d3.min.js"></script>
-	<script src="/static/js/rickshaw.min.js"></script>	
-	<script src="http://code.jquery.com/jquery-2.1.3.min.js"></script>
-	<script src="/static/js/plots.js"></script>
+        <script src="/js/d3.min.js"></script>
+        <script src="/js/rickshaw.min.js"></script>
+        <script src="/js/jquery-2.2.0.min.js"></script>
+        <script src="/js/plots.js"></script>
 </head>
 <body>
-	<div id="settings">
-	    <a id="allDataLink" href="/plots?all-data=true">Reload with all data</a>
-	</div>
+    <div id="settings">
+        <a id="allDataLink" href="/plots?all-data=true">Reload with all data</a>
+    </div>
 
-	<h2>Inside temperature and brightness</h2>
+    <h2>Inside temperature and brightness</h2>
 
-	<h3>Temperature (&deg; C)</h3>
-	<div id="tempChart"></div>
+    <h3>Temperature (&deg; C)</h3>
+    <div id="tempChart"></div>
 
-	<h3>Brightness</h3>
-	<div id="brightnessChart"></div>
+    <h3>Brightness</h3>
+    <div id="brightnessChart"></div>
 
-	<span id="plotData" style="display: none"></span>
+    <span id="plotData" style="display: none">{{data}}</span>
 </body>
 <html>
