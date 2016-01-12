@@ -36,7 +36,8 @@
   []
   (let [ip (get (System/getenv) "OPENSHIFT_CLOJURE_HTTP_IP" "localhost")
         port (Integer/parseInt (get (System/getenv)
-                                    "OPENSHIFT_CLOJURE_HTTP_PORT" "8080"))]
+                                    "OPENSHIFT_CLOJURE_HTTP_PORT" "8080"))
+        opts {:host ip :port port}]
     (if (get-conf-value :in-production)
-      (run (wrap-defaults routes site-defaults) {:host ip :port port})
-      (run-dmc (wrap-defaults routes site-defaults) {:host ip :port port}))))
+      (run (wrap-defaults routes site-defaults) opts)
+      (run-dmc (wrap-defaults routes site-defaults) opts))))
