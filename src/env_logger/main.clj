@@ -24,9 +24,10 @@
   (GET "/plots" [ & params] (render-file "templates/plots.html"
                                          {:data (generate-string
                                                  (if (:all-data params)
-                                                   (db/get-all-obs :rfc822)
-                                                   (db/get-last-n-days-obs 3
-                                                                           :rfc822)))}))
+                                                   (db/get-all-obs
+                                                    :date-hour-minute-second)
+                                                   (db/get-last-n-days-obs
+                                                    3 :date-hour-minute-second)))}))
   ;; Serve static files
   (route/files "/" {:root "resources"})
   (route/not-found "404 Not Found"))

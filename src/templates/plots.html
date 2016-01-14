@@ -1,28 +1,31 @@
 <!DOCTYPE html>
 <html>
-<head>
+    <head>
         <title>Plots</title>
+        <meta charset="utf-8" />
+    </head>
+    <body>
+        <!-- <div id="settings">
+             <a id="allDataLink" href="/plots?all-data=true">Reload with all data</a>
+             </div> -->
 
-        <link type="text/css" rel="stylesheet" href="/css/rickshaw.css">
+        <h2>Inside temperature and brightness</h2>
 
-        <script src="/js/d3.min.js"></script>
-        <script src="/js/rickshaw.min.js"></script>
-        <script src="/js/jquery-2.2.0.min.js"></script>
+        <div>
+            <div id="tempChart" style="width: 900px; height: 400px; float: left;"></div>
+            <div id="legendDiv" style="float: left;"></div>
+        </div>
+        <span id="plotData" style="display: none">{{data}}</span>
+
+        <div style="clear: both;">
+            <input type="checkbox" class="selectBox" id="showTemperature" checked="checked">
+            <label for="showTemperature">Temperature</label>
+            <br>
+            <input type="checkbox" class="selectBox" id="showBrightness" checked="checked">
+            <label for="showBrightness">Brightness</label>
+        </div>
+
+        <script src="/js/dygraph-combined.js"></script>
         <script src="/js/plots.js"></script>
-</head>
-<body>
-    <div id="settings">
-        <a id="allDataLink" href="/plots?all-data=true">Reload with all data</a>
-    </div>
-
-    <h2>Inside temperature and brightness</h2>
-
-    <h3>Temperature (&deg; C)</h3>
-    <div id="tempChart"></div>
-
-    <h3>Brightness</h3>
-    <div id="brightnessChart"></div>
-
-    <span id="plotData" style="display: none">{{data}}</span>
-</body>
-<html>
+    </body>
+</html>
