@@ -3,13 +3,22 @@
     <head>
         <title>Plots</title>
         <meta charset="utf-8" />
+
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css"
+              integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7"
+              crossorigin="anonymous">
+        <link rel="stylesheet" href="/css/bootstrap-datepicker.min.css">
+        <style>
+            input[type="text"] {
+                width: 100px;
+            }
+            .leftMargin {
+                margin-left: 30px;
+            }
+        </style>
     </head>
     <body>
-        <!-- <div id="settings">
-             <a id="allDataLink" href="/plots?all-data=true">Reload with all data</a>
-             </div> -->
-
-        <h2>Inside temperature and brightness</h2>
+        <h2 class="leftMargin">Inside temperature and brightness</h2>
 
         <div>
             <div id="tempChart" style="width: 900px; height: 400px; float: left;"></div>
@@ -17,15 +26,57 @@
         </div>
         <span id="plotData" style="display: none">{{data}}</span>
 
-        <div style="clear: both;">
+        <div class="leftMargin" style="clear: both;">
             <input type="checkbox" class="selectBox" id="showTemperature" checked="checked">
             <label for="showTemperature">Temperature</label>
             <br>
             <input type="checkbox" class="selectBox" id="showBrightness" checked="checked">
             <label for="showBrightness">Brightness</label>
         </div>
+        <br>
+        <div class="leftMargin">
+            <h4>Select interval to show</h4>
+            <form method="post" action="/plots">
+                <input type="text" name="dateOne" id="dateOne" value="{{date-one}}">&nbsp;-&nbsp;
+                <input type="text" name="dateTwo" id="dateTwo" value="{{date-two}}">
+                <br><br>
+                <input type="submit" class="btn btn-primary" id="submitBtn" value="Refresh">
+            </form>
+        </div>
 
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"
+                integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS"
+                crossorigin="anonymous"></script>
+        <script src="/js/bootstrap-datepicker.min.js"></script>
         <script src="/js/dygraph-combined.js"></script>
         <script src="/js/plots.js"></script>
+        <script>
+            $('input[type="text"]').datepicker({
+                format: 'dd.mm.yyyy',
+                weekStart: 1,
+                endDate: new Date().toLocaleDateString().replace(/\//g, '.'),
+                todayBtn: true,
+                calendarWeeks: true
+            });
+
+            // Function for validating date field values
+            var validateDates = function (event) {
+                var datePattern = /\d{1,2}\.\d{1,2}\.\d{4}/,
+                    dateOne = document.getElementById('dateOne').value,
+                    dateTwo = document.getElementById('dateTwo').value;
+
+                if ((dateOne && !datePattern.exec(dateOne)) ||
+                    (dateTwo && !datePattern.exec(dateTwo))) {
+                        alert('Error: either the start or end date is invalid!');
+                        event.preventDefault();
+                        return;
+                }
+            };
+
+            document.getElementById('submitBtn').addEventListener('click',
+                                                                  validateDates,
+                                                                  false);
+        </script>
     </body>
 </html>

@@ -1,6 +1,6 @@
 (ns env-logger.handler
   (:require [cheshire.core :refer [generate-string parse-string]]
-            [compojure.core :refer [GET defroutes]]
+            [compojure.core :refer [GET POST defroutes]]
             [compojure.route :as route]
             [env-logger.config :refer [get-conf-value]]
             [env-logger.db :as db]
@@ -14,12 +14,23 @@
                                               (parse-string json-string true))))
   (GET "/fetch" [] {:headers {"Content-Type" "application/json"}
                     :body (generate-string (db/get-all-obs))})
-  (GET "/plots" [ & params] (render-file "templates/plots.html"
-                                         {:data (generate-string
-                                                 (if (:all-data params)
-                                                   (db/get-all-obs)
-                                                   (db/get-last-n-days-obs
-                                                    3)))}))
+  (GET "/plots" [] (render-file "templates/plots.html"
+                                {:data (generate-string
+                                        (db/get-last-n-days-obs 3))}))
+  (POST "/plots" [ & params]
+        (let [date-one (:dateOne params)
+              date-two (:dateTwo params)]
+          (render-file "templates/plots.html"
+                       {:data (generate-string
+                               (db/get-obs-within-interval
+                                (if (not= "" date-one)
+                                  date-one nil)
+                                (if (not= "" date-two)
+                                  date-two nil)))
+                        :date-one (if (not= "" date-one)
+                                    date-one "")
+                        :date-two (if (not= "" date-two)
+                                    date-two nil)})))
   ;; Serve static files
   (route/files "/" {:root "resources"})
   (route/not-found "404 Not Found"))
@@ -30,7 +41,9 @@
   (let [ip (get (System/getenv) "OPENSHIFT_CLOJURE_HTTP_IP" "localhost")
         port (Integer/parseInt (get (System/getenv)
                                     "OPENSHIFT_CLOJURE_HTTP_PORT" "8080"))
+        config (assoc-in site-defaults [:security :anti-forgery] false)
         opts {:host ip :port port}]
     (if (get-conf-value :in-production)
-      (run (wrap-defaults routes site-defaults) opts)
-      (run-dmc (wrap-defaults routes site-defaults) opts))))
+      ;; TODO fix CSRF tokens
+      (run (wrap-defaults routes config) opts)
+      (run-dmc (wrap-defaults routes config) opts))))

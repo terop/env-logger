@@ -2,12 +2,14 @@
   (:require [clj-time.coerce :as tc]
             [clj-time.core :as tco]
             [clj-time.local :as tl]
+            [clj-time.format :as tf]
             [clj-time.jdbc]
             [clojure.test :refer :all]
             [env-logger.config :refer [get-conf-value]]
             [env-logger.db :refer [format-datetime get-all-obs
                                    get-last-n-days-obs
-                                   insert-observation]]
+                                   insert-observation
+                                   get-obs-within-interval]]
             [korma.core :as kc]
             [korma.db :refer [defdb postgres]]))
 
@@ -68,8 +70,25 @@
             :temperature 11.0}
            (first (get-last-n-days-obs 3))))))
 
+(deftest date-interval-select
+  (testing "Select observations between one or two dates"
+    (let [formatter (tf/formatter "d.M.y")]
+      (is (= (count (get-obs-within-interval nil nil)) 2))
+      (is (= (count (get-obs-within-interval
+                     (tf/unparse formatter (tco/minus current-dt (tco/days 1)))
+                     nil)) 1))
+      (is (= (count (get-obs-within-interval
+                     nil
+                     (tf/unparse formatter (tco/minus current-dt
+                                                      (tco/days 2)))))
+             1))
+      (is (= (count (get-obs-within-interval
+                     (tf/unparse formatter (tco/minus current-dt (tco/days 6)))
+                     (tf/unparse formatter current-dt))) 2)))))
+
 ;; Config reading test
 (deftest read-configuration-value
   (testing "Configuration value reading"
+    (is (nil? (get-conf-value :foo)))
     (is (false? (get-conf-value :in-production)))
     (is (true? (get-conf-value :correction :enabled)))))

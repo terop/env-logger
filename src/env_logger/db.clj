@@ -3,6 +3,7 @@
             [clj-time.core :as tco]
             [clj-time.format :as tf]
             [clj-time.local :as tl]
+            [clj-time.jdbc]
             [korma.core :refer :all]
             [korma.db :refer [defdb postgres]]
             [env-logger.config :refer [get-conf-value]]))
@@ -64,11 +65,34 @@
   [n]
   (for [row (select observations
                     (fields :brightness :temperature :recorded)
-                    (where {:recorded [>= (tc/to-sql-date
-                                           (tco/minus (tco/now)
-                                                      (tco/days n)))]})
+                    (where {:recorded [>= (tco/minus (tco/now)
+                                                     (tco/days n))]})
                     (order :id :ASC))]
     ;; Reformat date
     (merge row
            {:recorded (format-datetime (:recorded row)
                                        :date-hour-minute-second)})))
+
+(defn get-obs-within-interval
+  "Fetches observations in an interval between either one or two dates"
+  [date-one date-two]
+  (let [formatter (tf/formatter "d.M.y H:m:s")
+        one-dt (if date-one
+                 (tf/parse formatter (format "%s 00:00:00" date-one))
+                 ;; Hack to avoid problems with Korma and SQL WHERE
+                 (tco/date-time 2010 1 1))
+        two-dt (if date-two
+                 (tf/parse formatter (format "%s 23:59:59" date-two))
+                 ;; Hack to avoid problems with Korma and SQL WHERE
+                 (tco/today-at 23 59 59))]
+    (for [row (select observations
+                      (fields :brightness :temperature :recorded)
+                      (where (and {:recorded [>=
+                                              (tl/to-local-date-time one-dt)]}
+                                  {:recorded [<=
+                                              (tl/to-local-date-time two-dt)]}))
+                      (order :id :ASC))]
+    ;; Reformat date
+    (merge row
+           {:recorded (format-datetime (:recorded row)
+                                       :date-hour-minute-second)}))))
