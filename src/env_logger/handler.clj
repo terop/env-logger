@@ -1,4 +1,4 @@
-(ns env-logger.main
+(ns env-logger.handler
   (:require [compojure.route :as route]
             [compojure.handler :refer [site]]
             [compojure.core :refer [defroutes GET POST]]
@@ -11,23 +11,16 @@
 
 (defroutes routes
   (GET "/" [] "Welcome to the environment log viewer!")
-  (GET "/add" [json-string] (db/insert-observation (parse-string json-string
-                                                                 true)))
-  (GET "/fetch" [ & date-format] {:headers {"Content-Type" "application/json"}
-                                  :body (generate-string
-                                         (db/get-all-obs
-                                          (let [df (get date-format
-                                                        :date-format "")]
-                                            ;; TODO validate date format string
-                                            (if (not= df "")
-                                              (keyword df) :mysql))))})
+  (GET "/add" [json-string] (generate-string (db/insert-observation
+                                              (parse-string json-string true))))
+  (GET "/fetch" [] {:headers {"Content-Type" "application/json"}
+                    :body (generate-string (db/get-all-obs))})
   (GET "/plots" [ & params] (render-file "templates/plots.html"
                                          {:data (generate-string
                                                  (if (:all-data params)
-                                                   (db/get-all-obs
-                                                    :date-hour-minute-second)
+                                                   (db/get-all-obs)
                                                    (db/get-last-n-days-obs
-                                                    3 :date-hour-minute-second)))}))
+                                                    3)))}))
   ;; Serve static files
   (route/files "/" {:root "resources"})
   (route/not-found "404 Not Found"))

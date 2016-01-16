@@ -1,20 +1,22 @@
 #!/usr/bin/env python3
+"""This is a program for sending some environment data to the data logger
+web service."""
 
-import requests
 import json
 from datetime import datetime
 import pytz
+import requests
 
 URL = 'http://192.168.1.10/'
 # Change this value when DB host changes
-# OpenShift database URL
-DB_ADD_URL = 'http://logger-tpalohei.rhcloud.com/add'
 # Local database URL
-# DB_ADD_URL = 'http://localhost:8080/add'
+DB_ADD_URL = 'http://localhost:8080/add'
+
 
 def main():
     """Module main function."""
     send_to_db(get_data())
+
 
 def get_data():
     """Fetches the environment data from the Arduino. Returns the parsed
@@ -25,16 +27,19 @@ def get_data():
         return {}
     return resp.json()
 
+
 def send_to_db(data):
-    """Sends the data to the remote database with a HTTP GET reqeust."""
+    """Sends the data to the remote database with a HTTP GET request."""
     if data == {}:
-        print("Received no data, exiting")
+        print('Received no data, exiting')
         return
 
     data['timestamp'] = datetime.now(
-                            pytz.timezone('Europe/Helsinki')).isoformat()
+        pytz.timezone('Europe/Helsinki')).isoformat()
     payload = {'json-string': json.dumps(data)}
-    r = requests.get(DB_ADD_URL, params=payload)
+    resp = requests.get(DB_ADD_URL, params=payload)
+    print('Response: code {0}, text {1}'.format(resp.status_code, resp.text))
+
 
 if __name__ == '__main__':
     main()
