@@ -1,9 +1,10 @@
 (ns env-logger.db
-  (:require [korma.db :refer [postgres defdb]]
+  (:require [clj-time.coerce :as tc]
+            [clj-time.core :as tco]
+            [clj-time.format :as tf]
+            [clj-time.local :as tl]
             [korma.core :refer :all]
-            [clj-time [core :as tco] [coerce :as tc] [format :as tf]
-             [local :as tl]]
-            [clj-time.jdbc]
+            [korma.db :refer [defdb postgres]]
             [env-logger.config :refer [get-conf-value]]))
 
 (defdb db (postgres {:host (get (System/getenv)

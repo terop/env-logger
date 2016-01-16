@@ -1,14 +1,15 @@
 (ns env-logger.db-test
-  (:require [clojure.test :refer :all]
-            [korma.db :refer [postgres defdb]]
-            [korma.core :as kc]
-            [clj-time [core :as tco] [local :as tl] [coerce :as tc]]
+  (:require [clj-time.coerce :as tc]
+            [clj-time.core :as tco]
+            [clj-time.local :as tl]
+            [clj-time.jdbc]
+            [clojure.test :refer :all]
             [env-logger.config :refer [get-conf-value]]
-            [env-logger.db :refer [insert-observation
-                                   format-datetime
-                                   get-all-obs
-                                   get-last-n-days-obs]]
-            [env-logger.config :refer [get-conf-value]]))
+            [env-logger.db :refer [format-datetime get-all-obs
+                                   get-last-n-days-obs
+                                   insert-observation]]
+            [korma.core :as kc]
+            [korma.db :refer [defdb postgres]]))
 
 (defdb db (postgres {:db "env_logger_test"
                      :user (get-conf-value :database :username)
@@ -24,9 +25,9 @@
   [test-fn]
   (kc/delete observations)
   (kc/insert observations
-             (kc/values {:recorded (tc/to-sql-time (tl/to-local-date-time
-                                                    (tco/minus current-dt
-                                                               (tco/days 4))))
+             (kc/values {:recorded (tl/to-local-date-time
+                                    (tco/minus current-dt
+                                               (tco/days 4)))
                          :brightness 5
                          :temperature 20}))
   (test-fn)

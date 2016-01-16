@@ -1,13 +1,12 @@
 (ns env-logger.handler
-  (:require [compojure.route :as route]
-            [compojure.handler :refer [site]]
-            [compojure.core :refer [defroutes GET POST]]
-            [ring.middleware.defaults :refer :all]
-            [immutant.web :refer [run run-dmc]]
-            [cheshire.core :refer [generate-string parse-string]]
-            [selmer.parser :refer [render-file]]
+  (:require [cheshire.core :refer [generate-string parse-string]]
+            [compojure.core :refer [GET defroutes]]
+            [compojure.route :as route]
             [env-logger.config :refer [get-conf-value]]
-            [env-logger.db :as db]))
+            [env-logger.db :as db]
+            [immutant.web :refer [run run-dmc]]
+            [ring.middleware.defaults :refer :all]
+            [selmer.parser :refer [render-file]]))
 
 (defroutes routes
   (GET "/" [] "Welcome to the environment log viewer!")
