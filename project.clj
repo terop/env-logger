@@ -10,11 +10,11 @@
                  [korma "0.4.2"]
                  [clj-time "0.11.0"]
                  [cheshire "5.5.0"]
-                 [selmer "0.9.9"]
+                 [selmer "1.0.0"]
                  [log4j "1.2.17" :exclusions [javax.mail/mail
                                               javax.jms/jms
                                               com.sun.jdmk/jmxtools
                                               com.sun.jmx/jmxri]]]
-  :main env-logger.main
+  :main env-logger.handler
   :profiles
   {:dev {:resource-paths ["resources"]}})
