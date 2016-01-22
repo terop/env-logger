@@ -41,9 +41,15 @@
   (let [ip (get (System/getenv) "OPENSHIFT_CLOJURE_HTTP_IP" "localhost")
         port (Integer/parseInt (get (System/getenv)
                                     "OPENSHIFT_CLOJURE_HTTP_PORT" "8080"))
-        config (assoc-in site-defaults [:security :anti-forgery] false)
+        production? (get-conf-value :in-production)
+        defaults-config (if production?
+                          (assoc (assoc-in secure-site-defaults [:security
+                                                                 :anti-forgery]
+                                           false) :proxy true)
+                          (assoc-in site-defaults [:security :anti-forgery]
+                                    false))
         opts {:host ip :port port}]
-    (if (get-conf-value :in-production)
+    (if production?
       ;; TODO fix CSRF tokens
-      (run (wrap-defaults routes config) opts)
-      (run-dmc (wrap-defaults routes config) opts))))
+      (run (wrap-defaults routes defaults-config) opts)
+      (run-dmc (wrap-defaults routes defaults-config) opts))))
