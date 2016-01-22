@@ -84,7 +84,10 @@
              1))
       (is (= (count (get-obs-within-interval
                      (tf/unparse formatter (tco/minus current-dt (tco/days 6)))
-                     (tf/unparse formatter current-dt))) 2)))))
+                     (tf/unparse formatter current-dt))) 2))
+      (is (zero? (count (get-obs-within-interval "foobar" nil))))
+      (is (zero? (count (get-obs-within-interval nil "foobar"))))
+      (is (zero? (count (get-obs-within-interval "bar" "foo")))))))
 
 ;; Config reading test
 (deftest read-configuration-value

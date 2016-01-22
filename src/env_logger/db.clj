@@ -76,23 +76,31 @@
 (defn get-obs-within-interval
   "Fetches observations in an interval between either one or two dates"
   [date-one date-two]
-  (let [formatter (tf/formatter "d.M.y H:m:s")
-        one-dt (if date-one
-                 (tf/parse formatter (format "%s 00:00:00" date-one))
-                 ;; Hack to avoid problems with Korma and SQL WHERE
-                 (tco/date-time 2010 1 1))
-        two-dt (if date-two
-                 (tf/parse formatter (format "%s 23:59:59" date-two))
-                 ;; Hack to avoid problems with Korma and SQL WHERE
-                 (tco/today-at 23 59 59))]
-    (for [row (select observations
-                      (fields :brightness :temperature :recorded)
-                      (where (and {:recorded [>=
-                                              (tl/to-local-date-time one-dt)]}
-                                  {:recorded [<=
-                                              (tl/to-local-date-time two-dt)]}))
-                      (order :id :ASC))]
-    ;; Reformat date
-    (merge row
-           {:recorded (format-datetime (:recorded row)
-                                       :date-hour-minute-second)}))))
+  (if (or (and date-one
+               (not (re-find #"\d{1,2}\.\d{1,2}\.\d{4}" date-one)))
+          (and date-two
+               (not (re-find #"\d{1,2}\.\d{1,2}\.\d{4}" date-two))))
+    ;; Either date was invalid
+    ()
+    (let [formatter (tf/formatter "d.M.y H:m:s")
+          one-dt (if date-one
+                   (tf/parse formatter (format "%s 00:00:00" date-one))
+                   ;; Hack to avoid problems with Korma and SQL WHERE
+                   (tco/date-time 2010 1 1))
+          two-dt (if date-two
+                   (tf/parse formatter (format "%s 23:59:59" date-two))
+                   ;; Hack to avoid problems with Korma and SQL WHERE
+                   (tco/today-at 23 59 59))]
+      (for [row (select observations
+                        (fields :brightness :temperature :recorded)
+                        (where (and {:recorded [>=
+                                                (tl/to-local-date-time
+                                                 one-dt)]}
+                                    {:recorded [<=
+                                                (tl/to-local-date-time
+                                                 two-dt)]}))
+                        (order :id :ASC))]
+        ;; Reformat date
+        (merge row
+               {:recorded (format-datetime (:recorded row)
+                                           :date-hour-minute-second)})))))
