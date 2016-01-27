@@ -4,8 +4,8 @@ web service."""
 
 import json
 from datetime import datetime
-import pytz
 import requests
+import pytz
 
 URL = 'http://192.168.1.10/'
 # Change this value when DB host changes
@@ -38,7 +38,10 @@ def send_to_db(data):
         pytz.timezone('Europe/Helsinki')).isoformat()
     payload = {'json-string': json.dumps(data)}
     resp = requests.get(DB_ADD_URL, params=payload)
-    print('Response: code {0}, text {1}'.format(resp.status_code, resp.text))
+
+    timestamp = datetime.now().isoformat()
+    print('{0}: Response: code {1}, text {2}'. \
+          format(timestamp, resp.status_code, resp.text))
 
 
 if __name__ == '__main__':
