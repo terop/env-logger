@@ -4,21 +4,27 @@ web service."""
 
 import json
 from datetime import datetime
-import requests
 import pytz
+import requests
+# Bluetooth BLE requires a recent version of gatttlib and pybluez
+from bluetooth.ble import BeaconService
 
 URL = 'http://192.168.1.10/'
 # Change this value when DB host changes
-# Local database URL
+# Database insertion URL
 DB_ADD_URL = 'http://localhost:8080/add'
+# Bluetooth beacon MAC addresses
+BEACON_MACS = ['EA:6E:BA:99:92:ED', '7C:EC:79:3F:BE:97']
 
 
 def main():
     """Module main function."""
-    send_to_db(get_data())
+    env_data = get_env_data()
+    env_data['beacons'] = get_ble_beacons()
+    send_to_db(env_data)
 
 
-def get_data():
+def get_env_data():
     """Fetches the environment data from the Arduino. Returns the parsed
     JSON object or an empty dictionary on failure."""
     resp = requests.get(URL)
@@ -26,6 +32,22 @@ def get_data():
         # Request failed
         return {}
     return resp.json()
+
+
+def get_ble_beacons():
+    """Returns the MAC addresses and RSSI values of predefined Bluetooth BLE
+    beacons in the vicinity in a dict."""
+    # Inspired by
+    # https://github.com/karulis/pybluez/blob/master/examples/ble/beacon_scan.py
+    service = BeaconService()
+    devices = service.scan(5)
+    beacons = []
+
+    # RSSI is data[4]
+    for address, data in list(devices.items()):
+        if address in BEACON_MACS:
+            beacons.append({'mac': address, 'rssi': data[4]})
+    return beacons
 
 
 def send_to_db(data):
@@ -40,8 +62,7 @@ def send_to_db(data):
     resp = requests.get(DB_ADD_URL, params=payload)
 
     timestamp = datetime.now().isoformat()
-    print('{0}: Response: code {1}, text {2}'. \
-          format(timestamp, resp.status_code, resp.text))
+    print('{0}: Response: code {1}, text {2}'.format(timestamp, resp.status_code, resp.text))
 
 
 if __name__ == '__main__':
