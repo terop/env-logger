@@ -17,6 +17,7 @@
                      :user (get-conf-value :database :username)
                      :password (get-conf-value :database :password)}))
 (kc/defentity observations)
+(kc/defentity beacons)
 
 ;; Current datetime used in tests
 (def current-dt (tco/today-at 12 1 1))
@@ -44,7 +45,9 @@
                                                        (tl/format-local-time
                                                         current-dt formatter))
                                     :inside_light 0
-                                    :inside_temp 20})))
+                                    :inside_temp 20
+                                    :beacons [{:rssi -68,
+                                               :mac "7C:EC:79:3F:BE:97"}]})))
     (is (false? (insert-observation {})))))
 
 (deftest date-formatting

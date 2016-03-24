@@ -5,7 +5,7 @@
             [clj-time.local :as tl]
             [clj-time.jdbc]
             [korma.core :refer :all]
-            [korma.db :refer [defdb postgres]]
+            [korma.db :refer [defdb postgres transaction rollback]]
             [env-logger.config :refer [get-conf-value]]))
 
 (defdb db (postgres {:host (get (System/getenv)
@@ -20,26 +20,40 @@
                                     "OPENSHIFT_POSTGRESQL_DB_PASSWORD"
                                     (get-conf-value :database :password))}))
 (defentity observations)
+(defentity beacons)
 
 (defn insert-observation
   "Inserts a observation to the database. Optionally corrects the temperature
   with an offset."
   [observation]
-  (if (= 3 (count observation))
-    (try
-      (let [offset (if (get-conf-value :correction :enabled)
-                     (get-conf-value :correction :offset) 0)]
-        (if (pos? (:id (insert observations
-                               (values {:recorded (tf/parse (:timestamp
-                                                             observation))
-                                        :temperature (- (:inside_temp
-                                                         observation) offset)
-                                        :brightness (:inside_light
-                                                     observation)}))))
-          true false))
-      (catch org.postgresql.util.PSQLException pge
-        (.printStackTrace pge)
-        false))
+  (if (= 4 (count observation))
+    (transaction
+     (try
+       (let [offset (if (get-conf-value :correction :enabled)
+                      (get-conf-value :correction :offset) 0)
+             obs-id (:id (insert observations
+                                 (values {:recorded (tf/parse (:timestamp
+                                                               observation))
+                                          :temperature (- (:inside_temp
+                                                           observation) offset)
+                                          :brightness (:inside_light
+                                                       observation)})))]
+         (if (pos? obs-id)
+           (if (every? pos?
+                       (for [beacon (:beacons observation)]
+                         (:id (insert beacons
+                                      (values {:obs_id obs-id
+                                               :mac_address (:mac beacon)
+                                               :rssi (:rssi beacon)})))))
+             true
+             (do
+               (rollback)
+               false))
+           false))
+       (catch org.postgresql.util.PSQLException pge
+         (.printStackTrace pge)
+         (rollback)
+         false)))
     false))
 
 (defn format-datetime
