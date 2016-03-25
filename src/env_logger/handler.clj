@@ -9,7 +9,7 @@
             [selmer.parser :refer [render-file]]))
 
 (defroutes routes
-  (GET "/" [] "Welcome to the environment log viewer!")
+  (GET "/" [] (render-file "templates/index.html" {}))
   (GET "/add" [json-string] (generate-string (db/insert-observation
                                               (parse-string json-string true))))
   (GET "/fetch" [] {:headers {"Content-Type" "application/json"}
