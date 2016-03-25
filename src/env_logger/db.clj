@@ -4,7 +4,7 @@
             [clj-time.format :as tf]
             [clj-time.local :as tl]
             [clj-time.jdbc]
-            [korma.core :refer :all]
+            [korma.core :as kc]
             [korma.db :refer [defdb postgres transaction rollback]]
             [env-logger.config :refer [get-conf-value]]))
 
@@ -19,8 +19,8 @@
                      :password (get (System/getenv)
                                     "OPENSHIFT_POSTGRESQL_DB_PASSWORD"
                                     (get-conf-value :database :password))}))
-(defentity observations)
-(defentity beacons)
+(kc/defentity observations)
+(kc/defentity beacons)
 
 (defn insert-observation
   "Inserts a observation to the database. Optionally corrects the temperature
@@ -31,20 +31,22 @@
      (try
        (let [offset (if (get-conf-value :correction :enabled)
                       (get-conf-value :correction :offset) 0)
-             obs-id (:id (insert observations
-                                 (values {:recorded (tf/parse (:timestamp
-                                                               observation))
-                                          :temperature (- (:inside_temp
-                                                           observation) offset)
-                                          :brightness (:inside_light
-                                                       observation)})))]
+             obs-id (:id (kc/insert observations
+                                    (kc/values {:recorded (tf/parse
+                                                           (:timestamp
+                                                            observation))
+                                                :temperature (- (:inside_temp
+                                                                 observation)
+                                                                offset)
+                                                :brightness (:inside_light
+                                                             observation)})))]
          (if (pos? obs-id)
            (if (every? pos?
                        (for [beacon (:beacons observation)]
-                         (:id (insert beacons
-                                      (values {:obs_id obs-id
-                                               :mac_address (:mac beacon)
-                                               :rssi (:rssi beacon)})))))
+                         (:id (kc/insert beacons
+                                         (kc/values {:obs_id obs-id
+                                                     :mac_address (:mac beacon)
+                                                     :rssi (:rssi beacon)})))))
              true
              (do
                (rollback)
@@ -66,9 +68,9 @@
 (defn get-all-obs
   "Fetches all observations from the database"
   []
-  (for [row (select observations
-                    (fields :brightness :temperature :recorded)
-                    (order :id :ASC))]
+  (for [row (kc/select observations
+                       (kc/fields :brightness :temperature :recorded)
+                       (kc/order :id :ASC))]
     ;; Reformat date
     (merge row
            {:recorded (format-datetime (:recorded row)
@@ -77,11 +79,11 @@
 (defn get-last-n-days-obs
   "Fetches the observations from the last N days"
   [n]
-  (for [row (select observations
-                    (fields :brightness :temperature :recorded)
-                    (where {:recorded [>= (tco/minus (tco/now)
-                                                     (tco/days n))]})
-                    (order :id :ASC))]
+  (for [row (kc/select observations
+                       (kc/fields :brightness :temperature :recorded)
+                       (kc/where {:recorded [>= (tco/minus (tco/now)
+                                                           (tco/days n))]})
+                       (kc/order :id :ASC))]
     ;; Reformat date
     (merge row
            {:recorded (format-datetime (:recorded row)
@@ -105,15 +107,15 @@
                    (tf/parse formatter (format "%s 23:59:59" date-two))
                    ;; Hack to avoid problems with Korma and SQL WHERE
                    (tco/today-at 23 59 59))]
-      (for [row (select observations
-                        (fields :brightness :temperature :recorded)
-                        (where (and {:recorded [>=
-                                                (tl/to-local-date-time
-                                                 one-dt)]}
-                                    {:recorded [<=
-                                                (tl/to-local-date-time
-                                                 two-dt)]}))
-                        (order :id :ASC))]
+      (for [row (kc/select observations
+                           (kc/fields :brightness :temperature :recorded)
+                           (kc/where (and {:recorded [>=
+                                                      (tl/to-local-date-time
+                                                       one-dt)]}
+                                          {:recorded [<=
+                                                      (tl/to-local-date-time
+                                                       two-dt)]}))
+                           (kc/order :id :ASC))]
         ;; Reformat date
         (merge row
                {:recorded (format-datetime (:recorded row)
