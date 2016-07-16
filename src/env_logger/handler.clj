@@ -1,4 +1,5 @@
 (ns env-logger.handler
+  "The main namespace of the application"
   (:require [cheshire.core :refer [generate-string parse-string]]
             [compojure.core :refer [GET POST defroutes]]
             [compojure.route :as route]

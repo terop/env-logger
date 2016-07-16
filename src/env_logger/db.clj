@@ -1,4 +1,5 @@
 (ns env-logger.db
+  "Namespace containing the application's database function"
   (:require [clj-time.coerce :as tc]
             [clj-time.core :as tco]
             [clj-time.format :as tf]
@@ -59,7 +60,7 @@
     false))
 
 (defn format-datetime
-  "Changes the timezone and formats the datetime with a given formatter"
+  "Changes the timezone and formats the datetime with the given formatter"
   [datetime formatter]
   (tl/format-local-time (tco/to-time-zone datetime (tco/time-zone-for-id
                                                     "Europe/Helsinki"))

@@ -1,4 +1,5 @@
 (ns env-logger.config
+  "Namespace for configuration functions"
   (:require [clojure.edn :as edn]))
 
 (defn load-config

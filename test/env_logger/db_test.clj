@@ -20,7 +20,7 @@
 (kc/defentity beacons)
 
 ;; Current datetime used in tests
-(def current-dt (tco/today-at 12 1 1))
+(def current-dt (tco/now))
 (def formatter :date-hour-minute-second)
 
 (defn clean-test-database
@@ -41,9 +41,8 @@
 
 (deftest insert-observations
   (testing "Observation insertion"
-    (is (true? (insert-observation {:timestamp (format "%s+02:00"
-                                                       (tl/format-local-time
-                                                        current-dt formatter))
+    (is (true? (insert-observation {:timestamp
+                                    (str (tl/to-local-date-time current-dt))
                                     :inside_light 0
                                     :inside_temp 20
                                     :beacons [{:rssi -68,
