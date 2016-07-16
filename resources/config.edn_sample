@@ -1,0 +1,9 @@
+;; Database settings
+{:database {:name "db_name"
+            :username "foobar"
+            :password "testpwd1!"}
+ ;; Temperature correction offset in degree Celsius
+ :correction {:enabled false
+             :offset 9}
+ ;; Development or production setting
+ :in-production true}
