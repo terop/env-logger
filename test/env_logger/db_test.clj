@@ -90,10 +90,3 @@
       (is (zero? (count (get-obs-within-interval "foobar" nil))))
       (is (zero? (count (get-obs-within-interval nil "foobar"))))
       (is (zero? (count (get-obs-within-interval "bar" "foo")))))))
-
-;; Config reading test
-(deftest read-configuration-value
-  (testing "Configuration value reading"
-    (is (nil? (get-conf-value :foo)))
-    (is (false? (get-conf-value :in-production)))
-    (is (true? (get-conf-value :correction :enabled)))))
