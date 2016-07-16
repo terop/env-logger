@@ -5,8 +5,9 @@
             [compojure.route :as route]
             [env-logger.config :refer [get-conf-value]]
             [env-logger.db :as db]
-            [immutant.web :refer [run run-dmc]]
+            [immutant.web :as web]
             [ring.middleware.defaults :refer :all]
+            [ring.middleware.stacktrace :refer [wrap-stacktrace]]
             [selmer.parser :refer [render-file]]))
 
 (defroutes routes
@@ -49,8 +50,9 @@
                                            false) :proxy true)
                           (assoc-in site-defaults [:security :anti-forgery]
                                     false))
+        handler (if production?
+                  ;; TODO fix CSRF tokens
+                  (wrap-defaults routes defaults-config)
+                  (wrap-stacktrace (wrap-defaults routes defaults-config)))
         opts {:host ip :port port}]
-    (if production?
-      ;; TODO fix CSRF tokens
-      (run (wrap-defaults routes defaults-config) opts)
-      (run-dmc (wrap-defaults routes defaults-config) opts))))
+    (web/run handler opts)))
