@@ -35,21 +35,26 @@
        :temperature (Float/parseFloat (nth (first data) 2))
        :cloudiness (int (Float/parseFloat (nth (nth data 1) 2)))})))
 
-(defn get-latest-fmi-data
-  "Fetches and returns the latest FMI data from the given weather
-  observation station."
-  [fmi-api-key station-id]
+(defn calculate-start-time
+  "Calculates the start time for the data request. The time is the closest
+  even ten minutes in the past, example: for 08:27 it would be 08:20."
+  []
   (let [curr-minute (t/minute (t/now))
-        ;; Calculate the time with the previous even ten minutes
         start-time (f/unparse (f/formatters :date-time-no-ms)
                               (t/minus (t/now)
                                        (t/minutes (- curr-minute
                                                      (- curr-minute
                                                         (mod curr-minute 10))))
-                                       (t/seconds (t/second (t/now)))))
-        url (format (str "http://data.fmi.fi/fmi-apikey/%s/wfs?request="
+                                       (t/seconds (t/second (t/now)))))]
+    start-time))
+
+(defn get-latest-fmi-data
+  "Fetches and returns the latest FMI data from the given weather
+  observation station."
+  [fmi-api-key station-id]
+  (let [url (format (str "http://data.fmi.fi/fmi-apikey/%s/wfs?request="
                          "getFeature&storedquery_id=fmi::observations::"
                          "weather::simple&fmisid=%d&parameters=t2m,n_man"
-                         "&starttime=%s") fmi-api-key station-id start-time)]
+                         "&starttime=%s") fmi-api-key station-id
+                    (calculate-start-time))]
     (extract-data (:content (parse-xml (:body (client/get url)))))))
-

@@ -15,7 +15,8 @@
                                               javax.jms/jms
                                               com.sun.jdmk/jmxtools
                                               com.sun.jmx/jmxri]]
-                 [clj-http "2.2.0"]]
+                 [clj-http "2.2.0"]
+                 [clj-http-fake "1.0.2"]]
   :main env-logger.handler
   :profiles
   {:dev {:resource-paths ["resources"]}})
