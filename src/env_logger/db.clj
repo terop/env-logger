@@ -7,19 +7,19 @@
             [clj-time.jdbc]
             [korma.core :as kc]
             [korma.db :refer [defdb postgres transaction rollback]]
-            [env-logger.config :refer [get-conf-value]]))
+            [env-logger.config :refer [get-conf-value db-conf]]))
 
 (defdb db (postgres {:host (get (System/getenv)
                                 "OPENSHIFT_POSTGRESQL_DB_HOST" "localhost")
                      :port (get (System/getenv)
                                 "OPENSHIFT_POSTGRESQL_DB_PORT" "5432")
-                     :db (get-conf-value :database :name)
+                     :db (db-conf :name)
                      :user (get (System/getenv)
                                 "OPENSHIFT_POSTGRESQL_DB_USERNAME"
-                                (get-conf-value :database :username))
+                                (db-conf :username))
                      :password (get (System/getenv)
                                     "OPENSHIFT_POSTGRESQL_DB_PASSWORD"
-                                    (get-conf-value :database :password))}))
+                                    (db-conf :password))}))
 (kc/defentity observations)
 (kc/defentity beacons)
 
@@ -30,8 +30,8 @@
   (if (= 4 (count observation))
     (transaction
      (try
-       (let [offset (if (get-conf-value :correction :enabled)
-                      (get-conf-value :correction :offset) 0)
+       (let [offset (if (get-conf-value :correction :k :enabled)
+                      (get-conf-value :correction :k :offset) 0)
              obs-id (:id (kc/insert observations
                                     (kc/values {:recorded (tf/parse
                                                            (:timestamp

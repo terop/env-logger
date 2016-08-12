@@ -9,9 +9,19 @@
 
 (defn get-conf-value
   "Return a key value from the configuration."
-  [property & [config-key]]
+  [property & {:keys [k use-sample]
+               :or {k nil
+                    use-sample false}}]
   (let [config (load-config
-                (clojure.java.io/resource "config.edn"))]
-    (if config-key
-      (config-key (property config))
+                (clojure.java.io/resource
+                 (if use-sample
+                   "config.edn_sample"
+                   "config.edn")))]
+    (if k
+      (k (property config))
       (property config))))
+
+(defn db-conf
+  "Returns the value of the requested database configuration key"
+  [k & [use-sample]]
+  (get-conf-value :database :k k :use-sample use-sample))

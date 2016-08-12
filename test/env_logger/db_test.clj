@@ -5,7 +5,7 @@
             [clj-time.format :as tf]
             [clj-time.jdbc]
             [clojure.test :refer :all]
-            [env-logger.config :refer [get-conf-value]]
+            [env-logger.config :refer [db-conf]]
             [env-logger.db :refer [format-datetime get-all-obs
                                    get-last-n-days-obs
                                    insert-observation
@@ -14,8 +14,8 @@
             [korma.db :refer [defdb postgres]]))
 
 (defdb db (postgres {:db "env_logger_test"
-                     :user (get-conf-value :database :username)
-                     :password (get-conf-value :database :password)}))
+                     :user (db-conf :username)
+                     :password (db-conf :password)}))
 (kc/defentity observations)
 (kc/defentity beacons)
 
