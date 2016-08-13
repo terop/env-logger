@@ -59,7 +59,7 @@
   (testing "Selecting all observations"
     ;; Temperature offset is *currently* 9
     (let [all-obs (get-all-obs)]
-      (is (= (count all-obs) 2))
+      (is (= 2 (count all-obs)))
       (is (= {:brightness 0
               :recorded (tl/format-local-time current-dt formatter)
               :temperature 11.0}
@@ -75,18 +75,19 @@
 (deftest date-interval-select
   (testing "Select observations between one or two dates"
     (let [formatter (tf/formatter "d.M.y")]
-      (is (= (count (get-obs-within-interval nil nil)) 2))
-      (is (= (count (get-obs-within-interval
-                     (tf/unparse formatter (tco/minus current-dt (tco/days 1)))
-                     nil)) 1))
-      (is (= (count (get-obs-within-interval
-                     nil
-                     (tf/unparse formatter (tco/minus current-dt
-                                                      (tco/days 2)))))
-             1))
-      (is (= (count (get-obs-within-interval
-                     (tf/unparse formatter (tco/minus current-dt (tco/days 6)))
-                     (tf/unparse formatter current-dt))) 2))
+      (is (= 2 (count (get-obs-within-interval nil nil))))
+      (is (= 1 (count (get-obs-within-interval
+                       (tf/unparse formatter (tco/minus current-dt
+                                                        (tco/days 1)))
+                       nil))))
+      (is (= 1 (count (get-obs-within-interval
+                       nil
+                       (tf/unparse formatter (tco/minus current-dt
+                                                        (tco/days 2)))))))
+      (is (= 2 (count (get-obs-within-interval
+                       (tf/unparse formatter (tco/minus current-dt
+                                                        (tco/days 6)))
+                       (tf/unparse formatter current-dt)))))
       (is (zero? (count (get-obs-within-interval "foobar" nil))))
       (is (zero? (count (get-obs-within-interval nil "foobar"))))
       (is (zero? (count (get-obs-within-interval "bar" "foo")))))))

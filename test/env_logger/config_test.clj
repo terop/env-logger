@@ -1,6 +1,6 @@
 (ns env-logger.config-test
   (:require [clojure.test :refer :all]
-            [env-logger.config :refer [get-conf-value]]))
+            [env-logger.config :refer :all]))
 
 (deftest read-configuration-value
   (testing "Basic configuration value reading"
@@ -8,3 +8,8 @@
     (is (true? (get-conf-value :in-production :use-sample true)))
     (is (= 9 (get-conf-value :correction :k :offset :use-sample true)))
     (is (false? (get-conf-value :correction :k :enabled :use-sample true)))))
+
+(deftest read-database-conf-value
+  (testing "Database configuration value reading"
+    (is (= "db_name" (db-conf :name :use-sample true)))
+    (is (= "foobar" (db-conf :username :use-sample true)))))
