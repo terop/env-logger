@@ -12,10 +12,6 @@
                  [clj-time "0.12.0"]
                  [cheshire "5.6.3"]
                  [selmer "1.0.7"]
-                 [log4j "1.2.17" :exclusions [javax.mail/mail
-                                              javax.jms/jms
-                                              com.sun.jdmk/jmxtools
-                                              com.sun.jmx/jmxri]]
                  [clj-http "2.2.0"]]
   :main env-logger.handler
   :profiles
