@@ -35,7 +35,7 @@
   "Inserts a observation to the database. Optionally corrects the temperature
   with an offset."
   [db-con observation]
-  (if (= 4 (count observation))
+  (if (= 5 (count observation))
     (j/with-db-transaction [t-con db-con]
       (try
         (let [offset (if (get-conf-value :correction :k :enabled)
@@ -58,11 +58,25 @@
                                                  {:obs_id obs-id
                                                   :mac_address (:mac beacon)
                                                   :rssi (:rssi beacon)})))))
-              true
+              (let [weather-data (:weather-data observation)]
+                (if (pos? (:id (first (j/insert! t-con
+                                                 :weather_data
+                                                 {:obs_id obs-id
+                                                  :time (f/parse
+                                                         (:date
+                                                          weather-data))
+                                                  :temperature (:temperature
+                                                                weather-data)
+                                                  :cloudiness
+                                                  (:cloudiness
+                                                   weather-data)}))))
+                  true
+                  (do
+                    (j/db-set-rollback-only! t-con)
+                    false)))
               (do
                 (j/db-set-rollback-only! t-con)
-                false))
-            false))
+                false))))
         (catch org.postgresql.util.PSQLException pge
           (.printStackTrace pge)
           (j/db-set-rollback-only! t-con)

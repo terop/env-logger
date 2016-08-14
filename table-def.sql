@@ -16,3 +16,12 @@ CREATE TABLE beacons (
        mac_address CHAR(17) NOT NULL,
        rssi SMALLINT NOT NULL
 );
+
+-- FMI weather data table
+CREATE TABLE weather_data (
+       id SERIAL PRIMARY KEY,
+       obs_id INTEGER NOT NULL REFERENCES observations (id) ON DELETE CASCADE,
+       time TIMESTAMP WITH TIME ZONE NOT NULL,
+       temperature REAL NOT NULL,
+       cloudiness SMALLINT NOT NULL
+);

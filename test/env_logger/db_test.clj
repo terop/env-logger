@@ -60,7 +60,11 @@
                                     :inside_light 0
                                     :inside_temp 20
                                     :beacons [{:rssi -68,
-                                               :mac "7C:EC:79:3F:BE:97"}]})))
+                                               :mac "7C:EC:79:3F:BE:97"}]
+                                    :weather-data {:date
+                                                   "2016-08-12T17:10:00Z"
+                                                   :temperature 20
+                                                   :cloudiness 2}})))
     (is (false? (insert-observation test-postgres {})))))
 
 (deftest date-formatting
