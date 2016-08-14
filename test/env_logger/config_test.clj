@@ -12,4 +12,5 @@
 (deftest read-database-conf-value
   (testing "Database configuration value reading"
     (is (= "db_name" (db-conf :name :use-sample true)))
-    (is (= "foobar" (db-conf :username :use-sample true)))))
+    (is (= "foobar" (db-conf :username :use-sample true)))
+    (is (nil? (db-conf :not-found :use-sample true)))))

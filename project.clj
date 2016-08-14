@@ -7,7 +7,8 @@
                  [ring "1.5.0"]
                  [ring/ring-defaults "0.2.1"]
                  [org.postgresql/postgresql "9.4.1209"]
-                 [korma "0.4.2"]
+                 [org.clojure/java.jdbc "0.6.2-alpha2"]
+                 [honeysql "0.8.0"]
                  [clj-time "0.12.0"]
                  [cheshire "5.6.3"]
                  [selmer "1.0.7"]
@@ -15,8 +16,8 @@
                                               javax.jms/jms
                                               com.sun.jdmk/jmxtools
                                               com.sun.jmx/jmxri]]
-                 [clj-http "2.2.0"]
-                 [clj-http-fake "1.0.2"]]
+                 [clj-http "2.2.0"]]
   :main env-logger.handler
   :profiles
-  {:dev {:resource-paths ["resources"]}})
+  {:dev {:dependencies [[clj-http-fake "1.0.2"]]
+         :resource-paths ["resources"]}})

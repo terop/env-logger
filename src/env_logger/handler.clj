@@ -13,18 +13,21 @@
 (defroutes routes
   (GET "/" [] (render-file "templates/index.html" {}))
   (GET "/add" [json-string] (generate-string (db/insert-observation
+                                              db/postgres
                                               (parse-string json-string true))))
   (GET "/fetch" [] {:headers {"Content-Type" "application/json"}
-                    :body (generate-string (db/get-all-obs))})
+                    :body (generate-string (db/get-all-obs db/postgres))})
   (GET "/plots" [] (render-file "templates/plots.html"
                                 {:data (generate-string
-                                        (db/get-last-n-days-obs 3))}))
+                                        (db/get-last-n-days-obs db/postgres
+                                                                3))}))
   (POST "/plots" [ & params]
         (let [date-one (:dateOne params)
               date-two (:dateTwo params)]
           (render-file "templates/plots.html"
                        {:data (generate-string
                                (db/get-obs-within-interval
+                                db/postgres
                                 (if (not= "" date-one)
                                   date-one nil)
                                 (if (not= "" date-two)
@@ -42,7 +45,7 @@
   []
   (let [ip (get (System/getenv) "OPENSHIFT_CLOJURE_HTTP_IP" "localhost")
         port (Integer/parseInt (get (System/getenv)
-                                    "OPENSHIFT_CLOJURE_HTTP_PORT" "8080"))
+                                    "OPENSHIFT_CLOJURE_HTTP_PORT" "8000"))
         production? (get-conf-value :in-production)
         defaults-config (if production?
                           (assoc (assoc-in secure-site-defaults [:security
