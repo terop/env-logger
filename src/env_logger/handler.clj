@@ -6,8 +6,8 @@
             [env-logger.config :refer [get-conf-value]]
             [env-logger.db :as db]
             [immutant.web :as web]
+            [immutant.web.middleware :refer [wrap-development]]
             [ring.middleware.defaults :refer :all]
-            [ring.middleware.stacktrace :refer [wrap-stacktrace]]
             [selmer.parser :refer [render-file]]))
 
 (defroutes routes
@@ -17,25 +17,25 @@
                                               (parse-string json-string true))))
   (GET "/fetch" [] {:headers {"Content-Type" "application/json"}
                     :body (generate-string (db/get-all-obs db/postgres))})
-  (GET "/plots" [] (render-file "templates/plots.html"
-                                {:data (generate-string
-                                        (db/get-last-n-days-obs db/postgres
-                                                                3))}))
-  (POST "/plots" [ & params]
-        (let [date-one (:dateOne params)
-              date-two (:dateTwo params)]
-          (render-file "templates/plots.html"
-                       {:data (generate-string
-                               (db/get-obs-within-interval
-                                db/postgres
-                                (if (not= "" date-one)
-                                  date-one nil)
-                                (if (not= "" date-two)
-                                  date-two nil)))
-                        :date-one (if (not= "" date-one)
-                                    date-one "")
-                        :date-two (if (not= "" date-two)
-                                    date-two nil)})))
+  (GET "/plots" [ & params]
+       (render-file "templates/plots.html"
+                    (let [start-date (:startDate params)
+                          end-date (:endDate params)]
+                      (if (or (not (nil? start-date))
+                              (not (nil? end-date)))
+                        {:data (generate-string
+                                (db/get-obs-within-interval
+                                 db/postgres
+                                 (if (not= "" start-date)
+                                   start-date nil)
+                                 (if (not= "" end-date)
+                                   end-date nil)))
+                         :start-date (if (not= "" start-date)
+                                       start-date "")
+                         :end-date (if (not= "" end-date)
+                                     end-date nil)}
+                        {:data (generate-string
+                                (db/get-last-n-days-obs db/postgres 3))}))))
   ;; Serve static files
   (route/files "/" {:root "resources"})
   (route/not-found "404 Not Found"))
@@ -43,9 +43,9 @@
 (defn -main
   "Starts the web server."
   []
-  (let [ip (get (System/getenv) "OPENSHIFT_CLOJURE_HTTP_IP" "localhost")
+  (let [ip (get (System/getenv) "APP_IP" "0.0.0.0")
         port (Integer/parseInt (get (System/getenv)
-                                    "OPENSHIFT_CLOJURE_HTTP_PORT" "8000"))
+                                    "APP_PORT" "8080"))
         production? (get-conf-value :in-production)
         defaults-config (if production?
                           (assoc (assoc-in secure-site-defaults [:security
@@ -56,6 +56,6 @@
         handler (if production?
                   ;; TODO fix CSRF tokens
                   (wrap-defaults routes defaults-config)
-                  (wrap-stacktrace (wrap-defaults routes defaults-config)))
+                  (wrap-development (wrap-defaults routes defaults-config)))
         opts {:host ip :port port}]
     (web/run handler opts)))

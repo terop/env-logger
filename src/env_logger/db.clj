@@ -43,7 +43,8 @@
               obs-id (:id (first (j/insert! t-con
                                             :observations
                                             {:recorded (f/parse
-                                                        (:timestamp observation))
+                                                        (:timestamp
+                                                         observation))
                                              :temperature (- (:inside_temp
                                                               observation)
                                                              offset)

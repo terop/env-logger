@@ -36,9 +36,9 @@
         <br>
         <div class="leftMargin">
             <h4>Select interval to show</h4>
-            <form method="post" action="/plots">
-                <input type="text" name="dateOne" id="dateOne" value="{{date-one}}">&nbsp;-&nbsp;
-                <input type="text" name="dateTwo" id="dateTwo" value="{{date-two}}">
+            <form method="get" action="/plots">
+                <input type="text" name="startDate" id="startDate" value="{{start-date}}">&nbsp;-&nbsp;
+                <input type="text" name="endDate" id="endDate" value="{{end-date}}">
                 <br><br>
                 <input type="submit" class="btn btn-primary" id="submitBtn" value="Refresh">
             </form>
@@ -63,14 +63,14 @@
             // Function for validating date field values
             var validateDates = function (event) {
                 var datePattern = /\d{1,2}\.\d{1,2}\.\d{4}/,
-                    dateOne = document.getElementById('dateOne').value,
-                    dateTwo = document.getElementById('dateTwo').value;
+                    startDate = document.getElementById('startDate').value,
+                    endDate = document.getElementById('endDate').value;
 
-                if ((dateOne && !datePattern.exec(dateOne)) ||
-                    (dateTwo && !datePattern.exec(dateTwo))) {
-                        alert('Error: either the start or end date is invalid!');
-                        event.preventDefault();
-                        return;
+                if ((startDate && !datePattern.exec(startDate)) ||
+                    (endDate && !datePattern.exec(endDate))) {
+                    alert('Error: either the start or end date is invalid!');
+                    event.preventDefault();
+                    return;
                 }
             };
 
