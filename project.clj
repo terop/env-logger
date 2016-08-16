@@ -12,7 +12,9 @@
                  [clj-time "0.12.0"]
                  [cheshire "5.6.3"]
                  [selmer "1.0.7"]
-                 [clj-http "2.2.0"]]
+                 [clj-http "2.2.0"]
+                 [org.clojure/tools.logging "0.3.1"]
+                 [org.slf4j/slf4j-log4j12 "1.7.21"]]
   :main env-logger.handler
   :profiles
   {:dev {:dependencies [[clj-http-fake "1.0.2"]]
