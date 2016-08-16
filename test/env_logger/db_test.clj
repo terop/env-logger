@@ -65,6 +65,14 @@
                                                    "2016-08-12T17:10:00Z"
                                                    :temperature 20
                                                    :cloudiness 2}})))
+    (is (true? (insert-observation test-postgres
+                                   {:timestamp
+                                    (str (l/to-local-date-time current-dt))
+                                    :inside_light 0
+                                    :inside_temp 20
+                                    :beacons [{:rssi -68,
+                                               :mac "7C:EC:79:3F:BE:97"}]
+                                    :weather-data {}})))
     (is (false? (insert-observation test-postgres {})))))
 
 (deftest date-formatting
@@ -77,7 +85,7 @@
   (testing "Selecting all observations"
     ;; Temperature offset is *currently* 9
     (let [all-obs (get-all-obs test-postgres)]
-      (is (= 2 (count all-obs)))
+      (is (= 3 (count all-obs)))
       (is (= {:brightness 0
               :recorded (l/format-local-time current-dt formatter)
               :temperature 11.0}
@@ -93,8 +101,8 @@
 (deftest date-interval-select
   (testing "Select observations between one or two dates"
     (let [formatter (f/formatter "d.M.y")]
-      (is (= 2 (count (get-obs-within-interval test-postgres nil nil))))
-      (is (= 1 (count (get-obs-within-interval
+      (is (= 3 (count (get-obs-within-interval test-postgres nil nil))))
+      (is (= 2 (count (get-obs-within-interval
                        test-postgres
                        (f/unparse formatter (t/minus current-dt
                                                      (t/days 1)))
@@ -104,7 +112,7 @@
                        nil
                        (f/unparse formatter (t/minus current-dt
                                                      (t/days 2)))))))
-      (is (= 2 (count (get-obs-within-interval
+      (is (= 3 (count (get-obs-within-interval
                        test-postgres
                        (f/unparse formatter (t/minus current-dt
                                                      (t/days 6)))

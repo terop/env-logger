@@ -8,4 +8,8 @@
  :correction {:enabled false
               :offset 9}
  ;; Development or production setting
- :in-production true}
+ :in-production true
+ ;; FMI API key
+ :fmi-api-key "xyz"
+ ;; Weather station ID
+ :station-id 1234}

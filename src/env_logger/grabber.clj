@@ -3,7 +3,8 @@
   (:require [clj-http.client :as client]
             [clojure.xml :as xml]
             [clj-time.core :as t]
-            [clj-time.format :as f]))
+            [clj-time.format :as f]
+            [clojure.tools.logging :as log]))
 
 (defn parse-xml
   "Parse the provided string as XML"
@@ -61,12 +62,12 @@
         response (try
                    (client/get url)
                    (catch Exception e
-                     (println "Error: FMI weather data fetch failed, status:"
-                              (:status (ex-data e)))))]
+                     (log/error (str "FMI weather data fetch failed, status:"
+                                     (:status (ex-data e))))))]
     (if (nil? response)
       {}
       (try
         (extract-data (:content (parse-xml (:body response))))
         (catch org.xml.sax.SAXParseException e
-          (println "Error: FMI weather data XML parsing failed")
+          (log/error "FMI weather data XML parsing failed")
           {})))))

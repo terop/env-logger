@@ -7,6 +7,7 @@
             [clojure.java.jdbc :as j]
             [honeysql.core :as sql]
             [honeysql.helpers :refer :all]
+            [clojure.tools.logging :as log]
             [env-logger.config :refer [get-conf-value db-conf]]))
 
 (let [db-host (get (System/getenv)
@@ -59,26 +60,34 @@
                                                   :mac_address (:mac beacon)
                                                   :rssi (:rssi beacon)})))))
               (let [weather-data (:weather-data observation)]
-                (if (pos? (:id (first (j/insert! t-con
-                                                 :weather_data
-                                                 {:obs_id obs-id
-                                                  :time (f/parse
-                                                         (:date
-                                                          weather-data))
-                                                  :temperature (:temperature
-                                                                weather-data)
-                                                  :cloudiness
-                                                  (:cloudiness
-                                                   weather-data)}))))
+                (if (zero? (count weather-data))
+                  ;; No weather data
                   true
-                  (do
-                    (j/db-set-rollback-only! t-con)
-                    false)))
+                  (if (pos? (:id (first (j/insert! t-con
+                                                   :weather_data
+                                                   {:obs_id obs-id
+                                                    :time (f/parse
+                                                           (:date
+                                                            weather-data))
+                                                    :temperature (:temperature
+                                                                  weather-data)
+                                                    :cloudiness
+                                                    (:cloudiness
+                                                     weather-data)}))))
+                    true
+                    (do
+                      (log/info (str "Database insert: rolling back "
+                                     "transaction after weather data insert"))
+                      (j/db-set-rollback-only! t-con)
+                      false))))
               (do
+                (log/info (str "Database insert: rolling back "
+                               "transaction after beacon scan insert"))
                 (j/db-set-rollback-only! t-con)
                 false))))
         (catch org.postgresql.util.PSQLException pge
-          (.printStackTrace pge)
+          (log/error (str "Database insert failed, message:"
+                          (.getMessage pge)))
           (j/db-set-rollback-only! t-con)
           false)))
     false))

@@ -5,16 +5,30 @@
             [compojure.route :as route]
             [env-logger.config :refer [get-conf-value]]
             [env-logger.db :as db]
+            [env-logger.grabber :refer [calculate-start-time
+                                        get-latest-fmi-data]]
             [immutant.web :as web]
             [immutant.web.middleware :refer [wrap-development]]
             [ring.middleware.defaults :refer :all]
-            [selmer.parser :refer [render-file]]))
+            [selmer.parser :refer [render-file]]
+            [clj-time.core :as t]))
 
 (defroutes routes
   (GET "/" [] (render-file "templates/index.html" {}))
-  (GET "/add" [json-string] (generate-string (db/insert-observation
-                                              db/postgres
-                                              (parse-string json-string true))))
+  (GET "/add" [json-string]
+       (let [start-time (calculate-start-time)
+             start-time-int (t/interval (t/plus start-time
+                                                (t/seconds 45))
+                                        (t/plus start-time
+                                                (t/minutes 3)))
+             weather-data (if (t/within? start-time-int (t/now))
+                            (get-latest-fmi-data (get-conf-value :fmi-api-key)
+                                                 (get-conf-value :station-id))
+                            {})
+             obs-data (parse-string json-string true)]
+         (generate-string (db/insert-observation
+                           db/postgres
+                           (assoc obs-data :weather-data weather-data)))))
   (GET "/fetch" [] {:headers {"Content-Type" "application/json"}
                     :body (generate-string (db/get-all-obs db/postgres))})
   (GET "/plots" [ & params]
