@@ -11,7 +11,8 @@
             [immutant.web.middleware :refer [wrap-development]]
             [ring.middleware.defaults :refer :all]
             [selmer.parser :refer [render-file]]
-            [clj-time.core :as t]))
+            [clj-time.core :as t])
+  (:gen-class))
 
 (defroutes routes
   (GET "/" [] (render-file "templates/index.html" {}))

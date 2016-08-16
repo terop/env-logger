@@ -16,6 +16,8 @@
                  [org.clojure/tools.logging "0.3.1"]
                  [org.slf4j/slf4j-log4j12 "1.7.21"]]
   :main env-logger.handler
+  :aot [env-logger.handler]
   :profiles
   {:dev {:dependencies [[clj-http-fake "1.0.2"]]
-         :resource-paths ["resources"]}})
+         :resource-paths ["resources"]
+         :env {:squiggly {:checkers [:eastwood :kibit :typed]}}}})
