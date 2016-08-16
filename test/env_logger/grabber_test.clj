@@ -2,6 +2,7 @@
   (:require [clojure.test :refer :all]
             [clj-http.fake :refer [with-fake-routes]]
             [clj-time.core :as t]
+            [clj-time.format :as f]
             [env-logger.grabber :refer :all])
   (:import org.joda.time.DateTime
            org.joda.time.DateTimeZone))
@@ -95,13 +96,16 @@
   (testing "Tests the start time calculation"
     (with-redefs [t/now (fn [] (new DateTime 2016 8 13 5 27
                                     DateTimeZone/UTC))]
-      (is (= "2016-08-13T05:20:00Z" (calculate-start-time))))
+      (is (= "2016-08-13T05:20:00Z" (f/unparse (f/formatters :date-time-no-ms)
+                                               (calculate-start-time)))))
     (with-redefs [t/now (fn [] (new DateTime 2016 8 13 5 20
                                     DateTimeZone/UTC))]
-      (is (= "2016-08-13T05:20:00Z" (calculate-start-time))))
+      (is (= "2016-08-13T05:20:00Z" (f/unparse (f/formatters :date-time-no-ms)
+                                               (calculate-start-time)))))
     (with-redefs [t/now (fn [] (new DateTime 2016 8 13 5 29 59
                                     DateTimeZone/UTC))]
-      (is (= "2016-08-13T05:20:00Z" (calculate-start-time))))))
+      (is (= "2016-08-13T05:20:00Z" (f/unparse (f/formatters :date-time-no-ms)
+                                               (calculate-start-time)))))))
 
 (deftest test-latest-data-extraction
   (testing "Tests FMI data extraction"
@@ -117,5 +121,8 @@
                        (fn [req] {
                                   :status 200
                                   :body "not XML content"})}
-      (is (thrown? org.xml.sax.SAXParseException
-                   (get-latest-fmi-data "my-api-key" 87874))))))
+      (is (= {} (get-latest-fmi-data "my-api-key" 87874))))
+    (with-fake-routes {
+                       #"http://data.fmi.fi/fmi-apikey/.+"
+                       (fn [req] {:status 400})}
+      (is (= {} (get-latest-fmi-data "my-api-key" 87874))))))
