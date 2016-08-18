@@ -52,7 +52,7 @@
                            :body (generate-string (db/get-all-obs
                                                    db/postgres))})
   ;; Serve static files
-  (route/files "/" {:root "resources"})
+  (route/files "/")
   (route/not-found "404 Not Found"))
 
 (defn -main
