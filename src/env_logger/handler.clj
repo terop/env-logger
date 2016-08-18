@@ -15,24 +15,7 @@
   (:gen-class))
 
 (defroutes routes
-  (GET "/" [] (render-file "templates/index.html" {}))
-  (GET "/add" [json-string]
-       (let [start-time (calculate-start-time)
-             start-time-int (t/interval (t/plus start-time
-                                                (t/seconds 45))
-                                        (t/plus start-time
-                                                (t/minutes 3)))
-             weather-data (if (t/within? start-time-int (t/now))
-                            (get-latest-fmi-data (get-conf-value :fmi-api-key)
-                                                 (get-conf-value :station-id))
-                            {})
-             obs-data (parse-string json-string true)]
-         (generate-string (db/insert-observation
-                           db/postgres
-                           (assoc obs-data :weather-data weather-data)))))
-  (GET "/fetch" [] {:headers {"Content-Type" "application/json"}
-                    :body (generate-string (db/get-all-obs db/postgres))})
-  (GET "/plots" [ & params]
+  (GET "/" [ & params]
        (render-file "templates/plots.html"
                     (let [start-date (:startDate params)
                           end-date (:endDate params)]
@@ -51,6 +34,22 @@
                                      end-date nil)}
                         {:data (generate-string
                                 (db/get-last-n-days-obs db/postgres 3))}))))
+  (POST "/observations" [json-string]
+        (let [start-time (calculate-start-time)
+              start-time-int (t/interval (t/plus start-time
+                                                 (t/seconds 45))
+                                         (t/plus start-time
+                                                 (t/minutes 3)))
+              weather-data (if (t/within? start-time-int (t/now))
+                             (get-latest-fmi-data (get-conf-value :fmi-api-key)
+                                                  (get-conf-value :station-id))
+                             {})
+              obs-data (parse-string json-string true)]
+          (generate-string (db/insert-observation
+                            db/postgres
+                            (assoc obs-data :weather-data weather-data)))))
+  (GET "/observations" [] {:headers {"Content-Type" "application/json"}
+                           :body (generate-string (db/get-all-obs db/postgres))})
   ;; Serve static files
   (route/files "/" {:root "resources"})
   (route/not-found "404 Not Found"))

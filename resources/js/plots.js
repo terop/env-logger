@@ -15,30 +15,35 @@ var transformData = function (data) {
 };
 var plotData = transformData(document.getElementById('plotData').innerHTML);
 
-var g = new Dygraph(
-    document.getElementById('tempChart'),
-    plotData,
-    {
-        labels: ['Date', 'Temperature [\xB0C]', 'Brightness'],
-        title: 'Temperature and brightness',
-        labelsDiv: 'legendDiv',
-        labelsSeparateLines: true
-    });
+if (plotData.length > 0) {
+    var g = new Dygraph(
+        document.getElementById('tempChart'),
+        plotData,
+        {
+            labels: ['Date', 'Temperature [\xB0C]', 'Brightness'],
+            title: 'Temperature and brightness',
+            labelsDiv: 'legendDiv',
+            labelsSeparateLines: true
+        });
 
 
-// Hides or shows the selected data series
-var hideOrShowSeries = function (event) {
-    var mapping = {'showTemperature': 0,
-                   'showBrightness': 1};
+    // Hides or shows the selected data series
+    var hideOrShowSeries = function (event) {
+        var mapping = {'showTemperature': 0,
+                       'showBrightness': 1};
 
-    var keys = Object.keys(mapping);
-    for (var i = 0; i < keys.length; i++) {
-        g.setVisibility(mapping[keys[i]],
-                        document.getElementById(keys[i]).checked);
+        var keys = Object.keys(mapping);
+        for (var i = 0; i < keys.length; i++) {
+            g.setVisibility(mapping[keys[i]],
+                            document.getElementById(keys[i]).checked);
+        }
+    };
+
+    var checkboxes = document.getElementsByClassName('selectBox');
+    for (var i = 0; i < checkboxes.length; i++) {
+        checkboxes[i].addEventListener('click', hideOrShowSeries);
     }
-};
-
-var checkboxes = document.getElementsByClassName('selectBox');
-for (var i = 0; i < checkboxes.length; i++) {
-    checkboxes[i].addEventListener('click', hideOrShowSeries);
+} else {
+    document.getElementById('noDataError').style.display = 'inline';
+    document.getElementById('plotControls').style.display = 'none';
 }
