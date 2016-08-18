@@ -49,7 +49,8 @@
                             db/postgres
                             (assoc obs-data :weather-data weather-data)))))
   (GET "/observations" [] {:headers {"Content-Type" "application/json"}
-                           :body (generate-string (db/get-all-obs db/postgres))})
+                           :body (generate-string (db/get-all-obs
+                                                   db/postgres))})
   ;; Serve static files
   (route/files "/" {:root "resources"})
   (route/not-found "404 Not Found"))
