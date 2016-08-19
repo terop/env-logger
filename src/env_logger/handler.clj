@@ -31,9 +31,11 @@
                          :start-date (if (not= "" start-date)
                                        start-date "")
                          :end-date (if (not= "" end-date)
-                                     end-date nil)}
+                                     end-date nil)
+                         :obs-dates (db/get-obs-start-and-end db/postgres)}
                         {:data (generate-string
-                                (db/get-last-n-days-obs db/postgres 3))}))))
+                                (db/get-last-n-days-obs db/postgres 3))
+                         :obs-dates (db/get-obs-start-and-end db/postgres)}))))
   (POST "/observations" [json-string]
         (let [start-time (calculate-start-time)
               start-time-int (t/interval (t/plus start-time

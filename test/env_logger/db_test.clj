@@ -8,7 +8,8 @@
             [env-logger.db :refer [format-datetime get-all-obs
                                    get-last-n-days-obs
                                    insert-observation
-                                   get-obs-within-interval]]
+                                   get-obs-within-interval
+                                   get-obs-start-and-end]]
             [clojure.java.jdbc :as j]))
 
 (let [db-host (get (System/getenv)
@@ -121,3 +122,12 @@
       (is (zero? (count (get-obs-within-interval test-postgres nil "foobar"))))
       (is (zero? (count (get-obs-within-interval test-postgres "bar"
                                                  "foo")))))))
+
+(deftest start-and-end-date-query
+  (testing "Selecting start and end dates of all observations"
+    (let [formatter (f/formatter "d.M.y")]
+      (is (= (f/unparse formatter (t/minus current-dt
+                                           (t/days 4)))
+             (:start (get-obs-start-and-end test-postgres))))
+      (is (= (f/unparse formatter current-dt)
+             (:end (get-obs-start-and-end test-postgres)))))))

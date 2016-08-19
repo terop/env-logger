@@ -165,3 +165,16 @@
         (merge row
                {:recorded (format-datetime (:recorded row)
                                            :date-hour-minute-second)})))))
+
+(defn get-obs-start-and-end
+  "Fetches the start (first) and end (last) dates of all observations"
+  [db-con]
+  (let [formatter (f/formatter "d.M.y")
+        result (j/query db-con
+                        (sql/format (sql/build :select [[:%min.recorded "start"]
+                                                        [:%max.recorded "end"]]
+                                               :from :observations)))]
+    (if (= 1 (count result))
+      {:start (f/unparse formatter (:start (first result)))
+       :end (f/unparse formatter (:end (first result)))}
+      {:start "" :end ""})))

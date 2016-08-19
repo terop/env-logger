@@ -67,13 +67,20 @@
         <script src="/js/dygraph-combined.js"></script>
         <script src="/js/plots.js"></script>
         <script>
-            $('input[type="text"]').datepicker({
+            var datepickerOptions = {
                 format: 'dd.mm.yyyy',
                 weekStart: 1,
                 endDate: new Date().toLocaleDateString().replace(/\//g, '.'),
                 todayBtn: true,
                 calendarWeeks: true
-            });
+            };
+            if ('{{ obs-dates.start }}' !== '') {
+                datepickerOptions['startDate'] = '{{ obs-dates.start }}';
+            }
+            if ('{{ obs-dates.end }}' !== '') {
+                datepickerOptions['endDate'] = '{{ obs-dates.end }}';
+            }
+            $('input[type="text"]').datepicker(datepickerOptions);
 
             // Function for validating date field values
             var validateDates = function (event) {
