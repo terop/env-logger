@@ -59,7 +59,7 @@ def send_to_db(data):
     data['timestamp'] = datetime.now(
         pytz.timezone('Europe/Helsinki')).isoformat()
     payload = {'json-string': json.dumps(data)}
-    resp = requests.get(DB_ADD_URL, params=payload)
+    resp = requests.post(DB_ADD_URL, params=payload)
 
     timestamp = datetime.now().isoformat()
     print('{0}: Response: code {1}, text {2}'.format(timestamp, resp.status_code, resp.text))
