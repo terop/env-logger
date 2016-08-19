@@ -15,6 +15,9 @@
             .leftMargin {
                 margin-left: 30px;
             }
+            .clearBoth {
+                clear: both;
+            }
             #noDataError {
                 color: red;
                 font-size: 1.2em;
@@ -35,7 +38,7 @@
         <span id="plotData" style="display: none;">{{data}}</span>
 
         <div id="plotControls">
-            <div class="leftMargin" style="clear: both;">
+            <div class="leftMargin clearBoth">
                 <input type="checkbox" class="selectBox" id="showTemperature" checked="checked">
                 <label for="showTemperature">Temperature</label>
                 <br>
@@ -43,15 +46,15 @@
                 <label for="showBrightness">Brightness</label>
             </div>
             <br>
-            <div class="leftMargin">
-                <h4>Select interval to show</h4>
-                <form method="get" action="/plots">
-                    <input type="text" name="startDate" id="startDate" value="{{start-date}}">&nbsp;-&nbsp;
-                    <input type="text" name="endDate" id="endDate" value="{{end-date}}">
-                    <br><br>
-                    <input type="submit" class="btn btn-primary" id="submitBtn" value="Refresh">
-                </form>
-            </div>
+        </div>
+        <div class="leftMargin clearBoth">
+            <h4>Date interval to show</h4>
+            <form method="get" action="/">
+                <input type="text" name="startDate" id="startDate" value="{{start-date}}">&nbsp;-&nbsp;
+                <input type="text" name="endDate" id="endDate" value="{{end-date}}">
+                <br><br>
+                <input type="submit" class="btn btn-primary" id="submitBtn" value="Refresh">
+            </form>
         </div>
 
         <script src="https://code.jquery.com/jquery-3.1.0.min.js"
