@@ -84,7 +84,7 @@
 
 (deftest all-observations
   (testing "Selecting all observations"
-    ;; Temperature offset is *currently* 9
+    ;; Temperature offset is on and the value is *currently* 9
     (let [all-obs (get-all-obs test-postgres)]
       (is (= 3 (count all-obs)))
       (is (= {:brightness 0
