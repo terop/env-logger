@@ -7,9 +7,13 @@
  ;; Temperature correction offset in degree Celsius
  :correction {:enabled true
               :offset 9}
- ;; Development or production setting
- :in-production true
  ;; FMI API key
  :fmi-api-key "xyz"
  ;; Weather station ID
- :station-id 1234}
+ :station-id 1234
+ ;; Development or production setting (TLS is enforced)
+ :in-production true
+ ;; Use through proxy (usually needed when reverse proxies are used)
+ :use-proxy true
+ ;; Enable or disable HSTS; disable if a HSTS configured reverse proxy is used
+ :use-hsts true}

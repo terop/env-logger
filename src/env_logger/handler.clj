@@ -65,13 +65,16 @@
                                     "APP_PORT" "8080"))
         production? (get-conf-value :in-production)
         defaults-config (if production?
-                          (assoc (assoc-in secure-site-defaults [:security
-                                                                 :anti-forgery]
-                                           false) :proxy true)
-                          (assoc-in site-defaults [:security :anti-forgery]
-                                    false))
+                          ;; TODO fix CSRF tokens
+                          (assoc (assoc-in (assoc-in secure-site-defaults
+                                                     [:security :anti-forgery]
+                                                     false)
+                                           [:security :hsts]
+                                           (get-conf-value :use-hsts))
+                                 :proxy (get-conf-value :use-proxy))
+                          (assoc-in site-defaults
+                                    [:security :anti-forgery] false))
         handler (if production?
-                  ;; TODO fix CSRF tokens
                   (wrap-defaults routes defaults-config)
                   (wrap-development (wrap-defaults routes defaults-config)))
         opts {:host ip :port port}]
