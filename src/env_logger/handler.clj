@@ -3,15 +3,15 @@
   (:require [cheshire.core :refer [generate-string parse-string]]
             [compojure.core :refer [GET POST defroutes]]
             [compojure.route :as route]
-            [env-logger.config :refer [get-conf-value]]
-            [env-logger.db :as db]
-            [env-logger.grabber :refer [calculate-start-time
-                                        get-latest-fmi-data]]
             [immutant.web :as web]
             [immutant.web.middleware :refer [wrap-development]]
             [ring.middleware.defaults :refer :all]
             [selmer.parser :refer [render-file]]
-            [clj-time.core :as t])
+            [clj-time.core :as t]
+            [env-logger.config :refer [get-conf-value]]
+            [env-logger.db :as db]
+            [env-logger.grabber :refer [calculate-start-time
+                                        get-latest-fmi-data]])
   (:gen-class))
 
 (defroutes routes
