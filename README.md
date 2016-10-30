@@ -51,6 +51,6 @@ container can be executed with the `java -jar <name>.jar` command.
 
 ## License
 
-See the MIT licsense in the LICENSE file.
+See the MIT license in the LICENSE file.
 
 Copyright © 2014-2016 Tero Paloheimo
