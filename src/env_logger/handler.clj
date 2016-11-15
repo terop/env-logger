@@ -36,6 +36,7 @@
                         {:data (generate-string
                                 (db/get-last-n-days-obs db/postgres 3))
                          :obs-dates (db/get-obs-start-and-end db/postgres)}))))
+  (GET "/login" [] (render-file "templates/login.html" {}))
   (POST "/observations" [json-string]
         (let [start-time (calculate-start-time)
               start-time-int (t/interval (t/plus start-time

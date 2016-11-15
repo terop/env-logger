@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Environment logger - log in</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet"
+              href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+              integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u"
+              crossorigin="anonymous">
+        <style>
+            body {
+                padding-top: 40px;
+                padding-bottom: 40px;
+                background-color: #f5f5f5;
+            }
+            label {
+                font-weight: bold;
+            }
+            .form-signin {
+                max-width: 300px;
+                padding: 19px 29px 29px;
+                margin: 0 auto 20px;
+                background-color: #fff;
+                border: 1px solid #e5e5e5;
+                -webkit-border-radius: 5px;
+                -moz-border-radius: 5px;
+                border-radius: 5px;
+                -webkit-box-shadow: 0 1px 2px rgba(0,0,0,.05);
+                -moz-box-shadow: 0 1px 2px rgba(0,0,0,.05);
+                box-shadow: 0 1px 2px rgba(0,0,0,.05);
+            }
+            .form-signin .form-signin-heading {
+                margin-bottom: 10px;
+            }
+            .form-signin input[type="text"],
+            .form-signin input[type="password"] {
+                font-size: 16px;
+                height: auto;
+                margin-bottom: 15px;
+                padding: 7px 9px;
+            }
+        </style>
+    </head>
+    <body>
+        <form class="form-signin" method="post" action="login">
+            <h2 class="form-signin-heading">Environment logger</h2>
+
+            {% if error %}
+                <h4 style="color: red;">{{ error }}</h4>
+            {% endif %}
+
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" class="form-control" name="username" id="username"
+                       required="required"
+                       {% if username %} value="{{ username }}"{% endif %}>
+                <label class="otp" for="otp">Yubikey OTP</label>
+                <input type="text" class="form-control otp" name="otp" id="otp">
+
+                <input id="submit" class="btn btn-primary" type="submit" value="Log in">
+            </div>
+            <!-- <a href="register">Register Yubikey</a> -->
+        </form>
+    </body>
+</html>
