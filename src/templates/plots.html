@@ -27,6 +27,9 @@
         </style>
     </head>
     <body>
+        <div style="position: absolute; top: 20px; right: 20px;">
+            <a href="login" style="font-weight: bold;">Login</a>
+        </div>
         <h2 class="leftMargin">Inside temperature and brightness</h2>
 
         <div>
@@ -35,7 +38,7 @@
             </div>
             <div id="legendDiv" style="float: left;"></div>
         </div>
-        <span id="plotData" style="display: none;">{{data}}</span>
+        <span id="plotData" style="display: none;">{{ data }}</span>
 
         <div id="plotControls">
             <div class="leftMargin clearBoth">
@@ -57,8 +60,8 @@
             </form>
         </div>
 
-        <script src="https://code.jquery.com/jquery-3.1.0.min.js"
-	        integrity="sha256-cCueBR6CsyA4/9szpPfrX3s49M9vUU5BgtiJj06wt/s="
+        <script src="https://code.jquery.com/jquery-3.1.1.min.js"
+	        integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8="
 	        crossorigin="anonymous"></script>
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
                 integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
