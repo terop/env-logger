@@ -8,9 +8,12 @@ environment data, such as, temperature and brightness.
 
 To build and run this application locally you will need [Leiningen][] 2.0.0 or
 above installed. Additionally, a PostgreSQL server instance
-is needed. Database definitions can be found in `table-def.sql` and
+is needed. Database definitions can be found in `db-def.sql` and
 a database with the required tables must exist before the application
-can be started.
+can be started. Users and Yubikeys must be added to the `users` and `yubikeys`
+tables respectively manually before running the application. The user password
+can be hashed with the `(hashers/derive "<password>")` command in a Clojure REPL
+where the `buddy-hashers` library is installed and imported as `hashers`.
 
 [leiningen]: https://github.com/technomancy/leiningen
 

@@ -47,7 +47,7 @@
             <h2 class="form-signin-heading">Environment logger</h2>
 
             {% if error %}
-                <h4 style="color: red;">{{ error }}</h4>
+                <p class="bg-danger">{{ error }}</p>
             {% endif %}
 
             <div class="form-group">
@@ -55,12 +55,13 @@
                 <input type="text" class="form-control" name="username" id="username"
                        required="required"
                        {% if username %} value="{{ username }}"{% endif %}>
-                <label class="otp" for="otp">Yubikey OTP</label>
+                <label for="password">Password</label>
+                <input type="password" class="form-control" name="password" id="password">
+                <label for="otp">Yubikey OTP</label>
                 <input type="text" class="form-control otp" name="otp" id="otp">
 
                 <input id="submit" class="btn btn-primary" type="submit" value="Log in">
             </div>
-            <!-- <a href="register">Register Yubikey</a> -->
         </form>
     </body>
 </html>

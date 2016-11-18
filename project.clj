@@ -14,7 +14,10 @@
                  [selmer "1.10.0"]
                  [clj-http "2.3.0"]
                  [org.clojure/tools.logging "0.3.1"]
-                 [org.slf4j/slf4j-log4j12 "1.7.21"]]
+                 [org.slf4j/slf4j-log4j12 "1.7.21"]
+                 [com.yubico/yubico-validation-client2 "3.0.1"]
+                 [buddy/buddy-hashers "1.1.0"]
+                 [buddy/buddy-auth "1.3.0"]]
   :main env-logger.handler
   :aot [env-logger.handler
         clojure.tools.logging.impl]

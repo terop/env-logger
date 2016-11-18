@@ -25,3 +25,18 @@ CREATE TABLE weather_data (
        temperature REAL NOT NULL,
        cloudiness SMALLINT NOT NULL
 );
+
+-- User table
+CREATE TABLE users (
+    user_id SERIAL PRIMARY KEY,
+    username VARCHAR(100) NOT NULL UNIQUE,
+    pw_hash VARCHAR(250) NOT NULL,
+    saved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+ );
+
+-- Yubikey ID table
+CREATE TABLE yubikeys (
+    key_id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users (user_id) ON DELETE CASCADE,
+    yubikey_id VARCHAR(32) NOT NULL UNIQUE
+);

@@ -6,15 +6,72 @@
             [immutant.web :as web]
             [immutant.web.middleware :refer [wrap-development]]
             [ring.middleware.defaults :refer :all]
+            [ring.util.response :as resp]
             [selmer.parser :refer [render-file]]
             [clj-time.core :as t]
+            [buddy.hashers :as h]
+            [buddy.auth :refer [authenticated?]]
+            [buddy.auth.backends.session :refer [session-backend]]
+            [buddy.auth.middleware :refer [wrap-authentication
+                                           wrap-authorization]]
             [env-logger.config :refer [get-conf-value]]
             [env-logger.db :as db]
             [env-logger.grabber :refer [calculate-start-time
                                         get-latest-fmi-data]])
+  (:import (com.yubico.client.v2 YubicoClient))
   (:gen-class))
 
+(defn otp-value-valid?
+  "Checks whether the provided Yubico OTP value is valid. Returns true
+  on success and false otherwise."
+  [otp-value]
+  (let [client (YubicoClient/getClient
+                (Integer/parseInt (get-conf-value :yubico-client-id))
+                (get-conf-value :yubico-secret-key))]
+    (if-not (YubicoClient/isValidOTPFormat otp-value)
+      false
+      (.isOk (.verify client otp-value)))))
+
+(defn login-authenticate
+  "Check request username and password against user data in the database.
+  On successful authentication, set appropriate user into the session and
+  redirect to the value of (:query-params (:next request)).
+  On failed authentication, renders the login page."
+  [request]
+  (let [username (get-in request [:form-params "username"])
+        password (get-in request [:form-params "password"])
+        otp (get-in request [:form-params "otp"])
+        session (:session request)
+        user-data (db/get-user-data db/postgres username)]
+    (if (or (and user-data (h/check password (:pw-hash user-data)))
+            (and (seq otp)
+                 (otp-value-valid? otp)
+                 (contains? (:yubikey-ids user-data)
+                            (YubicoClient/getPublicId otp))))
+      (let [next-url (get-in request [:query-params :next]
+                             (str (get-conf-value :url-path) "/"))
+            updated-session (assoc session :identity (keyword username))]
+        (assoc (resp/redirect next-url) :session updated-session))
+      (render-file "templates/login.html"
+                   {:error "Error: an invalid credential was provided"
+                    :username username}))))
+
+(defn unauthorized-handler
+  "Handles unauthorized requests."
+  [request metadata]
+  (if (authenticated? request)
+    ;; If request is authenticated, raise 403 instead of 401 as the user
+    ;; is authenticated but permission denied is raised.
+    (assoc (resp/response "403 Forbidden") :status 403)
+    ;; In other cases, redirect it user to login
+    (resp/redirect (format (str (get-conf-value :url-path) "/login?next=%s")
+                           (:uri request)))))
+
+(def auth-backend (session-backend
+                   {:unauthorized-handler unauthorized-handler}))
+
 (defroutes routes
+  ;; Index and login
   (GET "/" [ & params]
        (render-file "templates/plots.html"
                     (let [start-date (:startDate params)
@@ -37,6 +94,11 @@
                                 (db/get-last-n-days-obs db/postgres 3))
                          :obs-dates (db/get-obs-start-and-end db/postgres)}))))
   (GET "/login" [] (render-file "templates/login.html" {}))
+  (POST "/login" [] login-authenticate)
+  (GET "/logout" request
+       (assoc (resp/redirect (str (get-conf-value :url-path) "/"))
+              :session {}))
+  ;; Observation adding and getting
   (POST "/observations" [json-string]
         (let [start-time (calculate-start-time)
               start-time-int (t/interval (t/plus start-time
@@ -75,8 +137,12 @@
                                  :proxy (get-conf-value :use-proxy))
                           (assoc-in site-defaults
                                     [:security :anti-forgery] false))
-        handler (if production?
-                  (wrap-defaults routes defaults-config)
-                  (wrap-development (wrap-defaults routes defaults-config)))
+        handler (as-> routes $
+                  (wrap-authorization $ auth-backend)
+                  (wrap-authentication $ auth-backend)
+                  (wrap-defaults $ defaults-config))
         opts {:host ip :port port}]
-    (web/run handler opts)))
+    (web/run (if production?
+               handler
+               (wrap-development handler))
+      opts)))

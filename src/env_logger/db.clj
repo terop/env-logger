@@ -32,6 +32,31 @@
                  :user db-user
                  :password db-password}))
 
+;; User data functions
+(defn get-user-data
+  "Returns the password hash and Yubikey ID of the user with the given username.
+  Returns nil if the user is not found."
+  [db-con username]
+  (let [result (j/query db-con
+                        (sql/format (sql/build :select [:pw_hash]
+                                               :from :users
+                                               :where [:= :username
+                                                       username]))
+                        {:row-fn #(:pw_hash %)})
+        key-ids (j/query db-con
+                         (sql/format (sql/build :select [:yubikey_id]
+                                                :from [[:users :u]]
+                                                :join [:yubikeys
+                                                       [:= :u.user_id
+                                                        :yubikeys.user_id]]
+                                                :where [:= :u.username
+                                                        username]))
+                         {:row-fn #(:yubikey_id %)})]
+    (when (pos? (count result))
+      {:pw-hash (first result)
+       :yubikey-ids (set key-ids)})))
+
+;; Observation functions
 (defn insert-observation
   "Inserts a observation to the database. Optionally corrects the temperature
   with an offset."
