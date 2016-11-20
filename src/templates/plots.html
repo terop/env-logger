@@ -81,12 +81,12 @@
                 todayBtn: true,
                 calendarWeeks: true
             };
-            if ('{{ obs-dates.start }}' !== '') {
-                datepickerOptions['startDate'] = '{{ obs-dates.start }}';
-            }
-            if ('{{ obs-dates.end }}' !== '') {
-                datepickerOptions['endDate'] = '{{ obs-dates.end }}';
-            }
+            {% if not obs-dates.start|empty? %}
+            datepickerOptions['startDate'] = '{{ obs-dates.start }}';
+            {% endif %}
+            {% if not obs-dates.end|empty? %}
+            datepickerOptions['endDate'] = '{{ obs-dates.end }}';
+            {% endif %}
             $('input[type="text"]').datepicker(datepickerOptions);
 
             // Function for validating date field values

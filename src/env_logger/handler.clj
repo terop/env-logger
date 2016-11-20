@@ -9,6 +9,7 @@
             [ring.util.response :as resp]
             [selmer.parser :refer [render-file]]
             [clj-time.core :as t]
+            [clj-time.format :as f]
             [buddy.hashers :as h]
             [buddy.auth :refer [authenticated?]]
             [buddy.auth.backends.session :refer [session-backend]]
@@ -75,7 +76,9 @@
   (GET "/" request
        (render-file "templates/plots.html"
                     (let [start-date (:startDate (:params request))
-                          end-date (:endDate (:params request))]
+                          end-date (:endDate (:params request))
+                          obs-dates (db/get-obs-start-and-end db/postgres)
+                          formatter (f/formatter "d.M.y")]
                       (if (or (not (nil? start-date))
                               (not (nil? end-date)))
                         {:data (generate-string
@@ -89,11 +92,17 @@
                                        start-date "")
                          :end-date (if (not= "" end-date)
                                      end-date nil)
-                         :obs-dates (db/get-obs-start-and-end db/postgres)
+                         :obs-dates obs-dates
                          :logged-in? (authenticated? request)}
                         {:data (generate-string
                                 (db/get-last-n-days-obs db/postgres 3))
-                         :obs-dates (db/get-obs-start-and-end db/postgres)
+                         :obs-dates obs-dates
+                         :end-date (:end obs-dates)
+                         :start-date (f/unparse formatter
+                                                (t/minus (f/parse formatter
+                                                                  (:end
+                                                                   obs-dates))
+                                                         (t/days 3)))
                          :logged-in? (authenticated? request)}))))
   (GET "/login" [] (render-file "templates/login.html" {}))
   (POST "/login" [] login-authenticate)
