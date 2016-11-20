@@ -72,10 +72,10 @@
 
 (defroutes routes
   ;; Index and login
-  (GET "/" [ & params]
+  (GET "/" request
        (render-file "templates/plots.html"
-                    (let [start-date (:startDate params)
-                          end-date (:endDate params)]
+                    (let [start-date (:startDate (:params request))
+                          end-date (:endDate (:params request))]
                       (if (or (not (nil? start-date))
                               (not (nil? end-date)))
                         {:data (generate-string
@@ -89,10 +89,12 @@
                                        start-date "")
                          :end-date (if (not= "" end-date)
                                      end-date nil)
-                         :obs-dates (db/get-obs-start-and-end db/postgres)}
+                         :obs-dates (db/get-obs-start-and-end db/postgres)
+                         :logged-in? (authenticated? request)}
                         {:data (generate-string
                                 (db/get-last-n-days-obs db/postgres 3))
-                         :obs-dates (db/get-obs-start-and-end db/postgres)}))))
+                         :obs-dates (db/get-obs-start-and-end db/postgres)
+                         :logged-in? (authenticated? request)}))))
   (GET "/login" [] (render-file "templates/login.html" {}))
   (POST "/login" [] login-authenticate)
   (GET "/logout" request

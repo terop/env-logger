@@ -28,7 +28,11 @@
     </head>
     <body>
         <div style="position: absolute; top: 20px; right: 20px;">
-            <a href="login" style="font-weight: bold;">Login</a>
+            {% if logged-in? %}
+                <a href="logout" style="font-weight: bold;">Log out</a>
+            {% else %}
+                <a href="login" style="font-weight: bold;">Log in</a>
+            {% endif %}
         </div>
         <h2 class="leftMargin">Inside temperature and brightness</h2>
 
