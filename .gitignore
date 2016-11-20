@@ -3,4 +3,5 @@ target/
 GPATH
 GRTAGS
 GTAGS
+venv/
 resources/config.edn
