@@ -96,7 +96,9 @@
   (testing "Selecting observations from N days"
     (is (= {:brightness 0
             :recorded (l/format-local-time current-dt formatter)
-            :temperature 11.0}
+            :temperature 11.0
+            :cloudiness 2
+            :o_temperature 20.0}
            (first (get-last-n-days-obs test-postgres 3))))))
 
 (deftest date-interval-select

@@ -24,6 +24,9 @@
                 font-weight: bold;
                 display: none;
             }
+            #plotControls > div > label {
+                margin-right: 10px;
+            }
         </style>
     </head>
     <body>
@@ -34,7 +37,7 @@
                 <a href="login" style="font-weight: bold;">Log in</a>
             {% endif %}
         </div>
-        <h2 class="leftMargin">Inside temperature and brightness</h2>
+        <h2 class="leftMargin" style="margin-bottom: 15px;">Environment observations</h2>
 
         <div>
             <div id="tempChart" style="width: 900px; height: 400px; float: left;">
@@ -48,9 +51,12 @@
             <div class="leftMargin clearBoth">
                 <input type="checkbox" class="selectBox" id="showTemperature" checked="checked">
                 <label for="showTemperature">Temperature</label>
-                <br>
                 <input type="checkbox" class="selectBox" id="showBrightness" checked="checked">
                 <label for="showBrightness">Brightness</label>
+                <input type="checkbox" class="selectBox" id="showOutsideTemperature" checked="checked">
+                <label for="showOutsideTemperature">Temperature (outside)</label>
+                <input type="checkbox" class="selectBox" id="showCloudiness" checked="checked">
+                <label for="showCloudiness">Cloudiness</label>
             </div>
             <br>
         </div>

@@ -8,7 +8,9 @@ var transformData = function (data) {
     for (var i = 0; i < dataJson.length; i++) {
         dataPoint = [new Date(dataJson[i]['recorded']),
                      dataJson[i]['temperature'],
-                     dataJson[i]['brightness']];
+                     dataJson[i]['brightness'],
+                     dataJson[i]['o_temperature'],
+                     dataJson[i]['cloudiness']];
         plotData.push(dataPoint);
     }
     return plotData;
@@ -20,8 +22,9 @@ if (plotData.length > 0) {
         document.getElementById('tempChart'),
         plotData,
         {
-            labels: ['Date', 'Temperature [\xB0C]', 'Brightness'],
-            title: 'Temperature and brightness',
+            labels: ['Date', 'Temperature [\xB0C]', 'Brightness',
+                     'Temperature (outside) [\xB0C]', 'Cloudiness'],
+            title: 'Observations',
             labelsDiv: 'legendDiv',
             labelsSeparateLines: true
         });
@@ -30,7 +33,9 @@ if (plotData.length > 0) {
     // Hides or shows the selected data series
     var hideOrShowSeries = function (event) {
         var mapping = {'showTemperature': 0,
-                       'showBrightness': 1};
+                       'showBrightness': 1,
+                       'showOutsideTemperature': 2,
+                       'showCloudiness': 3};
 
         var keys = Object.keys(mapping);
         for (var i = 0; i < keys.length; i++) {

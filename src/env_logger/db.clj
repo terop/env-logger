@@ -118,14 +118,14 @@
     false))
 
 (defn format-datetime
-  "Changes the timezone and formats the datetime with the given formatter"
+  "Changes the timezone and formats the datetime with the given formatter."
   [datetime formatter]
   (l/format-local-time (t/to-time-zone datetime (t/time-zone-for-id
                                                  "Europe/Helsinki"))
                        formatter))
 
 (defn get-all-obs
-  "Fetches all observations from the database"
+  "Fetches all observations from the database."
   [db-con]
   (j/query db-con
            (sql/format (sql/build :select [:brightness
@@ -139,24 +139,28 @@
                                         :date-hour-minute-second)})}))
 
 (defn get-last-n-days-obs
-  "Fetches the observations from the last N days"
+  "Fetches the observations from the last N days."
   [db-con n]
   (j/query db-con
-           (sql/format (sql/build :select [:brightness
-                                           :temperature
-                                           :recorded]
-                                  :from :observations
+           (sql/format (sql/build :select [:o.brightness
+                                           :o.temperature
+                                           :o.recorded
+                                           [:w.temperature "o_temperature"]
+                                           :w.cloudiness]
+                                  :from [[:observations :o]]
+                                  :join [[:weather-data :w]
+                                         [:= :o.id :w.obs_id]]
                                   :where [:>= :recorded
                                           (t/minus (t/now)
                                                    (t/days n))]
-                                  :order-by [[:id :asc]]))
+                                  :order-by [[:o.id :asc]]))
            {:row-fn #(merge %
                             {:recorded (format-datetime
                                         (:recorded %)
                                         :date-hour-minute-second)})}))
 
 (defn get-obs-within-interval
-  "Fetches observations in an interval between either one or two dates"
+  "Fetches observations in an interval between the provided dates."
   [db-con start-date end-date]
   (if (or (and start-date
                (not (re-find #"\d{1,2}\.\d{1,2}\.\d{4}" start-date)))
@@ -174,10 +178,14 @@
                    ;; Hack to avoid SQL WHERE hacks
                    (t/now))]
       (j/query db-con
-               (sql/format (sql/build :select [:brightness
-                                               :temperature
-                                               :recorded]
-                                      :from :observations
+               (sql/format (sql/build :select [:o.brightness
+                                               :o.temperature
+                                               :o.recorded
+                                               [:w.temperature "o_temperature"]
+                                               :w.cloudiness]
+                                      :from [[:observations :o]]
+                                      :join [[:weather-data :w]
+                                             [:= :o.id :w.obs_id]]
                                       :where [:and
                                               [:>= :recorded
                                                (l/to-local-date-time
@@ -185,14 +193,14 @@
                                               [:<= :recorded
                                                (l/to-local-date-time
                                                 end-dt)]]
-                                      :order-by [[:id :asc]]))
+                                      :order-by [[:o.id :asc]]))
                {:row-fn #(merge %
                                 {:recorded (format-datetime
                                             (:recorded %)
                                             :date-hour-minute-second)})}))))
 
 (defn get-obs-start-and-end
-  "Fetches the start (first) and end (last) dates of all observations"
+  "Fetches the start (first) and end (last) dates of all observations."
   [db-con]
   (let [formatter (f/formatter "d.M.y")
         result (j/query db-con
