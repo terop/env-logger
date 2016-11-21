@@ -127,33 +127,33 @@
 (defn get-all-obs
   "Fetches all observations from the database"
   [db-con]
-  (for [row (j/query db-con
-                     (sql/format (sql/build :select [:brightness
-                                                     :temperature
-                                                     :recorded]
-                                            :from :observations
-                                            :order-by [[:id :asc]])))]
-    ;; Reformat date
-    (merge row
-           {:recorded (format-datetime (:recorded row)
-                                       :date-hour-minute-second)})))
+  (j/query db-con
+           (sql/format (sql/build :select [:brightness
+                                           :temperature
+                                           :recorded]
+                                  :from :observations
+                                  :order-by [[:id :asc]]))
+           {:row-fn #(merge %
+                            {:recorded (format-datetime
+                                        (:recorded %)
+                                        :date-hour-minute-second)})}))
 
 (defn get-last-n-days-obs
   "Fetches the observations from the last N days"
   [db-con n]
-  (for [row (j/query db-con
-                     (sql/format (sql/build :select [:brightness
-                                                     :temperature
-                                                     :recorded]
-                                            :from :observations
-                                            :where [:>= :recorded
-                                                    (t/minus (t/now)
-                                                             (t/days n))]
-                                            :order-by [[:id :asc]])))]
-    ;; Reformat date
-    (merge row
-           {:recorded (format-datetime (:recorded row)
-                                       :date-hour-minute-second)})))
+  (j/query db-con
+           (sql/format (sql/build :select [:brightness
+                                           :temperature
+                                           :recorded]
+                                  :from :observations
+                                  :where [:>= :recorded
+                                          (t/minus (t/now)
+                                                   (t/days n))]
+                                  :order-by [[:id :asc]]))
+           {:row-fn #(merge %
+                            {:recorded (format-datetime
+                                        (:recorded %)
+                                        :date-hour-minute-second)})}))
 
 (defn get-obs-within-interval
   "Fetches observations in an interval between either one or two dates"
@@ -173,23 +173,23 @@
                    (f/parse formatter (format "%s 23:59:59" end-date))
                    ;; Hack to avoid SQL WHERE hacks
                    (t/now))]
-      (for [row (j/query db-con
-                         (sql/format (sql/build :select [:brightness
-                                                         :temperature
-                                                         :recorded]
-                                                :from :observations
-                                                :where [:and
-                                                        [:>= :recorded
-                                                         (l/to-local-date-time
-                                                          start-dt)]
-                                                        [:<= :recorded
-                                                         (l/to-local-date-time
-                                                          end-dt)]]
-                                                :order-by [[:id :asc]])))]
-        ;; Reformat date
-        (merge row
-               {:recorded (format-datetime (:recorded row)
-                                           :date-hour-minute-second)})))))
+      (j/query db-con
+               (sql/format (sql/build :select [:brightness
+                                               :temperature
+                                               :recorded]
+                                      :from :observations
+                                      :where [:and
+                                              [:>= :recorded
+                                               (l/to-local-date-time
+                                                start-dt)]
+                                              [:<= :recorded
+                                               (l/to-local-date-time
+                                                end-dt)]]
+                                      :order-by [[:id :asc]]))
+               {:row-fn #(merge %
+                                {:recorded (format-datetime
+                                            (:recorded %)
+                                            :date-hour-minute-second)})}))))
 
 (defn get-obs-start-and-end
   "Fetches the start (first) and end (last) dates of all observations"
