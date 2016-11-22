@@ -95,7 +95,7 @@
                          :obs-dates obs-dates
                          :logged-in? (authenticated? request)}
                         {:data (generate-string
-                                (db/get-last-n-days-obs db/postgres 3))
+                                (db/get-obs-for-n-days db/postgres 3))
                          :obs-dates obs-dates
                          :end-date (:end obs-dates)
                          :start-date (f/unparse formatter

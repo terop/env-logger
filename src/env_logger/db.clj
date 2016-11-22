@@ -124,9 +124,9 @@
                                                  "Europe/Helsinki"))
                        formatter))
 
-(defn get-last-n-days-obs
-  "Fetches the observations from the last N days."
-  [db-con n]
+(defn get-observations
+  "Fetches observations filtered by the provided SQL WHERE clause."
+  [db-con where-clause]
   (j/query db-con
            (sql/format (sql/build :select [:o.brightness
                                            :o.temperature
@@ -136,14 +136,19 @@
                                   :from [[:observations :o]]
                                   :join [[:weather-data :w]
                                          [:= :o.id :w.obs_id]]
-                                  :where [:>= :recorded
-                                          (t/minus (t/now)
-                                                   (t/days n))]
+                                  :where where-clause
                                   :order-by [[:o.id :asc]]))
            {:row-fn #(merge %
                             {:recorded (format-datetime
                                         (:recorded %)
                                         :date-hour-minute-second)})}))
+
+(defn get-obs-for-n-days
+  "Fetches the observations from the last N days."
+  [db-con n]
+  (get-observations db-con [:>= :recorded
+                            (t/minus (t/now)
+                                     (t/days n))]))
 
 (defn get-obs-within-interval
   "Fetches observations in an interval between the provided dates."
@@ -163,27 +168,13 @@
                    (f/parse formatter (format "%s 23:59:59" end-date))
                    ;; Hack to avoid SQL WHERE hacks
                    (t/now))]
-      (j/query db-con
-               (sql/format (sql/build :select [:o.brightness
-                                               :o.temperature
-                                               :o.recorded
-                                               [:w.temperature "o_temperature"]
-                                               :w.cloudiness]
-                                      :from [[:observations :o]]
-                                      :join [[:weather-data :w]
-                                             [:= :o.id :w.obs_id]]
-                                      :where [:and
-                                              [:>= :recorded
-                                               (l/to-local-date-time
-                                                start-dt)]
-                                              [:<= :recorded
-                                               (l/to-local-date-time
-                                                end-dt)]]
-                                      :order-by [[:o.id :asc]]))
-               {:row-fn #(merge %
-                                {:recorded (format-datetime
-                                            (:recorded %)
-                                            :date-hour-minute-second)})}))))
+      (get-observations db-con [:and
+                                [:>= :recorded
+                                 (l/to-local-date-time
+                                  start-dt)]
+                                [:<= :recorded
+                                 (l/to-local-date-time
+                                  end-dt)]]))))
 
 (defn get-obs-start-and-end
   "Fetches the start (first) and end (last) dates of all observations."
