@@ -124,20 +124,6 @@
                                                  "Europe/Helsinki"))
                        formatter))
 
-(defn get-all-obs
-  "Fetches all observations from the database."
-  [db-con]
-  (j/query db-con
-           (sql/format (sql/build :select [:brightness
-                                           :temperature
-                                           :recorded]
-                                  :from :observations
-                                  :order-by [[:id :asc]]))
-           {:row-fn #(merge %
-                            {:recorded (format-datetime
-                                        (:recorded %)
-                                        :date-hour-minute-second)})}))
-
 (defn get-last-n-days-obs
   "Fetches the observations from the last N days."
   [db-con n]

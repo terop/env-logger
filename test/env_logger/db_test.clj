@@ -5,7 +5,7 @@
             [clj-time.jdbc]
             [clojure.test :refer :all]
             [env-logger.config :refer [db-conf]]
-            [env-logger.db :refer [format-datetime get-all-obs
+            [env-logger.db :refer [format-datetime
                                    get-last-n-days-obs
                                    insert-observation
                                    get-obs-within-interval
@@ -81,16 +81,6 @@
     (is (= (l/format-local-time current-dt formatter)
            (format-datetime (l/to-local-date-time current-dt)
                             :date-hour-minute-second)))))
-
-(deftest all-observations
-  (testing "Selecting all observations"
-    ;; Temperature offset is on and the value is *currently* 9
-    (let [all-obs (get-all-obs test-postgres)]
-      (is (= 3 (count all-obs)))
-      (is (= {:brightness 0
-              :recorded (l/format-local-time current-dt formatter)
-              :temperature 11.0}
-             (nth all-obs 1))))))
 
 (deftest n-days-observations
   (testing "Selecting observations from N days"
