@@ -134,8 +134,8 @@
                                            [:w.temperature "o_temperature"]
                                            :w.cloudiness]
                                   :from [[:observations :o]]
-                                  :join [[:weather-data :w]
-                                         [:= :o.id :w.obs_id]]
+                                  :left-join [[:weather-data :w]
+                                              [:= :o.id :w.obs_id]]
                                   :where where-clause
                                   :order-by [[:o.id :asc]]))
            {:row-fn #(merge %
@@ -169,12 +169,8 @@
                    ;; Hack to avoid SQL WHERE hacks
                    (t/now))]
       (get-observations db-con [:and
-                                [:>= :recorded
-                                 (l/to-local-date-time
-                                  start-dt)]
-                                [:<= :recorded
-                                 (l/to-local-date-time
-                                  end-dt)]]))))
+                                [:>= :recorded start-dt]
+                                [:<= :recorded end-dt]]))))
 
 (defn get-obs-start-and-end
   "Fetches the start (first) and end (last) dates of all observations."

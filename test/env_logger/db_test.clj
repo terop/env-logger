@@ -6,10 +6,11 @@
             [clojure.test :refer :all]
             [env-logger.config :refer [db-conf]]
             [env-logger.db :refer [format-datetime
-                                   get-last-n-days-obs
+                                   get-obs-for-n-days
                                    insert-observation
                                    get-obs-within-interval
-                                   get-obs-start-and-end]]
+                                   get-obs-start-and-end
+                                   get-observations]]
             [clojure.java.jdbc :as j]))
 
 (let [db-host (get (System/getenv)
@@ -89,7 +90,7 @@
             :temperature 11.0
             :cloudiness 2
             :o_temperature 20.0}
-           (first (get-last-n-days-obs test-postgres 3))))))
+           (first (get-obs-for-n-days test-postgres 3))))))
 
 (deftest date-interval-select
   (testing "Select observations between one or two dates"
@@ -114,6 +115,11 @@
       (is (zero? (count (get-obs-within-interval test-postgres nil "foobar"))))
       (is (zero? (count (get-obs-within-interval test-postgres "bar"
                                                  "foo")))))))
+
+(deftest get-observations-tests
+  (testing "Observation querying with arbitrary WHERE clause"
+    (is (= 1 (count (get-observations test-postgres
+                                      [:= :o.temperature 20]))))))
 
 (deftest start-and-end-date-query
   (testing "Selecting start and end dates of all observations"
