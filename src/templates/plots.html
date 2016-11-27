@@ -40,10 +40,9 @@
         <h2 class="leftMargin" style="margin-bottom: 15px;">Environment observations</h2>
 
         <div>
-            <div id="tempChart" style="width: 900px; height: 400px; float: left;">
+            <div id="chartDiv" style="float: left;">
                 <span id="noDataError" class="leftMargin">No observations found</span>
             </div>
-            <div id="legendDiv" style="float: left;"></div>
         </div>
         <span id="plotData" style="display: none;">{{ data }}</span>
 
@@ -71,13 +70,13 @@
         </div>
 
         <script src="https://code.jquery.com/jquery-3.1.1.min.js"
-	        integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8="
-	        crossorigin="anonymous"></script>
+                integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8="
+                crossorigin="anonymous"></script>
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
                 integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
                 crossorigin="anonymous"></script>
         <script src="js/bootstrap-datepicker.min.js"></script>
-        <script src="js/dygraph-combined.js"></script>
+        <script src="https://www.gstatic.com/charts/loader.js"></script>
         <script src="js/plots.js"></script>
         <script>
             var datepickerOptions = {
