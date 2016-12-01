@@ -1,0 +1,4 @@
+pytz
+requests
+PyBluez
+gattlib

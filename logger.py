@@ -62,7 +62,8 @@ def send_to_db(data):
     resp = requests.post(DB_ADD_URL, params=payload)
 
     timestamp = datetime.now().isoformat()
-    print('{0}: Response: code {1}, text {2}'.format(timestamp, resp.status_code, resp.text))
+    print('{}: Request data: {}, Response: code {}, text {}'
+          .format(timestamp, payload, resp.status_code, resp.text))
 
 
 if __name__ == '__main__':
