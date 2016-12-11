@@ -13,6 +13,7 @@
                                    get-observations
                                    get-weather-obs-interval
                                    get-weather-obs-days
+                                   get-user-data
                                    validate-date
                                    make-date-dt]]
             [clojure.java.jdbc :as j]))
@@ -52,8 +53,17 @@
                                   (t/days 4)))
               :brightness 5
               :temperature 20})
+  (let [user-id (:user_id (first (j/insert! test-postgres
+                                            :users
+                                            {:username "test-user"
+                                             :pw_hash "myhash"})))]
+    (j/insert! test-postgres
+               :yubikeys
+               {:user_id user-id
+                :yubikey_id "mykeyid"}))
   (test-fn)
-  (j/execute! test-postgres "DELETE FROM observations"))
+  (j/execute! test-postgres "DELETE FROM observations")
+  (j/execute! test-postgres "DELETE FROM users"))
 
 ;; Fixture run at the start and end of tests
 (use-fixtures :once clean-test-database)
@@ -195,3 +205,10 @@
             :cloudiness 2
             :o_temperature 20.0}
            (first (get-weather-obs-days test-postgres 1))))))
+
+(deftest user-data-query
+  (testing "Querying for a users' password hash and Yubikey ID"
+    (is (nil? (get-user-data test-postgres "notfound")))
+    (is (= {:pw-hash "myhash"
+            :yubikey-ids (set ["mykeyid"])}
+           (get-user-data test-postgres "test-user")))))
