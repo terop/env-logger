@@ -124,6 +124,44 @@
                                                  "Europe/Helsinki"))
                        formatter))
 
+(defn validate-date
+  "Checks if the given date is nil or if non-nil, it is in the dd.mm.yyyy
+  or d.m.yyyy format."
+  [date]
+  (if (nil? date)
+    true
+    (not (nil? (and date
+                    (re-find #"\d{1,2}\.\d{1,2}\.\d{4}" date))))))
+
+(defn make-date-dt
+  "Formats a date to be SQL datetime compatible. Mode is either start or end."
+  [date mode]
+  (f/parse (f/formatter "d.M.y H:m:s")
+           (format "%s %s" date (if (= mode "start")
+                                  "00:00:00"
+                                  "23:59:59"))))
+
+(defmacro get-by-interval
+  "Fetches observations in an interval using the provided function."
+  [fetch-fn db-con start-date end-date]
+  (let [start-dt (gensym 'start)
+        end-dt (gensym 'end)]
+    `(if (or (not (validate-date ~start-date))
+             (not (validate-date ~end-date)))
+       ;; Either date is invalid
+       ()
+       (let [~start-dt (if ~start-date
+                         (make-date-dt ~start-date "start")
+                         ;; Hack to avoid SQL WHERE hacks
+                         (t/date-time 2010 1 1))
+             ~end-dt (if ~end-date
+                       (make-date-dt ~end-date "end")
+                       ;; Hack to avoid SQL WHERE hacks
+                       (t/now))]
+         (~fetch-fn ~db-con [:and
+                             [:>= :recorded ~start-dt]
+                             [:<= :recorded ~end-dt]])))))
+
 (defn get-observations
   "Fetches observations filtered by the provided SQL WHERE clause."
   [db-con where-clause]
@@ -143,45 +181,17 @@
                                         (:recorded %)
                                         :date-hour-minute-second)})}))
 
-(defn get-obs-for-n-days
+(defn get-obs-days
   "Fetches the observations from the last N days."
   [db-con n]
   (get-observations db-con [:>= :recorded
                             (t/minus (t/now)
                                      (t/days n))]))
 
-(defn validate-date
-  "Checks if the given date is in the dd.mm.yyyy or d.m.yyyy format."
-  [date]
-  (not (nil? (and date
-                  (re-find #"\d{1,2}\.\d{1,2}\.\d{4}" date)))))
-
-(defn make-date-dt
-  "Formats a date to be SQL datetime compatible. Mode is either start or end."
-  [date mode]
-  (f/parse (f/formatter "d.M.y H:m:s")
-           (format "%s %s" date (if (= mode "start")
-                                  "00:00:00"
-                                  "23:59:59"))))
-
-(defn get-obs-within-interval
+(defn get-obs-interval
   "Fetches observations in an interval between the provided dates."
   [db-con start-date end-date]
-  (if (or (not (validate-date start-date))
-          (not (validate-date end-date)))
-    ;; Either date is invalid
-    ()
-    (let [start-dt (if start-date
-                     (make-date-dt start-date "start")
-                     ;; Hack to avoid SQL WHERE hacks
-                     (t/date-time 2010 1 1))
-          end-dt (if end-date
-                   (make-date-dt start-date "end")
-                   ;; Hack to avoid SQL WHERE hacks
-                   (t/now))]
-      (get-observations db-con [:and
-                                [:>= :recorded start-dt]
-                                [:<= :recorded end-dt]]))))
+  (get-by-interval get-observations db-con start-date end-date))
 
 (defn get-obs-start-and-end
   "Fetches the start (first) and end (last) dates of all observations."

@@ -82,7 +82,7 @@
                       (if (or (not (nil? start-date))
                               (not (nil? end-date)))
                         {:data (generate-string
-                                (db/get-obs-within-interval
+                                (db/get-obs-interval
                                  db/postgres
                                  (if (not= "" start-date)
                                    start-date nil)
@@ -95,7 +95,7 @@
                          :obs-dates obs-dates
                          :logged-in? (authenticated? request)}
                         {:data (generate-string
-                                (db/get-obs-for-n-days db/postgres 3))
+                                (db/get-obs-days db/postgres 3))
                          :obs-dates obs-dates
                          :end-date (:end obs-dates)
                          :start-date (f/unparse formatter

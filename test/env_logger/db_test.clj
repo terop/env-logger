@@ -6,9 +6,9 @@
             [clojure.test :refer :all]
             [env-logger.config :refer [db-conf]]
             [env-logger.db :refer [format-datetime
-                                   get-obs-for-n-days
                                    insert-observation
-                                   get-obs-within-interval
+                                   get-obs-days
+                                   get-obs-interval
                                    get-obs-start-and-end
                                    get-observations
                                    validate-date
@@ -92,31 +92,30 @@
             :temperature 11.0
             :cloudiness 2
             :o_temperature 20.0}
-           (first (get-obs-for-n-days test-postgres 3))))))
+           (first (get-obs-days test-postgres 3))))))
 
 (deftest date-interval-select
   (testing "Select observations between one or two dates"
     (let [formatter (f/formatter "d.M.y")]
-      (is (= 3 (count (get-obs-within-interval test-postgres nil nil))))
-      (is (= 2 (count (get-obs-within-interval
+      (is (= 3 (count (get-obs-interval test-postgres nil nil))))
+      (is (= 2 (count (get-obs-interval
                        test-postgres
                        (f/unparse formatter (t/minus current-dt
                                                      (t/days 1)))
                        nil))))
-      (is (= 1 (count (get-obs-within-interval
+      (is (= 1 (count (get-obs-interval
                        test-postgres
                        nil
                        (f/unparse formatter (t/minus current-dt
                                                      (t/days 2)))))))
-      (is (= 3 (count (get-obs-within-interval
+      (is (= 3 (count (get-obs-interval
                        test-postgres
                        (f/unparse formatter (t/minus current-dt
                                                      (t/days 6)))
                        (f/unparse formatter current-dt)))))
-      (is (zero? (count (get-obs-within-interval test-postgres "foobar" nil))))
-      (is (zero? (count (get-obs-within-interval test-postgres nil "foobar"))))
-      (is (zero? (count (get-obs-within-interval test-postgres "bar"
-                                                 "foo")))))))
+      (is (zero? (count (get-obs-interval test-postgres "foobar" nil))))
+      (is (zero? (count (get-obs-interval test-postgres nil "foobar"))))
+      (is (zero? (count (get-obs-interval test-postgres "bar" "foo")))))))
 
 (deftest get-observations-tests
   (testing "Observation querying with arbitrary WHERE clause"
@@ -134,7 +133,7 @@
 
 (deftest date-validation
   (testing "Tests for date validation"
-    (is (false? (validate-date nil)))
+    (is (true? (validate-date nil)))
     (is (false? (validate-date "foobar")))
     (is (false? (validate-date "1.12.201")))
     (is (true? (validate-date "1.12.2016")))
