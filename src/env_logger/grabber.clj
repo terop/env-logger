@@ -16,9 +16,7 @@
   "Parses and returns temperature and cloud cover information from the XML
   document body. It is assumed that there only one set of data in the body."
   [xml-body]
-  (if (not= (count xml-body) 2)
-    ;; Invalid data
-    nil
+  (when-not (not= (count xml-body) 2)
     (let [data (for [elem xml-body]
                  (map #(->> %
                             :content
