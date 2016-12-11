@@ -75,41 +75,48 @@
   ;; Index and login
   (GET "/" request
        (render-file "templates/plots.html"
-                    (let [start-date (:startDate (:params request))
-                          end-date (:endDate (:params request))
+                    (let [start-date (when (not= "" (:startDate
+                                                     (:params request)))
+                                       (:startDate (:params request)))
+                          end-date (when (not= "" (:endDate (:params request)))
+                                     (:endDate (:params request)))
                           obs-dates (db/get-obs-start-and-end db/postgres)
-                          formatter (f/formatter "d.M.y")]
+                          formatter (f/formatter "d.M.y")
+                          logged-in? (authenticated? request)]
                       (if (or (not (nil? start-date))
                               (not (nil? end-date)))
                         {:data (generate-string
-                                (db/get-obs-interval
-                                 db/postgres
-                                 (if (not= "" start-date)
-                                   start-date nil)
-                                 (if (not= "" end-date)
-                                   end-date nil)))
-                         :start-date (if (not= "" start-date)
-                                       start-date "")
-                         :end-date (if (not= "" end-date)
-                                     end-date nil)
-                         :obs-dates obs-dates
-                         :logged-in? (authenticated? request)}
+                                (if logged-in?
+                                  (db/get-obs-interval
+                                   db/postgres
+                                   start-date
+                                   end-date)
+                                  (db/get-weather-obs-interval
+                                   db/postgres
+                                   start-date
+                                   end-date)))
+                         :start-date start-date
+                         :end-date end-date
+                         :logged-in? logged-in?}
                         {:data (generate-string
-                                (db/get-obs-days db/postgres 3))
-                         :obs-dates obs-dates
+                                (if logged-in?
+                                  (db/get-obs-days db/postgres 3)
+                                  (db/get-weather-obs-days db/postgres
+                                                           3)))
                          :end-date (:end obs-dates)
                          :start-date (f/unparse formatter
-                                                (t/minus (f/parse formatter
-                                                                  (:end
-                                                                   obs-dates))
+                                                (t/minus (f/parse
+                                                          formatter
+                                                          (:end
+                                                           obs-dates))
                                                          (t/days 3)))
-                         :logged-in? (authenticated? request)}))))
+                         :logged-in? logged-in?}))))
   (GET "/login" [] (render-file "templates/login.html" {}))
   (POST "/login" [] login-authenticate)
   (GET "/logout" request
        (assoc (resp/redirect (str (get-conf-value :url-path) "/"))
               :session {}))
-  ;; Observation adding and getting
+  ;; Observation adding
   (POST "/observations" [json-string]
         (let [start-time (calculate-start-time)
               start-time-int (t/interval (t/plus start-time
