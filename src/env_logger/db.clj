@@ -143,7 +143,7 @@
 
 (defmacro get-by-interval
   "Fetches observations in an interval using the provided function."
-  [fetch-fn db-con start-date end-date]
+  [fetch-fn db-con start-date end-date dt-column]
   (let [start-dt (gensym 'start)
         end-dt (gensym 'end)]
     `(if (or (not (validate-date ~start-date))
@@ -159,8 +159,8 @@
                        ;; Hack to avoid SQL WHERE hacks
                        (t/now))]
          (~fetch-fn ~db-con [:and
-                             [:>= :recorded ~start-dt]
-                             [:<= :recorded ~end-dt]])))))
+                             [:>= ~dt-column ~start-dt]
+                             [:<= ~dt-column ~end-dt]])))))
 
 (defn get-observations
   "Fetches observations filtered by the provided SQL WHERE clause."
@@ -184,14 +184,52 @@
 (defn get-obs-days
   "Fetches the observations from the last N days."
   [db-con n]
-  (get-observations db-con [:>= :recorded
-                            (t/minus (t/now)
-                                     (t/days n))]))
+  (get-observations db-con
+                    [:>= :recorded
+                     (t/minus (t/now)
+                              (t/days n))]))
 
 (defn get-obs-interval
   "Fetches observations in an interval between the provided dates."
   [db-con start-date end-date]
-  (get-by-interval get-observations db-con start-date end-date))
+  (get-by-interval get-observations
+                   db-con
+                   start-date
+                   end-date
+                   :recorded))
+
+(defn get-weather-observations
+  "Fetches weather observations filtered by the provided SQL WHERE clause."
+  [db-con where-clause]
+  (j/query db-con
+           (sql/format (sql/build :select [:time
+                                           [:temperature "o_temperature"]
+                                           :cloudiness]
+                                  :from [:weather-data]
+                                  :where where-clause
+                                  :order-by [[:id :asc]]))
+           {:row-fn #(merge %
+                            {:time (format-datetime
+                                    (:time %)
+                                    :date-hour-minute-second)})}))
+
+
+(defn get-weather-obs-days
+  "Fetches the weather observations from the last N days."
+  [db-con n]
+  (get-weather-observations db-con
+                            [:>= :time
+                             (t/minus (t/now)
+                                      (t/days n))]))
+
+(defn get-weather-obs-interval
+  "Fetches weather observations in an interval between the provided dates."
+  [db-con start-date end-date]
+  (get-by-interval get-weather-observations
+                   db-con
+                   start-date
+                   end-date
+                   :time))
 
 (defn get-obs-start-and-end
   "Fetches the start (first) and end (last) dates of all observations."

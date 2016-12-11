@@ -11,6 +11,8 @@
                                    get-obs-interval
                                    get-obs-start-and-end
                                    get-observations
+                                   get-weather-obs-interval
+                                   get-weather-obs-days
                                    validate-date
                                    make-date-dt]]
             [clojure.java.jdbc :as j]))
@@ -66,7 +68,8 @@
                                     :beacons [{:rssi -68,
                                                :mac "7C:EC:79:3F:BE:97"}]
                                     :weather-data {:date
-                                                   "2016-08-12T17:10:00Z"
+                                                   (str (l/to-local-date-time
+                                                         current-dt))
                                                    :temperature 20
                                                    :cloudiness 2}})))
     (is (true? (insert-observation test-postgres
@@ -94,25 +97,37 @@
             :o_temperature 20.0}
            (first (get-obs-days test-postgres 3))))))
 
-(deftest date-interval-select
+(deftest obs-interval-select
   (testing "Select observations between one or two dates"
     (let [formatter (f/formatter "d.M.y")]
       (is (= 3 (count (get-obs-interval test-postgres nil nil))))
       (is (= 2 (count (get-obs-interval
                        test-postgres
-                       (f/unparse formatter (t/minus current-dt
-                                                     (t/days 1)))
+                       (f/unparse formatter
+                                  (t/minus current-dt
+                                           (t/days 1)))
                        nil))))
       (is (= 1 (count (get-obs-interval
                        test-postgres
                        nil
-                       (f/unparse formatter (t/minus current-dt
-                                                     (t/days 2)))))))
+                       (f/unparse formatter
+                                  (t/minus current-dt
+                                           (t/days 2)))))))
       (is (= 3 (count (get-obs-interval
                        test-postgres
-                       (f/unparse formatter (t/minus current-dt
-                                                     (t/days 6)))
-                       (f/unparse formatter current-dt)))))
+                       (f/unparse formatter
+                                  (t/minus current-dt
+                                           (t/days 6)))
+                       (f/unparse formatter
+                                  current-dt)))))
+      (is (zero? (count (get-obs-interval
+                         test-postgres
+                         (f/unparse formatter
+                                    (t/minus current-dt
+                                             (t/days 11)))
+                         (f/unparse formatter
+                                    (t/minus current-dt
+                                             (t/days 10)))))))
       (is (zero? (count (get-obs-interval test-postgres "foobar" nil))))
       (is (zero? (count (get-obs-interval test-postgres nil "foobar"))))
       (is (zero? (count (get-obs-interval test-postgres "bar" "foo")))))))
@@ -146,3 +161,37 @@
              (make-date-dt "1.12.2016" "start")))
       (is (= (f/parse formatter "1.12.2016 23:59:59")
              (make-date-dt "1.12.2016" "end"))))))
+
+(deftest weather-obs-interval-select
+  (testing "Select weather observations between one or two dates"
+    (let [formatter (f/formatter "d.M.y")]
+      (is (= 1 (count (get-weather-obs-interval test-postgres
+                                                nil
+                                                nil))))
+      (is (= 1 (count (get-weather-obs-interval
+                       test-postgres
+                       (f/unparse formatter
+                                  (t/minus current-dt
+                                           (t/days 1)))
+                       nil))))
+      (is (zero? (count (get-weather-obs-interval
+                         test-postgres
+                         nil
+                         (f/unparse formatter
+                                    (t/minus current-dt
+                                             (t/days 2)))))))
+      (is (zero? (count (get-weather-obs-interval
+                         test-postgres
+                         (f/unparse formatter
+                                    (t/minus current-dt
+                                             (t/days 5)))
+                         (f/unparse formatter
+                                    (t/minus current-dt
+                                             (t/days 3))))))))))
+
+(deftest weather-days-observations
+  (testing "Selecting weather observations from N days"
+    (is (= {:time (l/format-local-time current-dt formatter)
+            :cloudiness 2
+            :o_temperature 20.0}
+           (first (get-weather-obs-days test-postgres 1))))))
