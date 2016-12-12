@@ -1,5 +1,28 @@
 
-// Transform data to Dygraphs compatible format
+// Persist checkbox state in local storage
+var persistCheckboxes = function () {
+    var boxes = document.querySelectorAll('div.checkboxes > input'),
+    checked = {};
+
+    for (var i = 0; i < boxes.length; i++) {
+        checked[boxes[i].id] = boxes[i].checked;
+    }
+    localStorage.setItem('checkedBoxes', JSON.stringify(checked));
+};
+
+// Load possible checkbox state
+var restoreCheckboxState = function () {
+    if (localStorage.getItem('checkedBoxes')) {
+        var boxes = JSON.parse(localStorage.getItem('checkedBoxes'));
+        for (box in boxes) {
+            document.getElementById(box).checked = boxes[box];
+        }
+        document.getElementById('showCloudiness').dispatchEvent(new CustomEvent('click', null));
+        localStorage.removeItem('checkedBoxes');
+    }
+};
+
+// Transform data to Google Chart compatible format
 var transformData = function (data) {
     var dataJson = JSON.parse(data),
         plotData = [],
@@ -110,8 +133,28 @@ if (plotData.length > 1) {
         for (var i = 0; i < checkboxes.length; i++) {
             checkboxes[i].addEventListener('click', hideOrShowSeries);
         }
+        restoreCheckboxState();
     }
 } else {
     document.getElementById('noDataError').style.display = 'inline';
     document.getElementById('plotControls').style.display = 'none';
 }
+
+// Function for validating date field values
+var validateDates = function (event) {
+    var datePattern = /\d{1,2}\.\d{1,2}\.\d{4}/,
+        startDate = document.getElementById('startDate').value,
+        endDate = document.getElementById('endDate').value;
+
+    if ((startDate && !datePattern.exec(startDate)) ||
+        (endDate && !datePattern.exec(endDate))) {
+        alert('Error: either the start or end date is invalid!');
+        event.preventDefault();
+        return;
+    }
+    persistCheckboxes();
+};
+
+document.getElementById('submitBtn').addEventListener('click',
+                                                      validateDates,
+                                                      false);
