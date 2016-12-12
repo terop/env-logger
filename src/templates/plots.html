@@ -48,10 +48,12 @@
 
         <div id="plotControls">
             <div class="leftMargin clearBoth">
-                <input type="checkbox" class="selectBox" id="showTemperature" checked="checked">
-                <label for="showTemperature">Temperature</label>
-                <input type="checkbox" class="selectBox" id="showBrightness" checked="checked">
-                <label for="showBrightness">Brightness</label>
+                {% if logged-in? %}
+                    <input type="checkbox" class="selectBox" id="showTemperature" checked="checked">
+                    <label for="showTemperature">Temperature</label>
+                    <input type="checkbox" class="selectBox" id="showBrightness" checked="checked">
+                    <label for="showBrightness">Brightness</label>
+                {% endif %}
                 <input type="checkbox" class="selectBox" id="showOutsideTemperature" checked="checked">
                 <label for="showOutsideTemperature">Temperature (outside)</label>
                 <input type="checkbox" class="selectBox" id="showCloudiness" checked="checked">
@@ -77,6 +79,9 @@
                 crossorigin="anonymous"></script>
         <script src="js/bootstrap-datepicker.min.js"></script>
         <script src="https://www.gstatic.com/charts/loader.js"></script>
+        <script>
+            var mode = '{% if logged-in? %}all{% else %}weather{% endif %}';
+        </script>
         <script src="js/plots.js"></script>
         <script>
             var datepickerOptions = {

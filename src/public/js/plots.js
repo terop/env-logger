@@ -6,14 +6,24 @@ var transformData = function (data) {
         dataPoint = [];
 
     // Data labels
-    plotData.push(['Date', 'Temperature [\xB0C]', 'Brightness',
-                   'Temperature (outside) [\xB0C]', 'Cloudiness']);
+    if (mode === 'all') {
+        plotData.push(['Date', 'Temperature [\xB0C]', 'Brightness',
+                       'Temperature (outside) [\xB0C]', 'Cloudiness']);
+    } else {
+        plotData.push(['Date', 'Temperature (outside) [\xB0C]', 'Cloudiness']);
+    }
     for (var i = 0; i < dataJson.length; i++) {
-        dataPoint = [new Date(dataJson[i]['recorded']),
-                     dataJson[i]['temperature'],
-                     dataJson[i]['brightness'],
-                     dataJson[i]['o_temperature'],
-                     dataJson[i]['cloudiness']];
+        if (mode === 'all') {
+            dataPoint = [new Date(dataJson[i]['recorded']),
+                         dataJson[i]['temperature'],
+                         dataJson[i]['brightness'],
+                         dataJson[i]['o_temperature'],
+                         dataJson[i]['cloudiness']];
+        } else {
+            dataPoint = [new Date(dataJson[i]['time']),
+                         dataJson[i]['o_temperature'],
+                         dataJson[i]['cloudiness']];
+        }
         plotData.push(dataPoint);
     }
     return plotData;
@@ -50,7 +60,8 @@ if (plotData.length > 1) {
             legend: { position: 'bottom' },
             explorer: {
                 actions: ['dragToZoom', 'rightClickToReset'],
-                keepInBounds: true
+                keepInBounds: true,
+                axis: 'horizontal'
             }
         },
             data = google.visualization.arrayToDataTable(
@@ -66,11 +77,17 @@ if (plotData.length > 1) {
 
         // Hides or shows the selected data series
         var hideOrShowSeries = function (event) {
-            var mapping = {'showTemperature': 1,
+            var mapping = {};
+            if (mode === 'all') {
+                mapping = {'showTemperature': 1,
                            'showBrightness': 2,
                            'showOutsideTemperature': 3,
-                           'showCloudiness': 4},
-                shownColumns = [0];
+                           'showCloudiness': 4};
+            } else {
+                mapping = {'showOutsideTemperature': 1,
+                           'showCloudiness': 2};
+            }
+            var shownColumns = [0];
 
             var keys = Object.keys(mapping);
             for (var i = 0; i < keys.length; i++) {
