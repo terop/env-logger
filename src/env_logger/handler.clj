@@ -120,9 +120,9 @@
   (POST "/observations" [json-string]
         (let [start-time (calculate-start-time)
               start-time-int (t/interval (t/plus start-time
-                                                 (t/seconds 45))
+                                                 (t/minutes 4))
                                          (t/plus start-time
-                                                 (t/minutes 3)))
+                                                 (t/minutes 7)))
               weather-data (if (t/within? start-time-int (t/now))
                              (get-latest-fmi-data (get-conf-value :fmi-api-key)
                                                   (get-conf-value :station-id))
