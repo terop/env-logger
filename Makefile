@@ -1,5 +1,6 @@
 
 build: update # build container
+	export LEIN_SNAPSHOTS_IN_RELEASE=1
 	lein uberjar
 	docker build -t env-logger .
 
