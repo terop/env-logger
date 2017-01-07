@@ -158,36 +158,45 @@
                        (make-date-dt ~end-date "end")
                        ;; Hack to avoid SQL WHERE hacks
                        (t/now))]
-         (~fetch-fn ~db-con [:and
-                             [:>= ~dt-column ~start-dt]
-                             [:<= ~dt-column ~end-dt]])))))
+         (~fetch-fn ~db-con :where [:and
+                                    [:>= ~dt-column ~start-dt]
+                                    [:<= ~dt-column ~end-dt]])))))
 
 (defn get-observations
-  "Fetches observations filtered by the provided SQL WHERE clause."
-  [db-con where-clause]
-  (j/query db-con
-           (sql/format (sql/build :select [:o.brightness
-                                           :o.temperature
-                                           :o.recorded
-                                           [:w.temperature "o_temperature"]
-                                           :w.cloudiness]
-                                  :from [[:observations :o]]
-                                  :left-join [[:weather-data :w]
-                                              [:= :o.id :w.obs_id]]
-                                  :where where-clause
-                                  :order-by [[:o.id :asc]]))
-           {:row-fn #(merge %
-                            {:recorded (format-datetime
-                                        (:recorded %)
-                                        :date-hour-minute-second)})}))
+  "Fetches observations optionally filtered by a provided SQL WHERE clause.
+  Limiting rows is possible by providing row count with the :limit argument."
+  [db-con & {:keys [where limit]
+             :or {where nil
+                  limit nil}}]
+  (let [base-query {:select [:o.brightness
+                             :o.temperature
+                             :o.recorded
+                             [:w.temperature "o_temperature"]
+                             :w.cloudiness]
+                    :from [[:observations :o]]
+                    :left-join [[:weather-data :w]
+                                [:= :o.id :w.obs_id]]}
+        where-query (if where
+                      (sql/build base-query :where where)
+                      base-query)
+        limit-query (if limit
+                      (sql/build where-query :limit limit
+                                 :order-by [[:o.id :desc]])
+                      (sql/build where-query :order-by [[:o.id :asc]]))]
+    (j/query db-con
+             (sql/format limit-query)
+             {:row-fn #(merge %
+                              {:recorded (format-datetime
+                                          (:recorded %)
+                                          :date-hour-minute-second)})})))
 
 (defn get-obs-days
   "Fetches the observations from the last N days."
   [db-con n]
   (get-observations db-con
-                    [:>= :recorded
-                     (t/minus (t/now)
-                              (t/days n))]))
+                    :where [:>= :recorded
+                            (t/minus (t/now)
+                                     (t/days n))]))
 
 (defn get-obs-interval
   "Fetches observations in an interval between the provided dates."
@@ -200,13 +209,13 @@
 
 (defn get-weather-observations
   "Fetches weather observations filtered by the provided SQL WHERE clause."
-  [db-con where-clause]
+  [db-con & {:keys [where]}]
   (j/query db-con
            (sql/format (sql/build :select [:time
                                            [:temperature "o_temperature"]
                                            :cloudiness]
                                   :from [:weather-data]
-                                  :where where-clause
+                                  :where where
                                   :order-by [[:id :asc]]))
            {:row-fn #(merge %
                             {:time (format-datetime
@@ -218,9 +227,9 @@
   "Fetches the weather observations from the last N days."
   [db-con n]
   (get-weather-observations db-con
-                            [:>= :time
-                             (t/minus (t/now)
-                                      (t/days n))]))
+                            :where [:>= :time
+                                    (t/minus (t/now)
+                                             (t/days n))]))
 
 (defn get-weather-obs-interval
   "Fetches weather observations in an interval between the provided dates."

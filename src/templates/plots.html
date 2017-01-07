@@ -80,7 +80,8 @@
         <script src="js/bootstrap-datepicker.min.js"></script>
         <script src="https://www.gstatic.com/charts/loader.js"></script>
         <script>
-            var mode = '{% if logged-in? %}all{% else %}weather{% endif %}';
+            var mode = '{% if logged-in? %}all{% else %}weather{% endif %}',
+                socket = new WebSocket('{{ ws-url }}');
         </script>
         <script src="js/plots.js"></script>
         <script>

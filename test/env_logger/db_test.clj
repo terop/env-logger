@@ -13,6 +13,7 @@
                                    get-observations
                                    get-weather-obs-interval
                                    get-weather-obs-days
+                                   get-weather-observations
                                    get-user-data
                                    validate-date
                                    make-date-dt]]
@@ -143,9 +144,13 @@
       (is (zero? (count (get-obs-interval test-postgres "bar" "foo")))))))
 
 (deftest get-observations-tests
-  (testing "Observation querying with arbitrary WHERE clause"
+  (testing "Observation querying with arbitrary WHERE clause and LIMIT"
     (is (= 1 (count (get-observations test-postgres
-                                      [:= :o.temperature 20]))))))
+                                      :where [:= :o.temperature 20]))))
+    (is (= 1 (count (get-observations test-postgres
+                                      :limit 1))))
+    (is (zero? (count (get-observations test-postgres
+                                        :limit 0))))))
 
 (deftest start-and-end-date-query
   (testing "Selecting start and end dates of all observations"
@@ -205,6 +210,11 @@
             :cloudiness 2
             :o_temperature 20.0}
            (first (get-weather-obs-days test-postgres 1))))))
+
+(deftest weather-observation-select
+  (testing "Selecting weather observations with an arbitrary WHERE clause"
+    (is (zero? (count (get-weather-observations test-postgres
+                                                :where [:= 1 0]))))))
 
 (deftest user-data-query
   (testing "Querying for a users' password hash and Yubikey ID"

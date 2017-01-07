@@ -2,7 +2,7 @@
 // Persist checkbox state in local storage
 var persistCheckboxes = function () {
     var boxes = document.querySelectorAll('div.checkboxes > input'),
-    checked = {};
+        checked = {};
 
     for (var i = 0; i < boxes.length; i++) {
         checked[boxes[i].id] = boxes[i].checked;
@@ -20,6 +20,29 @@ var restoreCheckboxState = function () {
         document.getElementById('showCloudiness').dispatchEvent(new CustomEvent('click', null));
         localStorage.removeItem('checkedBoxes');
     }
+};
+
+// Returns indices of selected checkboxes
+var getCheckboxIndices = function () {
+    var mapping = {};
+    if (mode === 'all') {
+        mapping = {'showTemperature': 1,
+                   'showBrightness': 2,
+                   'showOutsideTemperature': 3,
+                   'showCloudiness': 4};
+    } else {
+        mapping = {'showOutsideTemperature': 1,
+                   'showCloudiness': 2};
+    }
+    var shownColumns = [0];
+
+    var keys = Object.keys(mapping);
+    for (var i = 0; i < keys.length; i++) {
+        if (document.getElementById(keys[i]).checked) {
+            shownColumns.push(mapping[keys[i]]);
+        }
+    }
+    return shownColumns;
 };
 
 // Transform data to Google Chart compatible format
@@ -53,89 +76,118 @@ var transformData = function (data) {
 };
 var plotData = transformData(document.getElementById('plotData').innerHTML);
 
-if (plotData.length > 1) {
-    google.charts.load('current', {'packages': ['corechart']});
-    google.charts.setOnLoadCallback(drawChart);
+google.charts.load('current', {'packages': ['corechart']});
+google.charts.setOnLoadCallback(drawChart);
 
-    function drawChart() {
-        var options = {
-            width: 900,
-            height: 450,
-            chartArea: {
-                width: 800
-            },
-            hAxis: {
-                gridlines: {
-                    count: -1,
-                    units: {
-                        days: {format: ['d.M.yyyy']},
-                        hours: {format: ['HH:mm']}
-                    }
-                },
-                minorGridlines: {
-                    units: {
-                        hours: {format: ['hh:mm']},
-                        minutes: {format: ['HH:mm']}
-                    }
+function drawChart() {
+    var options = {
+        width: 900,
+        height: 450,
+        chartArea: {
+            width: 800
+        },
+        hAxis: {
+            gridlines: {
+                count: -1,
+                units: {
+                    days: {format: ['d.M.yyyy']},
+                    hours: {format: ['HH:mm']}
                 }
             },
-            title: 'Observations',
-            legend: { position: 'bottom' },
-            explorer: {
-                actions: ['dragToZoom', 'rightClickToReset'],
-                keepInBounds: true,
-                axis: 'horizontal'
+            minorGridlines: {
+                units: {
+                    hours: {format: ['hh:mm']},
+                    minutes: {format: ['HH:mm']}
+                }
             }
         },
-            data = google.visualization.arrayToDataTable(
-                plotData,
-                false),
-            dateFormatter = new google.visualization.DateFormat({
-                pattern: 'd.M.yyyy HH:mm:ss'
-            });
+        title: 'Observations',
+        legend: { position: 'bottom' },
+        explorer: {
+            actions: ['dragToZoom', 'rightClickToReset'],
+            keepInBounds: true,
+            axis: 'horizontal'
+        }
+    },
+    dateFormatter = new google.visualization.DateFormat({
+        pattern: 'd.M.yyyy HH:mm:ss'
+    }),
+    data = google.visualization.arrayToDataTable(
+        plotData,
+        false);
 
+    dateFormatter.format(data, 0);
+    var chart = new google.visualization.LineChart(document.getElementById('chartDiv'));
+    chart.draw(data, options);
+
+    // Hides or shows the selected data series
+    var hideOrShowSeries = function (event) {
+        columnIndices = getCheckboxIndices();
+
+        if (columnIndices.length == 1) {
+            alert('At least one data series must be selected');
+            return;
+        }
+
+        view = new google.visualization.DataView(data);
+        view.setColumns(columnIndices);
+        chart.draw(view, options);
+    };
+
+    var checkboxes = document.getElementsByClassName('selectBox');
+    for (var i = 0; i < checkboxes.length; i++) {
+        checkboxes[i].addEventListener('click', hideOrShowSeries);
+    }
+    restoreCheckboxState();
+
+    // Redraw chart after new data has been added
+    var redrawChart = function () {
+        var data = google.visualization.arrayToDataTable(
+            plotData,
+            false);
         dateFormatter.format(data, 0);
-        var chart = new google.visualization.LineChart(document.getElementById('chartDiv'));
-        chart.draw(data, options);
 
-        // Hides or shows the selected data series
-        var hideOrShowSeries = function (event) {
-            var mapping = {};
-            if (mode === 'all') {
-                mapping = {'showTemperature': 1,
-                           'showBrightness': 2,
-                           'showOutsideTemperature': 3,
-                           'showCloudiness': 4};
-            } else {
-                mapping = {'showOutsideTemperature': 1,
-                           'showCloudiness': 2};
-            }
-            var shownColumns = [0];
+        view = new google.visualization.DataView(data);
+        view.setColumns(getCheckboxIndices());
+        chart.draw(view, options);
+    };
 
-            var keys = Object.keys(mapping);
-            for (var i = 0; i < keys.length; i++) {
-                if (document.getElementById(keys[i]).checked) {
-                    shownColumns.push(mapping[keys[i]]);
-                }
-            }
-
-            if (shownColumns.length == 1) {
-                alert('At least one data series must be selected');
-                return;
-            }
-
-            view = new google.visualization.DataView(data);
-            view.setColumns(shownColumns);
-            chart.draw(view, options);
+    // Various WebSocket operations
+    var wsOperations = function () {
+        socket.onerror = function(error) {
+            console.log('WebSocket error: ' + error);
         };
 
-        var checkboxes = document.getElementsByClassName('selectBox');
-        for (var i = 0; i < checkboxes.length; i++) {
-            checkboxes[i].addEventListener('click', hideOrShowSeries);
-        }
-        restoreCheckboxState();
-    }
-} else {
+        socket.onopen = function(event) {
+            console.log('WebSocket connected to: ' + event.currentTarget.url);
+        };
+
+        socket.onmessage = function(event) {
+            var dataJson = JSON.parse(event.data),
+            dataPoint = null;
+            if (mode === 'all') {
+                dataPoint = [new Date(dataJson[0]['recorded']),
+                             dataJson[0]['temperature'],
+                             dataJson[0]['brightness'],
+                             dataJson[0]['o_temperature'],
+                             dataJson[0]['cloudiness']];
+            } else {
+                dataPoint = [new Date(dataJson[0]['recorded']),
+                             dataJson[0]['o_temperature'],
+                             dataJson[0]['cloudiness']];
+            }
+            plotData.push(dataPoint);
+            redrawChart();
+        };
+
+        socket.onclose = function(event) {
+            console.log('WebSocket disconnected: ' + event.code + ', reason ' + event.reason);
+            socket = undefined;
+        };
+    };
+    wsOperations();
+}
+if (plotData.length === 0) {
     document.getElementById('noDataError').style.display = 'inline';
     document.getElementById('plotControls').style.display = 'none';
 }

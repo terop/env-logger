@@ -21,4 +21,6 @@
  ;; Enable or disable HSTS; disable if a HSTS configured reverse proxy is used
  :use-hsts true
  ;; Path of the URL through which the application is accessed
- :url-path "env-logger"}
+ :url-path "env-logger"
+ ;; URL of the WebSocket endpoint
+ :ws-url "wss://localhost:8080"}

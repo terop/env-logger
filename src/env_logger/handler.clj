@@ -4,7 +4,8 @@
             [compojure.core :refer [GET POST defroutes]]
             [compojure.route :as route]
             [immutant.web :as web]
-            [immutant.web.middleware :refer [wrap-development]]
+            [immutant.web.middleware :refer [wrap-development wrap-websocket]]
+            [immutant.web.async :as async]
             [ring.middleware.defaults :refer :all]
             [ring.util.response :as resp]
             [selmer.parser :refer [render-file]]
@@ -15,6 +16,7 @@
             [buddy.auth.backends.session :refer [session-backend]]
             [buddy.auth.middleware :refer [wrap-authentication
                                            wrap-authorization]]
+            [clojure.tools.logging :as log]
             [env-logger.config :refer [get-conf-value]]
             [env-logger.db :as db]
             [env-logger.grabber :refer [calculate-start-time
@@ -71,6 +73,20 @@
 (def auth-backend (session-backend
                    {:unauthorized-handler unauthorized-handler}))
 
+(defonce channels (atom #{}))
+
+(def websocket-callbacks
+  "WebSocket callback functions."
+  {:on-open (fn [channel]
+              (swap! channels conj channel))
+   :on-close (fn [channel {:keys [code reason]}]
+               (swap! channels clojure.set/difference #{channel}))
+   :on-message (fn [ch m]
+                 ;; Do nothing as clients are not supposed to send anything
+                 )
+   :on-error (fn [channel throwable]
+               (log/error "WS exception:" throwable))})
+
 (defroutes routes
   ;; Index and login
   (GET "/" request
@@ -82,7 +98,8 @@
                                      (:endDate (:params request)))
                           obs-dates (db/get-obs-start-and-end db/postgres)
                           formatter (f/formatter "d.M.y")
-                          logged-in? (authenticated? request)]
+                          logged-in? (authenticated? request)
+                          ws-url (get-conf-value :ws-url)]
                       (if (or (not (nil? start-date))
                               (not (nil? end-date)))
                         {:data (generate-string
@@ -97,27 +114,29 @@
                                    end-date)))
                          :start-date start-date
                          :end-date end-date
-                         :logged-in? logged-in?}
+                         :logged-in? logged-in?
+                         :ws-url ws-url}
                         {:data (generate-string
                                 (if logged-in?
                                   (db/get-obs-days db/postgres 3)
                                   (db/get-weather-obs-days db/postgres
                                                            3)))
-                         :end-date (:end obs-dates)
                          :start-date (f/unparse formatter
                                                 (t/minus (f/parse
                                                           formatter
                                                           (:end
                                                            obs-dates))
                                                          (t/days 3)))
-                         :logged-in? logged-in?}))))
+                         :end-date (:end obs-dates)
+                         :logged-in? logged-in?
+                         :ws-url ws-url}))))
   (GET "/login" [] (render-file "templates/login.html" {}))
   (POST "/login" [] login-authenticate)
   (GET "/logout" request
        (assoc (resp/redirect (str (get-conf-value :url-path) "/"))
               :session {}))
   ;; Observation adding
-  (POST "/observations" [json-string]
+  (POST "/observations" [obs-string]
         (let [start-time (calculate-start-time)
               start-time-int (t/interval (t/plus start-time
                                                  (t/minutes 4))
@@ -127,10 +146,15 @@
                              (get-latest-fmi-data (get-conf-value :fmi-api-key)
                                                   (get-conf-value :station-id))
                              {})
-              obs-data (parse-string json-string true)]
-          (generate-string (db/insert-observation
-                            db/postgres
-                            (assoc obs-data :weather-data weather-data)))))
+              insert-status (db/insert-observation
+                             db/postgres
+                             (assoc (parse-string obs-string true)
+                                    :weather-data weather-data))]
+          (doseq [channel @channels]
+            (async/send! channel
+                         (generate-string (db/get-observations db/postgres
+                                                               :limit 1))))
+          (generate-string insert-status)))
   ;; Serve static files
   (route/files "/")
   (route/not-found "404 Not Found"))
@@ -155,6 +179,7 @@
         handler (as-> routes $
                   (wrap-authorization $ auth-backend)
                   (wrap-authentication $ auth-backend)
+                  (wrap-websocket $ websocket-callbacks)
                   (wrap-defaults $ defaults-config))
         opts {:host ip :port port}]
     (web/run (if production?
