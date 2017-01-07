@@ -1,7 +1,7 @@
 
 build: update # build container
 	lein uberjar
-	docker build -t env-logger .
+	docker build -t env-logger:0.2.1 .
 
 clean:
 	lein clean
