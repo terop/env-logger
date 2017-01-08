@@ -252,3 +252,16 @@
       {:start (f/unparse formatter (:start (first result)))
        :end (f/unparse formatter (:end (first result)))}
       {:start "" :end ""})))
+
+(defn insert-yc-image-name
+  "Stores the name of the latest Yardcam image. Rows from the table are
+  deleted before a new row is inserted."
+  [db-con image-name]
+  (let [result (j/query db-con
+                        (sql/format (sql/build :select [:image_id]
+                                               :from :yardcam_images)))]
+    (when (pos? (count result))
+      (j/execute! db-con "DELETE FROM yardcam_images"))
+    (= 1 (count (j/insert! db-con
+                           :yardcam_images
+                           {:image_name image-name})))))

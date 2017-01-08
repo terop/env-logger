@@ -16,7 +16,8 @@
                                    get-weather-observations
                                    get-user-data
                                    validate-date
-                                   make-date-dt]]
+                                   make-date-dt
+                                   insert-yc-image-name]]
             [clojure.java.jdbc :as j]))
 
 (let [db-host (get (System/getenv)
@@ -64,7 +65,8 @@
                 :yubikey_id "mykeyid"}))
   (test-fn)
   (j/execute! test-postgres "DELETE FROM observations")
-  (j/execute! test-postgres "DELETE FROM users"))
+  (j/execute! test-postgres "DELETE FROM users")
+  (j/execute! test-postgres "DELETE FROM yardcam_images"))
 
 ;; Fixture run at the start and end of tests
 (use-fixtures :once clean-test-database)
@@ -222,3 +224,17 @@
     (is (= {:pw-hash "myhash"
             :yubikey-ids (set ["mykeyid"])}
            (get-user-data test-postgres "test-user")))))
+
+(deftest yc-image-name-storage
+  (testing "Storing of the latest Yardcam image name"
+    (j/insert! test-postgres
+               :yardcam_images
+               {:image_name "testimage.jpg"})
+    (j/insert! test-postgres
+               :yardcam_images
+               {:image_name "testimage2.jpg"})
+    (is (= 2 (count (j/query test-postgres
+                             "SELECT image_id FROM yardcam_images"))))
+    (is (true? (insert-yc-image-name test-postgres "testimage.jpg")))
+    (is (= 1 (count (j/query test-postgres
+                             "SELECT image_id FROM yardcam_images"))))))

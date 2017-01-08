@@ -155,6 +155,13 @@
                          (generate-string (db/get-observations db/postgres
                                                                :limit 1))))
           (generate-string insert-status)))
+  ;; Latest yardcam image name storage
+  (POST "/image" [image-name]
+        (if (re-find #"yc-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+\d{4}\.jpg"
+                     image-name)
+          (generate-string (db/insert-yc-image-name db/postgres
+                                                    image-name))
+          (generate-string false)))
   ;; Serve static files
   (route/files "/")
   (route/not-found "404 Not Found"))
