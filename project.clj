@@ -3,9 +3,9 @@
   :url "https://github.com/terop/env-logger"
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.immutant/web "2.1.5"]
-                 [compojure "1.5.1"]
-                 [ring "1.5.0"]
-                 [ring/ring-defaults "0.2.1"]
+                 [compojure "1.5.2"]
+                 [ring "1.5.1"]
+                 [ring/ring-defaults "0.2.2"]
                  [org.postgresql/postgresql "9.4.1212"]
                  [org.clojure/java.jdbc "0.6.2-alpha2"]
                  [honeysql "0.8.2"]
