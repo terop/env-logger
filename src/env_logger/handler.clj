@@ -99,37 +99,38 @@
                           obs-dates (db/get-obs-start-and-end db/postgres)
                           formatter (f/formatter "d.M.y")
                           logged-in? (authenticated? request)
-                          ws-url (get-conf-value :ws-url)]
+                          common-values {:logged-in? logged-in?
+                                         :ws-url (get-conf-value :ws-url)
+                                         :image-base (get-conf-value
+                                                      :image-basepath)}]
                       (if (or (not (nil? start-date))
                               (not (nil? end-date)))
-                        {:data (generate-string
-                                (if logged-in?
-                                  (db/get-obs-interval
-                                   db/postgres
-                                   start-date
-                                   end-date)
-                                  (db/get-weather-obs-interval
-                                   db/postgres
-                                   start-date
-                                   end-date)))
-                         :start-date start-date
-                         :end-date end-date
-                         :logged-in? logged-in?
-                         :ws-url ws-url}
-                        {:data (generate-string
-                                (if logged-in?
-                                  (db/get-obs-days db/postgres 3)
-                                  (db/get-weather-obs-days db/postgres
-                                                           3)))
-                         :start-date (f/unparse formatter
-                                                (t/minus (f/parse
-                                                          formatter
-                                                          (:end
-                                                           obs-dates))
-                                                         (t/days 3)))
-                         :end-date (:end obs-dates)
-                         :logged-in? logged-in?
-                         :ws-url ws-url}))))
+                        (merge common-values
+                               {:data (generate-string
+                                       (if logged-in?
+                                         (db/get-obs-interval
+                                          db/postgres
+                                          start-date
+                                          end-date)
+                                         (db/get-weather-obs-interval
+                                          db/postgres
+                                          start-date
+                                          end-date)))
+                                :start-date start-date
+                                :end-date end-date})
+                        (merge common-values
+                               {:data (generate-string
+                                       (if logged-in?
+                                         (db/get-obs-days db/postgres 3)
+                                         (db/get-weather-obs-days db/postgres
+                                                                  3)))
+                                :start-date (f/unparse formatter
+                                                       (t/minus (f/parse
+                                                                 formatter
+                                                                 (:end
+                                                                  obs-dates))
+                                                                (t/days 3)))
+                                :end-date (:end obs-dates)})))))
   (GET "/login" [] (render-file "templates/login.html" {}))
   (POST "/login" [] login-authenticate)
   (GET "/logout" request

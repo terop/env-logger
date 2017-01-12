@@ -66,6 +66,11 @@
       (try
         (let [offset (if (get-conf-value :correction :k :enabled)
                        (get-conf-value :correction :k :offset) 0)
+              image-name (:image_name
+                          (first (j/query t-con
+                                          (sql/format
+                                           (sql/build :select [:image_name]
+                                                      :from [:yardcam_images])))))
               obs-id (:id (first (j/insert! t-con
                                             :observations
                                             {:recorded (f/parse
@@ -75,7 +80,8 @@
                                                               observation)
                                                              offset)
                                              :brightness (:inside_light
-                                                          observation)})))]
+                                                          observation)
+                                             :yc_image_name image-name})))]
           (if (pos? obs-id)
             (if (every? pos?
                         (for [beacon (:beacons observation)]
@@ -172,7 +178,8 @@
                              :o.temperature
                              :o.recorded
                              [:w.temperature "o_temperature"]
-                             :w.cloudiness]
+                             :w.cloudiness
+                             :o.yc_image_name]
                     :from [[:observations :o]]
                     :left-join [[:weather-data :w]
                                 [:= :o.id :w.obs_id]]}
@@ -212,11 +219,15 @@
   [db-con & {:keys [where]}]
   (j/query db-con
            (sql/format (sql/build :select [:time
-                                           [:temperature "o_temperature"]
-                                           :cloudiness]
-                                  :from [:weather-data]
+                                           [:w.temperature "o_temperature"]
+                                           :cloudiness
+                                           :yc_image_name]
+                                  :from [[:weather-data :w]]
+                                  :join [:observations
+                                         [:= :w.obs_id
+                                          :observations.id]]
                                   :where where
-                                  :order-by [[:id :asc]]))
+                                  :order-by [[:w.id :asc]]))
            {:row-fn #(merge %
                             {:time (format-datetime
                                     (:time %)

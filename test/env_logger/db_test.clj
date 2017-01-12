@@ -107,7 +107,8 @@
             :recorded (l/format-local-time current-dt formatter)
             :temperature 11.0
             :cloudiness 2
-            :o_temperature 20.0}
+            :o_temperature 20.0
+            :yc_image_name "testimage.jpg"}
            (first (get-obs-days test-postgres 3))))))
 
 (deftest obs-interval-select
@@ -210,7 +211,8 @@
   (testing "Selecting weather observations from N days"
     (is (= {:time (l/format-local-time current-dt formatter)
             :cloudiness 2
-            :o_temperature 20.0}
+            :o_temperature 20.0
+            :yc_image_name "testimage.jpg"}
            (first (get-weather-obs-days test-postgres 1))))))
 
 (deftest weather-observation-select

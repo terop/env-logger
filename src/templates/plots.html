@@ -27,6 +27,12 @@
             #plotControls > div > label {
                 margin-right: 10px;
             }
+            #yardcamImage {
+                height: auto;
+                width: auto;
+                max-width: 600px;
+                max-height: 600px;
+            }
         </style>
     </head>
     <body>
@@ -59,7 +65,6 @@
                 <input type="checkbox" class="selectBox" id="showCloudiness" checked="checked">
                 <label for="showCloudiness">Cloudiness</label>
             </div>
-            <br>
         </div>
         <div class="leftMargin clearBoth">
             <h4>Date interval to show</h4>
@@ -70,6 +75,12 @@
                 <input type="submit" class="btn btn-primary" id="submitBtn" value="Refresh">
             </form>
         </div>
+        <br>
+        <div class="leftMargin">
+            <input type="checkbox" id="showImage">
+            <label for="showImage">Show image</label>
+        </div>
+        <img src="" id="yardcamImage" alt="Yardcam image" style="margin: 0 0 15px 15px; display: none;">
 
         <script src="https://code.jquery.com/jquery-3.1.1.min.js"
                 integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8="
@@ -81,6 +92,7 @@
         <script src="https://www.gstatic.com/charts/loader.js"></script>
         <script>
             var mode = '{% if logged-in? %}all{% else %}weather{% endif %}',
+                imageBasepath = '{{ image-base }}',
                 socket = new WebSocket('{{ ws-url }}');
         </script>
         <script src="js/plots.js"></script>

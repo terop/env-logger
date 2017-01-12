@@ -46,9 +46,11 @@ var getCheckboxIndices = function () {
 };
 
 // Transform data to Google Chart compatible format
-var transformData = function (data) {
-    var dataJson = JSON.parse(data),
-        plotData = [],
+// jsonData - JSON input data
+// plotData - output array in Google compatible format
+// imageData - array with yardcam image names
+var transformData = function (jsonData, plotData, imageData) {
+    var dataJson = JSON.parse(jsonData),
         dataPoint = [];
 
     // Data labels
@@ -71,10 +73,12 @@ var transformData = function (data) {
                          dataJson[i]['cloudiness']];
         }
         plotData.push(dataPoint);
+        imageData.push(dataJson[i]['yc_image_name']);
     }
-    return plotData;
 };
-var plotData = transformData(document.getElementById('plotData').innerHTML);
+var plotData = [],
+    imageData = [];
+transformData(document.getElementById('plotData').innerHTML, plotData, imageData);
 
 google.charts.load('current', {'packages': ['corechart']});
 google.charts.setOnLoadCallback(drawChart);
@@ -119,6 +123,23 @@ function drawChart() {
     dateFormatter.format(data, 0);
     var chart = new google.visualization.LineChart(document.getElementById('chartDiv'));
     chart.draw(data, options);
+
+    google.visualization.events.addListener(chart, 'select', selectHandler);
+
+    function selectHandler(e) {
+        var selectedItem = chart.getSelection()[0],
+            imageName = imageData[selectedItem.row];
+        if (imageName) {
+            var pattern = /yc-([\d-]+)T.+/,
+                result = pattern.exec(imageName);
+            if (result) {
+                document.getElementById('yardcamImage').src = imageBasepath +
+                    result[1] + '/' + imageName;
+            }
+        } else {
+            alert('There is no image to show');
+        }
+    }
 
     // Hides or shows the selected data series
     var hideOrShowSeries = function (event) {
@@ -209,4 +230,13 @@ var validateDates = function (event) {
 
 document.getElementById('submitBtn').addEventListener('click',
                                                       validateDates,
+                                                      false);
+
+var imageButtonHandler = function (event) {
+    document.getElementById('yardcamImage').style.display =
+        document.getElementById('showImage').checked ? '' : 'none';
+};
+
+document.getElementById('showImage').addEventListener('click',
+                                                      imageButtonHandler,
                                                       false);

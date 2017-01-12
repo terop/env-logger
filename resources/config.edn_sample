@@ -23,4 +23,6 @@
  ;; Path of the URL through which the application is accessed
  :url-path "env-logger"
  ;; URL of the WebSocket endpoint
- :ws-url "wss://localhost:8080"}
+ :ws-url "wss://localhost:8080"
+ ;; Base path to yardcam images
+ :image-basepath "https://example.com/images/"}
