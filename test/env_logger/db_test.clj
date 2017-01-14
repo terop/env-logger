@@ -17,8 +17,11 @@
                                    get-user-data
                                    validate-date
                                    make-date-dt
-                                   insert-yc-image-name]]
-            [clojure.java.jdbc :as j]))
+                                   insert-yc-image-name
+                                   weather-query-ok?]]
+            [clojure.java.jdbc :as j])
+  (:import org.joda.time.DateTime
+           java.util.concurrent.TimeUnit))
 
 (let [db-host (get (System/getenv)
                    "POSTGRESQL_DB_HOST"
@@ -240,3 +243,12 @@
     (is (true? (insert-yc-image-name test-postgres "testimage.jpg")))
     (is (= 1 (count (j/query test-postgres
                              "SELECT image_id FROM yardcam_images"))))))
+
+(deftest weather-query-ok
+  (testing "Test when it is OK to query for FMI weather observations"
+    (let [offset-millisec (.getOffset (t/default-time-zone)
+                                      (.getMillis (DateTime/now)))
+          hours (.toHours (TimeUnit/MILLISECONDS) offset-millisec)]
+      ;; Timestamps are recorded in local time
+      ;; Dummy test which kind of works, needs to be fixed properly at some time
+      (is (true? (weather-query-ok? test-postgres (* hours 50)))))))

@@ -69,8 +69,9 @@
               image-name (:image_name
                           (first (j/query t-con
                                           (sql/format
-                                           (sql/build :select [:image_name]
-                                                      :from [:yardcam_images])))))
+                                           (sql/build
+                                            :select [:image_name]
+                                            :from [:yardcam_images])))))
               obs-id (:id (first (j/insert! t-con
                                             :observations
                                             {:recorded (f/parse
@@ -276,3 +277,21 @@
     (= 1 (count (j/insert! db-con
                            :yardcam_images
                            {:image_name image-name})))))
+
+(defn weather-query-ok?
+  "Tells whether it is OK to query the FMI API for weather observations.
+  Criteria for being OK is that the last observation's timestamp does not lie
+  within the [now-waittime,now] interval. Wait time is to be provided in
+  minutes."
+  [db-con wait-time]
+  (let [obs-recorded (:recorded (first
+                                 (j/query db-con
+                                          "SELECT recorded FROM observations
+                                          WHERE id = (SELECT obs_id FROM
+                                          weather_data ORDER BY id DESC
+                                          LIMIT 1)")))]
+    (if (nil? obs-recorded)
+      true
+      (not (t/within? (t/interval (t/minus (t/now) (t/minutes wait-time))
+                                  (t/now))
+                      obs-recorded)))))
