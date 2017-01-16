@@ -1,10 +1,11 @@
 (ns env-logger.grabber
-  "Namespace for (XML) data grabbing functions"
+  "Namespace for data grabbing functions"
   (:require [clj-http.client :as client]
             [clojure.xml :as xml]
             [clj-time.core :as t]
             [clj-time.format :as f]
-            [clojure.tools.logging :as log]))
+            [clojure.tools.logging :as log])
+  (:import org.jsoup.Jsoup))
 
 (defn parse-xml
   "Parse the provided string as XML"
@@ -69,3 +70,26 @@
         (catch org.xml.sax.SAXParseException e
           (log/error "FMI weather data XML parsing failed")
           {})))))
+
+(defn get-testbed-image
+  "Fetches the latest precipitation image from FMI Testbed
+  (http://testbed.fmi.fi) and returns it as a byte array. If the
+  fetching fails, nil will be returned."
+  []
+  (let [tb-resp (try
+                  (client/get "http://testbed.fmi.fi")
+                  (catch Exception e
+                    (log/error "Testbed image fetch failed: HTTP status code"
+                               (:status (ex-data e)))))]
+    (if (not= 200 (:status tb-resp))
+      (log/error "Testbed page load failed")
+      (let [jsoup-doc (Jsoup/parse (:body tb-resp))
+            img-src (.attr (.select jsoup-doc "img[src^=data/area]") "src")]
+        (if (empty? img-src)
+          (log/error "Testbed image fetch failed: image element"
+                     "src was empty")
+          (let [resp (client/get (str "http://testbed.fmi.fi/" img-src)
+                                 {:as :byte-array})]
+            (if (not= 200 (:status resp))
+              (log/error "Testbed image fetch failed: image download failed")
+              (:body resp))))))))
