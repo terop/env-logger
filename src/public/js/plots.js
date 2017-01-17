@@ -49,7 +49,8 @@ var getCheckboxIndices = function () {
 // jsonData - JSON input data
 // plotData - output array in Google compatible format
 // imageData - array with yardcam image names
-var transformData = function (jsonData, plotData, imageData) {
+// idArray - array with Testbed image lookup IDs
+var transformData = function (jsonData, plotData, imageData, idArray) {
     var dataJson = JSON.parse(jsonData),
         dataPoint = [];
 
@@ -74,11 +75,14 @@ var transformData = function (jsonData, plotData, imageData) {
         }
         plotData.push(dataPoint);
         imageData.push(dataJson[i]['yc_image_name']);
+        idArray.push(dataJson[i]['id']);
     }
 };
 var plotData = [],
-    imageData = [];
-transformData(document.getElementById('plotData').innerHTML, plotData, imageData);
+    imageData = [],
+    idArray = [];
+transformData(document.getElementById('plotData').innerHTML, plotData,
+              imageData, idArray);
 
 if (plotData.length === 1) {
     // The first element in the array is the header
@@ -134,7 +138,8 @@ function drawChart() {
 
     function selectHandler(e) {
         var selectedItem = chart.getSelection()[0],
-            imageName = imageData[selectedItem.row];
+            imageName = imageData[selectedItem.row],
+            tbImageId = idArray[selectedItem.row];
         if (imageName) {
             var pattern = /yc-([\d-]+)T.+/,
                 result = pattern.exec(imageName);
@@ -143,8 +148,21 @@ function drawChart() {
                     result[1] + '/' + imageName;
             }
         } else {
-            alert('There is no image to show');
+            alert('No yardcam image to show');
         }
+        axios.head('tb-image/' + tbImageId)
+            .then(function (response) {
+                document.getElementById('testbedImage').src =
+                    'tb-image/' + tbImageId;
+            })
+            .catch(function (error) {
+                document.getElementById('testbedImage').src = '';
+                if (error.response.status === 404) {
+                    alert('No testbed image to show');
+                } else {
+                    alert('Error fetching the testbed image');
+                }
+            });
     }
 
     // Hides or shows the selected data series
@@ -235,10 +253,14 @@ document.getElementById('submitBtn').addEventListener('click',
                                                       false);
 
 var imageButtonHandler = function (event) {
-    document.getElementById('yardcamImage').style.display =
-        document.getElementById('showImage').checked ? '' : 'none';
+    var images = document.getElementsByClassName('images'),
+        display = document.getElementById('showImages').checked ? '' : 'none';
+
+    for (var i = 0; i < images.length; i++) {
+        images[i].style.display = display;
+    }
 };
 
-document.getElementById('showImage').addEventListener('click',
+document.getElementById('showImages').addEventListener('click',
                                                       imageButtonHandler,
                                                       false);

@@ -77,10 +77,13 @@
         </div>
         <br>
         <div class="leftMargin">
-            <input type="checkbox" id="showImage">
-            <label for="showImage">Show image</label>
+            <input type="checkbox" id="showImages">
+            <label for="showImages">Show images</label>
         </div>
-        <img src="" id="yardcamImage" alt="Yardcam image" style="margin: 0 0 15px 15px; display: none;">
+        <img src="" id="yardcamImage" class="images" alt="Yardcam image"
+             style="margin: 0 0 15px 15px; display: none;">
+        <img src="" id="testbedImage" class="images" alt="FMI Testbed image"
+             style="margin: 0 0 15px 30px; display: none;">
 
         <script src="https://code.jquery.com/jquery-3.1.1.min.js"
                 integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8="
@@ -89,6 +92,7 @@
                 integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
                 crossorigin="anonymous"></script>
         <script src="js/bootstrap-datepicker.min.js"></script>
+        <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
         <script src="https://www.gstatic.com/charts/loader.js"></script>
         <script>
             var mode = '{% if logged-in? %}all{% else %}weather{% endif %}',
