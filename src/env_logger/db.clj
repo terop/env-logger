@@ -61,7 +61,7 @@
   "Inserts a observation to the database. Optionally corrects the temperature
   with an offset."
   [db-con observation]
-  (if (= 5 (count observation))
+  (if (= 6 (count observation))
     (j/with-db-transaction [t-con db-con]
       (try
         (let [offset (if (get-conf-value :correction :k :enabled)
@@ -82,7 +82,9 @@
                                                              offset)
                                              :brightness (:inside_light
                                                           observation)
-                                             :yc_image_name image-name})))]
+                                             :yc_image_name image-name
+                                             :testbed_image (:testbed-image
+                                                             observation)})))]
           (if (pos? obs-id)
             (if (every? pos?
                         (for [beacon (:beacons observation)]
@@ -180,7 +182,8 @@
                              :o.recorded
                              [:w.temperature "o_temperature"]
                              :w.cloudiness
-                             :o.yc_image_name]
+                             :o.yc_image_name
+                             :o.id]
                     :from [[:observations :o]]
                     :left-join [[:weather-data :w]
                                 [:= :o.id :w.obs_id]]}
@@ -219,14 +222,15 @@
   "Fetches weather observations filtered by the provided SQL WHERE clause."
   [db-con & {:keys [where]}]
   (j/query db-con
-           (sql/format (sql/build :select [:time
+           (sql/format (sql/build :select [:w.time
                                            [:w.temperature "o_temperature"]
-                                           :cloudiness
-                                           :yc_image_name]
+                                           :w.cloudiness
+                                           :o.yc_image_name
+                                           :o.id]
                                   :from [[:weather-data :w]]
-                                  :join [:observations
+                                  :join [[:observations :o]
                                          [:= :w.obs_id
-                                          :observations.id]]
+                                          :o.id]]
                                   :where where
                                   :order-by [[:w.id :asc]]))
            {:row-fn #(merge %
@@ -295,3 +299,13 @@
       (not (t/within? (t/interval (t/minus (t/now) (t/minutes wait-time))
                                   (t/now))
                       obs-recorded)))))
+
+(defn testbed-image-fetch
+  "Returns the testbed image corresponding to the provided ID."
+  [db-con id]
+  (first (j/query db-con
+                  (sql/format (sql/build :select [:testbed_image]
+                                         :from :observations
+                                         :where [:= :id
+                                                 (Integer/parseInt id)]))
+                  {:row-fn #(:testbed_image %)})))

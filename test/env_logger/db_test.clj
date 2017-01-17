@@ -5,20 +5,7 @@
             [clj-time.jdbc]
             [clojure.test :refer :all]
             [env-logger.config :refer [db-conf]]
-            [env-logger.db :refer [format-datetime
-                                   insert-observation
-                                   get-obs-days
-                                   get-obs-interval
-                                   get-obs-start-and-end
-                                   get-observations
-                                   get-weather-obs-interval
-                                   get-weather-obs-days
-                                   get-weather-observations
-                                   get-user-data
-                                   validate-date
-                                   make-date-dt
-                                   insert-yc-image-name
-                                   weather-query-ok?]]
+            [env-logger.db :refer :all]
             [clojure.java.jdbc :as j])
   (:import org.joda.time.DateTime
            java.util.concurrent.TimeUnit))
@@ -87,7 +74,9 @@
                                                    (str (l/to-local-date-time
                                                          current-dt))
                                                    :temperature 20
-                                                   :cloudiness 2}})))
+                                                   :cloudiness 2}
+                                    :testbed-image (byte-array
+                                                    (map byte "ascii"))})))
     (is (true? (insert-observation test-postgres
                                    {:timestamp
                                     (str (l/to-local-date-time current-dt))
@@ -95,7 +84,8 @@
                                     :inside_temp 20
                                     :beacons [{:rssi -68,
                                                :mac "7C:EC:79:3F:BE:97"}]
-                                    :weather-data {}})))
+                                    :weather-data {}
+                                    :testbed_image nil})))
     (is (false? (insert-observation test-postgres {})))))
 
 (deftest date-formatting
@@ -111,7 +101,10 @@
             :temperature 11.0
             :cloudiness 2
             :o_temperature 20.0
-            :yc_image_name "testimage.jpg"}
+            :yc_image_name "testimage.jpg"
+            :id (first (j/query test-postgres
+                                "SELECT MIN(id) + 1 AS id FROM observations"
+                                {:row-fn #(:id %)}))}
            (first (get-obs-days test-postgres 3))))))
 
 (deftest obs-interval-select
@@ -215,7 +208,10 @@
     (is (= {:time (l/format-local-time current-dt formatter)
             :cloudiness 2
             :o_temperature 20.0
-            :yc_image_name "testimage.jpg"}
+            :yc_image_name "testimage.jpg"
+            :id (first (j/query test-postgres
+                                "SELECT MIN(id) + 1 AS id FROM observations"
+                                {:row-fn #(:id %)}))}
            (first (get-weather-obs-days test-postgres 1))))))
 
 (deftest weather-observation-select
@@ -252,3 +248,19 @@
       ;; Timestamps are recorded in local time
       ;; Dummy test which kind of works, needs to be fixed properly at some time
       (is (true? (weather-query-ok? test-postgres (* hours 50)))))))
+
+(deftest testbed-image-from-db
+  (testing "Test for fetching a Testbed image"
+    (let [not-null-row-id (first (j/query test-postgres
+                                          (str "SELECT id FROM observations "
+                                               "WHERE testbed_image IS "
+                                               "NOT NULL")
+                                          {:row-fn #(:id %)}))
+          null-row-id (first (j/query test-postgres
+                                      (str "SELECT id FROM observations "
+                                           "WHERE testbed_image IS NULL")
+                                      {:row-fn #(:id %)}))]
+      (is (not (nil? (testbed-image-fetch test-postgres
+                                          (str not-null-row-id)))))
+      (is (nil? (testbed-image-fetch test-postgres
+                                     (str null-row-id)))))))

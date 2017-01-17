@@ -20,8 +20,10 @@
             [env-logger.config :refer [get-conf-value]]
             [env-logger.db :as db]
             [env-logger.grabber :refer [calculate-start-time
-                                        get-latest-fmi-data]])
-  (:import (com.yubico.client.v2 YubicoClient))
+                                        get-latest-fmi-data
+                                        get-testbed-image]])
+  (:import com.yubico.client.v2.YubicoClient
+           java.io.ByteArrayInputStream)
   (:gen-class))
 
 (defn otp-value-valid?
@@ -143,15 +145,20 @@
                                                  (t/minutes 4))
                                          (t/plus start-time
                                                  (t/minutes 7)))
-              weather-data (if (and (t/within? start-time-int (t/now))
-                                    (db/weather-query-ok? db/postgres 3))
+              weather-data (when (and (t/within? start-time-int (t/now))
+                                      (db/weather-query-ok? db/postgres 3))
                              (get-latest-fmi-data (get-conf-value :fmi-api-key)
-                                                  (get-conf-value :station-id))
-                             {})
+                                                  (get-conf-value :station-id)))
+              testbed-image (when (t/within? (t/interval start-time
+                                                         (t/plus start-time
+                                                                 (t/minutes 2)))
+                                             (t/now))
+                              (get-testbed-image))
               insert-status (db/insert-observation
                              db/postgres
-                             (assoc (parse-string obs-string true)
-                                    :weather-data weather-data))]
+                             (assoc (assoc (parse-string obs-string true)
+                                           :weather-data weather-data)
+                                    :testbed-image testbed-image))]
           (doseq [channel @channels]
             (async/send! channel
                          (generate-string (db/get-observations db/postgres
@@ -164,6 +171,15 @@
           (generate-string (db/insert-yc-image-name db/postgres
                                                     image-name))
           (generate-string false)))
+  ;; Testbed image fetch
+  (GET "/tb-image/:id" [id]
+       (if (re-find #"[0-9]+"id)
+         (if-let [tb-image (db/testbed-image-fetch db/postgres id)]
+           (-> (new ByteArrayInputStream tb-image)
+               (resp/response)
+               (resp/content-type "image/png"))
+           {:status 404})
+         {:status 404}))
   ;; Serve static files
   (route/files "/")
   (route/not-found "404 Not Found"))

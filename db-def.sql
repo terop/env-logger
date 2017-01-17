@@ -7,7 +7,8 @@ CREATE TABLE observations (
        recorded TIMESTAMP WITH TIME ZONE NOT NULL,
        temperature REAL NOT NULL,
        brightness SMALLINT NOT NULL,
-       yc_image_name VARCHAR(30)
+       yc_image_name VARCHAR(30),
+       testbed_image BYTEA
 );
 
 -- Beacons table
