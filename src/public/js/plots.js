@@ -80,8 +80,14 @@ var plotData = [],
     imageData = [];
 transformData(document.getElementById('plotData').innerHTML, plotData, imageData);
 
-google.charts.load('current', {'packages': ['corechart']});
-google.charts.setOnLoadCallback(drawChart);
+if (plotData.length === 1) {
+    // The first element in the array is the header
+    document.getElementById('noDataError').style.display = 'inline';
+    document.getElementById('plotControls').style.display = 'none';
+} else {
+    google.charts.load('current', {'packages': ['corechart']});
+    google.charts.setOnLoadCallback(drawChart);
+}
 
 function drawChart() {
     var options = {
@@ -207,10 +213,6 @@ function drawChart() {
         };
     };
     wsOperations();
-}
-if (plotData.length === 0) {
-    document.getElementById('noDataError').style.display = 'inline';
-    document.getElementById('plotControls').style.display = 'none';
 }
 
 // Function for validating date field values
