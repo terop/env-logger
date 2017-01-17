@@ -2,7 +2,7 @@
   :description "A simple data logger"
   :url "https://github.com/terop/env-logger"
   :dependencies [[org.clojure/clojure "1.8.0"]
-                 [org.immutant/web "2.1.5"]
+                 [org.immutant/web "2.1.6"]
                  [compojure "1.5.2"]
                  [ring "1.5.1"]
                  [ring/ring-defaults "0.2.2"]
@@ -10,7 +10,7 @@
                  [org.clojure/java.jdbc "0.6.2-alpha2"]
                  [honeysql "0.8.2"]
                  [clj-time "0.13.0"]
-                 [cheshire "5.6.3"]
+                 [cheshire "5.7.0"]
                  [selmer "1.10.5"]
                  [clj-http "2.3.0"]
                  [org.clojure/tools.logging "0.3.1"]
