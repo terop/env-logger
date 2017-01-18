@@ -157,9 +157,7 @@ function drawChart() {
             })
             .catch(function (error) {
                 document.getElementById('testbedImage').src = '';
-                if (error.response.status === 404) {
-                    alert('No testbed image to show');
-                } else {
+                if (error.response.status !== 404) {
                     alert('Error fetching the testbed image');
                 }
             });
