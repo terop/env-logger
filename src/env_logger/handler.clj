@@ -149,10 +149,20 @@
                                       (db/weather-query-ok? db/postgres 3))
                              (get-latest-fmi-data (get-conf-value :fmi-api-key)
                                                   (get-conf-value :station-id)))
-              testbed-image (when (t/within? (t/interval start-time
-                                                         (t/plus start-time
-                                                                 (t/minutes 2)))
-                                             (t/now))
+              testbed-image (when (or (t/within? (t/interval (t/plus start-time
+                                                                     (t/minutes
+                                                                      4))
+                                                             (t/plus start-time
+                                                                     (t/minutes
+                                                                      6)))
+                                                 (t/now))
+                                      (t/within? (t/interval (t/plus start-time
+                                                                     (t/minutes
+                                                                      7))
+                                                             (t/plus start-time
+                                                                     (t/minutes
+                                                                      9)))
+                                                 (t/now)))
                               (get-testbed-image))
               insert-status (db/insert-observation
                              db/postgres
