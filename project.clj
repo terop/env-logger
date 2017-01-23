@@ -1,4 +1,4 @@
-(defproject env-logger "0.2.3"
+(defproject env-logger "0.2.4-SNAPSHOT"
   :description "A simple data logger"
   :url "https://github.com/terop/env-logger"
   :dependencies [[org.clojure/clojure "1.8.0"]
