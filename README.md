@@ -58,4 +58,4 @@ container can be executed with the `java -jar <name>.jar` command.
 
 See the MIT license in the LICENSE file.
 
-Copyright © 2014-2016 Tero Paloheimo
+Copyright © 2014-2017 Tero Paloheimo
