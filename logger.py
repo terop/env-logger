@@ -4,16 +4,27 @@ web service."""
 
 import argparse
 import json
+import signal
+import subprocess
+from collections import OrderedDict
 from datetime import datetime
+from statistics import mean
+from time import sleep
 import pytz
 import requests
+
+# NOTE! The ble_beacon_scan program's rights must be adjusted with the following command:
+# sudo setcap 'cap_net_raw,cap_net_admin+eip' ble_beacon_scan
+# Otherwise beacon scanning will not work as a non-root user!
 
 URL = 'http://192.168.1.10/'
 # Change this value when DB host changes
 # Database insertion URL
 DB_ADD_URL = 'http://localhost:8080/observations'
 # Bluetooth beacon MAC addresses
-BEACON_MACS = ['EA:6E:BA:99:92:ED', '7C:EC:79:3F:BE:97']
+BEACON_MACS = ['EA:6E:BA:99:92:ED']
+# Bluetooth LE scanning time
+SCAN_TIME = 10
 
 
 def main():
@@ -46,20 +57,38 @@ def get_env_data():
 def get_ble_beacons():
     """Returns the MAC addresses and RSSI values of predefined Bluetooth BLE
     beacons in the vicinity in a dict."""
-    # Inspired by
-    # https://github.com/karulis/pybluez/blob/master/examples/ble/beacon_scan.py
+    try:
+        proc = subprocess.Popen(['/home/tpalohei/env-logger/ble_beacon_scan', '-t', str(SCAN_TIME)],
+                                stdout=subprocess.PIPE)
+        sleep(SCAN_TIME + 2)
+        if proc.poll() is None:
+            proc.send_signal(signal.SIGINT)
+    except subprocess.CalledProcessError:
+        return []
+    except subprocess.TimeoutExpired:
+        return []
+    (stdout_data, stderr_data) = proc.communicate()
+    if not stdout_data or stderr_data:
+        return []
+    output = stdout_data.decode('utf-8').strip()
 
-    # Bluetooth BLE requires a recent version of gatttlib and pybluez
-    from bluetooth.ble import BeaconService
+    addresses = {}
+    split_output = output.split('\n')
+    for line in split_output:
+        if len(line) < 15:
+            continue
+        address, rssi = line.split(' ')
+        if address in addresses:
+            addresses[address].append(int(rssi))
+        else:
+            addresses[address] = [int(rssi)]
 
-    service = BeaconService()
-    devices = service.scan(5)
     beacons = []
-
-    # RSSI is data[4]
-    for address, data in list(devices.items()):
+    for address in addresses:
         if address in BEACON_MACS:
-            beacons.append({'mac': address, 'rssi': data[4]})
+            beacons.append(OrderedDict(sorted({'mac': address,
+                                               'rssi': round(mean(addresses[address]))}.
+                                              items())))
     return beacons
 
 
@@ -71,11 +100,12 @@ def send_to_db(data):
 
     data['timestamp'] = datetime.now(
         pytz.timezone('Europe/Helsinki')).isoformat()
+    data = OrderedDict(sorted(data.items()))
     payload = {'obs-string': json.dumps(data)}
     resp = requests.post(DB_ADD_URL, params=payload)
 
     timestamp = datetime.now().isoformat()
-    print('{}: Request data: {}, Response: code {}, text {}'
+    print('{}: Request data: {}, response: code {}, text {}'
           .format(timestamp, payload, resp.status_code, resp.text))
 
 

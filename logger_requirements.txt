@@ -1,4 +1,2 @@
 pytz
 requests
-PyBluez
-gattlib
