@@ -7,8 +7,9 @@
             [clojure.java.jdbc :as j]
             [honeysql.core :as sql]
             [honeysql.helpers :refer :all]
+            [clj-ldap.client :as ldap]
             [clojure.tools.logging :as log]
-            [env-logger.config :refer [get-conf-value db-conf]]))
+            [env-logger.config :refer :all]))
 
 (let [db-host (get (System/getenv)
                    "POSTGRESQL_DB_HOST"
@@ -61,6 +62,20 @@
     (when (pos? (count result))
       {:pw-hash (first result)
        :yubikey-ids key-ids})))
+
+(defn get-password-from-ldap
+  "Fetches a user's password hash from LDAP. Returns nil if the user is
+  not found."
+  [username]
+  (:userPassword (ldap/get (ldap/connect {:host (format "%s:%s"
+                                                        (ldap-conf :host)
+                                                        (ldap-conf :port))
+                                          :bind-dn (ldap-conf :bind-dn)
+                                          :password (ldap-conf :password)})
+                           (format "cn=%s,ou=users,%s"
+                                   username
+                                   (ldap-conf :base-dn))
+                           [:userPassword])))
 
 ;; Observation functions
 (defn insert-observation

@@ -3,10 +3,11 @@
             [clj-time.local :as l]
             [clj-time.format :as f]
             [clj-time.jdbc]
+            [clojure.java.jdbc :as j]
             [clojure.test :refer :all]
+            [clj-ldap.client :as ldap]
             [env-logger.config :refer [db-conf]]
-            [env-logger.db :refer :all]
-            [clojure.java.jdbc :as j])
+            [env-logger.db :refer :all])
   (:import org.joda.time.DateTime
            java.util.concurrent.TimeUnit))
 
@@ -98,7 +99,7 @@
   (testing "Selecting observations from N days"
     (is (= {:brightness 0
             :recorded (l/format-local-time current-dt formatter)
-            :temperature 11.0
+            :temperature 14.0
             :cloudiness 2
             :o_temperature 20.0
             :yc_image_name "testimage.jpg"
@@ -225,11 +226,18 @@
     (is (= (set ["mykeyid"]) (get-yubikey-id test-postgres "test-user")))))
 
 (deftest user-data-query
-  (testing "Querying for a users' password hash and Yubikey ID"
+  (testing "Querying for a user's password hash and Yubikey ID"
     (is (nil? (get-user-data test-postgres "notfound")))
     (is (= {:pw-hash "myhash"
             :yubikey-ids (set ["mykeyid"])}
            (get-user-data test-postgres "test-user")))))
+
+(deftest password-from-ldap-query
+  (testing "Searching for a user's password from LDAP"
+    (with-redefs [ldap/get (fn [con dn fields] nil)]
+      (is (nil? (get-password-from-ldap "notfound"))))
+    (with-redefs [ldap/get (fn [con dn fields] {:userPassword "foobar"})]
+      (is (= "foobar" (get-password-from-ldap "test-user"))))))
 
 (deftest yc-image-name-storage
   (testing "Storing of the latest Yardcam image name"

@@ -37,6 +37,44 @@ The default port is `8080`.
 
 _NOTE_! The two first variables are not defined in `config.edn`.
 
+### LDAP as a authentication back-end
+It is possible to use LDAP as a back-end for authentication. The hashes of users'
+passwords are stored in LDAP from where they are fetched during login. It is
+possible to combine LDAP and Yubikeys: one can store Yubikey ID(s) in database
+and password in LDAP. The username must be same in both places, obviously.
+
+A user's password hash is stored in the `userPassword` attribute. Because the hash
+is compared during login, it must be stored in plain format in LDAP. There will
+be no security issue here because a hash stored in stead of a plaintext password.
+Suitable password hashes can be obtained with the `derive` function from
+`buddy-hashers` library, see the Prerequisites section for more information.
+
+Assuming you have a LDAP tree with a root DN `dc=example,dc=com` you can use
+LDIF below to create a suitable tree for storing users. The crucial part is that
+there must be a OU called `users` where users are stored.
+
+```
+# Create OU for users
+dn: ou=users,dc=example,dc=com
+changetype: add
+objectClass: organizationalUnit
+objectClass: top
+ou: users
+
+# Create a user
+dn: cn=theuser,ou=users,dc=example,dc=com
+changetype: add
+objectClass: organizationalPerson
+objectClass: person
+objectClass: top
+sn: theuser
+cn: theuser
+userPassword: thepasswordhash
+```
+
+LDAP server settings are defined in the `ldap` block of `config.edn`. The actual
+choice of using LDAP is controlled by the `use-ldap` setting in the same file.
+
 ## Running
 ### Locally
 To start a web server for the application, run:

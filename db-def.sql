@@ -32,7 +32,7 @@ CREATE TABLE weather_data (
 CREATE TABLE users (
     user_id SERIAL PRIMARY KEY,
     username VARCHAR(100) NOT NULL UNIQUE,
-    pw_hash VARCHAR(250) NOT NULL,
+    pw_hash VARCHAR(250),
     saved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
  );
 

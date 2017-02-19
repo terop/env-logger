@@ -47,11 +47,15 @@
         password (get-in request [:form-params "password"])
         otp (get-in request [:form-params "otp"])
         session (:session request)
-        user-data (db/get-user-data db/postgres username)]
+        use-ldap? (get-conf-value :use-ldap)
+        user-data (if use-ldap?
+                    (when-let [password (db/get-password-from-ldap username)]
+                      {:pw-hash password})
+                    (db/get-user-data db/postgres username))]
     (if (or (and user-data (h/check password (:pw-hash user-data)))
             (and (seq otp)
                  (otp-value-valid? otp)
-                 (contains? (:yubikey-ids user-data)
+                 (contains? (db/get-yubikey-id db/postgres username)
                             (YubicoClient/getPublicId otp))))
       (let [next-url (get-in request [:query-params :next]
                              (str (get-conf-value :url-path) "/"))

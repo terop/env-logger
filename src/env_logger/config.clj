@@ -3,7 +3,7 @@
   (:require [clojure.edn :as edn]))
 
 (defn load-config
-  "Given a filename, load and return a config file."
+  "Given a filename, load and return a config file"
   [filename]
   (edn/read-string (slurp filename)))
 
@@ -25,3 +25,8 @@
   "Returns the value of the requested database configuration key"
   [k & [use-sample]]
   (get-conf-value :database :k k :use-sample use-sample))
+
+(defn ldap-conf
+  "Returns the value of the requested LDAP configuration key"
+  [k & [use-sample]]
+  (get-conf-value :ldap :k k :use-sample use-sample))

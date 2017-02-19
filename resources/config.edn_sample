@@ -4,9 +4,17 @@
             :name "db_name"
             :username "foobar"
             :password "testpwd1!"}
+ ;; LDAP settings
+ :ldap {:host "localhost"
+        :port "389"
+        :base-dn "dc=example,dc=com"
+        :bind-dn "cn=admin,dc=example,dc=com"
+        :password "b4dpassw0rd"}
+ ;; Use LDAP as authentication backend
+ :use-ldap false
  ;; Temperature correction offset in degree Celsius
  :correction {:enabled true
-              :offset 9}
+              :offset 6}
  ;; Yubico OTP parameters
  :yubico-client-id "12345"
  :yubico-secret-key "xyz"
