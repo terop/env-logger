@@ -219,6 +219,11 @@
     (is (zero? (count (get-weather-observations test-postgres
                                                 :where [:= 1 0]))))))
 
+(deftest yubikey-id-query
+  (testing "Querying for a user's Yubikey ID"
+    (is (nil? (seq (get-yubikey-id test-postgres "notfound"))))
+    (is (= (set ["mykeyid"]) (get-yubikey-id test-postgres "test-user")))))
+
 (deftest user-data-query
   (testing "Querying for a users' password hash and Yubikey ID"
     (is (nil? (get-user-data test-postgres "notfound")))

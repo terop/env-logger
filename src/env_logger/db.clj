@@ -33,9 +33,23 @@
                  :password db-password}))
 
 ;; User data functions
+(defn get-yubikey-id
+  "Returns the Yubikey ID(s) of a user in a set. Returns an empty set
+  if the ID is not found."
+  [db-con username]
+  (set (j/query db-con
+                (sql/format (sql/build :select [:yubikey_id]
+                                       :from [[:users :u]]
+                                       :join [:yubikeys
+                                              [:= :u.user_id
+                                               :yubikeys.user_id]]
+                                       :where [:= :u.username
+                                               username]))
+                {:row-fn #(:yubikey_id %)})))
+
 (defn get-user-data
-  "Returns the password hash and Yubikey ID of the user with the given username.
-  Returns nil if the user is not found."
+  "Returns the password hash and Yubikey ID(s) of the user with the given
+  username. Returns nil if the user is not found."
   [db-con username]
   (let [result (j/query db-con
                         (sql/format (sql/build :select [:pw_hash]
@@ -43,18 +57,10 @@
                                                :where [:= :username
                                                        username]))
                         {:row-fn #(:pw_hash %)})
-        key-ids (j/query db-con
-                         (sql/format (sql/build :select [:yubikey_id]
-                                                :from [[:users :u]]
-                                                :join [:yubikeys
-                                                       [:= :u.user_id
-                                                        :yubikeys.user_id]]
-                                                :where [:= :u.username
-                                                        username]))
-                         {:row-fn #(:yubikey_id %)})]
+        key-ids (get-yubikey-id db-con username)]
     (when (pos? (count result))
       {:pw-hash (first result)
-       :yubikey-ids (set key-ids)})))
+       :yubikey-ids key-ids})))
 
 ;; Observation functions
 (defn insert-observation
