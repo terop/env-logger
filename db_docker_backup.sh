@@ -40,9 +40,10 @@ if [ $? -ne 0 ]; then
 fi
 docker exec -i "$container_name" rm "$backup_file_name"
 
-echo "Compressing file $backup_file_name"
-bzip2 "./$backup_file_name"
-backup_file_name="$backup_file_name.bz2"
+echo "Starting compression of file $backup_file_name at $(date)"
+xz -z "./$backup_file_name"
+backup_file_name="$backup_file_name.xz"
+echo "Compression completed at $(date)"
 
 echo "Uploading file to $target_host:$target_directory"
 scp "./$backup_file_name" "$target_user@$target_host:$target_directory/"
