@@ -105,7 +105,9 @@
             :yc_image_name "testimage.jpg"
             :id (first (j/query test-postgres
                                 "SELECT MIN(id) + 1 AS id FROM observations"
-                                {:row-fn #(:id %)}))}
+                                {:row-fn #(:id %)}))
+            :mac_address "7C:EC:79:3F:BE:97"
+            :rssi -68}
            (first (get-obs-days test-postgres 3))))))
 
 (deftest obs-interval-select

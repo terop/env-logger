@@ -204,10 +204,14 @@
                              [:w.temperature "o_temperature"]
                              :w.cloudiness
                              :o.yc_image_name
-                             :o.id]
+                             :o.id
+                             :b.mac_address
+                             :b.rssi]
                     :from [[:observations :o]]
                     :left-join [[:weather-data :w]
-                                [:= :o.id :w.obs_id]]}
+                                [:= :o.id :w.obs_id]
+                                [:beacons :b]
+                                [:= :o.id :b.obs_id]]}
         where-query (if where
                       (sql/build base-query :where where)
                       base-query)
