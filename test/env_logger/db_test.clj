@@ -236,9 +236,11 @@
 
 (deftest password-from-ldap-query
   (testing "Searching for a user's password from LDAP"
-    (with-redefs [ldap/get (fn [con dn fields] nil)]
+    (with-redefs [ldap/connect (fn [options] nil)
+                  ldap/get (fn [con dn fields] nil)]
       (is (nil? (get-password-from-ldap "notfound"))))
-    (with-redefs [ldap/get (fn [con dn fields] {:userPassword "foobar"})]
+    (with-redefs [ldap/connect (fn [options] nil)
+                  ldap/get (fn [con dn fields] {:userPassword "foobar"})]
       (is (= "foobar" (get-password-from-ldap "test-user"))))))
 
 (deftest yc-image-name-storage
