@@ -6,7 +6,7 @@
             [clojure.java.jdbc :as j]
             [clojure.test :refer :all]
             [clj-ldap.client :as ldap]
-            [env-logger.config :refer [db-conf]]
+            [env-logger.config :refer [db-conf get-conf-value]]
             [env-logger.db :refer :all])
   (:import org.joda.time.DateTime
            java.util.concurrent.TimeUnit))
@@ -84,7 +84,7 @@
                                     :inside_light 0
                                     :inside_temp 20
                                     :beacons [{:rssi -68,
-                                               :mac "7C:EC:79:3F:BE:97"}]
+                                               :mac "7C:EC:79:3F:BE:01"}]
                                     :weather-data {}
                                     :testbed_image nil})))
     (is (false? (insert-observation test-postgres {})))))
@@ -106,8 +106,7 @@
             :id (first (j/query test-postgres
                                 "SELECT MIN(id) + 1 AS id FROM observations"
                                 {:row-fn #(:id %)}))
-            :mac_address "7C:EC:79:3F:BE:97"
-            :rssi -68}
+            :beacons '({:name "7C:EC:79:3F:BE:97", :rssi -68})}
            (first (get-obs-days test-postgres 3))))))
 
 (deftest obs-interval-select
@@ -281,3 +280,27 @@
                                           (str not-null-row-id)))))
       (is (nil? (testbed-image-fetch test-postgres
                                      (str null-row-id)))))))
+
+(deftest beacon-search
+  (testing "Querying beacon(s) for a observation"
+    (let [first-id (first (j/query test-postgres
+                                   (str "SELECT id FROM observations "
+                                        "ORDER BY id ASC LIMIT 1")
+                                   {:row-fn #(:id %)}))]
+      (reset! beacon-count 0)
+      (is (empty? (get-beacons test-postgres
+                               (get-conf-value :beacon-name :use-sample true)
+                               first-id)))
+      (is (zero? @beacon-count))
+      (is (= {:rssi -68
+              :name "Beacon 1"}
+             (first (get-beacons test-postgres
+                                 (get-conf-value :beacon-name :use-sample true)
+                                 (inc first-id)))))
+      (is (= 1 @beacon-count))
+      (is (= {:rssi -68
+              :name "7C:EC:79:3F:BE:01"}
+             (first (get-beacons test-postgres
+                                 (get-conf-value :beacon-name :use-sample true)
+                                 (inc (inc first-id))))))
+      (is (= 1 @beacon-count)))))
