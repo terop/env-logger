@@ -24,6 +24,6 @@
   :aot [env-logger.handler
         clojure.tools.logging.impl]
   :profiles
-  {:dev {:dependencies [[clj-http-fake "1.0.2"]]
+  {:dev {:dependencies [[clj-http-fake "1.0.3"]]
          :resource-paths ["resources"]
          :env {:squiggly {:checkers [:eastwood :kibit :typed]}}}})

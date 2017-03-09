@@ -167,7 +167,10 @@
                                                                      (t/minutes
                                                                       9)))
                                                  (t/now)))
-                              (get-testbed-image))
+                              (let [image (get-testbed-image)]
+                                (when (nil? image)
+                                  (log/error "Testbed image is empty"))
+                                image))
               insert-status (db/insert-observation
                              db/postgres
                              (assoc (assoc (parse-string obs-string true)
