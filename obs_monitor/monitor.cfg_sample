@@ -1,0 +1,19 @@
+[db]
+Host = example.com
+User = theuser
+Password = b4dpassw0rd
+Database = env_logger
+
+[monitor]
+# Waiting threshold in minutes
+Threshold = 5
+EmailSent = False
+
+[email]
+Server = example.com
+Username = theuser
+Password = b4dpassw0rd
+SenderAdress = mon@example.com
+SenderName = Monitor
+# Multiple recipients can be separated by commas, e.g. x,y,z
+Recipient = me@example.com
