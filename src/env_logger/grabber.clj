@@ -79,15 +79,15 @@
   (let [tb-resp (try
                   (client/get "http://testbed.fmi.fi")
                   (catch Exception e
-                    (log/error "Testbed image fetch failed: HTTP status code"
-                               (:status (ex-data e)))))]
+                    (log/error (str "Testbed image fetch failed: message "
+                                    (.getMessage e)))))]
     (if (not= 200 (:status tb-resp))
       (log/error "Testbed page load failed")
       (let [jsoup-doc (Jsoup/parse (:body tb-resp))
             img-src (.attr (.select jsoup-doc "img[src^=data/area]") "src")]
         (if (empty? img-src)
-          (log/error "Testbed image fetch failed: image element"
-                     "src was empty")
+          (log/error (str "Testbed image fetch failed: image element"
+                          " src was empty"))
           (let [resp (client/get (str "http://testbed.fmi.fi/" img-src)
                                  {:as :byte-array})]
             (if (not= 200 (:status resp))
