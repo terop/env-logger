@@ -169,14 +169,20 @@
                                                  (t/now)))
                               (let [image (get-testbed-image)]
                                 (if (or (nil? image)
-                                        (zero? (count image)))
+                                        (< (count image) 5000))
                                   (do
-                                    (log/error (format (str "Testbed image at"
-                                                            " %s is empty")
-                                                       (f/unparse
-                                                        (f/formatters
-                                                         :date-time-no-ms)
-                                                        (t/now))))
+                                    (log/error (format
+                                                (str "Testbed image at"
+                                                     " %s is empty"
+                                                     (if-not (nil? image)
+                                                       (str " (size "
+                                                            (count image)
+                                                            " bytes")
+                                                       ""))
+                                                (f/unparse
+                                                 (f/formatters
+                                                  :date-time-no-ms)
+                                                 (t/now))))
                                     nil)
                                   image)))
               insert-status (db/insert-observation
