@@ -20,7 +20,7 @@ backup_file_name="$database_name"_$(date -Iseconds).sql
 
 echo "Dumping database $database_name to file $backup_file_name"
 
-if [ $(pg_dump -f "$backup_file_name" "$database_name") ]; then
+if [ $(pg_dump -a -f "$backup_file_name" "$database_name") ]; then
     echo "pg_dump failed, deleting file. Exiting."
     rm "$backup_file_name"
     return 1
