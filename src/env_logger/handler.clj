@@ -154,43 +154,11 @@
                                       (db/weather-query-ok? db/postgres 3))
                              (get-latest-fmi-data (get-conf-value :fmi-api-key)
                                                   (get-conf-value :station-id)))
-              testbed-image (when (or (t/within? (t/interval (t/plus start-time
-                                                                     (t/minutes
-                                                                      4))
-                                                             (t/plus start-time
-                                                                     (t/minutes
-                                                                      6)))
-                                                 (t/now))
-                                      (t/within? (t/interval (t/plus start-time
-                                                                     (t/minutes
-                                                                      7))
-                                                             (t/plus start-time
-                                                                     (t/minutes
-                                                                      9)))
-                                                 (t/now)))
-                              (let [image (get-testbed-image)]
-                                (if (or (nil? image)
-                                        (< (count image) 5000))
-                                  (do
-                                    (log/error (format
-                                                (str "Testbed image at"
-                                                     " %s is empty"
-                                                     (if-not (nil? image)
-                                                       (str " (size "
-                                                            (count image)
-                                                            " bytes")
-                                                       ""))
-                                                (f/unparse
-                                                 (f/formatters
-                                                  :date-time-no-ms)
-                                                 (t/now))))
-                                    nil)
-                                  image)))
               insert-status (db/insert-observation
                              db/postgres
                              (assoc (assoc (parse-string obs-string true)
                                            :weather-data weather-data)
-                                    :testbed-image testbed-image))]
+                                    :testbed-image nil))]
           (doseq [channel @channels]
             (async/send! channel
                          (generate-string (db/get-observations db/postgres
