@@ -304,3 +304,10 @@
                                  (get-conf-value :beacon-name :use-sample true)
                                  (inc (inc first-id))))))
       (is (= 1 @beacon-count)))))
+
+(deftest last-observation-id
+  (testing "Query of last observation's ID"
+    (let [last-id (first (j/query test-postgres
+                                  "SELECT MAX(id) AS id FROM observations"
+                                  {:row-fn #(:id %)}))]
+      (is (= last-id (get-last-obs-id test-postgres))))))

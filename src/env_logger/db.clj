@@ -356,3 +356,11 @@
                                          :where [:= :id
                                                  (Integer/parseInt id)]))
                   {:row-fn #(:testbed_image %)})))
+
+(defn get-last-obs-id
+  "Returns the ID of the last observation."
+  [db-con]
+  (first (j/query db-con
+                  (sql/format (sql/build :select [[:%max.id "id"]]
+                                         :from :observations))
+                  {:row-fn #(:id %)})))
