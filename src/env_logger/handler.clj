@@ -17,6 +17,7 @@
             [buddy.auth.middleware :refer [wrap-authentication
                                            wrap-authorization]]
             [clojure.tools.logging :as log]
+            [base64-clj.core :as base64]
             [env-logger.config :refer [get-conf-value]]
             [env-logger.db :as db]
             [env-logger.grabber :refer [calculate-start-time
@@ -142,7 +143,7 @@
   (GET "/logout" request
        (assoc (resp/redirect (str (get-conf-value :url-path) "/"))
               :session {}))
-  ;; Observation adding
+  ;; Observation storing
   (POST "/observations" [obs-string]
         (let [start-time (calculate-start-time)
               start-time-int (t/interval (t/plus start-time
@@ -195,6 +196,14 @@
                          (generate-string (db/get-observations db/postgres
                                                                :limit 1))))
           (generate-string insert-status)))
+  ;; Testbed image storage
+  (POST "/tb-image" request
+        (if (= (db/store-testbed-image db/postgres
+                                       (db/get-last-obs-id db/postgres)
+                                       (base64/decode-bytes
+                                        (.getBytes (:image (:params
+                                                            request))))) 1)
+          "true" "false"))
   ;; Latest yardcam image name storage
   (POST "/image" [image-name]
         (if (re-find #"yc-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+\d{4}\.jpg"

@@ -348,7 +348,7 @@
                       obs-recorded)))))
 
 (defn testbed-image-fetch
-  "Returns the testbed image corresponding to the provided ID."
+  "Returns the Testbed image corresponding to the provided ID."
   [db-con id]
   (first (j/query db-con
                   (sql/format (sql/build :select [:testbed_image]
@@ -364,3 +364,12 @@
                   (sql/format (sql/build :select [[:%max.id "id"]]
                                          :from :observations))
                   {:row-fn #(:id %)})))
+
+(defn store-testbed-image
+  "Saves a Testbed image and associates it with given observation ID. Returns
+  the number of modified rows."
+  [db-con obs-id tb-image]
+  (first (j/update! db-con
+                    :observations
+                    {:testbed_image tb-image}
+                    ["id = ?" obs-id])))

@@ -19,7 +19,8 @@
                  [buddy/buddy-hashers "1.2.0"]
                  [buddy/buddy-auth "1.4.1"]
                  [org.jsoup/jsoup "1.10.2"]
-                 [org.clojars.pntblnk/clj-ldap "0.0.12"]]
+                 [org.clojars.pntblnk/clj-ldap "0.0.12"]
+                 [base64-clj "0.1.1"]]
   :main env-logger.handler
   :aot [env-logger.handler
         clojure.tools.logging.impl]

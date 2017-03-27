@@ -311,3 +311,9 @@
                                   "SELECT MAX(id) AS id FROM observations"
                                   {:row-fn #(:id %)}))]
       (is (= last-id (get-last-obs-id test-postgres))))))
+
+(deftest testbed-image-storage
+  (testing "Storage of a Testbed image"
+    (is (= 1 (store-testbed-image test-postgres
+                                  (get-last-obs-id test-postgres)
+                                  (.getBytes "test string"))))))
