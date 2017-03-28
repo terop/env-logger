@@ -66,11 +66,11 @@ var transformData = function (jsonData, plotData, imageData, idArray) {
             dataPoint = [new Date(dataJson[i]['recorded']),
                          dataJson[i]['temperature'],
                          dataJson[i]['brightness'],
-                         dataJson[i]['o_temperature'],
+                         dataJson[i]['fmi_temperature'],
                          dataJson[i]['cloudiness']];
         } else {
             dataPoint = [new Date(dataJson[i]['time']),
-                         dataJson[i]['o_temperature'],
+                         dataJson[i]['fmi_temperature'],
                          dataJson[i]['cloudiness']];
         }
         plotData.push(dataPoint);
@@ -212,11 +212,11 @@ function drawChart() {
                 dataPoint = [new Date(dataJson[0]['recorded']),
                              dataJson[0]['temperature'],
                              dataJson[0]['brightness'],
-                             dataJson[0]['o_temperature'],
+                             dataJson[0]['fmi_temperature'],
                              dataJson[0]['cloudiness']];
             } else {
                 dataPoint = [new Date(dataJson[0]['recorded']),
-                             dataJson[0]['o_temperature'],
+                             dataJson[0]['fmi_temperature'],
                              dataJson[0]['cloudiness']];
             }
             plotData.push(dataPoint);

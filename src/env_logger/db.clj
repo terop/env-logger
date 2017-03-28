@@ -84,7 +84,7 @@
   "Inserts a observation to the database. Optionally corrects the temperature
   with an offset."
   [db-con observation]
-  (if (= 5 (count observation))
+  (if (= 6 (count observation))
     (j/with-db-transaction [t-con db-con]
       (try
         (let [offset (if (get-conf-value :correction :k :enabled)
@@ -105,7 +105,10 @@
                                                              offset)
                                              :brightness (:inside_light
                                                           observation)
-                                             :yc_image_name image-name})))]
+                                             :yc_image_name image-name
+                                             :outside_temperature
+                                             (:outside_temp
+                                              observation)})))]
           (if (pos? obs-id)
             (if (every? pos?
                         (for [beacon (:beacons observation)]
@@ -221,10 +224,11 @@
   (let [base-query {:select [:o.brightness
                              :o.temperature
                              :o.recorded
-                             [:w.temperature "o_temperature"]
+                             [:w.temperature "fmi_temperature"]
                              :w.cloudiness
                              :o.yc_image_name
-                             :o.id]
+                             :o.id
+                             [:o.outside_temperature "o_temperature"]]
                     :from [[:observations :o]]
                     :left-join [[:weather-data :w]
                                 [:= :o.id :w.obs_id]]}
@@ -268,10 +272,12 @@
   [db-con & {:keys [where]}]
   (j/query db-con
            (sql/format (sql/build :select [:w.time
-                                           [:w.temperature "o_temperature"]
+                                           [:w.temperature "fmi_temperature"]
                                            :w.cloudiness
                                            :o.yc_image_name
-                                           :o.id]
+                                           :o.id
+                                           [:o.outside_temperature
+                                            "o_temperature"]]
                                   :from [[:weather-data :w]]
                                   :join [[:observations :o]
                                          [:= :w.obs_id

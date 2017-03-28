@@ -69,6 +69,7 @@
                                     (str (l/to-local-date-time current-dt))
                                     :inside_light 0
                                     :inside_temp 20
+                                    :outside_temp 5
                                     :beacons [{:rssi -68,
                                                :mac "7C:EC:79:3F:BE:97"}]
                                     :weather-data {:date
@@ -81,6 +82,7 @@
                                     (str (l/to-local-date-time current-dt))
                                     :inside_light 0
                                     :inside_temp 20
+                                    :outside_temp nil
                                     :beacons [{:rssi -68,
                                                :mac "7C:EC:79:3F:BE:01"}]
                                     :weather-data {}})))
@@ -98,7 +100,8 @@
             :recorded (l/format-local-time current-dt formatter)
             :temperature 14.0
             :cloudiness 2
-            :o_temperature 20.0
+            :fmi_temperature 20.0
+            :o_temperature 5.0
             :yc_image_name "testimage.jpg"
             :id (first (j/query test-postgres
                                 "SELECT MIN(id) + 1 AS id FROM observations"
@@ -206,7 +209,8 @@
   (testing "Selecting weather observations from N days"
     (is (= {:time (l/format-local-time current-dt formatter)
             :cloudiness 2
-            :o_temperature 20.0
+            :fmi_temperature 20.0
+            :o_temperature 5.0,
             :yc_image_name "testimage.jpg"
             :id (first (j/query test-postgres
                                 "SELECT MIN(id) + 1 AS id FROM observations"

@@ -8,7 +8,8 @@ CREATE TABLE observations (
        temperature REAL NOT NULL,
        brightness SMALLINT NOT NULL,
        yc_image_name VARCHAR(30),
-       testbed_image BYTEA
+       testbed_image BYTEA,
+       outside_temperature REAL
 );
 
 -- Beacons table

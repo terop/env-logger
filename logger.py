@@ -38,6 +38,7 @@ def main():
     if args.dummy:
         env_data = {'inside_light': 10,
                     'inside_temp': 20,
+                    'outside_temp': 5,
                     'beacons': []}
     else:
         env_data = get_env_data()
