@@ -36,4 +36,6 @@
  ;; URL of the WebSocket endpoint
  :ws-url "wss://localhost:8080"
  ;; Base path to yardcam images
- :image-basepath "https://example.com/images/"}
+ :image-basepath "https://example.com/images/"
+ ;; Authentication code for observation and image storage
+ :auth-code "somebadvalue"}

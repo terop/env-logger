@@ -55,17 +55,19 @@ def main():
     """Module main function."""
     parser = argparse.ArgumentParser(description='FMI Testbed image downloading script.')
     parser.add_argument('backend_url', type=str, help='Backend URL')
+    parser.add_argument('authentication_code', type=str, help='Request authentication code')
     args = parser.parse_args()
 
     timestamp = datetime.now().isoformat()
     image = download_image()
     if image:
-        resp = requests.post(args.backend_url, data={'image': base64.b64encode(image)})
+        resp = requests.post(args.backend_url, data={'image': base64.b64encode(image),
+                                                     'code': args.authentication_code})
         if not resp.ok:
-            print('{}: Failed to send Testbed image: HTTP status {}'
-                  .format(timestamp, resp.status_code), file=sys.stderr)
+            print('{}: Failed to send Testbed image: HTTP status code {} response {}'
+                  .format(timestamp, resp.status_code, resp.text), file=sys.stderr)
             exit(1)
-        print('{}: Image storage status: status code {}, response {}'
+        print('{}: Image storage status: HTTP status code {}, response {}'
               .format(timestamp, resp.status_code, resp.text))
 
 main()

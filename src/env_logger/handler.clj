@@ -37,6 +37,11 @@
       false
       (.isOk (.verify client otp-value)))))
 
+(defn check-auth-code
+  "Checks whether the authentication code is valid."
+  [code-to-check]
+  (= (get-conf-value :auth-code) code-to-check))
+
 (defn login-authenticate
   "Check request username and password against user data in the database.
   On successful authentication, set appropriate user into the session and
@@ -75,6 +80,10 @@
     ;; In other cases, redirect it user to login
     (resp/redirect (format (str (get-conf-value :url-path) "/login?next=%s")
                            (:uri request)))))
+
+(def response-unauthorized {:status 401
+                            :headers {"Content-Type" "text/plain"}
+                            :body "Unauthorized"})
 
 (def auth-backend (session-backend
                    {:unauthorized-handler unauthorized-handler}))
@@ -143,40 +152,50 @@
        (assoc (resp/redirect (str (get-conf-value :url-path) "/"))
               :session {}))
   ;; Observation storing
-  (POST "/observations" [obs-string]
-        (let [start-time (calculate-start-time)
-              start-time-int (t/interval (t/plus start-time
-                                                 (t/minutes 4))
-                                         (t/plus start-time
-                                                 (t/minutes 7)))
-              weather-data (when (and (t/within? start-time-int (t/now))
-                                      (db/weather-query-ok? db/postgres 3))
-                             (get-latest-fmi-data (get-conf-value :fmi-api-key)
-                                                  (get-conf-value :station-id)))
-              insert-status (db/insert-observation
-                             db/postgres
-                             (assoc (parse-string obs-string true)
-                                    :weather-data weather-data))]
-          (doseq [channel @channels]
-            (async/send! channel
-                         (generate-string (db/get-observations db/postgres
-                                                               :limit 1))))
-          (generate-string insert-status)))
+  (POST "/observations" request
+        (if-not (check-auth-code (:code (:params request)))
+          response-unauthorized
+          (let [start-time (calculate-start-time)
+                start-time-int (t/interval (t/plus start-time
+                                                   (t/minutes 4))
+                                           (t/plus start-time
+                                                   (t/minutes 7)))
+                weather-data (when (and (t/within? start-time-int (t/now))
+                                        (db/weather-query-ok? db/postgres 3))
+                               (get-latest-fmi-data
+                                (get-conf-value :fmi-api-key)
+                                (get-conf-value :station-id)))
+                insert-status (db/insert-observation
+                               db/postgres
+                               (assoc (parse-string (:obs-string (:params
+                                                                  request))
+                                                    true)
+                                      :weather-data weather-data))]
+            (doseq [channel @channels]
+              (async/send! channel
+                           (generate-string (db/get-observations db/postgres
+                                                                 :limit 1))))
+            (generate-string insert-status))))
   ;; Testbed image storage
   (POST "/tb-image" request
-        (if (= (db/store-testbed-image db/postgres
-                                       (db/get-last-obs-id db/postgres)
-                                       (base64/decode-bytes
-                                        (.getBytes (:image (:params
-                                                            request))))) 1)
-          "true" "false"))
+        (if-not (check-auth-code (:code (:params request)))
+          response-unauthorized
+          (if (= (db/store-testbed-image db/postgres
+                                         (db/get-last-obs-id db/postgres)
+                                         (base64/decode-bytes
+                                          (.getBytes (:image (:params
+                                                              request))))) 1)
+            "true" "false")))
   ;; Latest yardcam image name storage
-  (POST "/image" [image-name]
-        (if (re-find #"yc-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+\d{4}\.jpg"
-                     image-name)
-          (generate-string (db/insert-yc-image-name db/postgres
-                                                    image-name))
-          (generate-string false)))
+  (POST "/image" request
+        (if-not (check-auth-code (:code (:params request)))
+          response-unauthorized
+          (if (re-find #"yc-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+\d{4}\.jpg"
+                       (:image-name (:params request)))
+            (generate-string (db/insert-yc-image-name db/postgres
+                                                      (:image-name (:params
+                                                                    request))))
+            (generate-string false))))
   ;; Testbed image fetch
   (GET "/tb-image/:id" [id]
        (if (re-find #"[0-9]+"id)
