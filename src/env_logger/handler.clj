@@ -21,8 +21,7 @@
             [env-logger.config :refer [get-conf-value]]
             [env-logger.db :as db]
             [env-logger.grabber :refer [calculate-start-time
-                                        get-latest-fmi-data
-                                        get-testbed-image]])
+                                        get-latest-fmi-data]])
   (:import com.yubico.client.v2.YubicoClient
            java.io.ByteArrayInputStream)
   (:gen-class))
@@ -156,9 +155,8 @@
                                                   (get-conf-value :station-id)))
               insert-status (db/insert-observation
                              db/postgres
-                             (assoc (assoc (parse-string obs-string true)
-                                           :weather-data weather-data)
-                                    :testbed-image nil))]
+                             (assoc (parse-string obs-string true)
+                                    :weather-data weather-data))]
           (doseq [channel @channels]
             (async/send! channel
                          (generate-string (db/get-observations db/postgres

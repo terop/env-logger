@@ -75,9 +75,7 @@
                                                    (str (l/to-local-date-time
                                                          current-dt))
                                                    :temperature 20
-                                                   :cloudiness 2}
-                                    :testbed-image (byte-array
-                                                    (map byte "ascii"))})))
+                                                   :cloudiness 2}})))
     (is (true? (insert-observation test-postgres
                                    {:timestamp
                                     (str (l/to-local-date-time current-dt))
@@ -85,8 +83,7 @@
                                     :inside_temp 20
                                     :beacons [{:rssi -68,
                                                :mac "7C:EC:79:3F:BE:01"}]
-                                    :weather-data {}
-                                    :testbed_image nil})))
+                                    :weather-data {}})))
     (is (false? (insert-observation test-postgres {})))))
 
 (deftest date-formatting
@@ -267,6 +264,13 @@
 
 (deftest testbed-image-from-db
   (testing "Test for fetching a Testbed image"
+    (j/update! test-postgres
+               :observations
+               {:testbed_image (byte-array (map byte "ascii"))}
+               ["id = ?"
+                (first (j/query test-postgres
+                                "SELECT MIN(id) AS id FROM observations"
+                                {:row-fn #(:id %)}))])
     (let [not-null-row-id (first (j/query test-postgres
                                           (str "SELECT id FROM observations "
                                                "WHERE testbed_image IS "

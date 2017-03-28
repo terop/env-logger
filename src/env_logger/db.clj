@@ -84,7 +84,7 @@
   "Inserts a observation to the database. Optionally corrects the temperature
   with an offset."
   [db-con observation]
-  (if (= 6 (count observation))
+  (if (= 5 (count observation))
     (j/with-db-transaction [t-con db-con]
       (try
         (let [offset (if (get-conf-value :correction :k :enabled)
@@ -105,9 +105,7 @@
                                                              offset)
                                              :brightness (:inside_light
                                                           observation)
-                                             :yc_image_name image-name
-                                             :testbed_image (:testbed-image
-                                                             observation)})))]
+                                             :yc_image_name image-name})))]
           (if (pos? obs-id)
             (if (every? pos?
                         (for [beacon (:beacons observation)]

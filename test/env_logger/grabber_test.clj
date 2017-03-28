@@ -124,23 +124,3 @@
                        #"http://data.fmi.fi/fmi-apikey/.+"
                        (fn [req] {:status 400})}
       (is (= {} (get-latest-fmi-data "my-api-key" 87874))))))
-
-(deftest testbed-image-fetching
-  (testing "Tests fetching of Testbed images"
-    (with-fake-routes {"http://testbed.fmi.fi" (fn [req] {:status 400
-                                                          :body ""})}
-      (is (nil? (get-testbed-image))))
-    (with-fake-routes {"http://testbed.fmi.fi"
-                       (fn [req]
-                         {:status 200
-                          :body "<img src=\"something.png\">"})}
-      (is (nil? (get-testbed-image))))
-    (with-fake-routes {"http://testbed.fmi.fi"
-                       (fn [req]
-                         {:status 200
-                          :body "<img src=\"data/area/test.png\">"})
-                       "http://testbed.fmi.fi/data/area/test.png"
-                       (fn [req]
-                         {:status 200
-                          :body (byte-array (map byte "ascii"))})}
-      (is (= 5 (count (get-testbed-image)))))))
