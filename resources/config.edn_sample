@@ -22,9 +22,8 @@
  :fmi-api-key "xyz"
  ;; Weather station ID
  :station-id 1234
- ;; Beacon MACs and names
- :beacon-name {"7C:EC:79:3F:BE:97" "Beacon 1"
-               "EA:6E:BA:99:AC:EA" "Beacon 2"}
+ ;; Beacon MAC and name, currently only one beacon is supported
+ :beacon-name {"7C:EC:79:3F:BE:97" "Beacon 1"}
  ;; Development or production setting (TLS is enforced)
  :in-production true
  ;; Use through proxy (usually needed when reverse proxies are used)

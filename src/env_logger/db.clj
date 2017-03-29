@@ -33,8 +33,6 @@
                  :user db-user
                  :password db-password}))
 
-(defonce beacon-count (atom 0))
-
 ;; User data functions
 (defn get-yubikey-id
   "Returns the Yubikey ID(s) of a user in a set. Returns an empty set
@@ -195,26 +193,6 @@
                                     [:>= ~dt-column ~start-dt]
                                     [:<= ~dt-column ~end-dt]])))))
 
-(defn get-beacons
-  "Returns beacon's name and the RSSI for given observation ID. The name is
-  looked up from the :beacon-name parameter in the configuration file. If the
-  name is not found, the MAC address is returned."
-  [db-con beacon-names observation-id]
-  (let [beacons (j/query db-con
-                         (sql/format (sql/build :select [:mac_address :rssi]
-                                                :from :beacons
-                                                :where [:= :obs_id
-                                                        observation-id]))
-                         {:row-fn (fn [row]
-                                    {:name (get beacon-names
-                                                (:mac_address row)
-                                                (:mac_address row))
-                                     :rssi (:rssi row)})})]
-    (swap! beacon-count (fn [current new-value]
-                          (if (> new-value current)
-                            new-value current)) (count beacons))
-    beacons))
-
 (defn get-observations
   "Fetches observations optionally filtered by a provided SQL WHERE clause.
   Limiting rows is possible by providing row count with the :limit argument."
@@ -228,10 +206,14 @@
                              :w.cloudiness
                              :o.yc_image_name
                              :o.id
-                             [:o.outside_temperature "o_temperature"]]
+                             [:o.outside_temperature "o_temperature"]
+                             :b.mac_address
+                             :b.rssi]
                     :from [[:observations :o]]
                     :left-join [[:weather-data :w]
-                                [:= :o.id :w.obs_id]]}
+                                [:= :o.id :w.obs_id]
+                                [:beacons :b]
+                                [:= :o.id :b.obs_id]]}
         where-query (if where
                       (sql/build base-query :where where)
                       base-query)
@@ -242,13 +224,14 @@
         beacon-names (get-conf-value :beacon-name)]
     (j/query db-con
              (sql/format limit-query)
-             {:row-fn #(merge %
-                              {:recorded (format-datetime
-                                          (:recorded %)
-                                          :date-hour-minute-second)
-                               :beacons (get-beacons db-con
-                                                     beacon-names
-                                                     (:id %))})})))
+             {:row-fn #(dissoc (merge %
+                                      {:recorded (format-datetime
+                                                  (:recorded %)
+                                                  :date-hour-minute-second)
+                                       :name (get beacon-names
+                                                  (:mac_address %)
+                                                  (:mac_address %))})
+                               :mac_address)})))
 
 (defn get-obs-days
   "Fetches the observations from the last N days."

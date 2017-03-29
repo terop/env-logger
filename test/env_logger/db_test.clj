@@ -106,7 +106,8 @@
             :id (first (j/query test-postgres
                                 "SELECT MIN(id) + 1 AS id FROM observations"
                                 {:row-fn #(:id %)}))
-            :beacons '({:name "7C:EC:79:3F:BE:97", :rssi -68})}
+            :name "7C:EC:79:3F:BE:97"
+            :rssi -68}
            (first (get-obs-days test-postgres 3))))))
 
 (deftest obs-interval-select
@@ -288,30 +289,6 @@
                                           (str not-null-row-id)))))
       (is (nil? (testbed-image-fetch test-postgres
                                      (str null-row-id)))))))
-
-(deftest beacon-search
-  (testing "Querying beacon(s) for a observation"
-    (let [first-id (first (j/query test-postgres
-                                   (str "SELECT id FROM observations "
-                                        "ORDER BY id ASC LIMIT 1")
-                                   {:row-fn #(:id %)}))]
-      (reset! beacon-count 0)
-      (is (empty? (get-beacons test-postgres
-                               (get-conf-value :beacon-name :use-sample true)
-                               first-id)))
-      (is (zero? @beacon-count))
-      (is (= {:rssi -68
-              :name "Beacon 1"}
-             (first (get-beacons test-postgres
-                                 (get-conf-value :beacon-name :use-sample true)
-                                 (inc first-id)))))
-      (is (= 1 @beacon-count))
-      (is (= {:rssi -68
-              :name "7C:EC:79:3F:BE:01"}
-             (first (get-beacons test-postgres
-                                 (get-conf-value :beacon-name :use-sample true)
-                                 (inc (inc first-id))))))
-      (is (= 1 @beacon-count)))))
 
 (deftest last-observation-id
   (testing "Query of last observation's ID"
