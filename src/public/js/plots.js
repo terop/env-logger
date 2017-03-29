@@ -10,18 +10,6 @@ var persistCheckboxes = function () {
     localStorage.setItem('checkedBoxes', JSON.stringify(checked));
 };
 
-// Load possible checkbox state
-var restoreCheckboxState = function () {
-    if (localStorage.getItem('checkedBoxes')) {
-        var boxes = JSON.parse(localStorage.getItem('checkedBoxes'));
-        for (box in boxes) {
-            document.getElementById(box).checked = boxes[box];
-        }
-        document.getElementById('showCloudiness').dispatchEvent(new CustomEvent('click', null));
-        localStorage.removeItem('checkedBoxes');
-    }
-};
-
 // Returns the index of selected checkbox
 var getCheckboxIndex = function (checkboxId) {
     var mapping = {};
@@ -169,6 +157,20 @@ for (var i = 0; i < checkboxes.length; i++) {
                                    },
                                    false);
 }
+
+// Load possible checkbox state
+var restoreCheckboxState = function () {
+    if (localStorage.getItem('checkedBoxes')) {
+        var boxes = JSON.parse(localStorage.getItem('checkedBoxes'));
+        for (box in boxes) {
+            document.getElementById(box).checked = boxes[box];
+            if (!boxes[box]) {
+                graph.setVisibility(getCheckboxIndex(box), false);
+            }
+        }
+        localStorage.removeItem('checkedBoxes');
+    }
+};
 restoreCheckboxState();
 
 // Various WebSocket operations
