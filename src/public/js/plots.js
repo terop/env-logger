@@ -30,7 +30,8 @@ var getCheckboxIndex = function (checkboxId) {
                    'showBrightness': 1,
                    'showFMITemperature': 2,
                    'showCloudiness': 3,
-                   'showOutsideTemperature': 4};
+                   'showOutsideTemperature': 4,
+                   'showBeacon': 5};
     } else {
         mapping = {'showFMITemperature': 0,
                    'showCloudiness': 1,
@@ -39,11 +40,15 @@ var getCheckboxIndex = function (checkboxId) {
     return mapping[checkboxId];
 };
 
+var labels = null,
+    plotData = [],
+    yardcamImageNames = [],
+    idArray = [],
+    beaconName = '';
+
 // Parses an observation. Returns Dygraph compatible data point.
 // observation - JSON input
-// yardcamImageNames - yardcam image names
-// idArray - array with Testbed image lookup IDs
-var parseData = function (observation, yardcamImageNames, idArray) {
+var parseData = function (observation) {
     var dataPoint = null;
     if (mode === 'all') {
         dataPoint = [new Date(observation['recorded']),
@@ -51,7 +56,11 @@ var parseData = function (observation, yardcamImageNames, idArray) {
                      observation['brightness'],
                      observation['fmi_temperature'],
                      observation['cloudiness'],
-                     observation['o_temperature']];
+                     observation['o_temperature'],
+                     observation['rssi']];
+        if (beaconName === '' && observation['name']) {
+            beaconName = observation['name'];
+        }
     } else {
         var date = observation['time'] ? observation['time'] : observation['recorded'];
         dataPoint = [new Date(date),
@@ -67,10 +76,7 @@ var parseData = function (observation, yardcamImageNames, idArray) {
 
 // Transform data to Dygraph compatible format. Returns the data series labels.
 // jsonData - JSON input data
-// plotData - output array in Google compatible format
-// yardcamImageNames - array with yardcam image names
-// idArray - array with Testbed image lookup IDs
-var transformData = function (jsonData, plotData, yardcamImageNames, idArray) {
+var transformData = function (jsonData) {
     var observations = JSON.parse(jsonData),
         dataPoint = [],
         labels = null;
@@ -78,23 +84,24 @@ var transformData = function (jsonData, plotData, yardcamImageNames, idArray) {
     // Data labels
     if (mode === 'all') {
         labels = ['Date', 'Temperature', 'Brightness',
-                  'Temperature (FMI)', 'Cloudiness', 'Temperature (outside)'];
+                  'Temperature (FMI)', 'Cloudiness', 'Temperature (outside)',
+                  'Beacon'];
     } else {
         labels = ['Date', 'Temperature (FMI)', 'Cloudiness',
                   'Temperature (outside)'];
     }
     for (var i = 0; i < observations.length; i++) {
-        plotData.push(parseData(observations[i], yardcamImageNames, idArray));
+        plotData.push(parseData(observations[i]));
+    }
+    if (mode === 'all' && beaconName !== '') {
+        var label = 'Beacon "' + beaconName + '" RSSI';
+        labels[labels.length - 1] = label;
+        document.getElementById('showBeaconLabel').innerHTML = label;
     }
     return labels;
 };
-var labels = null,
-    plotData = [],
-    yardcamImageNames = [],
-    idArray = [];
-labels = transformData(document.getElementById('plotData').innerHTML, plotData,
-                       yardcamImageNames, idArray);
 
+labels = transformData(document.getElementById('plotData').innerHTML);
 if (plotData.length === 0) {
     document.getElementById('noDataError').style.display = 'inline';
     document.getElementById('plotControls').style.display = 'none';
@@ -175,7 +182,7 @@ var wsOperations = function () {
     };
 
     socket.onmessage = function(event) {
-        plotData.push(parseData(JSON.parse(event.data)[0], yardcamImageNames, idArray));
+        plotData.push(parseData(JSON.parse(event.data)[0]));
         graph.updateOptions({'file': plotData});
     };
 
