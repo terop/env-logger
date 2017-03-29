@@ -78,7 +78,7 @@ var transformData = function (jsonData, plotData, yardcamImageNames, idArray) {
     // Data labels
     if (mode === 'all') {
         labels = ['Date', 'Temperature', 'Brightness',
-                  'Temperature (outside)', 'Cloudiness'];
+                  'Temperature (FMI)', 'Cloudiness', 'Temperature (outside)'];
     } else {
         labels = ['Date', 'Temperature (FMI)', 'Cloudiness',
                   'Temperature (outside)'];
