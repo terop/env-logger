@@ -22,124 +22,87 @@ var restoreCheckboxState = function () {
     }
 };
 
-// Returns indices of selected checkboxes
-var getCheckboxIndices = function () {
+// Returns the index of selected checkbox
+var getCheckboxIndex = function (checkboxId) {
     var mapping = {};
     if (mode === 'all') {
-        mapping = {'showTemperature': 1,
-                   'showBrightness': 2,
-                   'showOutsideTemperature': 3,
-                   'showCloudiness': 4};
+        mapping = {'showTemperature': 0,
+                   'showBrightness': 1,
+                   'showFMITemperature': 2,
+                   'showCloudiness': 3,
+                   'showOutsideTemperature': 4};
     } else {
-        mapping = {'showOutsideTemperature': 1,
-                   'showCloudiness': 2};
+        mapping = {'showFMITemperature': 0,
+                   'showCloudiness': 1,
+                   'showOutsideTemperature': 2};
     }
-    var shownColumns = [0];
-
-    var keys = Object.keys(mapping);
-    for (var i = 0; i < keys.length; i++) {
-        if (document.getElementById(keys[i]).checked) {
-            shownColumns.push(mapping[keys[i]]);
-        }
-    }
-    return shownColumns;
+    return mapping[checkboxId];
 };
 
-// Transform data to Google Chart compatible format
+// Parses an observation. Returns Dygraph compatible data point.
+// observation - JSON input
+// yardcamImageNames - yardcam image names
+// idArray - array with Testbed image lookup IDs
+var parseData = function (observation, yardcamImageNames, idArray) {
+    var dataPoint = null;
+    if (mode === 'all') {
+        dataPoint = [new Date(observation['recorded']),
+                     observation['temperature'],
+                     observation['brightness'],
+                     observation['fmi_temperature'],
+                     observation['cloudiness'],
+                     observation['o_temperature']];
+    } else {
+        var date = observation['time'] ? observation['time'] : observation['recorded'];
+        dataPoint = [new Date(date),
+                     observation['fmi_temperature'],
+                     observation['cloudiness'],
+                     observation['o_temperature']];
+    }
+    yardcamImageNames.push(observation['yc_image_name']);
+    idArray.push(observation['id']);
+
+    return dataPoint;
+};
+
+// Transform data to Dygraph compatible format. Returns the data series labels.
 // jsonData - JSON input data
 // plotData - output array in Google compatible format
-// imageData - array with yardcam image names
+// yardcamImageNames - array with yardcam image names
 // idArray - array with Testbed image lookup IDs
-var transformData = function (jsonData, plotData, imageData, idArray) {
-    var dataJson = JSON.parse(jsonData),
-        dataPoint = [];
+var transformData = function (jsonData, plotData, yardcamImageNames, idArray) {
+    var observations = JSON.parse(jsonData),
+        dataPoint = [],
+        labels = null;
 
     // Data labels
     if (mode === 'all') {
-        plotData.push(['Date', 'Temperature [\xB0C]', 'Brightness',
-                       'Temperature (outside) [\xB0C]', 'Cloudiness']);
+        labels = ['Date', 'Temperature', 'Brightness',
+                  'Temperature (outside)', 'Cloudiness'];
     } else {
-        plotData.push(['Date', 'Temperature (outside) [\xB0C]', 'Cloudiness']);
+        labels = ['Date', 'Temperature (FMI)', 'Cloudiness',
+                  'Temperature (outside)'];
     }
-    for (var i = 0; i < dataJson.length; i++) {
-        if (mode === 'all') {
-            dataPoint = [new Date(dataJson[i]['recorded']),
-                         dataJson[i]['temperature'],
-                         dataJson[i]['brightness'],
-                         dataJson[i]['fmi_temperature'],
-                         dataJson[i]['cloudiness']];
-        } else {
-            dataPoint = [new Date(dataJson[i]['time']),
-                         dataJson[i]['fmi_temperature'],
-                         dataJson[i]['cloudiness']];
-        }
-        plotData.push(dataPoint);
-        imageData.push(dataJson[i]['yc_image_name']);
-        idArray.push(dataJson[i]['id']);
+    for (var i = 0; i < observations.length; i++) {
+        plotData.push(parseData(observations[i], yardcamImageNames, idArray));
     }
+    return labels;
 };
-var plotData = [],
-    imageData = [],
+var labels = null,
+    plotData = [],
+    yardcamImageNames = [],
     idArray = [];
-transformData(document.getElementById('plotData').innerHTML, plotData,
-              imageData, idArray);
+labels = transformData(document.getElementById('plotData').innerHTML, plotData,
+                       yardcamImageNames, idArray);
 
-if (plotData.length === 1) {
-    // The first element in the array is the header
+if (plotData.length === 0) {
     document.getElementById('noDataError').style.display = 'inline';
     document.getElementById('plotControls').style.display = 'none';
 } else {
-    google.charts.load('current', {'packages': ['corechart']});
-    google.charts.setOnLoadCallback(drawChart);
-}
-
-function drawChart() {
-    var options = {
-        width: 900,
-        height: 450,
-        chartArea: {
-            width: 800
-        },
-        hAxis: {
-            gridlines: {
-                count: -1,
-                units: {
-                    days: {format: ['d.M.yyyy']},
-                    hours: {format: ['HH:mm']}
-                }
-            },
-            minorGridlines: {
-                units: {
-                    hours: {format: ['hh:mm']},
-                    minutes: {format: ['HH:mm']}
-                }
-            }
-        },
-        title: 'Observations',
-        legend: { position: 'bottom' },
-        explorer: {
-            actions: ['dragToZoom', 'rightClickToReset'],
-            keepInBounds: true,
-            axis: 'horizontal'
-        }
-    },
-    dateFormatter = new google.visualization.DateFormat({
-        pattern: 'd.M.yyyy HH:mm:ss'
-    }),
-    data = google.visualization.arrayToDataTable(
-        plotData,
-        false);
-
-    dateFormatter.format(data, 0);
-    var chart = new google.visualization.LineChart(document.getElementById('chartDiv'));
-    chart.draw(data, options);
-
-    google.visualization.events.addListener(chart, 'select', selectHandler);
-
-    function selectHandler(e) {
-        var selectedItem = chart.getSelection()[0],
-            imageName = imageData[selectedItem.row],
-            tbImageId = idArray[selectedItem.row];
+    // Function for showing the yardcam and testbed images for an index
+    function showImages(dataIndex) {
+        var imageName = yardcamImageNames[dataIndex],
+            tbImageId = idArray[dataIndex];
         if (imageName) {
             var pattern = /yc-([\d-]+)T.+/,
                 result = pattern.exec(imageName);
@@ -163,73 +126,65 @@ function drawChart() {
             });
     }
 
-    // Hides or shows the selected data series
-    var hideOrShowSeries = function (event) {
-        columnIndices = getCheckboxIndices();
-
-        if (columnIndices.length == 1) {
-            alert('At least one data series must be selected');
-            return;
-        }
-
-        view = new google.visualization.DataView(data);
-        view.setColumns(columnIndices);
-        chart.draw(view, options);
-    };
-
-    var checkboxes = document.getElementsByClassName('selectBox');
-    for (var i = 0; i < checkboxes.length; i++) {
-        checkboxes[i].addEventListener('click', hideOrShowSeries);
-    }
-    restoreCheckboxState();
-
-    // Redraw chart after new data has been added
-    var redrawChart = function () {
-        var data = google.visualization.arrayToDataTable(
-            plotData,
-            false);
-        dateFormatter.format(data, 0);
-
-        view = new google.visualization.DataView(data);
-        view.setColumns(getCheckboxIndices());
-        chart.draw(view, options);
-    };
-
-    // Various WebSocket operations
-    var wsOperations = function () {
-        socket.onerror = function(error) {
-            console.log('WebSocket error: ' + error);
-        };
-
-        socket.onopen = function(event) {
-            console.log('WebSocket connected to: ' + event.currentTarget.url);
-        };
-
-        socket.onmessage = function(event) {
-            var dataJson = JSON.parse(event.data),
-            dataPoint = null;
-            if (mode === 'all') {
-                dataPoint = [new Date(dataJson[0]['recorded']),
-                             dataJson[0]['temperature'],
-                             dataJson[0]['brightness'],
-                             dataJson[0]['fmi_temperature'],
-                             dataJson[0]['cloudiness']];
-            } else {
-                dataPoint = [new Date(dataJson[0]['recorded']),
-                             dataJson[0]['fmi_temperature'],
-                             dataJson[0]['cloudiness']];
-            }
-            plotData.push(dataPoint);
-            redrawChart();
-        };
-
-        socket.onclose = function(event) {
-            console.log('WebSocket disconnected: ' + event.code + ', reason ' + event.reason);
-            socket = undefined;
-        };
-    };
-    wsOperations();
+    var graph = new Dygraph(document.getElementById('graphDiv'),
+                            plotData,
+                            {
+                                labels: labels,
+                                labelsDiv: 'labelDiv',
+                                labelsSeparateLines: true,
+                                title: 'Observations',
+                                height: 450,
+                                width: 900,
+                                axes: {
+                                    x: {
+                                        valueFormatter: function (ms) {
+                                            var date = new Date(ms);
+                                            return date.getDate() + '.' + (date.getMonth() + 1) + '.' +
+                                                date.getFullYear() + ' ' + date.getHours() + ':' +
+                                                (date.getMinutes() < 10 ?
+                                                 ('0' + date.getMinutes()) : date.getMinutes())
+                                                + ':' + date.getSeconds();
+                                        }
+                                    }
+                                },
+                                pointClickCallback: function (e, point) {
+                                    showImages(point.idx);
+                                }
+                            });
 }
+
+var checkboxes = document.getElementsByClassName('selectBox');
+for (var i = 0; i < checkboxes.length; i++) {
+    checkboxes[i].addEventListener('click',
+                                   function (event) {
+                                       graph.setVisibility(getCheckboxIndex(event.currentTarget.id),
+                                                           event.currentTarget.checked);
+                                   },
+                                   false);
+}
+restoreCheckboxState();
+
+// Various WebSocket operations
+var wsOperations = function () {
+    socket.onerror = function(error) {
+        console.log('WebSocket error: ' + error);
+    };
+
+    socket.onopen = function(event) {
+        console.log('WebSocket connected to: ' + event.currentTarget.url);
+    };
+
+    socket.onmessage = function(event) {
+        plotData.push(parseData(JSON.parse(event.data)[0], yardcamImageNames, idArray));
+        graph.updateOptions({'file': plotData});
+    };
+
+    socket.onclose = function(event) {
+        console.log('WebSocket disconnected: ' + event.code + ', reason ' + event.reason);
+        socket = undefined;
+    };
+};
+wsOperations();
 
 // Function for validating date field values
 var validateDates = function (event) {
@@ -260,5 +215,5 @@ var imageButtonHandler = function (event) {
 };
 
 document.getElementById('showImages').addEventListener('click',
-                                                      imageButtonHandler,
-                                                      false);
+                                                       imageButtonHandler,
+                                                       false);

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
     <head>
         <title>Environment log viewer - plots</title>
         <meta charset="utf-8" />
@@ -8,6 +8,7 @@
               integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u"
               crossorigin="anonymous">
         <link rel="stylesheet" href="css/bootstrap-datepicker.min.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dygraph/2.0.0/dygraph.min.css" />
         <style>
             input[type="text"] {
                 width: 100px;
@@ -33,6 +34,11 @@
                 max-width: 700px;
                 max-height: 700px;
             }
+            div.dygraph-title {
+                font-weight: bold;
+                font-size: 0.85em;
+                margin-left: 45px;
+            }
         </style>
     </head>
     <body>
@@ -46,9 +52,10 @@
         <h2 class="leftMargin" style="margin-bottom: 15px;">Environment observations</h2>
 
         <div>
-            <div id="chartDiv" style="float: left;">
+            <div id="graphDiv" style="float: left;">
                 <span id="noDataError" class="leftMargin">No observations found</span>
             </div>
+            <div id="labelDiv" style="float: left;"></div>
         </div>
         <span id="plotData" style="display: none;">{{ data }}</span>
 
@@ -60,10 +67,12 @@
                     <input type="checkbox" class="selectBox" id="showBrightness" checked="checked">
                     <label for="showBrightness">Brightness</label>
                 {% endif %}
-                <input type="checkbox" class="selectBox" id="showOutsideTemperature" checked="checked">
-                <label for="showOutsideTemperature">Temperature (outside)</label>
+                <input type="checkbox" class="selectBox" id="showFMITemperature" checked="checked">
+                <label for="showFMITemperature">Temperature (FMI)</label>
                 <input type="checkbox" class="selectBox" id="showCloudiness" checked="checked">
                 <label for="showCloudiness">Cloudiness</label>
+                <input type="checkbox" class="selectBox" id="showOutsideTemperature" checked="checked">
+                <label for="showOutsideTemperature">Temperature (outside)</label>
             </div>
         </div>
         <div class="leftMargin clearBoth">
@@ -93,7 +102,7 @@
                 crossorigin="anonymous"></script>
         <script src="js/bootstrap-datepicker.min.js"></script>
         <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
-        <script src="https://www.gstatic.com/charts/loader.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/dygraph/2.0.0/dygraph.min.js"></script>
         <script>
             var mode = '{% if logged-in? %}all{% else %}weather{% endif %}',
                 imageBasepath = '{{ image-base }}',
