@@ -23,12 +23,10 @@ def get_latest_obs_time(config):
             return cursor.fetchone()[0]
 
 
-def send_email(config, difference):
-    """Sends the notification email to recipients defined in the configuration."""
-    msg = MIMEText('No observations have been received in env-logger backend for '
-                   '{} minutes. Consider checking potential problems.'.
-                   format(difference))
-    msg['Subject'] = 'env-logger inactivity warning'
+def send_email(config, subject, message):
+    """Sends an email with provided subject and message to specified recipients."""
+    msg = MIMEText(message)
+    msg['Subject'] = subject
     msg['From'] = config['Sender']
     msg['To'] = config['Recipient']
 
@@ -40,8 +38,8 @@ def send_email(config, difference):
         server.send_message(msg)
         server.quit()
     except smtplib.SMTPException as smtp_e:
-        print('Failed to send email about inactivity: {}'
-              .format(str(smtp_e)), file=sys.stderr)
+        print('Failed to send email with subject "{}": {}'
+              .format(subject, str(smtp_e)), file=sys.stderr)
         return False
 
     return True
@@ -54,13 +52,21 @@ def check_obs_time(config, last_obs_time):
     diff_minutes = int(time_diff.seconds / 60)
     if diff_minutes > int(config['monitor']['Threshold']):
         if config['monitor']['EmailSent'] == 'False':
-            if send_email(config['email'], diff_minutes):
+            if send_email(config['email'],
+                          'env-logger inactivity warning',
+                          'No observations have been received in env-logger backend for '
+                          '{} minutes. Consider checking possible problems.'
+                          .format(diff_minutes)):
                 return 'True'
             else:
                 return 'False'
         else:
             return 'True'
     else:
+        if config['monitor']['EmailSent'] == 'True':
+            send_email(config['email'], 'env-logger back online',
+                       'env-logger is back online at {}.'
+                       .format(datetime.now().isoformat()))
         return 'False'
 
 
