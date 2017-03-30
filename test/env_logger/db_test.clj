@@ -174,10 +174,10 @@
 (deftest date-to-datetime
   (testing "Testing date to datetime conversion"
     (let [formatter (f/formatter "d.M.y H:m:s")]
-      (is (= (f/parse formatter "1.12.2016 00:00:00")
-             (make-date-dt "1.12.2016" "start")))
-      (is (= (f/parse formatter "1.12.2016 23:59:59")
-             (make-date-dt "1.12.2016" "end"))))))
+      (is (= (l/to-local-date-time (f/parse formatter "1.12.2016 00:00:00"))
+             (make-local-dt "1.12.2016" "start")))
+      (is (= (l/to-local-date-time (f/parse formatter "1.12.2016 23:59:59"))
+             (make-local-dt "1.12.2016" "end"))))))
 
 (deftest weather-obs-interval-select
   (testing "Select weather observations between one or two dates"

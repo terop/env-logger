@@ -164,13 +164,14 @@
     (not (nil? (and date
                     (re-find #"\d{1,2}\.\d{1,2}\.\d{4}" date))))))
 
-(defn make-date-dt
-  "Formats a date to be SQL datetime compatible. Mode is either start or end."
+(defn make-local-dt
+  "Creates SQL datetime in local time from the provided date string.
+  Mode is either start or end."
   [date mode]
-  (f/parse (f/formatter "d.M.y H:m:s")
-           (format "%s %s" date (if (= mode "start")
-                                  "00:00:00"
-                                  "23:59:59"))))
+  (l/to-local-date-time (f/parse (f/formatter "d.M.y H:m:s")
+                                 (format "%s %s" date (if (= mode "start")
+                                                        "00:00:00"
+                                                        "23:59:59")))))
 
 (defmacro get-by-interval
   "Fetches observations in an interval using the provided function."
@@ -182,11 +183,11 @@
        ;; Either date is invalid
        ()
        (let [~start-dt (if ~start-date
-                         (make-date-dt ~start-date "start")
+                         (make-local-dt ~start-date "start")
                          ;; Hack to avoid SQL WHERE hacks
                          (t/date-time 2010 1 1))
              ~end-dt (if ~end-date
-                       (make-date-dt ~end-date "end")
+                       (make-local-dt ~end-date "end")
                        ;; Hack to avoid SQL WHERE hacks
                        (t/now))]
          (~fetch-fn ~db-con :where [:and
