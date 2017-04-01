@@ -1,0 +1,13 @@
+language: clojure
+jdk:
+  - oraclejdk8
+env:
+  - POSTGRESQL_DB_HOST=localhost POSTGRESQL_DB_PORT=5432 POSTGRESQL_DB_USERNAME=postgres POSTGRESQL_DB_PASSWORD=
+services:
+  - postgresql
+addons:
+  postgresql: "9.4"
+before_script:
+  - psql -U postgres -c 'CREATE DATABASE env_logger_test;'
+  - psql -U postgres env_logger_test < db-def.sql
+  - cp resources/config.edn_sample resources/config.edn
