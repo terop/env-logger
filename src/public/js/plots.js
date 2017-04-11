@@ -94,8 +94,41 @@ if (plotData.length === 0) {
     document.getElementById('noDataError').style.display = 'inline';
     document.getElementById('plotControls').style.display = 'none';
 } else {
+    // Show last observation with FMI data for quick viewing
+    var showLastObservation = function () {
+        var lastObservation = plotData[plotData.length - 1],
+            observationText = '';
+        if (mode === 'all' && !lastObservation[3]) {
+            // Get last observation with FMI data
+            for (var i = plotData.length - 1; i > 0; i--) {
+                lastObservation = plotData[i];
+                if (lastObservation[3]) {
+                    break;
+                }
+            }
+        }
+
+        for (i = 0; i < lastObservation.length; i++) {
+            observationText += labels[i] + ': ';
+            if (i === 0) {
+                // Reformat date
+                observationText += lastObservation[i].getDate() + '.' + (lastObservation[i].getMonth() + 1)
+                    + '.' + lastObservation[i].getFullYear() + ' ' + lastObservation[i].getHours() + ':'
+                    + lastObservation[i].getMinutes() + ':' + lastObservation[i].getSeconds();
+            } else {
+                observationText += lastObservation[i];
+            }
+            observationText += ', ';
+        }
+        observationText = observationText.slice(0, -2);
+
+        document.getElementById('lastObservation').innerText = observationText;
+        document.getElementById('lastObservation').classList.remove('displayNone');
+    };
+    showLastObservation();
+
     // Function for showing the yardcam and testbed images for an index
-    function showImages(dataIndex) {
+    var showImages = function (dataIndex) {
         var imageName = yardcamImageNames[dataIndex],
             tbImageId = idArray[dataIndex];
         if (imageName) {
@@ -119,7 +152,7 @@ if (plotData.length === 0) {
                     alert('Error fetching the testbed image');
                 }
             });
-    }
+    };
 
     var graph = new Dygraph(document.getElementById('graphDiv'),
                             plotData,

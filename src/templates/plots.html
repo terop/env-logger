@@ -19,6 +19,9 @@
             .clearBoth {
                 clear: both;
             }
+            .displayNone {
+                display: none;
+            }
             #noDataError {
                 color: red;
                 font-size: 1.2em;
@@ -48,6 +51,7 @@
             {% endif %}
         </div>
         <h2 class="leftMargin" style="margin-bottom: 15px;">Environment observations</h2>
+        <div class="leftMargin displayNone" id="lastObservation" style="margin-bottom: 15px;"></div>
 
         <div>
             <div id="graphDiv" style="float: left;">
@@ -55,7 +59,7 @@
             </div>
             <div id="labelDiv" style="float: left;"></div>
         </div>
-        <span id="plotData" style="display: none;">{{ data }}</span>
+        <span id="plotData" class="displayNone">{{ data }}</span>
 
         <div id="plotControls">
             <div class="leftMargin clearBoth checkboxes">
