@@ -62,31 +62,51 @@
 ;; Fixture run at the start and end of tests
 (use-fixtures :once clean-test-database)
 
+(defn iso8601-dt-str
+  "Returns the the current datetime in UTC ISO 8601 formatted."
+  []
+  (str (l/to-local-date-time current-dt)))
+
 (deftest insert-observations
-  (testing "Observation insertion"
-    (is (true? (insert-observation test-postgres
-                                   {:timestamp
-                                    (str (l/to-local-date-time current-dt))
-                                    :inside_light 0
-                                    :inside_temp 20
-                                    :outside_temp 5
-                                    :beacons [{:rssi -68,
-                                               :mac "7C:EC:79:3F:BE:97"}]
-                                    :weather-data {:date
-                                                   (str (l/to-local-date-time
-                                                         current-dt))
-                                                   :temperature 20
-                                                   :cloudiness 2}})))
-    (is (true? (insert-observation test-postgres
-                                   {:timestamp
-                                    (str (l/to-local-date-time current-dt))
-                                    :inside_light 0
-                                    :inside_temp 20
-                                    :outside_temp nil
-                                    :beacons [{:rssi -68,
-                                               :mac "7C:EC:79:3F:BE:01"}]
-                                    :weather-data {}})))
-    (is (false? (insert-observation test-postgres {})))))
+  (testing "Full observation insert"
+    (let [observation {:timestamp (iso8601-dt-str)
+                       :inside_light 0
+                       :inside_temp 20
+                       :beacons [{:rssi -68,
+                                  :mac "7C:EC:79:3F:BE:97"}]}
+          weather-data {:date (iso8601-dt-str)
+                        :temperature 20
+                        :cloudiness 2}]
+      (is (true? (insert-observation test-postgres
+                                     (merge observation
+                                            {:outside_temp 5
+                                             :weather-data weather-data}))))
+      (is (true? (insert-observation test-postgres
+                                     (merge observation
+                                            {:outside_temp nil
+                                             :weather-data {}}))))
+      (is (false? (insert-observation test-postgres {})))
+      (with-redefs [insert-wd (fn [_ _ _] -1)]
+        (let [obs-count (first (j/query test-postgres
+                                        "SELECT COUNT(id) FROM observations"))]
+          (is (false? (insert-observation test-postgres
+                                          (merge observation
+                                                 {:outside_temp 5
+                                                  :weather-data
+                                                  weather-data}))))
+          (is (= obs-count
+                 (first (j/query test-postgres
+                                 "SELECT COUNT(id) FROM observations"))))))
+      (with-redefs [insert-beacons (fn [_ _ _] '(-1))]
+        (is (false? (insert-observation test-postgres
+                                        (merge observation
+                                               {:outside_temp nil
+                                                :weather-data {}})))))
+      (with-redefs [insert-plain-observation
+                    (fn [_ _ _ _] (throw
+                                   (org.postgresql.util.PSQLException.
+                                    "exception test")))]
+        (is (false? (insert-observation test-postgres observation)))))))
 
 (deftest date-formatting
   (testing "Date formatting function"
@@ -104,17 +124,17 @@
             :o_temperature 5.0
             :yc_image_name "testimage.jpg"
             :id (first (j/query test-postgres
-                                "SELECT MIN(id) + 1 AS id FROM observations"
+                                "SELECT MIN(id) + 2 AS id FROM observations"
                                 {:row-fn #(:id %)}))
             :name "7C:EC:79:3F:BE:97"
             :rssi -68}
-           (first (get-obs-days test-postgres 3))))))
+           (nth (get-obs-days test-postgres 3) 1)))))
 
 (deftest obs-interval-select
   (testing "Select observations between one or two dates"
     (let [formatter (f/formatter "d.M.y")]
-      (is (= 3 (count (get-obs-interval test-postgres nil nil))))
-      (is (= 2 (count (get-obs-interval
+      (is (= 4 (count (get-obs-interval test-postgres nil nil))))
+      (is (= 3 (count (get-obs-interval
                        test-postgres
                        (f/unparse formatter
                                   (t/minus current-dt
@@ -126,7 +146,7 @@
                        (f/unparse formatter
                                   (t/minus current-dt
                                            (t/days 2)))))))
-      (is (= 3 (count (get-obs-interval
+      (is (= 4 (count (get-obs-interval
                        test-postgres
                        (f/unparse formatter
                                   (t/minus current-dt
@@ -161,7 +181,11 @@
                                            (t/days 4)))
              (:start (get-obs-start-and-end test-postgres))))
       (is (= (f/unparse formatter current-dt)
-             (:end (get-obs-start-and-end test-postgres)))))))
+             (:end (get-obs-start-and-end test-postgres))))
+      (with-redefs [j/query (fn [db query] '())]
+        (is (= {:start ""
+                :end ""}
+               (get-obs-start-and-end test-postgres)))))))
 
 (deftest date-validation
   (testing "Tests for date validation"
@@ -214,7 +238,7 @@
             :o_temperature 5.0,
             :yc_image_name "testimage.jpg"
             :id (first (j/query test-postgres
-                                "SELECT MIN(id) + 1 AS id FROM observations"
+                                "SELECT MIN(id) + 2 AS id FROM observations"
                                 {:row-fn #(:id %)}))}
            (first (get-weather-obs-days test-postgres 1))))))
 
@@ -258,6 +282,15 @@
     (is (= 1 (count (j/query test-postgres
                              "SELECT image_id FROM yardcam_images"))))))
 
+(deftest yc-image-name-query
+  (testing "Querying of the yardcam image name"
+    (j/execute! test-postgres "DELETE FROM yardcam_images")
+    (is (nil? (get-yc-image test-postgres)))
+    (j/insert! test-postgres
+               :yardcam_images
+               {:image_name "testimage.jpg"})
+    (is (= "testimage.jpg" (get-yc-image test-postgres)))))
+
 (deftest weather-query-ok
   (testing "Test when it is OK to query for FMI weather observations"
     (let [offset-millisec (.getOffset (t/default-time-zone)
@@ -265,7 +298,9 @@
           hours (.toHours (TimeUnit/MILLISECONDS) offset-millisec)]
       ;; Timestamps are recorded in local time
       ;; Dummy test which kind of works, needs to be fixed properly at some time
-      (is (true? (weather-query-ok? test-postgres (* hours 50)))))))
+      (is (true? (weather-query-ok? test-postgres (* hours 50))))
+      (with-redefs [j/query (fn [db query] '())]
+        (is (true? (weather-query-ok? test-postgres (* hours 50))))))))
 
 (deftest testbed-image-from-db
   (testing "Test for fetching a Testbed image"
@@ -302,3 +337,37 @@
     (is (= 1 (store-testbed-image test-postgres
                                   (get-last-obs-id test-postgres)
                                   (.getBytes "test string"))))))
+
+(deftest wd-insert
+  (testing "Insert of FMI weather data"
+    (let [obs-id (first (j/query test-postgres
+                                 "SELECT MIN(id) AS id FROM observations"
+                                 {:row-fn #(:id %)}))
+          weather-data {:date (iso8601-dt-str)
+                        :temperature 20
+                        :cloudiness 2}]
+      (is (pos? (insert-wd test-postgres
+                           obs-id
+                           weather-data))))))
+
+(deftest beacon-insert
+  (testing "Insert of beacon(s)"
+    (let [obs-id (first (j/query test-postgres
+                                 "SELECT MIN(id) AS id FROM observations"
+                                 {:row-fn #(:id %)}))
+          beacon {:rssi -68,
+                  :mac "7C:EC:79:3F:BE:97"}]
+      (is (pos? (first (insert-beacons test-postgres
+                                       obs-id
+                                       {:beacons [beacon]})))))))
+
+(deftest plain-observation-insert
+  (testing "Insert of a row into the observations table"
+    (is (pos? (insert-plain-observation test-postgres
+                                        {:timestamp (str (l/to-local-date-time
+                                                          current-dt))
+                                         :inside_light 0
+                                         :inside_temp 20
+                                         :outside_temp 5}
+                                        6
+                                        "testimage.jpg")))))

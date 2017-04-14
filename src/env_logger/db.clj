@@ -78,6 +78,49 @@
                            [:userPassword])))
 
 ;; Observation functions
+(defn get-yc-image
+  "Returns the name of the latest yardcam image."
+  [db-con]
+  (:image_name (first (j/query db-con
+                               (sql/format
+                                (sql/build
+                                 :select [:image_name]
+                                 :from [:yardcam_images]))))))
+
+(defn insert-plain-observation
+  "Insert a row into observations table."
+  [db-con observation offset image-name]
+  (:id (first (j/insert! db-con
+                         :observations
+                         {:recorded (f/parse
+                                     (:timestamp observation))
+                          :temperature (- (:inside_temp
+                                           observation) offset)
+                          :brightness (:inside_light observation)
+                          :yc_image_name image-name
+                          :outside_temperature (:outside_temp observation)}))))
+
+(defn insert-beacons
+  "Insert one or more beacons into the beacons table."
+  [db-con obs-id observation]
+  (for [beacon (:beacons observation)]
+    (:id (first (j/insert! db-con
+                           :beacons
+                           {:obs_id obs-id
+                            :mac_address (:mac beacon)
+                            :rssi (:rssi beacon)})))))
+
+(defn insert-wd
+  "Insert a FMI weather observation into the database."
+  [db-con obs-id weather-data]
+  (:id (first (j/insert! db-con
+                         :weather_data
+                         {:obs_id obs-id
+                          :time (f/parse (:date weather-data))
+                          :temperature (:temperature weather-data)
+                          :cloudiness
+                          (:cloudiness weather-data)}))))
+
 (defn insert-observation
   "Inserts a observation to the database. Optionally corrects the temperature
   with an offset."
@@ -87,49 +130,19 @@
       (try
         (let [offset (if (get-conf-value :correction :k :enabled)
                        (get-conf-value :correction :k :offset) 0)
-              image-name (:image_name
-                          (first (j/query t-con
-                                          (sql/format
-                                           (sql/build
-                                            :select [:image_name]
-                                            :from [:yardcam_images])))))
-              obs-id (:id (first (j/insert! t-con
-                                            :observations
-                                            {:recorded (f/parse
-                                                        (:timestamp
-                                                         observation))
-                                             :temperature (- (:inside_temp
-                                                              observation)
-                                                             offset)
-                                             :brightness (:inside_light
-                                                          observation)
-                                             :yc_image_name image-name
-                                             :outside_temperature
-                                             (:outside_temp
-                                              observation)})))]
+              image-name (get-yc-image t-con)
+              obs-id (insert-plain-observation t-con
+                                               observation
+                                               offset
+                                               image-name)]
           (if (pos? obs-id)
             (if (every? pos?
-                        (for [beacon (:beacons observation)]
-                          (:id (first (j/insert! t-con
-                                                 :beacons
-                                                 {:obs_id obs-id
-                                                  :mac_address (:mac beacon)
-                                                  :rssi (:rssi beacon)})))))
+                        (insert-beacons t-con obs-id observation))
               (let [weather-data (:weather-data observation)]
                 (if (zero? (count weather-data))
                   ;; No weather data
                   true
-                  (if (pos? (:id (first (j/insert! t-con
-                                                   :weather_data
-                                                   {:obs_id obs-id
-                                                    :time (f/parse
-                                                           (:date
-                                                            weather-data))
-                                                    :temperature (:temperature
-                                                                  weather-data)
-                                                    :cloudiness
-                                                    (:cloudiness
-                                                     weather-data)}))))
+                  (if (pos? (insert-wd t-con obs-id weather-data))
                     true
                     (do
                       (log/info (str "Database insert: rolling back "
@@ -161,8 +174,7 @@
   [date]
   (if (nil? date)
     true
-    (not (nil? (and date
-                    (re-find #"\d{1,2}\.\d{1,2}\.\d{4}" date))))))
+    (not (nil? (re-find #"\d{1,2}\.\d{1,2}\.\d{4}" date)))))
 
 (defn make-local-dt
   "Creates SQL datetime in local time from the provided date string.
