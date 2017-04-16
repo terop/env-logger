@@ -12,7 +12,7 @@
                  [clj-time "0.13.0"]
                  [cheshire "5.7.0"]
                  [selmer "1.10.7"]
-                 [clj-http "2.3.0"]
+                 [clj-http "3.5.0"]
                  [org.clojure/tools.logging "0.3.1"]
                  [org.slf4j/slf4j-log4j12 "1.7.25"]
                  [com.yubico/yubico-validation-client2 "3.0.1"]
