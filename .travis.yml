@@ -1,3 +1,5 @@
+dist: trusty
+sudo: false
 language: clojure
 jdk:
   - oraclejdk8
@@ -6,7 +8,7 @@ env:
 services:
   - postgresql
 addons:
-  postgresql: "9.4"
+  postgresql: "9.6"
 before_script:
   - psql -U postgres -c 'CREATE DATABASE env_logger_test;'
   - psql -U postgres env_logger_test < db-def.sql
