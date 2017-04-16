@@ -31,21 +31,29 @@ CREATE TABLE weather_data (
 
 -- User table
 CREATE TABLE users (
-    user_id SERIAL PRIMARY KEY,
-    username VARCHAR(100) NOT NULL UNIQUE,
-    pw_hash VARCHAR(250),
-    saved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+       user_id SERIAL PRIMARY KEY,
+       username VARCHAR(100) NOT NULL UNIQUE,
+       pw_hash VARCHAR(250),
+        saved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
  );
 
 -- Yubikey ID table
 CREATE TABLE yubikeys (
-    key_id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users (user_id) ON DELETE CASCADE,
-    yubikey_id VARCHAR(32) NOT NULL UNIQUE
+       key_id SERIAL PRIMARY KEY,
+       user_id INTEGER REFERENCES users (user_id) ON DELETE CASCADE,
+       yubikey_id VARCHAR(32) NOT NULL UNIQUE
 );
 
 -- Table for storing the name of the latest yardcam image
 CREATE TABLE yardcam_images (
-   image_id SERIAL PRIMARY KEY,
-   image_name VARCHAR(40) NOT NULL UNIQUE
+       image_id SERIAL PRIMARY KEY,
+       image_name VARCHAR(40) NOT NULL UNIQUE
+);
+
+-- Table for user profiles
+CREATE TABLE profiles (
+       profile_id SERIAL PRIMARY KEY,
+       user_id INTEGER REFERENCES users (user_id) ON DELETE CASCADE,
+       name VARCHAR(100) NOT NULL,
+       profile JSONB NOT NULL
 );

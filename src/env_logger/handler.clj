@@ -1,7 +1,7 @@
 (ns env-logger.handler
   "The main namespace of the application"
   (:require [cheshire.core :refer [generate-string parse-string]]
-            [compojure.core :refer [GET POST defroutes]]
+            [compojure.core :refer [GET POST DELETE defroutes]]
             [compojure.route :as route]
             [immutant.web :as web]
             [immutant.web.middleware :refer [wrap-development wrap-websocket]]
@@ -117,7 +117,13 @@
                           common-values {:logged-in? logged-in?
                                          :ws-url (get-conf-value :ws-url)
                                          :image-base (get-conf-value
-                                                      :image-basepath)}]
+                                                      :image-basepath)
+                                         :profiles (when-not (empty? (:session
+                                                                      request))
+                                                     (db/get-profiles
+                                                      db/postgres
+                                                      (name (:identity
+                                                             request))))}]
                       (if (or (not (nil? start-date))
                               (not (nil? end-date)))
                         (merge common-values
@@ -205,6 +211,16 @@
                (resp/content-type "image/png"))
            {:status 404})
          {:status 404}))
+  ;; Profile handling
+  (POST "/profile" request
+        (str (db/insert-profile db/postgres
+                                (name (:identity request))
+                                (:name (:params request))
+                                (:profile (:params request)))))
+  (DELETE "/profile" request
+          (str (db/delete-profile db/postgres
+                                  (name (:identity request))
+                                  (:name (:params request)))))
   ;; Serve static files
   (route/files "/")
   (route/not-found "404 Not Found"))

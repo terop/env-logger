@@ -22,11 +22,15 @@
             .displayNone {
                 display: none;
             }
-            #noDataError {
+            .noData {
                 color: red;
                 font-size: 1.2em;
                 font-weight: bold;
                 display: none;
+            }
+            .noProfiles {
+                font-size: 1.2em;
+                font-weight: bold;
             }
             #plotControls > div > label {
                 margin-right: 10px;
@@ -40,22 +44,53 @@
             div.dygraph-title {
                 font-size: 0.85em;
             }
+            .boldText {
+                font-weight: bold;
+            }
+            #profilesDiv {
+                padding: 10px;
+                width: 20%;
+            }
         </style>
     </head>
     <body>
         <div style="position: absolute; top: 20px; right: 20px;">
             {% if logged-in? %}
-                <a href="logout" style="font-weight: bold;">Log out</a>
+                <span id="showProfiles" class="boldText" style="margin-right: 15px; cursor: pointer;">Profiles</span>
+                <a href="logout" class="boldText">Log out</a>
             {% else %}
-                <a href="login" style="font-weight: bold;">Log in</a>
+                <a href="login" class="boldText">Log in</a>
             {% endif %}
         </div>
         <h2 class="leftMargin" style="margin-bottom: 15px;">Environment observations</h2>
         <div class="leftMargin displayNone" id="lastObservation" style="margin-bottom: 15px;"></div>
 
+        {% if logged-in? %}
+            <div id="profilesDiv" class="panel panel-default leftMargin">
+                <h4>Profiles</h4>
+                <span id="noProfiles" class="noProfiles {% if profiles|not-empty %}displayNone{% endif %}">No profiles</span>
+                <select id="profiles" {% if profiles|empty? %}class="displayNone"{% endif %}>
+                    {% for prof in profiles %}
+                        <option value="{{ prof.profile }}">{{ prof.name }}</option>
+                    {% endfor %}
+                </select>
+                <br><br>
+                <input type="button" class="btn btn-primary {% if profiles|empty? %}displayNone{% endif %}" id="applyProfile" value="Apply">
+                <input type="button" class="btn btn-danger {% if profiles|empty? %}displayNone{% endif %}" id="deleteProfile" value="Delete">
+                <input type="button" class="btn btn-default" id="newProfile" value="New" style="margin-left: 30px;">
+                <div id="newProfileDiv" class="displayNone">
+                    <br>
+                    <label for="profileName">Profile name</label>
+                    <input type="text" name="profileName" id="profileName" style="width: 190px;" maxlength="100">
+                    <br><br>
+                    <input type="button" class="btn btn-primary" id="saveProfile" value="Save">
+                    <input type="button" class="btn btn-danger" id="cancelProfile" value="Cancel">
+                </div>
+            </div>
+        {% endif %}
         <div>
             <div id="graphDiv" style="float: left;">
-                <span id="noDataError" class="leftMargin">No observations found</span>
+                <span id="noDataError" class="leftMargin noData">No observations found</span>
             </div>
             <div id="labelDiv" style="float: left;"></div>
         </div>
@@ -99,7 +134,7 @@
              style="margin: 0 0 15px 30px; display: none;">
 
         <script src="https://code.jquery.com/jquery-3.2.1.min.js"
-		integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
+                integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
                 crossorigin="anonymous"></script>
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
                 integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
@@ -113,6 +148,9 @@
                 socket = new WebSocket('{{ ws-url }}');
         </script>
         <script src="js/plots.js"></script>
+        {% if logged-in? %}
+            <script src="js/profiles.js"></script>
+        {% endif %}
         <script>
             var datepickerOptions = {
                 format: 'dd.mm.yyyy',
@@ -127,7 +165,7 @@
             {% if not obs-dates.end|empty? %}
             datepickerOptions['endDate'] = '{{ obs-dates.end }}';
             {% endif %}
-            $('input[type="text"]').datepicker(datepickerOptions);
+            $('#startDate,#endDate').datepicker(datepickerOptions);
         </script>
     </body>
 </html>
