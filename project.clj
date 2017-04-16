@@ -7,7 +7,7 @@
                  [ring "1.5.1"]
                  [ring/ring-defaults "0.2.3"]
                  [org.postgresql/postgresql "42.0.0"]
-                 [org.clojure/java.jdbc "0.6.2-alpha2"]
+                 [org.clojure/java.jdbc "0.7.0-alpha3"]
                  [honeysql "0.8.2"]
                  [clj-time "0.13.0"]
                  [cheshire "5.7.0"]
