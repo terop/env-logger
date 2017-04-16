@@ -106,7 +106,7 @@ var saveProfileHandler = function () {
     })
         .done(function (data, textStatus, jqXHR) {
             if (textStatus === 'success' && data === 'true') {
-                alert('Profile successfully saved');
+                alert('Profile saved successfully');
 
                 var profileDropdown = document.getElementById('profiles'),
                     el = document.createElement('option');
@@ -119,11 +119,11 @@ var saveProfileHandler = function () {
                 changeVisibility('newProfileDiv', true);
                 document.getElementById('profileName').value = '';
             } else {
-                alert('An error occurred during profile saving');
+                alert('An error occurred when saving the profile');
             }
         })
         .fail(function (jqXHR, textStatus, errorThrown) {
-            alert('An error occurred during profile saving');
+            alert('An error occurred when saving the profile');
             console.log('Profile save error: ' + errorThrown);
         });
 };
@@ -149,13 +149,13 @@ var deleteProfileHandler = function (event) {
                     if (!profileDropdown.childElementCount) {
                         hideProfileControls();
                     }
-                    alert('Profile successfully deleted');
+                    alert('Profile deleted successfully');
                 } else {
-                    alert('An error occurred during profile deletion');
+                    alert('An error occurred when deleting the profile');
                 }
             })
             .fail(function (jqXHR, textStatus, errorThrown) {
-                alert('An error occurred during profile deletion');
+                alert('An error occurred when deleting the profile');
                 console.log('Profile delete error: ' + errorThrown);
             });
     }
