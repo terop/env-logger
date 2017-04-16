@@ -141,14 +141,21 @@ if (plotData.length === 0) {
         } else {
             alert('No yardcam image to show');
         }
-        axios.head('tb-image/' + tbImageId)
-            .then(function (response) {
-                document.getElementById('testbedImage').src =
-                    'tb-image/' + tbImageId;
+        $.ajax({
+            url: 'tb-image/' + tbImageId,
+            method: 'HEAD'
+        })
+            .done(function (data, textStatus, jqXHR) {
+                if (jqXHR.status === 200) {
+                    document.getElementById('testbedImage').src =
+                        'tb-image/' + tbImageId;
+                } else {
+                    alert('Error fetching the testbed image');
+                }
             })
-            .catch(function (error) {
+            .fail(function (jqXHR, textStatus, errorThrown) {
                 document.getElementById('testbedImage').src = '';
-                if (error.response.status !== 404) {
+                if (jqXHR.status !== 404) {
                     alert('Error fetching the testbed image');
                 }
             });
