@@ -135,7 +135,7 @@ if (plotData.length === 0) {
             var pattern = /yc-([\d-]+)T.+/,
                 result = pattern.exec(imageName);
             if (result) {
-                document.getElementById('yardcamImage').src = imageBasepath +
+                document.getElementById('yardcamImage').src = ycImageBasepath +
                     result[1] + '/' + imageName;
             }
         } else {

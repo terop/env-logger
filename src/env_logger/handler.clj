@@ -116,8 +116,8 @@
                           logged-in? (authenticated? request)
                           common-values {:logged-in? logged-in?
                                          :ws-url (get-conf-value :ws-url)
-                                         :image-base (get-conf-value
-                                                      :image-basepath)
+                                         :yc-image-basepath (get-conf-value
+                                                             :yc-image-basepath)
                                          :profiles (when-not (empty? (:session
                                                                       request))
                                                      (db/get-profiles
