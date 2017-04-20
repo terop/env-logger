@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
-"""A script for downloading the current FMI Testbed image and sending
-it to a storage backend."""
+"""A script for downloading the current FMI Testbed image. Prints an empty string on failure
+and a filename where the latest Testbed image is stored on success."""
 
-# PIP dependencies: requests, beautifulsoup4, lxml
+# PIP dependencies: requests, beautifulsoup4, lxml, pytz
 
-import argparse
-import base64
 import sys
 from datetime import datetime
 
 import requests
 from bs4 import BeautifulSoup
+import pytz
 
 
 def download_image():
@@ -53,21 +52,19 @@ def download_image():
 
 def main():
     """Module main function."""
-    parser = argparse.ArgumentParser(description='FMI Testbed image downloading script.')
-    parser.add_argument('backend_url', type=str, help='Backend URL')
-    parser.add_argument('authentication_code', type=str, help='Request authentication code')
-    args = parser.parse_args()
-
-    timestamp = datetime.now().isoformat()
     image = download_image()
-    if image:
-        resp = requests.post(args.backend_url, data={'image': base64.b64encode(image),
-                                                     'code': args.authentication_code})
-        if not resp.ok:
-            print('{}: Failed to send Testbed image: HTTP status code {} response {}'
-                  .format(timestamp, resp.status_code, resp.text), file=sys.stderr)
-            exit(1)
-        print('{}: Image storage status: HTTP status code {}, response {}'
-              .format(timestamp, resp.status_code, resp.text))
+    if not image:
+        print('')
+        return 1
+
+    helsinki = pytz.timezone('Europe/Helsinki')
+    filename = 'testbed-{}.png'.format(
+        helsinki.localize(datetime.now()).strftime('%Y-%m-%dT%H:%M%z'))
+
+    with open(filename, 'wb') as tb_image:
+        tb_image.write(image)
+
+    print(filename)
+    return 0
 
 main()
