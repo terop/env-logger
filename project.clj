@@ -10,7 +10,7 @@
                  [org.clojure/java.jdbc "0.7.0-alpha3"]
                  [honeysql "0.8.2"]
                  [clj-time "0.13.0"]
-                 [cheshire "5.7.0"]
+                 [cheshire "5.7.1"]
                  [selmer "1.10.7"]
                  [clj-http "3.5.0"]
                  [org.clojure/tools.logging "0.3.1"]

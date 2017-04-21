@@ -21,7 +21,8 @@
             [env-logger.config :refer [get-conf-value]]
             [env-logger.db :as db]
             [env-logger.grabber :refer [calculate-start-time
-                                        get-latest-fmi-data]])
+                                        get-latest-fmi-data]]
+            [env-logger.user :as u])
   (:import com.yubico.client.v2.YubicoClient
            java.io.ByteArrayInputStream)
   (:gen-class))
@@ -54,13 +55,13 @@
         session (:session request)
         use-ldap? (get-conf-value :use-ldap)
         user-data (if use-ldap?
-                    (when-let [password (db/get-password-from-ldap username)]
+                    (when-let [password (u/get-password-from-ldap username)]
                       {:pw-hash password})
-                    (db/get-user-data db/postgres username))]
+                    (u/get-user-data db/postgres username))]
     (if (or (and user-data (h/check password (:pw-hash user-data)))
             (and (seq otp)
                  (otp-value-valid? otp)
-                 (contains? (db/get-yubikey-id db/postgres username)
+                 (contains? (u/get-yubikey-id db/postgres username)
                             (YubicoClient/getPublicId otp))))
       (let [next-url (get-in request [:query-params :next]
                              (str (get-conf-value :url-path) "/"))
@@ -120,7 +121,7 @@
                                                              :yc-image-basepath)
                                          :profiles (when-not (empty? (:session
                                                                       request))
-                                                     (db/get-profiles
+                                                     (u/get-profiles
                                                       db/postgres
                                                       (name (:identity
                                                              request))))}]
@@ -213,14 +214,14 @@
          {:status 404}))
   ;; Profile handling
   (POST "/profile" request
-        (str (db/insert-profile db/postgres
-                                (name (:identity request))
-                                (:name (:params request))
-                                (:profile (:params request)))))
+        (str (u/insert-profile db/postgres
+                               (name (:identity request))
+                               (:name (:params request))
+                               (:profile (:params request)))))
   (DELETE "/profile" request
-          (str (db/delete-profile db/postgres
-                                  (name (:identity request))
-                                  (:name (:params request)))))
+          (str (u/delete-profile db/postgres
+                                 (name (:identity request))
+                                 (:name (:params request)))))
   ;; Serve static files
   (route/files "/")
   (route/not-found "404 Not Found"))
