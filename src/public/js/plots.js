@@ -92,6 +92,7 @@ var transformData = function (jsonData) {
 labels = transformData(document.getElementById('plotData').innerHTML);
 if (plotData.length === 0) {
     document.getElementById('noDataError').style.display = 'inline';
+    document.getElementById('imageButtonDiv').style.display = 'none';
     document.getElementById('plotControls').style.display = 'none';
 } else {
     // Show last observation with FMI data for quick viewing
