@@ -132,12 +132,12 @@
                                        (if logged-in?
                                          (db/get-obs-interval
                                           db/postgres
-                                          start-date
-                                          end-date)
+                                          {:start start-date
+                                           :end end-date})
                                          (db/get-weather-obs-interval
                                           db/postgres
-                                          start-date
-                                          end-date)))
+                                          {:start start-date
+                                           :end end-date})))
                                 :start-date start-date
                                 :end-date end-date})
                         (merge common-values

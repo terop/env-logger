@@ -43,15 +43,16 @@
 
 (defn insert-plain-observation
   "Insert a row into observations table."
-  [db-con observation offset image-name]
+  [db-con observation]
   (:id (first (j/insert! db-con
                          :observations
                          {:recorded (f/parse
                                      (:timestamp observation))
                           :temperature (- (:inside_temp
-                                           observation) offset)
+                                           observation)
+                                          (:offset observation))
                           :brightness (:inside_light observation)
-                          :yc_image_name image-name
+                          :yc_image_name (:image-name observation)
                           :outside_temperature (:outside_temp observation)}))))
 
 (defn insert-beacons
@@ -84,11 +85,11 @@
       (try
         (let [offset (if (get-conf-value :correction :k :enabled)
                        (get-conf-value :correction :k :offset) 0)
-              image-name (get-yc-image t-con)
               obs-id (insert-plain-observation t-con
-                                               observation
-                                               offset
-                                               image-name)]
+                                               (merge observation
+                                                      {:offset offset
+                                                       :image-name
+                                                       (get-yc-image t-con)}))]
           (if (pos? obs-id)
             (if (every? pos?
                         (insert-beacons t-con obs-id observation))
@@ -140,18 +141,18 @@
 
 (defmacro get-by-interval
   "Fetches observations in an interval using the provided function."
-  [fetch-fn db-con start-date end-date dt-column]
+  [fetch-fn db-con dates dt-column]
   (let [start-dt (gensym 'start)
         end-dt (gensym 'end)]
-    `(if (or (not (validate-date ~start-date))
-             (not (validate-date ~end-date)))
+    `(if (or (not (validate-date (:start ~dates)))
+             (not (validate-date (:end ~dates))))
        ()
-       (let [~start-dt (if ~start-date
-                         (make-local-dt ~start-date "start")
+       (let [~start-dt (if (:start ~dates)
+                         (make-local-dt (:start ~dates) "start")
                          ;; Hack to avoid SQL WHERE hacks
                          (t/date-time 2010 1 1))
-             ~end-dt (if ~end-date
-                       (make-local-dt ~end-date "end")
+             ~end-dt (if (:end ~dates)
+                       (make-local-dt (:end ~dates) "end")
                        (t/now))]
          (~fetch-fn ~db-con :where [:and
                                     [:>= ~dt-column ~start-dt]
@@ -207,11 +208,10 @@
 
 (defn get-obs-interval
   "Fetches observations in an interval between the provided dates."
-  [db-con start-date end-date]
+  [db-con dates]
   (get-by-interval get-observations
                    db-con
-                   start-date
-                   end-date
+                   dates
                    :recorded))
 
 (defn get-weather-observations
@@ -247,11 +247,10 @@
 
 (defn get-weather-obs-interval
   "Fetches weather observations in an interval between the provided dates."
-  [db-con start-date end-date]
+  [db-con dates]
   (get-by-interval get-weather-observations
                    db-con
-                   start-date
-                   end-date
+                   dates
                    :time))
 
 (defn get-obs-start-and-end

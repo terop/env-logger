@@ -123,37 +123,49 @@
 (deftest obs-interval-select
   (testing "Select observations between one or two dates"
     (let [formatter (f/formatter "d.M.y")]
-      (is (= 4 (count (get-obs-interval test-postgres nil nil))))
-      (is (= 3 (count (get-obs-interval
-                       test-postgres
-                       (f/unparse formatter
-                                  (t/minus current-dt
-                                           (t/days 1)))
-                       nil))))
-      (is (= 1 (count (get-obs-interval
-                       test-postgres
-                       nil
-                       (f/unparse formatter
-                                  (t/minus current-dt
-                                           (t/days 2)))))))
       (is (= 4 (count (get-obs-interval
                        test-postgres
-                       (f/unparse formatter
-                                  (t/minus current-dt
-                                           (t/days 6)))
-                       (f/unparse formatter
-                                  current-dt)))))
+                       {:start nil
+                        :end nil}))))
+      (is (= 3 (count (get-obs-interval
+                       test-postgres
+                       {:start (f/unparse formatter
+                                          (t/minus current-dt
+                                                   (t/days 1)))
+                        :end nil}))))
+      (is (= 1 (count (get-obs-interval
+                       test-postgres
+                       {:start nil
+                        :end (f/unparse formatter
+                                        (t/minus current-dt
+                                                 (t/days 2)))}))))
+      (is (= 4 (count (get-obs-interval
+                       test-postgres
+                       {:start (f/unparse formatter
+                                          (t/minus current-dt
+                                                   (t/days 6)))
+                        :end (f/unparse formatter
+                                        current-dt)}))))
       (is (zero? (count (get-obs-interval
                          test-postgres
-                         (f/unparse formatter
-                                    (t/minus current-dt
-                                             (t/days 11)))
-                         (f/unparse formatter
-                                    (t/minus current-dt
-                                             (t/days 10)))))))
-      (is (zero? (count (get-obs-interval test-postgres "foobar" nil))))
-      (is (zero? (count (get-obs-interval test-postgres nil "foobar"))))
-      (is (zero? (count (get-obs-interval test-postgres "bar" "foo")))))))
+                         {:start (f/unparse formatter
+                                            (t/minus current-dt
+                                                     (t/days 11)))
+                          :end (f/unparse formatter
+                                          (t/minus current-dt
+                                                   (t/days 10)))}))))
+      (is (zero? (count (get-obs-interval
+                         test-postgres
+                         {:start "foobar"
+                          :end nil}))))
+      (is (zero? (count (get-obs-interval
+                         test-postgres
+                         {:start nil
+                          :end "foobar"}))))
+      (is (zero? (count (get-obs-interval
+                         test-postgres
+                         {:start "bar"
+                          :end "foo"})))))))
 
 (deftest get-observations-tests
   (testing "Observation querying with arbitrary WHERE clause and LIMIT"
@@ -197,28 +209,28 @@
   (testing "Select weather observations between one or two dates"
     (let [formatter (f/formatter "d.M.y")]
       (is (= 1 (count (get-weather-obs-interval test-postgres
-                                                nil
-                                                nil))))
+                                                {:start nil
+                                                 :end nil}))))
       (is (= 1 (count (get-weather-obs-interval
                        test-postgres
-                       (f/unparse formatter
-                                  (t/minus current-dt
-                                           (t/days 1)))
-                       nil))))
+                       {:start (f/unparse formatter
+                                          (t/minus current-dt
+                                                   (t/days 1)))
+                        :end nil}))))
       (is (zero? (count (get-weather-obs-interval
                          test-postgres
-                         nil
-                         (f/unparse formatter
-                                    (t/minus current-dt
-                                             (t/days 2)))))))
+                         {:start nil
+                          :end (f/unparse formatter
+                                          (t/minus current-dt
+                                                   (t/days 2)))}))))
       (is (zero? (count (get-weather-obs-interval
                          test-postgres
-                         (f/unparse formatter
-                                    (t/minus current-dt
-                                             (t/days 5)))
-                         (f/unparse formatter
-                                    (t/minus current-dt
-                                             (t/days 3))))))))))
+                         {:start (f/unparse formatter
+                                            (t/minus current-dt
+                                                     (t/days 5)))
+                          :end (f/unparse formatter
+                                          (t/minus current-dt
+                                                   (t/days 3)))})))))))
 
 (deftest weather-days-observations
   (testing "Selecting weather observations from N days"
@@ -337,6 +349,6 @@
                                                           current-dt))
                                          :inside_light 0
                                          :inside_temp 20
-                                         :outside_temp 5}
-                                        6
-                                        "testimage.jpg")))))
+                                         :outside_temp 5
+                                         :offset 6
+                                         :image-name "testimage.jpg"})))))
