@@ -17,7 +17,6 @@
             [buddy.auth.middleware :refer [wrap-authentication
                                            wrap-authorization]]
             [clojure.tools.logging :as log]
-            [base64-clj.core :as base64]
             [env-logger.config :refer [get-conf-value]]
             [env-logger.db :as db]
             [env-logger.grabber :refer [calculate-start-time
@@ -119,6 +118,8 @@
                                          :ws-url (get-conf-value :ws-url)
                                          :yc-image-basepath (get-conf-value
                                                              :yc-image-basepath)
+                                         :tb-image-basepath (get-conf-value
+                                                             :tb-image-basepath)
                                          :profiles (when-not (empty? (:session
                                                                       request))
                                                      (u/get-profiles
@@ -183,16 +184,17 @@
                            (generate-string (db/get-observations db/postgres
                                                                  :limit 1))))
             (generate-string insert-status))))
-  ;; Testbed image storage
+  ;; Testbed image name storage
   (POST "/tb-image" request
         (if-not (check-auth-code (:code (:params request)))
           response-unauthorized
-          (if (= (db/store-testbed-image db/postgres
-                                         (db/get-last-obs-id db/postgres)
-                                         (base64/decode-bytes
-                                          (.getBytes (:image (:params
-                                                              request))))) 1)
-            "true" "false")))
+          (if (re-find #"testbed-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+\d{4}\.png"
+                       (:name (:params request)))
+            (generate-string (db/store-tb-image-name db/postgres
+                                                     (db/get-last-obs-id
+                                                      db/postgres)
+                                                     (:name (:params request))))
+            "false")))
   ;; Latest yardcam image name storage
   (POST "/image" request
         (if-not (check-auth-code (:code (:params request)))
@@ -202,16 +204,7 @@
             (generate-string (db/insert-yc-image-name db/postgres
                                                       (:image-name (:params
                                                                     request))))
-            (generate-string false))))
-  ;; Testbed image fetch
-  (GET "/tb-image/:id" [id]
-       (if (re-find #"[0-9]+"id)
-         (if-let [tb-image (db/testbed-image-fetch db/postgres id)]
-           (-> (new ByteArrayInputStream tb-image)
-               (resp/response)
-               (resp/content-type "image/png"))
-           {:status 404})
-         {:status 404}))
+            "false")))
   ;; Profile handling
   (POST "/profile" request
         (str (u/insert-profile db/postgres

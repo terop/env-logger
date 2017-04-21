@@ -170,10 +170,10 @@
                              [:w.temperature "fmi_temperature"]
                              :w.cloudiness
                              :o.yc_image_name
-                             :o.id
                              [:o.outside_temperature "o_temperature"]
                              :b.mac_address
-                             :b.rssi]
+                             :b.rssi
+                             :o.tb_image_name]
                     :from [[:observations :o]]
                     :left-join [[:weather-data :w]
                                 [:= :o.id :w.obs_id]
@@ -222,13 +222,12 @@
                                            [:w.temperature "fmi_temperature"]
                                            :w.cloudiness
                                            :o.yc_image_name
-                                           :o.id
                                            [:o.outside_temperature
-                                            "o_temperature"]]
+                                            "o_temperature"]
+                                           :o.tb_image_name]
                                   :from [[:weather-data :w]]
                                   :join [[:observations :o]
-                                         [:= :w.obs_id
-                                          :o.id]]
+                                         [:= :w.obs_id :o.id]]
                                   :where where
                                   :order-by [[:w.id :asc]]))
            {:row-fn #(merge %
@@ -268,7 +267,8 @@
 
 (defn insert-yc-image-name
   "Stores the name of the latest Yardcam image. Rows from the table are
-  deleted before a new row is inserted."
+  deleted before a new row is inserted. Returns true on success and
+  false otherwise."
   [db-con image-name]
   (let [result (j/query db-con
                         (sql/format (sql/build :select [:image_id]
@@ -297,16 +297,6 @@
                                   (t/now))
                       obs-recorded)))))
 
-(defn testbed-image-fetch
-  "Returns the Testbed image corresponding to the provided ID."
-  [db-con id]
-  (first (j/query db-con
-                  (sql/format (sql/build :select [:testbed_image]
-                                         :from :observations
-                                         :where [:= :id
-                                                 (Integer/parseInt id)]))
-                  {:row-fn #(:testbed_image %)})))
-
 (defn get-last-obs-id
   "Returns the ID of the last observation."
   [db-con]
@@ -315,11 +305,11 @@
                                          :from :observations))
                   {:row-fn #(:id %)})))
 
-(defn store-testbed-image
-  "Saves a Testbed image and associates it with given observation ID. Returns
-  the number of modified rows."
-  [db-con obs-id tb-image]
-  (first (j/update! db-con
-                    :observations
-                    {:testbed_image tb-image}
-                    ["id = ?" obs-id])))
+(defn store-tb-image-name
+  "Saves a Testbed image name and associates it with given observation ID.
+  Returns true on success and false otherwise."
+  [db-con obs-id image-name]
+  (= 1 (first (j/update! db-con
+                         :observations
+                         {:tb_image_name image-name}
+                         ["id = ?" obs-id]))))

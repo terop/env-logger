@@ -113,11 +113,9 @@
             :fmi_temperature 20.0
             :o_temperature 5.0
             :yc_image_name "testimage.jpg"
-            :id (first (j/query test-postgres
-                                "SELECT MIN(id) + 2 AS id FROM observations"
-                                {:row-fn #(:id %)}))
             :name "7C:EC:79:3F:BE:97"
-            :rssi -68}
+            :rssi -68
+            :tb_image_name nil}
            (nth (get-obs-days test-postgres 3) 1)))))
 
 (deftest obs-interval-select
@@ -239,9 +237,7 @@
             :fmi_temperature 20.0
             :o_temperature 5.0,
             :yc_image_name "testimage.jpg"
-            :id (first (j/query test-postgres
-                                "SELECT MIN(id) + 2 AS id FROM observations"
-                                {:row-fn #(:id %)}))}
+            :tb_image_name nil}
            (first (get-weather-obs-days test-postgres 1))))))
 
 (deftest weather-observation-select
@@ -283,29 +279,6 @@
       (with-redefs [j/query (fn [db query] '())]
         (is (true? (weather-query-ok? test-postgres (* hours 50))))))))
 
-(deftest testbed-image-from-db
-  (testing "Test for fetching a Testbed image"
-    (j/update! test-postgres
-               :observations
-               {:testbed_image (byte-array (map byte "ascii"))}
-               ["id = ?"
-                (first (j/query test-postgres
-                                "SELECT MIN(id) AS id FROM observations"
-                                {:row-fn #(:id %)}))])
-    (let [not-null-row-id (first (j/query test-postgres
-                                          (str "SELECT id FROM observations "
-                                               "WHERE testbed_image IS "
-                                               "NOT NULL")
-                                          {:row-fn #(:id %)}))
-          null-row-id (first (j/query test-postgres
-                                      (str "SELECT id FROM observations "
-                                           "WHERE testbed_image IS NULL")
-                                      {:row-fn #(:id %)}))]
-      (is (not (nil? (testbed-image-fetch test-postgres
-                                          (str not-null-row-id)))))
-      (is (nil? (testbed-image-fetch test-postgres
-                                     (str null-row-id)))))))
-
 (deftest last-observation-id
   (testing "Query of last observation's ID"
     (let [last-id (first (j/query test-postgres
@@ -315,9 +288,9 @@
 
 (deftest testbed-image-storage
   (testing "Storage of a Testbed image"
-    (is (= 1 (store-testbed-image test-postgres
-                                  (get-last-obs-id test-postgres)
-                                  (.getBytes "test string"))))))
+    (is (true? (store-tb-image-name test-postgres
+                                    (get-last-obs-id test-postgres)
+                                    "testbed-2017-04-21T19:16+0300.png")))))
 
 (deftest wd-insert
   (testing "Insert of FMI weather data"

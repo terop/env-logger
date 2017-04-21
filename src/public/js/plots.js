@@ -31,7 +31,7 @@ var getCheckboxIndex = function (checkboxId) {
 var labels = null,
     plotData = [],
     yardcamImageNames = [],
-    idArray = [],
+    testbedImageNames = [],
     beaconName = '';
 
 // Parses an observation. Returns Dygraph compatible data point.
@@ -57,7 +57,7 @@ var parseData = function (observation) {
                      observation['o_temperature']];
     }
     yardcamImageNames.push(observation['yc_image_name']);
-    idArray.push(observation['id']);
+    testbedImageNames.push(observation['tb_image_name']);
 
     return dataPoint;
 };
@@ -128,10 +128,8 @@ if (plotData.length === 0) {
     };
     showLastObservation();
 
-    // Function for showing the yardcam and testbed images for an index
-    var showImages = function (dataIndex) {
-        var imageName = yardcamImageNames[dataIndex],
-            tbImageId = idArray[dataIndex];
+    var showYardcamImage = function (dataIndex) {
+        var imageName = yardcamImageNames[dataIndex];
         if (imageName) {
             var pattern = /yc-([\d-]+)T.+/,
                 result = pattern.exec(imageName);
@@ -142,24 +140,20 @@ if (plotData.length === 0) {
         } else {
             alert('No yardcam image to show');
         }
-        $.ajax({
-            url: 'tb-image/' + tbImageId,
-            method: 'HEAD'
-        })
-            .done(function (data, textStatus, jqXHR) {
-                if (jqXHR.status === 200) {
-                    document.getElementById('testbedImage').src =
-                        'tb-image/' + tbImageId;
-                } else {
-                    alert('Error fetching the testbed image');
-                }
-            })
-            .fail(function (jqXHR, textStatus, errorThrown) {
-                document.getElementById('testbedImage').src = '';
-                if (jqXHR.status !== 404) {
-                    alert('Error fetching the testbed image');
-                }
-            });
+    };
+
+    var showTestbedImage = function (dataIndex) {
+        var imageName = testbedImageNames[dataIndex];
+        if (imageName) {
+            var pattern = /testbed-([\d-]+)T.+/,
+                result = pattern.exec(imageName);
+            if (result) {
+                document.getElementById('testbedImage').src = tbImageBasepath +
+                    result[1] + '/' + imageName;
+            }
+        } else {
+            document.getElementById('testbedImage').src = '';
+        }
     };
 
     var graph = new Dygraph(document.getElementById('graphDiv'),
@@ -184,7 +178,8 @@ if (plotData.length === 0) {
                                     }
                                 },
                                 pointClickCallback: function (e, point) {
-                                    showImages(point.idx);
+                                    showYardcamImage(point.idx);
+                                    showTestbedImage(point.idx);
                                 }
                             });
 }
