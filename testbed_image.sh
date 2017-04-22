@@ -31,5 +31,5 @@ fi
 rm "$image_name"
 
 # Add image name to env-logger database
-# auth_code=somevalue
-# curl --data-urlencode "image-name=$(basename $filename)" --data-urlencode "code=$auth_code" https://example.com/env-logger/tb-image
+# auth_code=somebadvalue
+# curl --data-urlencode "name=$image_name" --data-urlencode "code=$auth_code" https://example.com/env-logger/tb-image
