@@ -178,6 +178,8 @@ if (plotData.length === 0) {
                                     }
                                 },
                                 pointClickCallback: function (e, point) {
+                                    document.getElementById('showImages').checked = true;
+                                    document.getElementById('imageDiv').classList.remove('displayNone');
                                     showYardcamImage(point.idx);
                                     showTestbedImage(point.idx);
                                 }
@@ -250,15 +252,10 @@ document.getElementById('submitBtn').addEventListener('click',
                                                       validateDates,
                                                       false);
 
-var imageButtonHandler = function (event) {
-    var images = document.getElementsByClassName('images'),
-        display = document.getElementById('showImages').checked ? '' : 'none';
-
-    for (var i = 0; i < images.length; i++) {
-        images[i].style.display = display;
-    }
+var toggleImageDiv = function (event) {
+    document.getElementById('imageDiv').classList.toggle('displayNone');
 };
 
 document.getElementById('showImages').addEventListener('click',
-                                                       imageButtonHandler,
+                                                       toggleImageDiv,
                                                        false);
