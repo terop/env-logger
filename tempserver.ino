@@ -2,9 +2,7 @@
 #include <Ethernet.h>
 
 // Input pins
-const int insideTempPin = A0;
 const int photoresistorPin = A1;
-const int thermistorPin = A2;
 
 // Enter a MAC address and IP address for your controller below.
 // The IP address will be dependent on your local network:
@@ -22,19 +20,8 @@ EthernetServer server(80);
    */
 const int SAMPLE_NUMBER = 10;
 
-/* In order to use the Beta equation, we must know our other resistor
-   within our resistor divider. If you are using something with large tolerance,
-   like at 5% or even 1%, measure it and place your result here in ohms. */
-const double BALANCE_RESISTOR = 9800.0;
-
 // This helps calculate the thermistor's resistance (check article for details).
 const double MAX_ADC = 1023.0;
-
-/* This is thermistor dependent and it should be in the datasheet, or refer to the
-   article for how to calculate it using the Beta equation.
-   I had to do this, but I would try to get a thermistor with a known
-   beta if you want to avoid empirical calculations. */
-const double BETA = 3379.1;
 
 /* This is also needed for the conversion equation as "typical" room temperature
    is needed as an input. */
@@ -72,11 +59,11 @@ void loop() {
           client.println("Connection: close");
           client.println();
           client.print("{\"inside_temp\":");
-          client.print(readTemperature());
+          client.print(readThermistor(A3, 9750.0, 3950.0));
           client.print(", \"inside_light\":");
           client.print(analogRead(photoresistorPin));
           client.print(", \"outside_temp\":");
-          client.print(readThermistor());
+          client.print(readThermistor(A2, 9800.0, 3380.0));
           client.println("}");
           break;
         }
@@ -97,15 +84,6 @@ void loop() {
   }
 }
 
-/**
- * Reads the voltage from TMP36 sensor.
- * Returns the temperature in degrees Celsius.
- */
-float readTemperature() {
-  float voltage = (analogRead(insideTempPin) / 1024.0) * 5.0;
-  return (voltage - 0.5) * 100;
-}
-
 // The code below is from https://www.allaboutcircuits.com/projects/measuring-temperature-with-an-ntc-thermistor/
 /**
 This function reads the analog pin as shown below. Converts voltage signal
@@ -124,7 +102,7 @@ Quick Schematic in case you are too lazy to look at the site :P
                                     |
                                Analog Pin
 */
-double readThermistor() {
+double readThermistor(int thermistorPin, double balanceResistor, double beta) {
   // variables that live in this function
   double rThermistor = 0;            // Holds thermistor resistance value
   double tKelvin     = 0;            // Holds calculated temperature
@@ -151,7 +129,7 @@ double readThermistor() {
 
   /* Here we calculate the thermistor’s resistance using the equation
      discussed in the article. */
-  rThermistor = BALANCE_RESISTOR * ( (MAX_ADC / adcAverage) - 1);
+  rThermistor = balanceResistor * ( (MAX_ADC / adcAverage) - 1);
 
   /* Here is where the Beta equation is used, but it is different
      from what the article describes. Don't worry! It has been rearranged
@@ -160,8 +138,8 @@ double readThermistor() {
      better at algebra. And if not, just use what is shown here and take it
      for granted or input the formula directly from the article, exactly
      as it is shown. Either way will work! */
-  tKelvin = (BETA * ROOM_TEMP) /
-            (BETA + (ROOM_TEMP * log(rThermistor / RESISTOR_ROOM_TEMP)));
+  tKelvin = (beta * ROOM_TEMP) /
+            (beta + (ROOM_TEMP * log(rThermistor / RESISTOR_ROOM_TEMP)));
 
   /* I will use the units of Celsius to indicate temperature. I did this
      just so I can see the typical room temperature, which is 25 degrees
