@@ -2,6 +2,7 @@
   "Namespace for data grabbing functions"
   (:require [clj-http.client :as client]
             [clojure.xml :as xml]
+            [clojure.java.jdbc :as j]
             [clj-time.core :as t]
             [clj-time.format :as f]
             [clojure.tools.logging :as log]))
@@ -69,3 +70,21 @@
         (catch org.xml.sax.SAXParseException e
           (log/error "FMI weather data XML parsing failed")
           {})))))
+
+(defn weather-query-ok?
+  "Tells whether it is OK to query the FMI API for weather observations.
+  Criteria for being OK is that the last observation's timestamp does not lie
+  within the [now-waittime,now] interval. Wait time is to be provided in
+  minutes."
+  [db-con wait-time]
+  (let [obs-recorded (:recorded (first
+                                 (j/query db-con
+                                          "SELECT recorded FROM observations
+                                          WHERE id = (SELECT obs_id FROM
+                                          weather_data ORDER BY id DESC
+                                          LIMIT 1)")))]
+    (if (nil? obs-recorded)
+      true
+      (not (t/within? (t/interval (t/minus (t/now) (t/minutes wait-time))
+                                  (t/now))
+                      obs-recorded)))))

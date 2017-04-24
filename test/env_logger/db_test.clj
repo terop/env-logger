@@ -6,9 +6,7 @@
             [clj-time.jdbc]
             [clojure.java.jdbc :as j]
             [env-logger.config :refer [db-conf get-conf-value]]
-            [env-logger.db :refer :all])
-  (:import org.joda.time.DateTime
-           java.util.concurrent.TimeUnit))
+            [env-logger.db :refer :all]))
 
 (let [db-host (get (System/getenv)
                    "POSTGRESQL_DB_HOST"
@@ -267,17 +265,6 @@
                :yardcam_images
                {:image_name "testimage.jpg"})
     (is (= "testimage.jpg" (get-yc-image test-postgres)))))
-
-(deftest weather-query-ok
-  (testing "Test when it is OK to query for FMI weather observations"
-    (let [offset-millisec (.getOffset (t/default-time-zone)
-                                      (.getMillis (DateTime/now)))
-          hours (.toHours (TimeUnit/MILLISECONDS) offset-millisec)]
-      ;; Timestamps are recorded in local time
-      ;; Dummy test which kind of works, needs to be fixed properly at some time
-      (is (true? (weather-query-ok? test-postgres (* hours 50))))
-      (with-redefs [j/query (fn [db query] '())]
-        (is (true? (weather-query-ok? test-postgres (* hours 50))))))))
 
 (deftest last-observation-id
   (testing "Query of last observation's ID"

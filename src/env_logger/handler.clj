@@ -20,7 +20,8 @@
             [env-logger.config :refer [get-conf-value]]
             [env-logger.db :as db]
             [env-logger.grabber :refer [calculate-start-time
-                                        get-latest-fmi-data]]
+                                        get-latest-fmi-data
+                                        weather-query-ok?]]
             [env-logger.user :as u])
   (:import com.yubico.client.v2.YubicoClient
            java.io.ByteArrayInputStream)
@@ -169,7 +170,7 @@
                                            (t/plus start-time
                                                    (t/minutes 7)))
                 weather-data (when (and (t/within? start-time-int (t/now))
-                                        (db/weather-query-ok? db/postgres 3))
+                                        (weather-query-ok? db/postgres 3))
                                (get-latest-fmi-data
                                 (get-conf-value :fmi-api-key)
                                 (get-conf-value :station-id)))
