@@ -2,9 +2,9 @@
   :description "A simple data logger"
   :url "https://github.com/terop/env-logger"
   :dependencies [[org.clojure/clojure "1.8.0"]
-                 [org.immutant/web "2.1.6"]
+                 [org.immutant/web "2.1.7"]
                  [compojure "1.6.0"]
-                 [ring "1.6.0"]
+                 [ring "1.6.1"]
                  [ring/ring-defaults "0.3.0"]
                  [org.postgresql/postgresql "42.1.1"]
                  [org.clojure/java.jdbc "0.7.0-alpha3"]
