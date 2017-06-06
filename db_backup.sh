@@ -6,17 +6,31 @@
 # SSH key authentication without a password MUST be in place before running
 # this script.
 
-if [ $# -ne 1 ]; then
-    echo "Usage: $0 <database name>"
-    exit 1
-fi
-database_name=$1
-
 # Change these values as needed BEFORE running!
 target_host=lakka.kapsi.fi
-target_directory=/home/users/tpalohei/siilo/"$database_name"_backup
 target_user=tpalohei
-backup_file_name="$database_name"_$(date -Iseconds).sql
+target_directory=/home/users/tpalohei/siilo
+
+usage() {
+    echo "Usage: $(basename $0) [-l] <database name>"
+    echo "Flags:"
+    echo "-l    Do a local backup (do not upload backup file)"
+    exit 1
+}
+
+local_backup=0
+database_name=$1
+
+if [ $# -eq 2 ]; then
+    local_backup=1
+    database_name=$2
+elif [ $# -eq 1 ]; then
+    database_name=$1
+else
+    usage
+fi
+target_directory="$target_directory/${database_name}_backup"
+backup_file_name="${database_name}_$(date -Iseconds).sql"
 
 echo "Dumping database $database_name to file $backup_file_name"
 
@@ -28,6 +42,11 @@ fi
 
 xz -z "./$backup_file_name"
 backup_file_name="$backup_file_name.xz"
+
+if [ $local_backup -eq 1 ]; then
+    echo "Backup file: $backup_file_name"
+    exit 0
+fi
 
 echo "Uploading file to $target_host:$target_directory"
 if [ $(scp "./$backup_file_name" "$target_user@$target_host:$target_directory/") ]; then
