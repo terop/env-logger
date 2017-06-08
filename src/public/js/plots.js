@@ -15,15 +15,17 @@ var getCheckboxIndex = function (checkboxId) {
     var mapping = {};
     if (mode === 'all') {
         mapping = {'showTemperature': 0,
-                   'showBrightness': 1,
+                   'showOutsideTemperature': 1,
                    'showFMITemperature': 2,
-                   'showCloudiness': 3,
-                   'showOutsideTemperature': 4,
-                   'showBeacon': 5};
+                   'showTempDelta': 3,
+                   'showBrightness': 4,
+                   'showCloudiness': 5,
+                   'showBeacon': 6};
     } else {
-        mapping = {'showFMITemperature': 0,
-                   'showCloudiness': 1,
-                   'showOutsideTemperature': 2};
+        mapping = {'showOutsideTemperature': 0,
+                   'showFMITemperature': 1,
+                   'showTempDelta': 2,
+                   'showCloudiness': 3};
     }
     return mapping[checkboxId];
 };
@@ -41,10 +43,11 @@ var parseData = function (observation) {
     if (mode === 'all') {
         dataPoint = [new Date(observation['recorded']),
                      observation['temperature'],
-                     observation['brightness'],
-                     observation['fmi_temperature'],
-                     observation['cloudiness'],
                      observation['o_temperature'],
+                     observation['fmi_temperature'],
+                     observation['temp_delta'],
+                     observation['brightness'],
+                     observation['cloudiness'],
                      observation['rssi']];
         if (beaconName === '' && observation['name']) {
             beaconName = observation['name'];
@@ -52,9 +55,10 @@ var parseData = function (observation) {
     } else {
         var date = observation['time'] ? observation['time'] : observation['recorded'];
         dataPoint = [new Date(date),
+                     observation['o_temperature'],
                      observation['fmi_temperature'],
-                     observation['cloudiness'],
-                     observation['o_temperature']];
+                     observation['temp_delta'],
+                     observation['cloudiness']];
     }
     yardcamImageNames.push(observation['yc_image_name']);
     testbedImageNames.push(observation['tb_image_name']);
@@ -71,12 +75,12 @@ var transformData = function (jsonData) {
 
     // Data labels
     if (mode === 'all') {
-        labels = ['Date', 'Temperature', 'Brightness',
-                  'Temperature (FMI)', 'Cloudiness', 'Temperature (outside)',
-                  'Beacon'];
+        labels = ['Date', 'Inside temperature', 'Temperature (outside)',
+                  'Temperature (FMI)', 'Temperature delta',
+                  'Brightness', 'Cloudiness', 'Beacon'];
     } else {
-        labels = ['Date', 'Temperature (FMI)', 'Cloudiness',
-                  'Temperature (outside)'];
+        labels = ['Date', 'Temperature (outside)', 'Temperature (FMI)',
+                  'Temperature delta', 'Cloudiness'];
     }
     for (var i = 0; i < observations.length; i++) {
         plotData.push(parseData(observations[i]));

@@ -189,14 +189,22 @@
         beacon-names (get-conf-value :beacon-name)]
     (j/query db-con
              (sql/format limit-query)
-             {:row-fn #(dissoc (merge %
-                                      {:recorded (format-datetime
-                                                  (:recorded %)
-                                                  :date-hour-minute-second)
-                                       :name (get beacon-names
-                                                  (:mac_address %)
-                                                  (:mac_address %))})
-                               :mac_address)})))
+             {:row-fn #(dissoc
+                        (merge %
+                               {:recorded (format-datetime
+                                           (:recorded %)
+                                           :date-hour-minute-second)
+                                :name (get beacon-names
+                                           (:mac_address %)
+                                           (:mac_address %))
+                                :temp_delta (when (and (:fmi_temperature %)
+                                                       (:o_temperature %))
+                                              (Float/parseFloat
+                                               (format "%.2f"
+                                                       (- (:o_temperature %)
+                                                          (:fmi_temperature
+                                                           %)))))})
+                        :mac_address)})))
 
 (defn get-obs-days
   "Fetches the observations from the last N days."
@@ -233,7 +241,14 @@
            {:row-fn #(merge %
                             {:time (format-datetime
                                     (:time %)
-                                    :date-hour-minute-second)})}))
+                                    :date-hour-minute-second)
+                             :temp_delta (when (and (:fmi_temperature %)
+                                                    (:o_temperature %))
+                                           (Float/parseFloat
+                                            (format "%.2f"
+                                                    (- (:o_temperature %)
+                                                       (:fmi_temperature
+                                                        %)))))})}))
 
 
 (defn get-weather-obs-days

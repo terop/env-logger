@@ -113,7 +113,8 @@
             :yc_image_name "testimage.jpg"
             :name "7C:EC:79:3F:BE:97"
             :rssi -68
-            :tb_image_name nil}
+            :tb_image_name nil
+            :temp_delta -15.0}
            (nth (get-obs-days test-postgres 3) 1)))))
 
 (deftest obs-interval-select
@@ -235,7 +236,8 @@
             :fmi_temperature 20.0
             :o_temperature 5.0,
             :yc_image_name "testimage.jpg"
-            :tb_image_name nil}
+            :tb_image_name nil
+            :temp_delta -15.0}
            (first (get-weather-obs-days test-postgres 1))))))
 
 (deftest weather-observation-select

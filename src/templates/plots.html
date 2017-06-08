@@ -100,18 +100,30 @@
             <div class="leftMargin clearBoth checkboxes">
                 {% if logged-in? %}
                     <input type="checkbox" class="selectBox" id="showTemperature" checked="checked">
-                    <label for="showTemperature">Temperature</label>
+                    <label for="showTemperature">Inside temperature</label>
+                    <input type="checkbox" class="selectBox" id="showOutsideTemperature" checked="checked">
+                    <label for="showOutsideTemperature">Temperature (outside)</label>
+                    <input type="checkbox" class="selectBox" id="showFMITemperature" checked="checked">
+                    <label for="showFMITemperature">Temperature (FMI)</label>
+                    <input type="checkbox" class="selectBox" id="showTempDelta" checked="checked">
+                    <label for="showTempDelta">Temperature delta</label>
+                    <br>
                     <input type="checkbox" class="selectBox" id="showBrightness" checked="checked">
                     <label for="showBrightness">Brightness</label>
+                    <input type="checkbox" class="selectBox" id="showCloudiness" checked="checked">
+                    <label for="showCloudiness">Cloudiness</label>
                     <input type="checkbox" class="selectBox" id="showBeacon" checked="checked">
                     <label id="showBeaconLabel" for="showBeacon">Beacon</label>
+                {% else %}
+                    <input type="checkbox" class="selectBox" id="showOutsideTemperature" checked="checked">
+                    <label for="showOutsideTemperature">Temperature (outside)</label>
+                    <input type="checkbox" class="selectBox" id="showFMITemperature" checked="checked">
+                    <label for="showFMITemperature">Temperature (FMI)</label>
+                    <input type="checkbox" class="selectBox" id="showTempDelta" checked="checked">
+                    <label for="showTempDelta">Temperature delta</label>
+                    <input type="checkbox" class="selectBox" id="showCloudiness" checked="checked">
+                    <label for="showCloudiness">Cloudiness</label>
                 {% endif %}
-                <input type="checkbox" class="selectBox" id="showFMITemperature" checked="checked">
-                <label for="showFMITemperature">Temperature (FMI)</label>
-                <input type="checkbox" class="selectBox" id="showCloudiness" checked="checked">
-                <label for="showCloudiness">Cloudiness</label>
-                <input type="checkbox" class="selectBox" id="showOutsideTemperature" checked="checked">
-                <label for="showOutsideTemperature">Temperature (outside)</label>
             </div>
         </div>
         <div class="leftMargin clearBoth">
