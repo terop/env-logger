@@ -8,4 +8,4 @@ clean:
 	lein clean
 
 update: # update Docker base image
-	docker pull java:8-jre-alpine
+	docker pull openjdk:8-jre-alpine
