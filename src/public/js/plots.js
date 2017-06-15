@@ -167,8 +167,8 @@ if (plotData.length === 0) {
                                 labelsDiv: 'labelDiv',
                                 labelsSeparateLines: true,
                                 title: 'Observations',
-                                height: 450,
-                                width: 900,
+                                height: 500,
+                                width: 950,
                                 axes: {
                                     x: {
                                         valueFormatter: function (ms) {
