@@ -115,7 +115,8 @@
                           obs-dates (db/get-obs-start-and-end db/postgres)
                           formatter (f/formatter "d.M.y")
                           logged-in? (authenticated? request)
-                          common-values {:logged-in? logged-in?
+                          common-values {:obs-dates obs-dates
+                                         :logged-in? logged-in?
                                          :ws-url (get-conf-value :ws-url)
                                          :yc-image-basepath (get-conf-value
                                                              :yc-image-basepath)
