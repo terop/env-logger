@@ -17,7 +17,7 @@ def download_image():
     and None otherwise."""
     timestamp = datetime.now().isoformat()
     try:
-        resp = requests.get('http://testbed.fmi.fi')
+        resp = requests.get('http://testbed.fmi.fi/?imgtype=radar&t=5&n=1')
     # pylint: disable=invalid-name
     except requests.ConnectionError as ce:
         print('{}: Failed to access Testbed page: {}'.format(timestamp, ce),
@@ -29,18 +29,17 @@ def download_image():
 
     # pylint: disable=invalid-name
     bs = BeautifulSoup(resp.text, 'lxml')
-    images = bs.find_all('img')
+    images = bs.find_all(id='anim_image_anim_anim')
 
-    for img in images:
-        if img['src'].find('data/area/') > -1:
-            radar_img = img
-            break
+    if len(images) != 1:
+        return None
+    img_url = images[0]['src']
 
-    if not radar_img:
+    if img_url == '':
         return None
 
     try:
-        resp = requests.get('http://testbed.fmi.fi/{}'.format(radar_img['src']))
+        resp = requests.get(img_url)
     # pylint: disable=invalid-name
     except requests.ConnectionError as ce:
         print('{}: Failed to download Testbed image: {}'.format(timestamp, ce),
