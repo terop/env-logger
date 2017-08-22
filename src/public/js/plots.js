@@ -154,6 +154,10 @@ if (plotData.length === 0) {
             if (result) {
                 document.getElementById('testbedImage').src = tbImageBasepath +
                     result[1] + '/' + imageName;
+                // Scroll page to bottom after loading the image for improved viewing
+                window.setTimeout(function() {
+                    window.scroll(0, document.body.scrollHeight);
+                }, 500);
             }
         } else {
             document.getElementById('testbedImage').src = '';
