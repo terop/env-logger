@@ -51,6 +51,9 @@
                 padding: 10px;
                 width: 20%;
             }
+            #submitBtn {
+                margin-left: 30px;
+            }
         </style>
     </head>
     <body>
@@ -88,6 +91,14 @@
                 </div>
             </div>
         {% endif %}
+        <div class="leftMargin clearBoth">
+            <h4>Date interval to show</h4>
+            <form method="get" action="">
+                <input type="text" name="startDate" id="startDate" value="{{start-date}}">&nbsp;-&nbsp;
+                <input type="text" name="endDate" id="endDate" value="{{end-date}}">
+                <input type="submit" class="btn btn-primary" id="submitBtn" value="Refresh">
+            </form>
+        </div>
         <div>
             <div id="graphDiv" style="float: left;">
                 <span id="noDataError" class="leftMargin noData">No observations found</span>
@@ -126,16 +137,6 @@
                 {% endif %}
             </div>
         </div>
-        <div class="leftMargin clearBoth">
-            <h4>Date interval to show</h4>
-            <form method="get" action="">
-                <input type="text" name="startDate" id="startDate" value="{{start-date}}">&nbsp;-&nbsp;
-                <input type="text" name="endDate" id="endDate" value="{{end-date}}">
-                <br><br>
-                <input type="submit" class="btn btn-primary" id="submitBtn" value="Refresh">
-            </form>
-        </div>
-        <br>
         <div id="imageButtonDiv" class="leftMargin">
             <input type="checkbox" id="showImages">
             <label for="showImages">Show images</label>
