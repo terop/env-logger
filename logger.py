@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""This is a program for sending some environment data to the data logger
+"""This is a program for sending environment data to the data logger
 web service."""
 
 import argparse

@@ -1,2 +1,5 @@
 pytz
 requests
+# Only needed for RuuviTag
+ruuvitag_sensor
+influxdb
