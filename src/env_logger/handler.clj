@@ -205,7 +205,7 @@
   (POST "/image" request
         (if-not (check-auth-code (:code (:params request)))
           response-unauthorized
-          (if (re-find #"yc-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+\d{4}\.jpg"
+          (if (re-find #"yc-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+[\d:]+\.jpg"
                        (:image-name (:params request)))
             (generate-string (db/insert-yc-image-name db/postgres
                                                       (:image-name (:params
