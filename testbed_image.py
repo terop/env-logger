@@ -2,7 +2,7 @@
 """A script for downloading the current FMI Testbed image. Prints an empty string on failure
 and a filename where the latest Testbed image is stored on success."""
 
-# PIP dependencies: requests, beautifulsoup4, lxml, pytz
+# See PIP requirements from testbed_image_requirements.txt
 
 import sys
 from datetime import datetime
