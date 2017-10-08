@@ -33,7 +33,8 @@
 (def formatter :date-hour-minute-second)
 
 (defn clean-test-database
-  "Cleans the test database before and after running tests."
+  "Cleans the test database before and after running tests. Also inserts one
+  observation before running tests."
   [test-fn]
   (j/execute! test-postgres "DELETE FROM observations")
   (j/insert! test-postgres

@@ -119,7 +119,7 @@
   "Changes the timezone and formats the datetime with the given formatter."
   [datetime formatter]
   (l/format-local-time (t/to-time-zone datetime (t/time-zone-for-id
-                                                 "Europe/Helsinki"))
+                                                 (get-conf-value :timezone)))
                        formatter))
 
 (defn validate-date
