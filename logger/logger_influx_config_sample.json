@@ -1,0 +1,14 @@
+{
+    "tag_mac": "F3:13:DD:06:E1:7D",
+    "db_conf": {
+        "host": "example.com",
+        "port": "8086",
+        "username": "myuser",
+        "password": "p4ssw0rd",
+        "database": "mydb",
+        "use_tls": "True"
+    },
+    "influx_tags": {
+        "location": "indoor"
+    }
+}

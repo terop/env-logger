@@ -6,20 +6,13 @@ web service. Data is read from a RuuviTag sensor."""
 # reads data from a RuuviTag sensor
 
 from datetime import datetime
+from distutils.util import strtobool
+import argparse
+import json
 import sys
 
 from ruuvitag_sensor.ruuvitag import RuuviTag
 from influxdb import InfluxDBClient
-
-# MODIFY these as needed!
-TAG_MAC = 'F3:13:DD:06:E1:7D'
-DB_CONF = {'host': 'example.com',
-           'port': 8086,
-           'username': 'user',
-           'password': 'p4ssword',
-           'database': 'mydb',
-           'use_tls': True}
-INFLUXDB_TAGS = {'location': 'indoor'}
 
 
 def read_tag(tag_mac):
@@ -49,9 +42,24 @@ def write_data(client, data, tags):
 def main():
     """Main function of the module."""
     timestamp = datetime.now().isoformat()
-    all_data = read_tag(TAG_MAC)
+
+    parser = argparse.ArgumentParser(description='Record sensor values from a RuuviTag '
+                                     'and save it to InfluxDB server.')
+    parser.add_argument('config', type=str, help='configuration file')
+
+    args = parser.parse_args()
+    with open(args.config, 'r') as cfg_json:
+        try:
+            config = json.load(cfg_json)
+        except json.JSONDecodeError as err:
+            print('{}: could not parse configuration file: {}'.
+                  format(timestamp, err))
+            return 1
+
+    all_data = read_tag(config['tag_mac'])
     if all_data == {}:
-        print('{}: Could not read data from tag with MAC: {}'.format(timestamp, TAG_MAC),
+        print('{}: Could not read data from tag with MAC: {}'.format(timestamp,
+                                                                     config['tag_mac']),
               file=sys.stderr)
         return 1
 
@@ -59,10 +67,12 @@ def main():
             'pressure': all_data['pressure'],
             'humidity': all_data['humidity']}
 
-    client = InfluxDBClient(host=DB_CONF['host'], port=DB_CONF['port'],
-                            username=DB_CONF['username'], password=DB_CONF['password'],
-                            database=DB_CONF['database'], ssl=DB_CONF['use_tls'])
-    if not write_data(client, data, INFLUXDB_TAGS):
+    db_conf = config['db_conf']
+    client = InfluxDBClient(host=db_conf['host'], port=db_conf['port'],
+                            username=db_conf['username'], password=db_conf['password'],
+                            database=db_conf['database'],
+                            ssl=bool(strtobool(db_conf['use_tls'])))
+    if not write_data(client, data, config['influx_tags']):
         print('{}: Could not write data {} to database'.format(timestamp, data),
               file=sys.stderr)
         return 1
