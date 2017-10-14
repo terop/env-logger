@@ -14,6 +14,10 @@ import sys
 from ruuvitag_sensor.ruuvitag import RuuviTag
 from influxdb import InfluxDBClient
 
+# Suppress warning about unverified HTTPS requests
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 
 def read_tag(tag_mac):
     """Read data from the tag with the provided MAC address. Returns a dictionary
