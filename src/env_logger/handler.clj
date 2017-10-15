@@ -22,7 +22,8 @@
             [env-logger.grabber :refer [calculate-start-time
                                         get-latest-fmi-data
                                         weather-query-ok?]]
-            [env-logger.user :as u])
+            [env-logger.user :as u]
+            [env-logger.ruuvitag :refer :all])
   (:import com.yubico.client.v2.YubicoClient
            java.io.ByteArrayInputStream)
   (:gen-class))
@@ -115,9 +116,11 @@
                           obs-dates (db/get-obs-start-and-end db/postgres)
                           formatter (f/formatter "d.M.y")
                           logged-in? (authenticated? request)
+                          ruuvitag-enabled? (get-conf-value :ruuvitag-enabled?)
                           initial-days (get-conf-value :initial-show-days)
                           common-values {:obs-dates obs-dates
                                          :logged-in? logged-in?
+                                         :ruuvitag-enabled? ruuvitag-enabled?
                                          :ws-url (get-conf-value :ws-url)
                                          :yc-image-basepath (get-conf-value
                                                              :yc-image-basepath)
@@ -129,26 +132,49 @@
                                                       db/postgres
                                                       (name (:identity
                                                              request))))}]
-                      (if (or (not (nil? start-date))
-                              (not (nil? end-date)))
-                        (merge common-values
+                      (merge common-values
+                             (if (or (not (nil? start-date))
+                                     (not (nil? end-date)))
                                {:data (generate-string
                                        (if logged-in?
-                                         (db/get-obs-interval
-                                          db/postgres
-                                          {:start start-date
-                                           :end end-date})
+                                         (let [db-obs (db/get-obs-interval
+                                                       db/postgres
+                                                       {:start start-date
+                                                        :end end-date})]
+                                           (if ruuvitag-enabled?
+                                             (map-db-and-rt-obs
+                                              db-obs
+                                              (get-rt-obs
+                                               (get-conf-value :influx)
+                                               (f/parse formatter
+                                                        start-date)
+                                               (t/plus (f/parse
+                                                        formatter
+                                                        end-date)
+                                                       (t/days 1))))
+                                             db-obs))
                                          (db/get-weather-obs-interval
                                           db/postgres
                                           {:start start-date
                                            :end end-date})))
                                 :start-date start-date
-                                :end-date end-date})
-                        (merge common-values
+                                :end-date end-date}
                                {:data (generate-string
                                        (if logged-in?
-                                         (db/get-obs-days db/postgres
-                                                          initial-days)
+                                         (let [db-obs (db/get-obs-days
+                                                       db/postgres
+                                                       initial-days)]
+                                           (if ruuvitag-enabled?
+                                             (map-db-and-rt-obs
+                                              db-obs
+                                              (get-rt-obs (get-conf-value
+                                                           :influx)
+                                                          (t/minus
+                                                           (t/now)
+                                                           (t/days
+                                                            initial-days))
+                                                          (t/now)))
+                                             db-obs))
                                          (db/get-weather-obs-days
                                           db/postgres
                                           initial-days)))

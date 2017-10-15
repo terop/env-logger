@@ -21,6 +21,10 @@ var getCheckboxIndex = function (checkboxId) {
                    'showBrightness': 4,
                    'showCloudiness': 5,
                    'showBeacon': 6};
+        if (ruuvitagEnabled) {
+            mapping['showRTTemperature'] = 7;
+            mapping['showRTHumidity'] = 8;
+        }
     } else {
         mapping = {'showOutsideTemperature': 0,
                    'showFMITemperature': 1,
@@ -49,6 +53,10 @@ var parseData = function (observation) {
                      observation['brightness'],
                      observation['cloudiness'],
                      observation['rssi']];
+        if (ruuvitagEnabled) {
+            dataPoint.push(observation['rt-temperature']);
+            dataPoint.push(observation['rt-humidity']);
+        }
         if (beaconName === '' && observation['name']) {
             beaconName = observation['name'];
         }
@@ -78,6 +86,10 @@ var transformData = function (jsonData) {
         labels = ['Date', 'Inside temperature', 'Temperature (outside)',
                   'Temperature (FMI)', 'Temperature delta',
                   'Brightness', 'Cloudiness', 'Beacon'];
+        if (ruuvitagEnabled) {
+            labels.push('RuuviTag inside temperature');
+            labels.push('RuuviTag humidity');
+        }
     } else {
         labels = ['Date', 'Temperature (outside)', 'Temperature (FMI)',
                   'Temperature delta', 'Cloudiness'];
@@ -87,7 +99,7 @@ var transformData = function (jsonData) {
     }
     if (mode === 'all' && beaconName !== '') {
         var label = 'Beacon "' + beaconName + '" RSSI';
-        labels[labels.length - 1] = label;
+        labels[6] = label;
         document.getElementById('showBeaconLabel').innerHTML = label;
     }
     return labels;

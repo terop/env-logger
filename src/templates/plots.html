@@ -125,6 +125,13 @@
                     <label for="showCloudiness">Cloudiness</label>
                     <input type="checkbox" class="selectBox" id="showBeacon" checked="checked">
                     <label id="showBeaconLabel" for="showBeacon">Beacon</label>
+                    {% if ruuvitag-enabled? %}
+                        <br>
+                        <input type="checkbox" class="selectBox" id="showRTTemperature" checked="checked">
+                        <label for="showRTTemperature">RuuviTag inside temperature</label>
+                        <input type="checkbox" class="selectBox" id="showRTHumidity" checked="checked">
+                        <label for="showRTHumidity">RuuviTag humidity</label>
+                    {% endif %}
                 {% else %}
                     <input type="checkbox" class="selectBox" id="showOutsideTemperature" checked="checked">
                     <label for="showOutsideTemperature">Temperature (outside)</label>
@@ -158,6 +165,7 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/dygraph/2.0.0/dygraph.min.js"></script>
         <script>
             var mode = '{% if logged-in? %}all{% else %}weather{% endif %}',
+                ruuvitagEnabled = {% if ruuvitag-enabled? %}true{% else %}false{% endif %},
                 ycImageBasepath = '{{ yc-image-basepath }}',
                 tbImageBasepath = '{{ tb-image-basepath }}',
                 socket = new WebSocket('{{ ws-url }}');

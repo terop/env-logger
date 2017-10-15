@@ -4,6 +4,12 @@
             :name "db_name"
             :username "foobar"
             :password "testpwd1!"}
+ ;; InfluxDB settings
+ :ruuvitag-enabled? true
+ :influx {:url "https://example.com:8086"
+          :username "myuser"
+          :password "myp4ssw0rd"
+          :database "mydb"}
  ;; LDAP settings
  :ldap {:host "localhost"
         :port "389"
