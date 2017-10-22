@@ -12,44 +12,62 @@ target_user=myuser
 target_directory=/home/mydir
 
 usage() {
-    echo "A script for backing up InfluxDB metastore and database data."
-    echo "Example: $0 env_logger"
+    cat <<EOF >&2
+A script for backing up InfluxDB metastore and database data
+and uploading the backup file to a remote machine.
+
+Usage: $0 [-h] [-l] <database name>
+Flags:
+-h    Print this message and exit
+-l    Local mode: do not upload backup file
+EOF
 }
 
-if [ $# -eq 0 ] || [ "$1" = '-h' ]; then
-    usage
-    exit 1
-fi
+local_mode=0
+while getopts 'lh' OPTION; do
+  case "$OPTION" in
+    l)
+        local_mode=1
+        ;;
+    h)
+        usage
+        exit 1
+      ;;
+  esac
+done
+shift "$((OPTIND - 1))"
 
 db_name=$1
-backup_dir="/tmp/influx_backup_${db_name}"
+backup_dir="influx_backup_${db_name}"
 backup_file_name="influxdb_${db_name}_$(date -Iminutes).tar.xz"
 
+cd /tmp || exit 1
 mkdir ${backup_dir}
 echo "Backing up metastore"
-influxd backup ${backup_dir}
-if [ $? -ne 0 ]; then
+if [ $(influxd backup ${backup_dir}) ]; then
     echo "Error: metastore backup failed, stopping." >&2
     rm -rf ${backup_dir}
     exit 1
 fi
 
 echo "Backing up database ${db_name}"
-influxd backup -database ${db_name} ${backup_dir}
-if [ $? -ne 0 ]; then
+if [ $(influxd backup -database ${db_name} ${backup_dir}) ]; then
     echo "Error: database ${db_name} backup failed, stopping." >&2
     rm -rf ${backup_dir}
     exit 1
 fi
 
-cd /tmp || exit 1
-tar -cJf "./${backup_file_name}" ${backup_dir}
-if [ $? -ne 0 ]; then
+if [ $(tar -cJf "./${backup_file_name}" ${backup_dir}) ]; then
     echo "Error: backup directory compression failed, stopping." >&2
     rm -rf ${backup_dir}
     exit 1
 fi
 rm -rf ${backup_dir}
+
+if [ ${local_mode} -eq 1 ]; then
+    echo "Backup file: /tmp/${backup_file_name}"
+    exit 0
+fi
 
 echo "Uploading file to ${target_host}:${target_directory}"
 if [ $(scp "./${backup_file_name}" "${target_user}@${target_host}:${target_directory}/") ]; then
