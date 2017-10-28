@@ -12,10 +12,15 @@ target_user=tpalohei
 target_directory=/home/users/tpalohei/siilo
 
 usage() {
-    echo "Usage: $(basename $0) [-l] <database name>"
-    echo "Flags:"
-    echo "-l    Do a local backup (do not upload backup file)"
-    exit 1
+    cat >&2 <<EOF
+This scripts backs up a PostgreSQL database and uploads the backup to a user
+specified remote host.
+
+Usage: $(basename $0) [-h] [-l] <database name>
+Flags:
+-h    Print this message and exit
+-l    Do a local backup (do not upload backup file)
+EOF
 }
 
 local_backup=0
@@ -24,10 +29,14 @@ database_name=$1
 if [ $# -eq 2 ]; then
     local_backup=1
     database_name=$2
+elif [ $# -eq 1 ] && [ $1 = '-h' ]; then
+    usage
+    exit 1
 elif [ $# -eq 1 ]; then
     database_name=$1
 else
     usage
+    exit 1
 fi
 target_directory="$target_directory/${database_name}_backup"
 backup_file_name="${database_name}_$(date -Iseconds).sql"
