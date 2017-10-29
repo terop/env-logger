@@ -69,7 +69,7 @@
         <div class="leftMargin displayNone" id="lastObservation" style="margin-bottom: 15px;"></div>
 
         {% if logged-in? %}
-            <div id="profilesDiv" class="panel panel-default leftMargin">
+            <div id="profilesDiv" class="panel panel-default leftMargin displayNone">
                 <h4>Profiles</h4>
                 <span id="noProfiles" class="noProfiles {% if profiles|not-empty %}displayNone{% endif %}">No profiles</span>
                 <select id="profiles" {% if profiles|empty? %}class="displayNone"{% endif %}>
