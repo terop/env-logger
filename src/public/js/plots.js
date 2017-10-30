@@ -1,4 +1,15 @@
 
+// Formats the given date as 'dd.mm.yyyy hh:MM:ss'
+var formatDate = function (date) {
+    return date.getDate() + '.' + (date.getMonth() + 1) + '.' +
+        date.getFullYear() + ' ' + date.getHours() + ':' +
+        (date.getMinutes() < 10 ?
+         ('0' + date.getMinutes()) : date.getMinutes())
+        + ':' +
+        (date.getSeconds() < 10 ?
+         ('0' + date.getSeconds()) : date.getSeconds());
+};
+
 // Persist checkbox state in local storage
 var persistCheckboxes = function () {
     var boxes = document.querySelectorAll('div.checkboxes > input'),
@@ -129,9 +140,7 @@ if (plotData.length === 0) {
             observationText += labels[i] + ': ';
             if (i === 0) {
                 // Reformat date
-                observationText += lastObservation[i].getDate() + '.' + (lastObservation[i].getMonth() + 1)
-                    + '.' + lastObservation[i].getFullYear() + ' ' + lastObservation[i].getHours() + ':'
-                    + lastObservation[i].getMinutes() + ':' + lastObservation[i].getSeconds();
+                observationText += formatDate(lastObservation[i]);
             } else {
                 observationText += lastObservation[i];
             }
@@ -189,11 +198,7 @@ if (plotData.length === 0) {
                                     x: {
                                         valueFormatter: function (ms) {
                                             var date = new Date(ms);
-                                            return date.getDate() + '.' + (date.getMonth() + 1) + '.' +
-                                                date.getFullYear() + ' ' + date.getHours() + ':' +
-                                                (date.getMinutes() < 10 ?
-                                                 ('0' + date.getMinutes()) : date.getMinutes())
-                                                + ':' + date.getSeconds();
+                                            return formatDate(date);
                                         }
                                     }
                                 },
