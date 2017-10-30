@@ -145,7 +145,7 @@
                                              (map-db-and-rt-obs
                                               db-obs
                                               (get-rt-obs
-                                               (get-conf-value :influx)
+                                               (get-conf-value :ruuvitag-influx)
                                                (f/parse formatter
                                                         start-date)
                                                (t/plus (f/parse
@@ -168,7 +168,7 @@
                                              (map-db-and-rt-obs
                                               db-obs
                                               (get-rt-obs (get-conf-value
-                                                           :influx)
+                                                           :ruuvitag-influx)
                                                           (t/minus
                                                            (t/now)
                                                            (t/days
