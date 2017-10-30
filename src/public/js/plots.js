@@ -161,6 +161,10 @@ if (plotData.length === 0) {
             if (result) {
                 document.getElementById('yardcamImage').src = ycImageBasepath +
                     result[1] + '/' + imageName;
+                // For improved viewing scroll page to bottom after loading the image
+                window.setTimeout(function() {
+                    window.scroll(0, document.body.scrollHeight);
+                }, 500);
             }
         } else {
             alert('No yardcam image to show');
@@ -175,7 +179,7 @@ if (plotData.length === 0) {
             if (result) {
                 document.getElementById('testbedImage').src = tbImageBasepath +
                     result[1] + '/' + imageName;
-                // Scroll page to bottom after loading the image for improved viewing
+                // For improved viewing scroll page to bottom after loading the image
                 window.setTimeout(function() {
                     window.scroll(0, document.body.scrollHeight);
                 }, 500);
