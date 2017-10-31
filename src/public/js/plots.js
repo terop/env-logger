@@ -1,13 +1,7 @@
 
 // Formats the given date as 'dd.mm.yyyy hh:MM:ss'
 var formatDate = function (date) {
-    return date.getDate() + '.' + (date.getMonth() + 1) + '.' +
-        date.getFullYear() + ' ' + date.getHours() + ':' +
-        (date.getMinutes() < 10 ?
-         ('0' + date.getMinutes()) : date.getMinutes())
-        + ':' +
-        (date.getSeconds() < 10 ?
-         ('0' + date.getSeconds()) : date.getSeconds());
+    return moment(date).format('DD.MM.YYYY HH:mm:ss');
 };
 
 // Persist checkbox state in local storage
