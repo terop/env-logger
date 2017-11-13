@@ -26,7 +26,8 @@ CREATE TABLE weather_data (
        obs_id INTEGER NOT NULL REFERENCES observations (id) ON DELETE CASCADE,
        time TIMESTAMP WITH TIME ZONE NOT NULL,
        temperature REAL NOT NULL,
-       cloudiness SMALLINT NOT NULL
+       cloudiness SMALLINT NOT NULL,
+       pressure REAL NOT NULL
 );
 
 -- User table
@@ -34,7 +35,7 @@ CREATE TABLE users (
        user_id SERIAL PRIMARY KEY,
        username VARCHAR(100) NOT NULL UNIQUE,
        pw_hash VARCHAR(250),
-        saved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+       saved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
  );
 
 -- Yubikey ID table

@@ -23,7 +23,10 @@
 
 (deftest test-data-extraction
   (testing "Data extraction function tests"
-    (is (= {:date "2016-08-12T05:20:00Z", :temperature 12.0, :cloudiness 0}
+    (is (= {:date "2017-11-13T19:10:00Z"
+            :temperature 2.0
+            :cloudiness 8
+            :pressure 1006.5}
            (extract-data
             [{:tag :wfs:member,
               :attrs nil,
@@ -37,16 +40,15 @@
                   [{:tag :gml:Point,
                     :attrs
                     {:srsName "http://www.opengis.net/def/crs/EPSG/0/4258",
-                     :srsDimension "2",
+                     :srsDimension 2,
                      :gml:id "BsWfsElementP.1.1.1"},
                     :content
-                    [{:tag :gml:pos,
-                      :attrs nil,
-                      :content ["60.17802 24.78732 "]}]}]}
+                    [{:tag :gml:pos, :attrs nil,
+                      :content ["60.17802 24.78732"]}]}]}
                  {:tag :BsWfs:Time, :attrs nil,
-                  :content ["2016-08-12T05:20:00Z"]}
+                  :content ["2017-11-13T19:10:00Z"]}
                  {:tag :BsWfs:ParameterName, :attrs nil, :content ["t2m"]}
-                 {:tag :BsWfs:ParameterValue, :attrs nil, :content ["12.0"]}]}]}
+                 {:tag :BsWfs:ParameterValue, :attrs nil, :content ["2.0"]}]}]}
              {:tag :wfs:member,
               :attrs nil,
               :content
@@ -59,17 +61,39 @@
                   [{:tag :gml:Point,
                     :attrs
                     {:srsName "http://www.opengis.net/def/crs/EPSG/0/4258",
-                     :srsDimension "2",
+                     :srsDimension 2,
                      :gml:id "BsWfsElementP.1.1.2"},
                     :content
                     [{:tag :gml:pos,
                       :attrs nil,
                       :content ["60.17802 24.78732 "]}]}]}
                  {:tag :BsWfs:Time, :attrs nil,
-                  :content ["2016-08-12T05:20:00Z"]}
+                  :content ["2017-11-13T19:10:00Z"]}
                  {:tag :BsWfs:ParameterName, :attrs nil, :content ["n_man"]}
+                 {:tag :BsWfs:ParameterValue, :attrs nil, :content ["8.0"]}]}]}
+             {:tag :wfs:member,
+              :attrs nil,
+              :content
+              [{:tag :BsWfs:BsWfsElement,
+                :attrs {:gml:id "BsWfsElement.1.1.3"},
+                :content
+                [{:tag :BsWfs:Location,
+                  :attrs nil,
+                  :content
+                  [{:tag :gml:Point,
+                    :attrs
+                    {:srsName "http://www.opengis.net/def/crs/EPSG/0/4258",
+                     :srsDimension 2,
+                     :gml:id "BsWfsElementP.1.1.3"},
+                    :content
+                    [{:tag :gml:pos,
+                      :attrs nil,
+                      :content ["60.17802 24.78732 "]}]}]}
+                 {:tag :BsWfs:Time, :attrs nil,
+                  :content ["2017-11-13T19:10:00Z"]}
+                 {:tag :BsWfs:ParameterName, :attrs nil, :content ["p_sea"]}
                  {:tag :BsWfs:ParameterValue, :attrs nil,
-                  :content ["0.0"]}]}]}])))
+                  :content ["1006.5"]}]}]}])))
     (is (nil? (extract-data
                [{:tag :wfs:member,
                  :attrs nil,
@@ -115,8 +139,64 @@
     (with-fake-routes {
                        #"http:\/\/data\.fmi\.fi\/fmi-apikey\/(.+)"
                        (fn [_] {:status 200
-                                :body "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<wfs:FeatureCollection\n  timeStamp=\"2016-08-12T17:10:45Z\"\n  numberReturned=\"2\"\n  numberMatched=\"2\"\n      xmlns:wfs=\"http://www.opengis.net/wfs/2.0\"\n    xmlns:gml=\"http://www.opengis.net/gml/3.2\"\n    xmlns:BsWfs=\"http://xml.fmi.fi/schema/wfs/2.0\"\n    xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n    xsi:schemaLocation=\"http://www.opengis.net/wfs/2.0 http://schemas.opengis.net/wfs/2.0/wfs.xsd\n                        http://xml.fmi.fi/schema/wfs/2.0 http://xml.fmi.fi/schema/wfs/2.0/fmi_wfs_simplefeature.xsd\"\n>\n  \t\n\t<wfs:member>\n            <BsWfs:BsWfsElement gml:id=\"BsWfsElement.1.1.1\">\n                <BsWfs:Location>\n                    <gml:Point gml:id=\"BsWfsElementP.1.1.1\" srsDimension=\"2\" srsName=\"http://www.opengis.net/def/crs/EPSG/0/4258\">\n                        <gml:pos>60.17802 24.78732 </gml:pos>\n                    </gml:Point>\n                </BsWfs:Location>\n                <BsWfs:Time>2016-08-12T17:10:00Z</BsWfs:Time>\n                <BsWfs:ParameterName>t2m</BsWfs:ParameterName>\n                <BsWfs:ParameterValue>15</BsWfs:ParameterValue>\n            </BsWfs:BsWfsElement>\n\t</wfs:member>\n\t\n\t<wfs:member>\n            <BsWfs:BsWfsElement gml:id=\"BsWfsElement.1.1.2\">\n                <BsWfs:Location>\n                    <gml:Point gml:id=\"BsWfsElementP.1.1.2\" srsDimension=\"2\" srsName=\"http://www.opengis.net/def/crs/EPSG/0/4258\">\n                        <gml:pos>60.17802 24.78732 </gml:pos>\n                    </gml:Point>\n                </BsWfs:Location>\n                <BsWfs:Time>2016-08-12T17:10:00Z</BsWfs:Time>\n                <BsWfs:ParameterName>n_man</BsWfs:ParameterName>\n                <BsWfs:ParameterValue>0.0</BsWfs:ParameterValue>\n            </BsWfs:BsWfsElement>\n\t</wfs:member>\n\t\n\n</wfs:FeatureCollection>\n"})}
-      (is (= {:date "2016-08-12T17:10:00Z", :temperature 15.0, :cloudiness 0}
+                                :body "<?xml version=\"1.0\"
+                                             encoding=\"UTF-8\"?>
+<wfs:FeatureCollection
+    timeStamp=\"2017-11-13T19:12:39Z\"
+    numberReturned=\"3\"
+    numberMatched=\"3\"
+    xmlns:wfs=\"http://www.opengis.net/wfs/2.0\"
+    xmlns:gml=\"http://www.opengis.net/gml/3.2\"
+    xmlns:BsWfs=\"http://xml.fmi.fi/schema/wfs/2.0\"
+    xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"
+    xsi:schemaLocation=\"http://www.opengis.net/wfs/2.0
+                         http://schemas.opengis.net/wfs/2.0/wfs.xsd
+                         http://xml.fmi.fi/schema/wfs/2.0
+                         http://xml.fmi.fi/schema/wfs/2.0/fmi_wfs_simplefeature.xsd\">
+  <wfs:member>
+    <BsWfs:BsWfsElement gml:id=\"BsWfsElement.1.1.1\">
+      <BsWfs:Location>
+        <gml:Point gml:id=\"BsWfsElementP.1.1.1\" srsDimension=\"2\"
+                   srsName=\"http://www.opengis.net/def/crs/EPSG/0/4258\">
+          <gml:pos>60.17802 24.78732 </gml:pos>
+        </gml:Point>
+      </BsWfs:Location>
+      <BsWfs:Time>2017-11-13T19:10:00Z</BsWfs:Time>
+      <BsWfs:ParameterName>t2m</BsWfs:ParameterName>
+      <BsWfs:ParameterValue>2.0</BsWfs:ParameterValue>
+    </BsWfs:BsWfsElement>
+  </wfs:member>
+  <wfs:member>
+    <BsWfs:BsWfsElement gml:id=\"BsWfsElement.1.1.2\">
+      <BsWfs:Location>
+        <gml:Point gml:id=\"BsWfsElementP.1.1.2\" srsDimension=\"2\"
+                   srsName=\"http://www.opengis.net/def/crs/EPSG/0/4258\">
+          <gml:pos>60.17802 24.78732 </gml:pos>
+        </gml:Point>
+      </BsWfs:Location>
+      <BsWfs:Time>2017-11-13T19:10:00Z</BsWfs:Time>
+      <BsWfs:ParameterName>n_man</BsWfs:ParameterName>
+      <BsWfs:ParameterValue>8.0</BsWfs:ParameterValue>
+    </BsWfs:BsWfsElement>
+  </wfs:member>
+  <wfs:member>
+    <BsWfs:BsWfsElement gml:id=\"BsWfsElement.1.1.3\">
+      <BsWfs:Location>
+        <gml:Point gml:id=\"BsWfsElementP.1.1.3\" srsDimension=\"2\"
+                   srsName=\"http://www.opengis.net/def/crs/EPSG/0/4258\">
+          <gml:pos>60.17802 24.78732 </gml:pos>
+        </gml:Point>
+      </BsWfs:Location>
+      <BsWfs:Time>2017-11-13T19:10:00Z</BsWfs:Time>
+      <BsWfs:ParameterName>p_sea</BsWfs:ParameterName>
+      <BsWfs:ParameterValue>1006.5</BsWfs:ParameterValue>
+    </BsWfs:BsWfsElement>
+  </wfs:member>
+</wfs:FeatureCollection>"})}
+      (is (= {:date "2017-11-13T19:10:00Z"
+              :temperature 2.0
+              :cloudiness 8
+              :pressure 1006.5}
              (get-latest-fmi-data "api-key" 87874))))
     (with-fake-routes {
                        #"http://data.fmi.fi/fmi-apikey/.+"

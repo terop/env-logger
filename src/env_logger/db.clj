@@ -73,8 +73,8 @@
                          {:obs_id obs-id
                           :time (f/parse (:date weather-data))
                           :temperature (:temperature weather-data)
-                          :cloudiness
-                          (:cloudiness weather-data)}))))
+                          :cloudiness (:cloudiness weather-data)
+                          :pressure (:pressure weather-data)}))))
 
 (defn insert-observation
   "Inserts a observation to the database. Optionally corrects the temperature

@@ -17,7 +17,7 @@
   "Parses and returns temperature and cloud cover information from the XML
   document body. It is assumed that there only one set of data in the body."
   [xml-body]
-  (when-not (not= (count xml-body) 2)
+  (when-not (not= (count xml-body) 3)
     (let [data (for [elem xml-body]
                  (map #(->> %
                             :content
@@ -33,7 +33,8 @@
                                      (:tag %))))))]
       {:date (nth (first data) 0)
        :temperature (Float/parseFloat (nth (first data) 2))
-       :cloudiness (int (Float/parseFloat (nth (nth data 1) 2)))})))
+       :cloudiness (int (Float/parseFloat (nth (nth data 1) 2)))
+       :pressure (Float/parseFloat (nth (nth data 2) 2))})))
 
 (defn calculate-start-time
   "Calculates the start time for the data request and returns it as a
@@ -54,7 +55,7 @@
   [fmi-api-key station-id]
   (let [url (format (str "http://data.fmi.fi/fmi-apikey/%s/wfs?request="
                          "getFeature&storedquery_id=fmi::observations::"
-                         "weather::simple&fmisid=%d&parameters=t2m,n_man"
+                         "weather::simple&fmisid=%d&parameters=t2m,n_man,p_sea"
                          "&starttime=%s") fmi-api-key station-id
                     (f/unparse (f/formatters :date-time-no-ms)
                                (calculate-start-time)))
