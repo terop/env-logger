@@ -25,16 +25,18 @@ var getCheckboxIndex = function (checkboxId) {
                    'showTempDelta': 3,
                    'showBrightness': 4,
                    'showCloudiness': 5,
-                   'showBeacon': 6};
+                   'showPressure': 6,
+                   'showBeacon': 7};
         if (ruuvitagEnabled) {
-            mapping['showRTTemperature'] = 7;
-            mapping['showRTHumidity'] = 8;
+            mapping['showRTTemperature'] = 8;
+            mapping['showRTHumidity'] = 9;
         }
     } else {
         mapping = {'showOutsideTemperature': 0,
                    'showFMITemperature': 1,
                    'showTempDelta': 2,
-                   'showCloudiness': 3};
+                   'showCloudiness': 3,
+                   'showPressure': 4};
     }
     return mapping[checkboxId];
 };
@@ -57,6 +59,7 @@ var parseData = function (observation) {
                      observation['temp_delta'],
                      observation['brightness'],
                      observation['cloudiness'],
+                     observation['pressure'],
                      observation['rssi']];
         if (ruuvitagEnabled) {
             dataPoint.push(observation['rt-temperature']);
@@ -71,7 +74,8 @@ var parseData = function (observation) {
                      observation['o_temperature'],
                      observation['fmi_temperature'],
                      observation['temp_delta'],
-                     observation['cloudiness']];
+                     observation['cloudiness'],
+                     observation['pressure']];
     }
     yardcamImageNames.push(observation['yc_image_name']);
     testbedImageNames.push(observation['tb_image_name']);
@@ -90,21 +94,21 @@ var transformData = function (jsonData) {
     if (mode === 'all') {
         labels = ['Date', 'Inside temperature', 'Temperature (outside)',
                   'Temperature (FMI)', 'Temperature delta',
-                  'Brightness', 'Cloudiness', 'Beacon'];
+                  'Brightness', 'Cloudiness', 'Pressure (FMI)', 'Beacon'];
         if (ruuvitagEnabled) {
             labels.push('RuuviTag inside temperature');
             labels.push('RuuviTag humidity');
         }
     } else {
         labels = ['Date', 'Temperature (outside)', 'Temperature (FMI)',
-                  'Temperature delta', 'Cloudiness'];
+                  'Temperature delta', 'Cloudiness', 'Pressure (FMI)'];
     }
     for (var i = 0; i < observations.length; i++) {
         plotData.push(parseData(observations[i]));
     }
     if (mode === 'all' && beaconName !== '') {
         var label = 'Beacon "' + beaconName + '" RSSI';
-        labels[6] = label;
+        labels[8] = label;
         document.getElementById('showBeaconLabel').innerHTML = label;
     }
     return labels;
@@ -139,10 +143,13 @@ if (plotData.length === 0) {
                 observationText += lastObservation[i];
             }
             observationText += ', ';
+            if (mode === 'all' && i === Math.round(lastObservation.length / 2)) {
+                observationText += '<br>';
+            }
         }
         observationText = observationText.slice(0, -2);
 
-        document.getElementById('lastObservation').innerText = observationText;
+        document.getElementById('lastObservation').innerHTML = observationText;
         document.getElementById('lastObservation').classList.remove('displayNone');
     };
     showLastObservation();
@@ -195,8 +202,7 @@ if (plotData.length === 0) {
                                 axes: {
                                     x: {
                                         valueFormatter: function (ms) {
-                                            var date = new Date(ms);
-                                            return formatDate(date);
+                                            return formatDate(new Date(ms));
                                         }
                                     }
                                 },
@@ -207,6 +213,9 @@ if (plotData.length === 0) {
                                     showTestbedImage(point.idx);
                                 }
                             });
+    // Disable the pressure series by default as its values are in a very different
+    // range as the other values
+    graph.setVisibility(getCheckboxIndex('showPressure'), false);
 }
 
 var checkboxes = document.getElementsByClassName('selectBox');

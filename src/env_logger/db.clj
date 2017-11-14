@@ -169,6 +169,7 @@
                              :o.recorded
                              [:w.temperature "fmi_temperature"]
                              :w.cloudiness
+                             :w.pressure
                              :o.yc_image_name
                              [:o.outside_temperature "o_temperature"]
                              :b.mac_address
@@ -229,6 +230,7 @@
            (sql/format (sql/build :select [:w.time
                                            [:w.temperature "fmi_temperature"]
                                            :w.cloudiness
+                                           :w.pressure
                                            :o.yc_image_name
                                            [:o.outside_temperature
                                             "o_temperature"]

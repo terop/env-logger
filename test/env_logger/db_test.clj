@@ -61,7 +61,7 @@
     (let [observation {:timestamp (iso8601-dt-str)
                        :inside_light 0
                        :inside_temp 20
-                       :beacons [{:rssi -68,
+                       :beacons [{:rssi -68
                                   :mac "7C:EC:79:3F:BE:97"}]}
           weather-data {:date (iso8601-dt-str)
                         :temperature 20
@@ -112,6 +112,7 @@
             :cloudiness 2
             :fmi_temperature 20.0
             :o_temperature 5.0
+            :pressure 1006.5
             :yc_image_name "testimage.jpg"
             :name "7C:EC:79:3F:BE:97"
             :rssi -68
@@ -236,7 +237,8 @@
     (is (= {:time (l/format-local-time current-dt formatter)
             :cloudiness 2
             :fmi_temperature 20.0
-            :o_temperature 5.0,
+            :o_temperature 5.0
+            :pressure 1006.5
             :yc_image_name "testimage.jpg"
             :tb_image_name nil
             :temp_delta -15.0}
@@ -301,7 +303,7 @@
     (let [obs-id (first (j/query test-postgres
                                  "SELECT MIN(id) AS id FROM observations"
                                  {:row-fn #(:id %)}))
-          beacon {:rssi -68,
+          beacon {:rssi -68
                   :mac "7C:EC:79:3F:BE:97"}]
       (is (pos? (first (insert-beacons test-postgres
                                        obs-id

@@ -123,10 +123,12 @@
                     <label for="showBrightness">Brightness</label>
                     <input type="checkbox" class="selectBox" id="showCloudiness" checked="checked">
                     <label for="showCloudiness">Cloudiness</label>
+                    <input type="checkbox" class="selectBox" id="showPressure">
+                    <label for="showPressure">Pressure (FMI)</label>
+                    <br>
                     <input type="checkbox" class="selectBox" id="showBeacon" checked="checked">
                     <label id="showBeaconLabel" for="showBeacon">Beacon</label>
                     {% if ruuvitag-enabled? %}
-                        <br>
                         <input type="checkbox" class="selectBox" id="showRTTemperature" checked="checked">
                         <label for="showRTTemperature">RuuviTag inside temperature</label>
                         <input type="checkbox" class="selectBox" id="showRTHumidity" checked="checked">
@@ -141,6 +143,8 @@
                     <label for="showTempDelta">Temperature delta</label>
                     <input type="checkbox" class="selectBox" id="showCloudiness" checked="checked">
                     <label for="showCloudiness">Cloudiness</label>
+                    <input type="checkbox" class="selectBox" id="showPressure">
+                    <label for="showPressure">Pressure (FMI)</label>
                 {% endif %}
             </div>
         </div>
