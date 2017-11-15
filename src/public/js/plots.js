@@ -9,9 +9,9 @@ var persistCheckboxes = function () {
     var boxes = document.querySelectorAll('div.checkboxes > input'),
         checked = {};
 
-    for (var i = 0; i < boxes.length; i++) {
-        checked[boxes[i].id] = boxes[i].checked;
-    }
+    boxes.forEach(function (element) {
+        checked[element.id] = element.checked;
+    });
     localStorage.setItem('checkedBoxes', JSON.stringify(checked));
 };
 
@@ -103,9 +103,9 @@ var transformData = function (jsonData) {
         labels = ['Date', 'Temperature (outside)', 'Temperature (FMI)',
                   'Temperature delta', 'Cloudiness', 'Pressure (FMI)'];
     }
-    for (var i = 0; i < observations.length; i++) {
-        plotData.push(parseData(observations[i]));
-    }
+    plotData = observations.map(function (element) {
+        return parseData(element);
+    });
     if (mode === 'all' && beaconName !== '') {
         var label = 'Beacon "' + beaconName + '" RSSI';
         labels[8] = label;
@@ -134,19 +134,19 @@ if (plotData.length === 0) {
             }
         }
 
-        for (i = 0; i < lastObservation.length; i++) {
-            observationText += labels[i] + ': ';
-            if (i === 0) {
+        lastObservation.forEach(function (element, index) {
+            observationText += labels[index] + ': ';
+            if (index === 0) {
                 // Reformat date
-                observationText += formatDate(lastObservation[i]);
+                observationText += formatDate(element);
             } else {
-                observationText += lastObservation[i];
+                observationText += element;
             }
             observationText += ', ';
-            if (mode === 'all' && i === Math.round(lastObservation.length / 2)) {
+            if (mode === 'all' && index === Math.round(lastObservation.length / 2)) {
                 observationText += '<br>';
             }
-        }
+        });
         observationText = observationText.slice(0, -2);
 
         document.getElementById('lastObservation').innerHTML = observationText;
@@ -265,7 +265,7 @@ var wsOperations = function () {
 };
 wsOperations();
 
-// Function for validating date field values
+// Function validating date field values
 var validateDates = function (event) {
     var datePattern = /\d{1,2}\.\d{1,2}\.\d{4}/,
         startDate = document.getElementById('startDate').value,

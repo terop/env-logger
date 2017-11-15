@@ -26,7 +26,7 @@ var hideAllSeries = function () {
     }
 };
 
-// Handle for profile 'Apply' button
+// Handle profile 'Apply' button click
 var applyProfileHandler = function (event) {
     var selectedIndex = document.getElementById('profiles').selectedIndex,
         profile = JSON.parse(document.getElementById('profiles').item(selectedIndex).value);
@@ -72,7 +72,7 @@ var hideProfileControls = function () {
     changeVisibility('deleteProfile', true);
 };
 
-// Handle for profile 'Save' button
+// Handle profile 'Save' button click
 var saveProfileHandler = function () {
     var profileName = document.getElementById('profileName').value;
     if (profileName === '') {
@@ -131,7 +131,7 @@ document.getElementById('saveProfile').addEventListener('click',
                                                         saveProfileHandler,
                                                         false);
 
-// Handler for the profile 'Delete' button
+// Handler profile 'Delete' button click
 var deleteProfileHandler = function (event) {
     if (confirm('Are you sure you want to delete the profile?')) {
         var selectedIndex = document.getElementById('profiles').selectedIndex,
