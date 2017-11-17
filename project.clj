@@ -9,7 +9,7 @@
                  [org.postgresql/postgresql "42.1.4"]
                  [org.clojure/java.jdbc "0.7.3"]
                  [honeysql "0.9.1"]
-                 [clj-time "0.14.1"]
+                 [clj-time "0.14.2"]
                  [cheshire "5.8.0"]
                  [selmer "1.11.3"]
                  [clj-http "3.7.0"]
@@ -18,7 +18,7 @@
                  [com.yubico/yubico-validation-client2 "3.0.1"]
                  [buddy/buddy-hashers "1.3.0"]
                  [buddy/buddy-auth "2.1.0"]
-                 [org.clojars.pntblnk/clj-ldap "0.0.14"]
+                 [org.clojars.pntblnk/clj-ldap "0.0.15"]
                  [org.influxdb/influxdb-java "2.7"]]
   :main env-logger.handler
   :aot [env-logger.handler
