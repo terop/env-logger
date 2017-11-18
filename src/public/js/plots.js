@@ -224,6 +224,9 @@ for (var i = 0; i < checkboxes.length; i++) {
                                    function (event) {
                                        graph.setVisibility(getCheckboxIndex(event.currentTarget.id),
                                                            event.currentTarget.checked);
+                                       if (!event.currentTarget.checked) {
+                                           document.getElementById('showAll').checked = false;
+                                       }
                                    },
                                    false);
 }
@@ -284,10 +287,23 @@ document.getElementById('submitBtn').addEventListener('click',
                                                       validateDates,
                                                       false);
 
-var toggleImageDiv = function (event) {
+var toggleImageDiv = function () {
     document.getElementById('imageDiv').classList.toggle('displayNone');
 };
 
 document.getElementById('showImages').addEventListener('click',
                                                        toggleImageDiv,
                                                        false);
+
+var showAllHandler = function (event) {
+    var show = event.currentTarget.checked;
+
+    var checkboxes = document.getElementsByClassName('selectBox');
+    for (var i = 0; i < checkboxes.length; i++) {
+        graph.setVisibility(getCheckboxIndex(checkboxes[i].id), show);
+        checkboxes[i].checked = show;
+    }
+};
+document.getElementById('showAll').addEventListener('click',
+                                                    showAllHandler,
+                                                    false);
