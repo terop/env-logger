@@ -57,7 +57,7 @@ def main():
             config = json.load(cfg_json)
         except json.JSONDecodeError as err:
             print('{}: could not parse configuration file: {}'.
-                  format(timestamp, err))
+                  format(timestamp, err), file=sys.stderr)
             return 1
 
     all_data = read_tag(config['tag_mac'])
