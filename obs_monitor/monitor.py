@@ -49,14 +49,13 @@ def check_obs_time(config, last_obs_time):
     """Check last observation time and send an email if the threshold is
     exceeded. Returns 'True' when an email is sent and 'False' otherwise."""
     time_diff = datetime.now(tz=last_obs_time.tzinfo) - last_obs_time
-    diff_minutes = int(time_diff.seconds / 60)
-    if diff_minutes > int(config['monitor']['Threshold']):
+    if int(time_diff.seconds / 60) > int(config['monitor']['Threshold']):
         if config['monitor']['EmailSent'] == 'False':
             if send_email(config['email'],
                           'env-logger inactivity warning',
-                          'No observations have been received in env-logger backend for '
-                          '{} minutes. Consider checking possible problems.'
-                          .format(diff_minutes)):
+                          'No observations have been received in the env-logger backend after {}.'
+                          'Consider checking possible problems.'
+                          .format(last_obs_time.isoformat())):
                 return 'True'
             else:
                 return 'False'
