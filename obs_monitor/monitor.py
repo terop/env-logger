@@ -51,22 +51,18 @@ def check_obs_time(config, last_obs_time):
     time_diff = datetime.now(tz=last_obs_time.tzinfo) - last_obs_time
     if int(time_diff.seconds / 60) > int(config['monitor']['Threshold']):
         if config['monitor']['EmailSent'] == 'False':
-            if send_email(config['email'],
-                          'env-logger inactivity warning',
-                          'No observations have been received in the env-logger backend after {}.'
-                          'Consider checking possible problems.'
-                          .format(last_obs_time.isoformat())):
-                return 'True'
-            else:
-                return 'False'
-        else:
-            return 'True'
+            return str(send_email(config['email'],
+                                  'env-logger inactivity warning',
+                                  'No observations have been received in the env-logger '
+                                  'backend after {}. Consider checking possible problems.'
+                                  .format(last_obs_time.isoformat())))
+        return str(True)
     else:
         if config['monitor']['EmailSent'] == 'True':
             send_email(config['email'], 'env-logger back online',
                        'env-logger is back online at {}.'
                        .format(datetime.now().isoformat()))
-        return 'False'
+        return str(False)
 
 
 def main():
