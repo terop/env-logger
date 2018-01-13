@@ -181,13 +181,14 @@
     (let [formatter (f/formatter "d.M.y")]
       (is (= (f/unparse formatter (t/minus current-dt
                                            (t/days 4)))
-             (:start (get-obs-start-and-end test-postgres))))
+             (:start (get-obs-start-date test-postgres))))
       (is (= (f/unparse formatter current-dt)
-             (:end (get-obs-start-and-end test-postgres))))
+             (:end (get-obs-end-date test-postgres))))
       (with-redefs [j/query (fn [db query] '())]
-        (is (= {:start ""
-                :end ""}
-               (get-obs-start-and-end test-postgres)))))))
+        (is (= {:start ""}
+               (get-obs-start-date test-postgres)))
+        (is (= {:end ""}
+               (get-obs-end-date test-postgres)))))))
 
 (deftest date-validation
   (testing "Tests for date validation"

@@ -269,18 +269,39 @@
                    dates
                    :time))
 
-(defn get-obs-start-and-end
-  "Fetches the start (first) and end (last) dates of all observations."
+(defn get-obs-start-date
+  "Fetches the first date of all observations."
   [db-con]
-  (let [formatter (f/formatter "d.M.y")
-        result (j/query db-con
-                        (sql/format (sql/build :select [[:%min.recorded "start"]
-                                                        [:%max.recorded "end"]]
-                                               :from :observations)))]
-    (if (= 1 (count result))
-      {:start (f/unparse formatter (:start (first result)))
-       :end (f/unparse formatter (:end (first result)))}
-      {:start "" :end ""})))
+  (try
+    (let [formatter (f/formatter "d.M.y")
+          result (j/query db-con
+                          (sql/format
+                           (sql/build :select [[:%min.recorded "start"]]
+                                      :from :observations)))]
+      (if (= 1 (count result))
+        {:start (f/unparse formatter (:start (first result)))}
+        {:start ""}))
+    (catch org.postgresql.util.PSQLException pge
+      (log/error (str "Observation start date fetching failed, message:"
+                      (.getMessage pge)))
+      {:error :db-error})))
+
+(defn get-obs-end-date
+  "Fetches the last date of all observations."
+  [db-con]
+  (try
+    (let [formatter (f/formatter "d.M.y")
+          result (j/query db-con
+                          (sql/format
+                           (sql/build :select [[:%max.recorded "end"]]
+                                      :from :observations)))]
+      (if (= 1 (count result))
+        {:end (f/unparse formatter (:end (first result)))}
+        {:end ""}))
+    (catch org.postgresql.util.PSQLException pge
+      (log/error (str "Observation end date fetching failed, message:"
+                      (.getMessage pge)))
+      {:error :db-error})))
 
 (defn insert-yc-image-name
   "Stores the name of the latest Yardcam image. Rows from the table are
