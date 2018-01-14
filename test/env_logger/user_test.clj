@@ -3,7 +3,9 @@
             [clojure.java.jdbc :as j]
             [clj-ldap.client :as ldap]
             [env-logger.user :refer :all]
-            [env-logger.db-test :refer [test-postgres]]))
+            [env-logger.db-test :refer [test-postgres]])
+  (:import (org.postgresql.util PSQLException
+                                PSQLState)))
 
 (defn clean-test-database
   "Cleans the test database before and after running tests."
@@ -32,7 +34,13 @@
     (is (nil? (get-user-data test-postgres "notfound")))
     (is (= {:pw-hash "myhash"
             :yubikey-ids (set ["mykeyid"])}
-           (get-user-data test-postgres "test-user")))))
+           (get-user-data test-postgres "test-user")))
+    (with-redefs [j/query (fn [db query opts]
+                            (throw (PSQLException.
+                                    "Test exception"
+                                    (PSQLState/COMMUNICATION_ERROR))))]
+      (is (= {:error :db-error}
+             (get-user-data test-postgres "test-user"))))))
 
 (deftest password-from-ldap-query
   (testing "Searching for a user's password from LDAP"

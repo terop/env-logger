@@ -40,6 +40,10 @@
                 margin-bottom: 15px;
                 padding: 7px 9px;
             }
+            .bg-danger {
+                padding: 5px;
+                border-radius: 5px;
+            }
         </style>
     </head>
     <body>
@@ -53,8 +57,7 @@
             <div class="form-group">
                 <label for="username">Username</label>
                 <input type="text" class="form-control" name="username" id="username"
-                       required="required"
-                       {% if username %} value="{{ username }}"{% endif %}>
+                       required="required">
                 <label for="password">Password</label>
                 <input type="password" class="form-control" name="password" id="password">
                 <label for="otp">Yubikey OTP</label>

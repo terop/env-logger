@@ -59,18 +59,20 @@
                     (when-let [password (u/get-password-from-ldap username)]
                       {:pw-hash password})
                     (u/get-user-data db/postgres username))]
-    (if (or (and user-data (h/check password (:pw-hash user-data)))
-            (and (seq otp)
-                 (otp-value-valid? otp)
-                 (contains? (u/get-yubikey-id db/postgres username)
-                            (YubicoClient/getPublicId otp))))
-      (let [next-url (get-in request [:query-params :next]
-                             (str (get-conf-value :url-path) "/"))
-            updated-session (assoc session :identity (keyword username))]
-        (assoc (resp/redirect next-url) :session updated-session))
-      (render-file "templates/login.html"
-                   {:error "Error: an invalid credential was provided"
-                    :username username}))))
+    (if (:error user-data)
+      (render-file "templates/error.html"
+                   {})
+      (if (or (and user-data (h/check password (:pw-hash user-data)))
+              (and (seq otp)
+                   (otp-value-valid? otp)
+                   (contains? (u/get-yubikey-id db/postgres username)
+                              (YubicoClient/getPublicId otp))))
+        (let [next-url (get-in request [:query-params :next]
+                               (str (get-conf-value :url-path) "/"))
+              updated-session (assoc session :identity (keyword username))]
+          (assoc (resp/redirect next-url) :session updated-session))
+        (render-file "templates/login.html"
+                     {:error "Error: an invalid credential was provided"})))))
 
 (defn unauthorized-handler
   "Handles unauthorized requests."
@@ -147,50 +149,50 @@
 (defroutes routes
   ;; Index and login
   (GET "/" request
-       (render-file "templates/plots.html"
-                    (let [start-date (when (not= "" (:startDate
-                                                     (:params request)))
-                                       (:startDate (:params request)))
-                          end-date (when (not= "" (:endDate (:params request)))
-                                     (:endDate (:params request)))
-                          obs-dates (merge (db/get-obs-start-date db/postgres)
-                                           (db/get-obs-end-date db/postgres))
-                          formatter (f/formatter "d.M.y")
-                          logged-in? (authenticated? request)
-                          ruuvitag-enabled? (get-conf-value :ruuvitag-enabled?)
-                          initial-days (get-conf-value :initial-show-days)
-                          common-values {:obs-dates obs-dates
-                                         :logged-in? logged-in?
-                                         :ruuvitag-enabled? ruuvitag-enabled?
-                                         :ws-url (get-conf-value :ws-url)
-                                         :yc-image-basepath (get-conf-value
-                                                             :yc-image-basepath)
-                                         :tb-image-basepath (get-conf-value
-                                                             :tb-image-basepath)
-                                         :profiles (when-not (empty? (:session
-                                                                      request))
-                                                     (u/get-profiles
-                                                      db/postgres
-                                                      (name (:identity
-                                                             request))))}]
-                      (merge common-values
-                             (if (or (not (nil? start-date))
-                                     (not (nil? end-date)))
-                               {:data (data-custom-dates logged-in?
-                                                         start-date
-                                                         end-date)
-                                :start-date start-date
-                                :end-date end-date}
-                               {:data (data-default-dates logged-in?
-                                                          initial-days)
-                                :start-date (f/unparse formatter
-                                                       (t/minus (f/parse
-                                                                 formatter
-                                                                 (:end
-                                                                  obs-dates))
-                                                                (t/days
-                                                                 initial-days)))
-                                :end-date (:end obs-dates)})))))
+       (if-not (db/test-db-connection db/postgres)
+         (render-file "templates/error.html"
+                      {})
+         (let [start-date (when (not= "" (:startDate
+                                          (:params request)))
+                            (:startDate (:params request)))
+               end-date (when (not= "" (:endDate (:params request)))
+                          (:endDate (:params request)))
+               obs-dates (merge (db/get-obs-start-date db/postgres)
+                                (db/get-obs-end-date db/postgres))
+               formatter (f/formatter "d.M.y")
+               logged-in? (authenticated? request)
+               ruuvitag-enabled? (get-conf-value :ruuvitag-enabled?)
+               initial-days (get-conf-value :initial-show-days)
+               common-values {:obs-dates obs-dates
+                              :logged-in? logged-in?
+                              :ruuvitag-enabled? ruuvitag-enabled?
+                              :ws-url (get-conf-value :ws-url)
+                              :yc-image-basepath (get-conf-value
+                                                  :yc-image-basepath)
+                              :tb-image-basepath (get-conf-value
+                                                  :tb-image-basepath)
+                              :profiles (when-not (empty? (:session
+                                                           request))
+                                          (u/get-profiles db/postgres
+                                                          (name (:identity
+                                                                 request))))}]
+           (render-file "templates/plots.html"
+                        (merge common-values
+                               (if (or (not (nil? start-date))
+                                       (not (nil? end-date)))
+                                 {:data (data-custom-dates logged-in?
+                                                           start-date
+                                                           end-date)
+                                  :start-date start-date
+                                  :end-date end-date}
+                                 {:data (data-default-dates logged-in?
+                                                            initial-days)
+                                  :start-date
+                                  (f/unparse formatter
+                                             (t/minus (f/parse formatter
+                                                               (:end obs-dates))
+                                                      (t/days initial-days)))
+                                  :end-date (:end obs-dates)}))))))
   (GET "/login" [] (render-file "templates/login.html" {}))
   (POST "/login" [] login-authenticate)
   (GET "/logout" request
@@ -200,48 +202,55 @@
   (POST "/observations" request
         (if-not (check-auth-code (:code (:params request)))
           response-unauthorized
-          (let [start-time (calculate-start-time)
-                start-time-int (t/interval (t/plus start-time
-                                                   (t/minutes 4))
-                                           (t/plus start-time
-                                                   (t/minutes 7)))
-                weather-data (when (and (t/within? start-time-int (t/now))
-                                        (weather-query-ok? db/postgres 3))
-                               (get-latest-fmi-data
-                                (get-conf-value :fmi-api-key)
-                                (get-conf-value :station-id)))
-                insert-status (db/insert-observation
-                               db/postgres
-                               (assoc (parse-string (:obs-string (:params
-                                                                  request))
-                                                    true)
-                                      :weather-data weather-data))]
-            (doseq [channel @channels]
-              (async/send! channel
-                           (generate-string (db/get-observations db/postgres
-                                                                 :limit 1))))
-            (generate-string insert-status))))
+          (if-not (db/test-db-connection db/postgres)
+            "false"
+            (let [start-time (calculate-start-time)
+                  start-time-int (t/interval (t/plus start-time
+                                                     (t/minutes 4))
+                                             (t/plus start-time
+                                                     (t/minutes 7)))
+                  weather-data (when (and (t/within? start-time-int (t/now))
+                                          (weather-query-ok? db/postgres 3))
+                                 (get-latest-fmi-data
+                                  (get-conf-value :fmi-api-key)
+                                  (get-conf-value :station-id)))
+                  insert-status (db/insert-observation
+                                 db/postgres
+                                 (assoc (parse-string (:obs-string (:params
+                                                                    request))
+                                                      true)
+                                        :weather-data weather-data))]
+              (doseq [channel @channels]
+                (async/send! channel
+                             (generate-string (db/get-observations db/postgres
+                                                                   :limit 1))))
+              (generate-string insert-status)))))
   ;; Testbed image name storage
   (POST "/tb-image" request
         (if-not (check-auth-code (:code (:params request)))
           response-unauthorized
-          (if (re-find #"testbed-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+\d{4}\.png"
-                       (:name (:params request)))
-            (generate-string (db/store-tb-image-name db/postgres
-                                                     (db/get-last-obs-id
-                                                      db/postgres)
-                                                     (:name (:params request))))
-            "false")))
+          (if-not (db/test-db-connection db/postgres)
+            "false"
+            (if (re-find #"testbed-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+\d{4}\.png"
+                         (:name (:params request)))
+              (generate-string (db/store-tb-image-name db/postgres
+                                                       (db/get-last-obs-id
+                                                        db/postgres)
+                                                       (:name (:params
+                                                               request))))
+              "false"))))
   ;; Latest yardcam image name storage
   (POST "/image" request
         (if-not (check-auth-code (:code (:params request)))
           response-unauthorized
-          (if (re-find #"yc-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+[\d:]+\.jpg"
-                       (:image-name (:params request)))
-            (generate-string (db/insert-yc-image-name db/postgres
-                                                      (:image-name (:params
-                                                                    request))))
-            "false")))
+          (if-not (db/test-db-connection db/postgres)
+            "false"
+            (if (re-find #"yc-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+[\d:]+\.jpg"
+                         (:image-name (:params request)))
+              (generate-string (db/insert-yc-image-name db/postgres
+                                                        (:image-name
+                                                         (:params request))))
+              "false"))))
   ;; Profile handling
   (POST "/profile" request
         (str (u/insert-profile db/postgres

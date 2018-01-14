@@ -6,7 +6,8 @@
             [clojure.tools.logging :as log]
             [honeysql.helpers :refer :all]
             [env-logger.config :refer [ldap-conf]])
-  (:import java.sql.BatchUpdateException))
+  (:import java.sql.BatchUpdateException
+           org.postgresql.util.PSQLException))
 
 (defn get-yubikey-id
   "Returns the Yubikey ID(s) of a user in a set. Returns an empty set
@@ -26,16 +27,21 @@
   "Returns the password hash and Yubikey ID(s) of the user with the given
   username. Returns nil if the user is not found."
   [db-con username]
-  (let [result (j/query db-con
-                        (sql/format (sql/build :select [:pw_hash]
-                                               :from :users
-                                               :where [:= :username
-                                                       username]))
-                        {:row-fn #(:pw_hash %)})
-        key-ids (get-yubikey-id db-con username)]
-    (when (pos? (count result))
-      {:pw-hash (first result)
-       :yubikey-ids key-ids})))
+  (try
+    (let [result (j/query db-con
+                          (sql/format (sql/build :select [:pw_hash]
+                                                 :from :users
+                                                 :where [:= :username
+                                                         username]))
+                          {:row-fn #(:pw_hash %)})
+          key-ids (get-yubikey-id db-con username)]
+      (when (pos? (count result))
+        {:pw-hash (first result)
+         :yubikey-ids key-ids}))
+    (catch PSQLException pge
+      (log/error "Failed to get user data from DB, message:"
+                 (.getMessage pge))
+      {:error :db-error})))
 
 (defn get-password-from-ldap
   "Fetches a user's password hash from LDAP. Returns nil if the user is

@@ -329,3 +329,12 @@
                                          :outside_temp 5
                                          :offset 6
                                          :image-name "testimage.jpg"})))))
+
+(deftest db-connection-test
+  (testing "Connection to the DB"
+    (is (true? (test-db-connection test-postgres)))
+    (with-redefs [j/query (fn [db query]
+                            (throw (PSQLException.
+                                    "Test exception"
+                                    (PSQLState/COMMUNICATION_ERROR))))]
+      (is (false? (test-db-connection test-postgres))))))

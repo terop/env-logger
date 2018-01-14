@@ -33,6 +33,18 @@
                  :user db-user
                  :password db-password}))
 
+(defn test-db-connection
+  "Tests the connection to the DB."
+  [db-con]
+  (try
+    (j/query db-con
+             "SELECT 1")
+    true
+    (catch PSQLException pge
+      (log/error "DB connection establishment failed, message:"
+                 (.getMessage pge))
+      false)))
+
 (defn get-yc-image
   "Returns the name of the latest yardcam image."
   [db-con]
@@ -110,8 +122,8 @@
                 (j/db-set-rollback-only! t-con)
                 false))))
         (catch PSQLException pge
-          (log/error (str "Database insert failed, message: "
-                          (.getMessage pge)))
+          (log/error "Database insert failed, message:"
+                     (.getMessage pge))
           (j/db-set-rollback-only! t-con)
           false)))
     false))
@@ -283,8 +295,8 @@
         {:start (f/unparse formatter (:start (first result)))}
         {:start ""}))
     (catch PSQLException pge
-      (log/error (str "Observation start date fetching failed, message: "
-                      (.getMessage pge)))
+      (log/error "Observation start date fetching failed, message:"
+                 (.getMessage pge))
       {:error :db-error})))
 
 (defn get-obs-end-date
@@ -300,8 +312,8 @@
         {:end (f/unparse formatter (:end (first result)))}
         {:end ""}))
     (catch PSQLException pge
-      (log/error (str "Observation end date fetching failed, message: "
-                      (.getMessage pge)))
+      (log/error "Observation end date fetching failed, message:"
+                 (.getMessage pge))
       {:error :db-error})))
 
 (defn insert-yc-image-name
