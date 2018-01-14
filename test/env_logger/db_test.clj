@@ -6,7 +6,9 @@
             [clj-time.jdbc]
             [clojure.java.jdbc :as j]
             [env-logger.config :refer [db-conf get-conf-value]]
-            [env-logger.db :refer :all]))
+            [env-logger.db :refer :all])
+  (:import (org.postgresql.util PSQLException
+                                PSQLState)))
 
 (let [db-host (get (System/getenv)
                    "POSTGRESQL_DB_HOST"
@@ -93,9 +95,8 @@
                                                {:outside_temp nil
                                                 :weather-data {}})))))
       (with-redefs [insert-plain-observation
-                    (fn [_ _ _ _] (throw
-                                   (org.postgresql.util.PSQLException.
-                                    "exception test")))]
+                    (fn [_ _ _ _] (throw (PSQLException.
+                                          "Test exception")))]
         (is (false? (insert-observation test-postgres observation)))))))
 
 (deftest date-formatting
@@ -188,6 +189,14 @@
         (is (= {:start ""}
                (get-obs-start-date test-postgres)))
         (is (= {:end ""}
+               (get-obs-end-date test-postgres))))
+      (with-redefs [j/query (fn [db query]
+                              (throw (PSQLException.
+                                      "Test exception"
+                                      (PSQLState/COMMUNICATION_ERROR))))]
+        (is (= {:error :db-error}
+               (get-obs-start-date test-postgres)))
+        (is (= {:error :db-error}
                (get-obs-end-date test-postgres)))))))
 
 (deftest date-validation

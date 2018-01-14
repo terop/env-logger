@@ -8,7 +8,8 @@
             [honeysql.core :as sql]
             [honeysql.helpers :refer :all]
             [clojure.tools.logging :as log]
-            [env-logger.config :refer :all]))
+            [env-logger.config :refer :all])
+  (:import org.postgresql.util.PSQLException))
 
 (let [db-host (get (System/getenv)
                    "POSTGRESQL_DB_HOST"
@@ -108,8 +109,8 @@
                                "transaction after beacon scan insert"))
                 (j/db-set-rollback-only! t-con)
                 false))))
-        (catch org.postgresql.util.PSQLException pge
-          (log/error (str "Database insert failed, message:"
+        (catch PSQLException pge
+          (log/error (str "Database insert failed, message: "
                           (.getMessage pge)))
           (j/db-set-rollback-only! t-con)
           false)))
@@ -281,8 +282,8 @@
       (if (= 1 (count result))
         {:start (f/unparse formatter (:start (first result)))}
         {:start ""}))
-    (catch org.postgresql.util.PSQLException pge
-      (log/error (str "Observation start date fetching failed, message:"
+    (catch PSQLException pge
+      (log/error (str "Observation start date fetching failed, message: "
                       (.getMessage pge)))
       {:error :db-error})))
 
@@ -298,8 +299,8 @@
       (if (= 1 (count result))
         {:end (f/unparse formatter (:end (first result)))}
         {:end ""}))
-    (catch org.postgresql.util.PSQLException pge
-      (log/error (str "Observation end date fetching failed, message:"
+    (catch PSQLException pge
+      (log/error (str "Observation end date fetching failed, message: "
                       (.getMessage pge)))
       {:error :db-error})))
 
