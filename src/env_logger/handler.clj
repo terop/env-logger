@@ -104,6 +104,46 @@
    :on-error (fn [channel throwable]
                (log/error "WS exception:" throwable))})
 
+(defn data-custom-dates
+  "Gets data for a custom date range."
+  [logged-in? start-date end-date]
+  (generate-string
+   (if logged-in?
+     (let [formatter (f/formatter "d.M.y")
+           db-obs (db/get-obs-interval db/postgres
+                                       {:start start-date
+                                        :end end-date})]
+       (if (get-conf-value :ruuvitag-enabled?)
+         (map-db-and-rt-obs db-obs
+                            (get-rt-obs
+                             (get-conf-value :ruuvitag-influx)
+                             (f/parse formatter
+                                      start-date)
+                             (t/plus (f/parse formatter
+                                              end-date)
+                                     (t/days 1))))
+         db-obs))
+     (db/get-weather-obs-interval db/postgres
+                                  {:start start-date
+                                   :end end-date}))))
+
+(defn data-default-dates
+  "Gets data for the default date range."
+  [logged-in? initial-days]
+  (generate-string
+   (if logged-in?
+     (let [db-obs (db/get-obs-days db/postgres
+                                   initial-days)]
+       (if (get-conf-value :ruuvitag-enabled?)
+         (map-db-and-rt-obs db-obs
+                            (get-rt-obs (get-conf-value :ruuvitag-influx)
+                                        (t/minus (t/now)
+                                                 (t/days initial-days))
+                                        (t/now)))
+         db-obs))
+     (db/get-weather-obs-days db/postgres
+                              initial-days))))
+
 (defroutes routes
   ;; Index and login
   (GET "/" request
@@ -136,49 +176,13 @@
                       (merge common-values
                              (if (or (not (nil? start-date))
                                      (not (nil? end-date)))
-                               {:data (generate-string
-                                       (if logged-in?
-                                         (let [db-obs (db/get-obs-interval
-                                                       db/postgres
-                                                       {:start start-date
-                                                        :end end-date})]
-                                           (if ruuvitag-enabled?
-                                             (map-db-and-rt-obs
-                                              db-obs
-                                              (get-rt-obs
-                                               (get-conf-value :ruuvitag-influx)
-                                               (f/parse formatter
-                                                        start-date)
-                                               (t/plus (f/parse
-                                                        formatter
-                                                        end-date)
-                                                       (t/days 1))))
-                                             db-obs))
-                                         (db/get-weather-obs-interval
-                                          db/postgres
-                                          {:start start-date
-                                           :end end-date})))
+                               {:data (data-custom-dates logged-in?
+                                                         start-date
+                                                         end-date)
                                 :start-date start-date
                                 :end-date end-date}
-                               {:data (generate-string
-                                       (if logged-in?
-                                         (let [db-obs (db/get-obs-days
-                                                       db/postgres
-                                                       initial-days)]
-                                           (if ruuvitag-enabled?
-                                             (map-db-and-rt-obs
-                                              db-obs
-                                              (get-rt-obs (get-conf-value
-                                                           :ruuvitag-influx)
-                                                          (t/minus
-                                                           (t/now)
-                                                           (t/days
-                                                            initial-days))
-                                                          (t/now)))
-                                             db-obs))
-                                         (db/get-weather-obs-days
-                                          db/postgres
-                                          initial-days)))
+                               {:data (data-default-dates logged-in?
+                                                          initial-days)
                                 :start-date (f/unparse formatter
                                                        (t/minus (f/parse
                                                                  formatter
