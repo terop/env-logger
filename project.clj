@@ -12,14 +12,14 @@
                  [clj-time "0.14.2"]
                  [cheshire "5.8.0"]
                  [selmer "1.11.7"]
-                 [clj-http "3.7.0"]
+                 [clj-http "3.8.0"]
                  [org.clojure/tools.logging "0.4.0"]
                  [org.slf4j/slf4j-log4j12 "1.7.25"]
                  [com.yubico/yubico-validation-client2 "3.0.2"]
                  [buddy/buddy-hashers "1.3.0"]
                  [buddy/buddy-auth "2.1.0"]
                  [org.clojars.pntblnk/clj-ldap "0.0.16"]
-                 [org.influxdb/influxdb-java "2.8"]]
+                 [org.influxdb/influxdb-java "2.9"]]
   :main env-logger.handler
   :aot [env-logger.handler
         clojure.tools.logging.impl]
