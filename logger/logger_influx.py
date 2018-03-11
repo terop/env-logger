@@ -19,10 +19,10 @@ import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
-def read_tag(tag_mac):
+def read_tag(tag_mac, device):
     """Read data from the tag with the provided MAC address. Returns a dictionary
     containing the data."""
-    sensor = RuuviTag(tag_mac)
+    sensor = RuuviTag(tag_mac, bt_device=device)
     state = sensor.update()
 
     # get latest state (does not get it from the device)
@@ -50,8 +50,11 @@ def main():
     parser = argparse.ArgumentParser(description='Record sensor values from a RuuviTag '
                                      'and save it to InfluxDB server.')
     parser.add_argument('config', type=str, help='configuration file')
+    parser.add_argument('--device', type=str, help='Bluetooth device to use')
 
     args = parser.parse_args()
+    device = args.device if args.device else 'hci0'
+
     with open(args.config, 'r') as cfg_json:
         try:
             config = json.load(cfg_json)
@@ -60,7 +63,7 @@ def main():
                   format(timestamp, err), file=sys.stderr)
             return 1
 
-    all_data = read_tag(config['tag_mac'])
+    all_data = read_tag(config['tag_mac'], device)
     if all_data == {}:
         print('{}: Could not read data from tag with MAC: {}'.format(timestamp,
                                                                      config['tag_mac']),
