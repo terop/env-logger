@@ -5,7 +5,6 @@ if observations are not received within a specified time."""
 import argparse
 import configparser
 import smtplib
-import ssl
 import sys
 from datetime import datetime
 from email.mime.text import MIMEText
@@ -30,13 +29,10 @@ def send_email(config, subject, message):
     msg['From'] = config['Sender']
     msg['To'] = config['Recipient']
 
-    context = ssl.create_default_context()
     try:
-        server = smtplib.SMTP_SSL(config['Server'],
-                                  port=465, context=context)
-        server.login(config['User'], config['Password'])
-        server.send_message(msg)
-        server.quit()
+        with smtplib.SMTP_SSL(config['Server']) as server:
+            server.login(config['User'], config['Password'])
+            server.send_message(msg)
     except smtplib.SMTPException as smtp_e:
         print('Failed to send email with subject "{}": {}'
               .format(subject, str(smtp_e)), file=sys.stderr)
