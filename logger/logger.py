@@ -25,6 +25,8 @@ DB_ADD_URL = 'http://localhost/devsite/observations'
 BEACON_MACS = ['EA:6E:BA:99:92:ED']
 # Bluetooth LE scanning time
 SCAN_TIME = 10
+# Path of the BLE beacon scan program
+BLE_BEACON_SCAN_PATH = '/home/user/env-logger/logger'
 
 
 def main():
@@ -60,7 +62,7 @@ def get_ble_beacons():
     """Returns the MAC addresses and RSSI values of predefined Bluetooth BLE
     beacons in the vicinity in a dict."""
     try:
-        proc = subprocess.Popen(['/home/tpalohei/env-logger/ble_beacon_scan', '-t', str(SCAN_TIME)],
+        proc = subprocess.Popen([BLE_BEACON_SCAN_PATH, 'ble_beacon_scan', '-t', str(SCAN_TIME)],
                                 stdout=subprocess.PIPE)
         sleep(SCAN_TIME + 2)
         if proc.poll() is None:
