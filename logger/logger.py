@@ -62,8 +62,8 @@ def get_ble_beacons():
     """Returns the MAC addresses and RSSI values of predefined Bluetooth BLE
     beacons in the vicinity in a dict."""
     try:
-        proc = subprocess.Popen([BLE_BEACON_SCAN_PATH, 'ble_beacon_scan', '-t', str(SCAN_TIME)],
-                                stdout=subprocess.PIPE)
+        proc = subprocess.Popen(['{}/ble_beacon_scan'.format(BLE_BEACON_SCAN_PATH),
+                                 '-t', str(SCAN_TIME)], stdout=subprocess.PIPE)
         sleep(SCAN_TIME + 2)
         if proc.poll() is None:
             proc.send_signal(signal.SIGINT)
