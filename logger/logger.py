@@ -44,7 +44,14 @@ def main():
                     'beacons': []}
     else:
         env_data = get_env_data()
-        env_data['beacons'] = get_ble_beacons()
+
+        env_data['beacons'] = get_ble_beacons(SCAN_TIME)
+        for _ in range(2):
+            if env_data['beacons']:
+                break
+
+            env_data['beacons'] = get_ble_beacons(SCAN_TIME / 2)
+
     send_to_db(args.authentication_code, env_data)
 
 
@@ -52,19 +59,18 @@ def get_env_data():
     """Fetches the environment data from the Arduino. Returns the parsed
     JSON object or an empty dictionary on failure."""
     resp = requests.get(URL)
-    if resp.status_code != 200:
-        # Request failed
+    if not resp.ok:
         return {}
     return resp.json()
 
 
-def get_ble_beacons():
+def get_ble_beacons(scan_time):
     """Returns the MAC addresses and RSSI values of predefined Bluetooth BLE
     beacons in the vicinity in a dict."""
     try:
         proc = subprocess.Popen(['{}/ble_beacon_scan'.format(BLE_BEACON_SCAN_PATH),
-                                 '-t', str(SCAN_TIME)], stdout=subprocess.PIPE)
-        sleep(SCAN_TIME + 2)
+                                 '-t', str(scan_time)], stdout=subprocess.PIPE)
+        sleep(scan_time + 2)
         if proc.poll() is None:
             proc.send_signal(signal.SIGINT)
     except subprocess.CalledProcessError:
