@@ -55,35 +55,38 @@ def main():
     args = parser.parse_args()
     device = args.device if args.device else 'hci0'
 
-    with open(args.config, 'r') as cfg_json:
+    with open(args.config, 'r') as config_file:
         try:
-            config = json.load(cfg_json)
+            config = json.load(config_file)
         except json.JSONDecodeError as err:
             print('{}: could not parse configuration file: {}'.
                   format(timestamp, err), file=sys.stderr)
-            return 1
+            return
 
-    all_data = read_tag(config['tag_mac'], device)
-    if all_data == {}:
-        print('{}: Could not read data from tag with MAC: {}'.format(timestamp,
-                                                                     config['tag_mac']),
-              file=sys.stderr)
-        return 1
+    database = config['database']
+    client = InfluxDBClient(host=database['host'],
+                            port=database['port'],
+                            username=database['username'],
+                            password=database['password'],
+                            database=database['database'],
+                            ssl=bool(strtobool(database['use_tls'])))
 
-    data = {'temperature': all_data['temperature'],
-            'pressure': all_data['pressure'],
-            'humidity': all_data['humidity']}
+    for tag in config['tags']:
+        all_data = read_tag(tag['tag_mac'], device)
+        if all_data == {}:
+            print('{}: Could not read data from tag with MAC: {}'.format(timestamp,
+                                                                         tag['tag_mac']),
+                  file=sys.stderr)
+            continue
 
-    db_conf = config['db_conf']
-    client = InfluxDBClient(host=db_conf['host'], port=db_conf['port'],
-                            username=db_conf['username'], password=db_conf['password'],
-                            database=db_conf['database'],
-                            ssl=bool(strtobool(db_conf['use_tls'])))
-    if not write_data(client, data, config['influx_tags']):
-        print('{}: Could not write data {} to database'.format(timestamp, data),
-              file=sys.stderr)
-        return 1
-    return 0
+        data = {'temperature': all_data['temperature'],
+                'pressure': all_data['pressure'],
+                'humidity': all_data['humidity']}
+
+        if not write_data(client, data, tag['influx_tags']):
+            print('{}: Could not write data {} to database'.format(timestamp, data),
+                  file=sys.stderr)
+            continue
 
 
 if __name__ == '__main__':

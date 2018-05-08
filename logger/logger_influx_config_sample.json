@@ -1,6 +1,5 @@
 {
-    "tag_mac": "F3:13:DD:06:E1:7D",
-    "db_conf": {
+    "database": {
         "host": "example.com",
         "port": "8086",
         "username": "myuser",
@@ -8,7 +7,18 @@
         "database": "mydb",
         "use_tls": "True"
     },
-    "influx_tags": {
-        "location": "indoor"
-    }
+    "tags:" [
+        {
+            "tag_mac": "F3:13:DD:06:E1:7D",
+            "influx_tags": {
+                "location": "indoor"
+            }
+        },
+        {
+            "tag_mac": "F3:13:DD:06:A1:78",
+            "influx_tags": {
+                "location": "outdoor"
+            }
+        }
+    ]
 }
