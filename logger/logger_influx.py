@@ -9,7 +9,7 @@ from datetime import datetime
 from distutils.util import strtobool
 import argparse
 import json
-import sys
+import logging
 
 from ruuvitag_sensor.ruuvitag import RuuviTag
 from influxdb import InfluxDBClient
@@ -45,7 +45,7 @@ def write_data(client, data, tags):
 
 def main():
     """Main function of the module."""
-    timestamp = datetime.now().isoformat()
+    logging.basicConfig(format='%(asctime)s %(message)s')
 
     parser = argparse.ArgumentParser(description='Record sensor values from a RuuviTag '
                                      'and save it to InfluxDB server.')
@@ -59,8 +59,7 @@ def main():
         try:
             config = json.load(config_file)
         except json.JSONDecodeError as err:
-            print('{}: could not parse configuration file: {}'.
-                  format(timestamp, err), file=sys.stderr)
+            logging.error('Could not parse configuration file: %s', err)
             return
 
     database = config['database']
@@ -74,9 +73,8 @@ def main():
     for tag in config['tags']:
         all_data = read_tag(tag['tag_mac'], device)
         if all_data == {}:
-            print('{}: Could not read data from tag with MAC: {}'.format(timestamp,
-                                                                         tag['tag_mac']),
-                  file=sys.stderr)
+            logging.error('Could not read data from tag with MAC: %s',
+                          tag['tag_mac'])
             continue
 
         data = {'temperature': all_data['temperature'],
@@ -84,8 +82,7 @@ def main():
                 'humidity': all_data['humidity']}
 
         if not write_data(client, data, tag['influx_tags']):
-            print('{}: Could not write data {} to database'.format(timestamp, data),
-                  file=sys.stderr)
+            logging.error('Could not write data %s to database', data)
             continue
 
 
