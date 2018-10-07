@@ -12,11 +12,11 @@ db_name=$1
 snapshot_name=$2
 
 echo "Truncating tables"
-psql "$db_name" <<EOF
+psql "${db_name}" <<EOF
 TRUNCATE TABLE users CASCADE;
 TRUNCATE TABLE observations CASCADE;
 TRUNCATE TABLE yardcam_images;
 EOF
 
 echo "Adding new values"
-psql "$db_name" < "$snapshot_name"
+psql "${db_name}" < "${snapshot_name}"

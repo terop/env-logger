@@ -1,5 +1,5 @@
 #!/bin/sh
-# 2017 Tero Paloheimo
+# 2017-2018 Tero Paloheimo
 
 # This is a script for backing up an InfluxDB database and uploads the backup
 # to a user specified remote host.
@@ -25,44 +25,52 @@ EOF
 
 local_mode=0
 while getopts 'lh' OPTION; do
-  case "$OPTION" in
+  case "${OPTION}" in
     l)
         local_mode=1
         ;;
     h)
         usage
         exit 1
-      ;;
+        ;;
+    *)
+        echo "Invalid option: ${OPTION}"
+        exit 1
   esac
 done
 shift "$((OPTIND - 1))"
 
 db_name=$1
+if [ -z "${db_name}" ]; then
+    echo 'Database name must be provided, exiting.' >&2
+    exit 1
+fi
+
 backup_dir="influx_backup_${db_name}"
 backup_file_name="influxdb_${db_name}_$(date -Iminutes).tar.xz"
 
 cd /tmp || exit 1
-mkdir ${backup_dir}
+mkdir "${backup_dir}"
 echo "Backing up metastore"
 if [ $(influxd backup ${backup_dir}) ]; then
     echo "Error: metastore backup failed, stopping." >&2
-    rm -rf ${backup_dir}
+    rm -rf "${backup_dir}"
     exit 1
 fi
 
 echo "Backing up database ${db_name}"
 if [ $(influxd backup -database ${db_name} ${backup_dir}) ]; then
     echo "Error: database ${db_name} backup failed, stopping." >&2
-    rm -rf ${backup_dir}
+    rm -rf "${backup_dir}"
     exit 1
 fi
 
 if [ $(tar -cJf "./${backup_file_name}" ${backup_dir}) ]; then
     echo "Error: backup directory compression failed, stopping." >&2
-    rm -rf ${backup_dir}
+    rm -rf "${backup_dir}"
     exit 1
 fi
-rm -rf ${backup_dir}
+rm -rf "${backup_dir}"
 
 if [ ${local_mode} -eq 1 ]; then
     echo "Backup file: /tmp/${backup_file_name}"
