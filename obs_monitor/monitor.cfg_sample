@@ -5,8 +5,13 @@ Password = b4dpassw0rd
 Database = env_logger
 
 [monitor]
-# Waiting threshold in minutes
-Threshold = 5
+# Timeout in minutes
+Timeout = 5
+EmailSent = False
+
+[ruuvitag]
+# Timeout in hours
+Timeout = 24
 EmailSent = False
 
 [email]
