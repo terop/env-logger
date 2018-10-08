@@ -22,8 +22,8 @@ def get_latest_obs_time(config):
             return cursor.fetchone()[0]
 
 
-def get_latest_rt_scan_time(config):
-    """Returns the recording time of the latest RuuviTag scan."""
+def get_latest_beacon_scan_time(config):
+    """Returns the recording time of the latest BLE beacon scan."""
     with psycopg2.connect(host=config['Host'], database=config['Database'],
                           user=config['User'], password=config['Password']) as conn:
         with conn.cursor() as cursor:
@@ -75,27 +75,26 @@ def check_obs_time(config, last_obs_time):
     return str(False)
 
 
-def check_rt_scan_time(config, last_obs_time):
-    """Checks last RuuviTag beacon scan time and send an email if the threshold is
+def check_beacon_scan_time(config, last_obs_time):
+    """Checks last BLE beacon scan time and send an email if the threshold is
     exceeded. Returns 'True' when an email is sent and 'False' otherwise."""
     time_diff = datetime.now(tz=last_obs_time.tzinfo) - last_obs_time
 
     # Timeout is in hours
-    if int(time_diff.seconds) > int(config['ruuvitag']['Timeout']) * 60 * 60:
-        if config['ruuvitag']['EmailSent'] == 'False':
-            print('foobar')
+    if int(time_diff.seconds) > int(config['beacon']['Timeout']) * 60 * 60:
+        if config['beacon']['EmailSent'] == 'False':
             return str(send_email(config['email'],
-                                  'env-logger: RuuviTag inactivity warning',
-                                  'No RuuviTag beacon has been scanned in env-logger '
+                                  'env-logger: BLE beacon inactivity warning',
+                                  'No BLE beacon has been scanned in env-logger '
                                   'after {} (timeout {} hours). Please check for '
                                   'possible problems.'
                                   .format(last_obs_time.isoformat(),
-                                          config['ruuvitag']['Timeout'])))
+                                          config['beacon']['Timeout'])))
         return str(True)
 
-    if config['ruuvitag']['EmailSent'] == 'True':
-        send_email(config['email'], 'env-logger: RuuviTag back online',
-                   'RuuviTag beacon scanned around {}.'
+    if config['beacon']['EmailSent'] == 'True':
+        send_email(config['email'], 'env-logger: BLE beacon back online',
+                   'BLE beacon scanned around {}.'
                    .format(datetime.now().isoformat()))
         return str(False)
 
@@ -118,8 +117,9 @@ def main():
 
     config['monitor']['EmailSent'] = check_obs_time(config,
                                                     get_latest_obs_time(config['db']))
-    config['ruuvitag']['EmailSent'] = check_rt_scan_time(config,
-                                                         get_latest_rt_scan_time(config['db']))
+    config['beacon']['EmailSent'] = check_beacon_scan_time(
+        config,
+        get_latest_beacon_scan_time(config['db']))
 
     with open(args.config_file, 'w') as config_file:
         config.write(config_file)

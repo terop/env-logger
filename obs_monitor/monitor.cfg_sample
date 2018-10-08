@@ -9,7 +9,7 @@ Database = env_logger
 Timeout = 5
 EmailSent = False
 
-[ruuvitag]
+[beacon]
 # Timeout in hours
 Timeout = 24
 EmailSent = False
