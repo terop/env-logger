@@ -55,6 +55,7 @@ def check_obs_time(config, last_obs_time):
     """Checks last observation time and send an email if the threshold is
     exceeded. Returns 'True' when an email is sent and 'False' otherwise."""
     time_diff = datetime.now(tz=last_obs_time.tzinfo) - last_obs_time
+
     if int(time_diff.seconds / 60) > int(config['monitor']['Timeout']):
         if config['monitor']['EmailSent'] == 'False':
             return str(send_email(config['email'],
@@ -115,11 +116,13 @@ def main():
     config = configparser.ConfigParser()
     config.read(args.config_file)
 
-    config['monitor']['EmailSent'] = check_obs_time(config,
-                                                    get_latest_obs_time(config['db']))
-    config['beacon']['EmailSent'] = check_beacon_scan_time(
-        config,
-        get_latest_beacon_scan_time(config['db']))
+    if config['monitor']['Enable'] == 'True':
+        config['monitor']['EmailSent'] = check_obs_time(config,
+                                                        get_latest_obs_time(config['db']))
+    if config['beacon']['Enable'] == 'True':
+        config['beacon']['EmailSent'] = check_beacon_scan_time(
+            config,
+            get_latest_beacon_scan_time(config['db']))
 
     with open(args.config_file, 'w') as config_file:
         config.write(config_file)

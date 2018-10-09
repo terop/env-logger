@@ -7,11 +7,13 @@ Database = env_logger
 [monitor]
 # Timeout in minutes
 Timeout = 5
+Enable = True
 EmailSent = False
 
 [beacon]
 # Timeout in hours
 Timeout = 24
+Enable = True
 EmailSent = False
 
 [email]
