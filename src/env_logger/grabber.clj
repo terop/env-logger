@@ -53,7 +53,7 @@
   "Fetches and returns the latest FMI data from the given weather
   observation station. If the fetch or parsing failed, {} will be returned."
   [fmi-api-key station-id]
-  (let [url (format (str "http://data.fmi.fi/fmi-apikey/%s/wfs?request="
+  (let [url (format (str "https://data.fmi.fi/fmi-apikey/%s/wfs?request="
                          "getFeature&storedquery_id=fmi::observations::"
                          "weather::simple&fmisid=%d&parameters=t2m,n_man,p_sea"
                          "&starttime=%s") fmi-api-key station-id
