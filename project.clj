@@ -9,9 +9,9 @@
                  [org.postgresql/postgresql "42.2.5"]
                  [org.clojure/java.jdbc "0.7.8"]
                  [honeysql "0.9.4"]
-                 [clj-time "0.14.4"]
+                 [clj-time "0.15.0"]
                  [cheshire "5.8.1"]
-                 [selmer "1.12.1"]
+                 [selmer "1.12.2"]
                  [clj-http "3.9.1"]
                  [org.clojure/tools.logging "0.4.1"]
                  [org.slf4j/slf4j-log4j12 "1.7.25"]
@@ -19,7 +19,7 @@
                  [buddy/buddy-hashers "1.3.0"]
                  [buddy/buddy-auth "2.1.0"]
                  [org.clojars.pntblnk/clj-ldap "0.0.16"]
-                 [org.influxdb/influxdb-java "2.13"]]
+                 [org.influxdb/influxdb-java "2.14"]]
   :main env-logger.handler
   :aot [env-logger.handler
         clojure.tools.logging.impl]
