@@ -137,7 +137,7 @@
 (deftest test-latest-data-extraction
   (testing "Tests FMI data extraction"
     (with-fake-routes {
-                       #"http:\/\/data\.fmi\.fi\/fmi-apikey\/(.+)"
+                       #"https:\/\/data\.fmi\.fi\/fmi-apikey\/(.+)"
                        (fn [_] {:status 200
                                 :body "<?xml version=\"1.0\"
                                              encoding=\"UTF-8\"?>
@@ -199,12 +199,12 @@
               :pressure 1006.5}
              (get-latest-fmi-data "api-key" 87874))))
     (with-fake-routes {
-                       #"http://data.fmi.fi/fmi-apikey/.+"
+                       #"https://data.fmi.fi/fmi-apikey/.+"
                        (fn [req] {:status 200
                                   :body "not XML content"})}
       (is (= {} (get-latest-fmi-data "my-api-key" 87874))))
     (with-fake-routes {
-                       #"http://data.fmi.fi/fmi-apikey/.+"
+                       #"https://data.fmi.fi/fmi-apikey/.+"
                        (fn [req] {:status 400})}
       (is (= {} (get-latest-fmi-data "my-api-key" 87874))))))
 
