@@ -5,7 +5,9 @@
             [clojure.java.jdbc :as j]
             [clj-time.core :as t]
             [clj-time.format :as f]
-            [clojure.tools.logging :as log]))
+            [clj-time.coerce :as e]
+            [clojure.tools.logging :as log]
+            [cheshire.core :refer [parse-string]]))
 
 (defn parse-xml
   "Parse the provided string as XML"
@@ -49,9 +51,9 @@
                             (t/seconds (t/second (t/now))))]
     start-time))
 
-(defn get-latest-fmi-data
-  "Fetches and returns the latest FMI data from the given weather
-  observation station. If the fetch or parsing failed, {} will be returned."
+(defn -get-latest-fmi-weather-data-wfs
+  "Fetches the latest FMI data from the FMI WFS for the given weather
+  observation station. If fetching or parsing failed, nil is returned."
   [fmi-api-key station-id]
   (let [url (format (str "https://data.fmi.fi/fmi-apikey/%s/wfs?request="
                          "getFeature&storedquery_id=fmi::observations::"
@@ -62,15 +64,48 @@
         response (try
                    (client/get url)
                    (catch Exception e
-                     (log/error (str "FMI weather data fetch failed, status:"
-                                     (:status (ex-data e))))))]
-    (if (nil? response)
-      {}
+                     (log/error (str "FMI weather data fetch failed, status: "
+                                     (str e)))))]
+    (when-not (nil? response)
       (try
         (extract-data (:content (parse-xml (:body response))))
         (catch org.xml.sax.SAXParseException e
           (log/error "FMI weather data XML parsing failed")
-          {})))))
+          nil)))))
+
+(defn -get-latest-fmi-weather-data-json
+  "Fetches the latest FMI weather data from the observation data in JSON for the
+  given weather observation station. If fetching or parsing failed, nil is
+  returned."
+  [station-id]
+  (let [url (str "https://ilmatieteenlaitos.fi/observation-data?station="
+                 station-id)
+        resp (try
+               (client/get url)
+               (catch Exception e
+                 (log/error (str "FMI JSON weather data fetch failed, "
+                                 "status:" (:status (ex-data e))))))
+        json-resp (try
+                    (parse-string (:body resp))
+                    (catch com.fasterxml.jackson.core.JsonParseException e
+                      (log/error (str "FMI JSON weather data parsing failed: "
+                                      (str e)))))]
+    (when json-resp
+      {:date (f/unparse (f/formatter :date-time-no-ms)
+                        (e/from-long (json-resp "latestObservationTime")))
+       :temperature ((last (json-resp "t2m")) 1)
+       :cloudiness (int ((last (json-resp "TotalCloudCover")) 1))
+       :pressure ((last (json-resp "Pressure")) 1)})))
+
+(defn get-latest-fmi-weather-data
+  "Fetches the latest FMI weather data either using
+  1) HTTTP request in JSON
+  2) WFS
+  for the given weather observation station. If fetching or parsing failed,
+  nil is returned."
+  [fmi-api-key station-id]
+  (or (-get-latest-fmi-weather-data-json station-id)
+      (-get-latest-fmi-weather-data-wfs fmi-api-key station-id)))
 
 (defn weather-query-ok?
   "Tells whether it is OK to query the FMI API for weather observations.

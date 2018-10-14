@@ -107,7 +107,7 @@
             (if (every? pos?
                         (insert-beacons t-con obs-id observation))
               (let [weather-data (:weather-data observation)]
-                (if (zero? (count weather-data))
+                (if (nil? weather-data)
                   true
                   (if (pos? (insert-wd t-con obs-id weather-data))
                     true

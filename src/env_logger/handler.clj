@@ -20,7 +20,7 @@
             [env-logger.config :refer [get-conf-value]]
             [env-logger.db :as db]
             [env-logger.grabber :refer [calculate-start-time
-                                        get-latest-fmi-data
+                                        get-latest-fmi-weather-data
                                         weather-query-ok?]]
             [env-logger.user :as u]
             [env-logger.ruuvitag :refer :all])
@@ -211,7 +211,7 @@
                                                      (t/minutes 7)))
                   weather-data (when (and (t/within? start-time-int (t/now))
                                           (weather-query-ok? db/postgres 3))
-                                 (get-latest-fmi-data
+                                 (get-latest-fmi-weather-data
                                   (get-conf-value :fmi-api-key)
                                   (get-conf-value :station-id)))
                   insert-status (db/insert-observation

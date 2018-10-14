@@ -197,16 +197,16 @@
               :temperature 2.0
               :cloudiness 8
               :pressure 1006.5}
-             (get-latest-fmi-data "api-key" 87874))))
+             (-get-latest-fmi-weather-data-wfs "api-key" 87874))))
     (with-fake-routes {
                        #"https://data.fmi.fi/fmi-apikey/.+"
                        (fn [req] {:status 200
                                   :body "not XML content"})}
-      (is (= {} (get-latest-fmi-data "my-api-key" 87874))))
+      (is (nil? (-get-latest-fmi-weather-data-wfs "my-api-key" 87874))))
     (with-fake-routes {
                        #"https://data.fmi.fi/fmi-apikey/.+"
                        (fn [req] {:status 400})}
-      (is (= {} (get-latest-fmi-data "my-api-key" 87874))))))
+      (is (nil? (-get-latest-fmi-weather-data-wfs "my-api-key" 87874))))))
 
 (deftest weather-query-ok
   (testing "Test when it is OK to query for FMI weather observations"

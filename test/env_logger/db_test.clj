@@ -76,7 +76,7 @@
       (is (true? (insert-observation test-postgres
                                      (merge observation
                                             {:outside_temp nil
-                                             :weather-data {}}))))
+                                             :weather-data nil}))))
       (is (false? (insert-observation test-postgres {})))
       (with-redefs [insert-wd (fn [_ _ _] -1)]
         (let [obs-count (first (j/query test-postgres
@@ -93,7 +93,7 @@
         (is (false? (insert-observation test-postgres
                                         (merge observation
                                                {:outside_temp nil
-                                                :weather-data {}})))))
+                                                :weather-data nil})))))
       (with-redefs [insert-plain-observation
                     (fn [_ _ _ _] (throw (PSQLException.
                                           "Test exception")))]
