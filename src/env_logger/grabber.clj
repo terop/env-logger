@@ -7,7 +7,8 @@
             [clj-time.format :as f]
             [clj-time.coerce :as e]
             [clojure.tools.logging :as log]
-            [cheshire.core :refer [parse-string]]))
+            [cheshire.core :refer [parse-string]]
+            [env-logger.config :refer [get-conf-value]]))
 
 (defn parse-xml
   "Parse the provided string as XML"
@@ -92,7 +93,9 @@
                                       (str e)))))]
     (when json-resp
       {:date (f/unparse (f/formatter :date-time-no-ms)
-                        (e/from-long (json-resp "latestObservationTime")))
+                        (t/from-time-zone
+                         (e/from-long (json-resp "latestObservationTime"))
+                         (t/time-zone-for-id (get-conf-value :timezone))))
        :temperature ((last (json-resp "t2m")) 1)
        :cloudiness (int ((last (json-resp "TotalCloudCover")) 1))
        :pressure ((last (json-resp "Pressure")) 1)})))
