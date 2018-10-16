@@ -92,13 +92,16 @@
                       (log/error (str "FMI JSON weather data parsing failed: "
                                       (str e)))))]
     (when json-resp
-      {:date (f/unparse (f/formatter :date-time-no-ms)
-                        (t/from-time-zone
-                         (e/from-long (json-resp "latestObservationTime"))
-                         (t/time-zone-for-id (get-conf-value :timezone))))
-       :temperature ((last (json-resp "t2m")) 1)
-       :cloudiness (int ((last (json-resp "TotalCloudCover")) 1))
-       :pressure ((last (json-resp "Pressure")) 1)})))
+      (when-not (or (zero? (count (get json-resp "t2m")))
+                    (zero? (count (get json-resp "TotalCloudCover")))
+                    (zero? (count (get json-resp "Pressure"))))
+        {:date (f/unparse (f/formatter :date-time-no-ms)
+                          (t/from-time-zone
+                           (e/from-long (get json-resp "latestObservationTime"))
+                           (t/time-zone-for-id (get-conf-value :timezone))))
+         :temperature ((last (get json-resp "t2m")) 1)
+         :cloudiness (int ((last (get json-resp "TotalCloudCover")) 1))
+         :pressure ((last (get json-resp "Pressure")) 1)}))))
 
 (defn get-latest-fmi-weather-data
   "Fetches the latest FMI weather data either using
