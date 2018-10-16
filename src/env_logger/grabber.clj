@@ -115,7 +115,7 @@
 (defn weather-query-ok?
   "Tells whether it is OK to query the FMI API for weather observations.
   Criteria for being OK is that the last observation's timestamp does not lie
-  within the [now-waittime,now] interval. Wait time is to be provided in
+  within the [now-waittime,now] interval. Wait time must be provided in
   minutes."
   [db-con wait-time]
   (let [obs-recorded (:recorded (first
@@ -124,8 +124,8 @@
                                           WHERE id = (SELECT obs_id FROM
                                           weather_data ORDER BY id DESC
                                           LIMIT 1)")))]
-    (if (nil? obs-recorded)
-      true
+    (if-not (nil? obs-recorded)
       (not (t/within? (t/interval (t/minus (t/now) (t/minutes wait-time))
                                   (t/now))
-                      obs-recorded)))))
+                      obs-recorded))
+      true)))

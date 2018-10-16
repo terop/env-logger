@@ -343,11 +343,13 @@
 
 (deftest weather-query-ok
   (testing "Test when it is OK to query for FMI weather data"
-    (let [offset-millisec (.getOffset (t/default-time-zone)
-                                      (.getMillis (DateTime/now)))
-          hours (.toHours (TimeUnit/MILLISECONDS) offset-millisec)]
-      ;; Timestamps are recorded in local time
-      ;; Dummy test which kind of works, needs to be fixed properly at some time
-      (is (true? (weather-query-ok? test-postgres (* hours 50))))
-      (with-redefs [j/query (fn [db query] '())]
-        (is (true? (weather-query-ok? test-postgres (* hours 50))))))))
+    (with-redefs [j/query (fn [db query] '())]
+      (is (true? (weather-query-ok? test-postgres 5))))
+    (with-redefs [j/query (fn [db query]
+                            (list {:recorded (t/minus (t/now)
+                                                      (t/minutes 3))}))]
+      (is (false? (weather-query-ok? test-postgres 5))))
+    (with-redefs [j/query (fn [db query]
+                            (list {:recorded (t/minus (t/now)
+                                                      (t/minutes 6))}))]
+      (is (true? (weather-query-ok? test-postgres 5))))))
