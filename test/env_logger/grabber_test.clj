@@ -5,11 +5,9 @@
             [clj-time.core :as t]
             [clj-time.format :as f]
             [cheshire.core :refer [generate-string]]
-            [env-logger.db-test :refer [test-postgres]]
             [env-logger.grabber :refer :all])
   (:import org.joda.time.DateTime
-           org.joda.time.DateTimeZone
-           java.util.concurrent.TimeUnit))
+           org.joda.time.DateTimeZone))
 
 (deftest test-parse-xml
   (testing "XML parser tests"
@@ -344,12 +342,16 @@
 (deftest weather-query-ok
   (testing "Test when it is OK to query for FMI weather data"
     (with-redefs [j/query (fn [db query] '())]
-      (is (true? (weather-query-ok? test-postgres 5))))
+      (is (true? (weather-query-ok? {} 5))))
     (with-redefs [j/query (fn [db query]
                             (list {:recorded (t/minus (t/now)
                                                       (t/minutes 3))}))]
-      (is (false? (weather-query-ok? test-postgres 5))))
+      (is (false? (weather-query-ok? {} 5))))
+    (with-redefs [j/query (fn [db query]
+                            (list {:recorded (t/minus (t/now)
+                                                      (t/minutes 3))}))]
+      (is (false? (weather-query-ok? {} 3))))
     (with-redefs [j/query (fn [db query]
                             (list {:recorded (t/minus (t/now)
                                                       (t/minutes 6))}))]
-      (is (true? (weather-query-ok? test-postgres 5))))))
+      (is (true? (weather-query-ok? {} 5))))))
