@@ -59,7 +59,7 @@ if [ $(pg_dump -a -f "${backup_file_name}" "${db_name}") ]; then
     return 1
 fi
 
-xz -z "./${backup_file_name}"
+xz -z -T 0 "./${backup_file_name}"
 backup_file_name="${backup_file_name}.xz"
 
 if [ $local_backup -eq 1 ]; then

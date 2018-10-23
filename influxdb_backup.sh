@@ -47,30 +47,28 @@ if [ -z "${db_name}" ]; then
 fi
 
 backup_dir="influx_backup_${db_name}"
-backup_file_name="influxdb_${db_name}_$(date -Iminutes).tar.xz"
+backup_file_name="influxdb_${db_name}_$(date -Iminutes).tar"
 
 cd /tmp || exit 1
 mkdir "${backup_dir}"
-echo "Backing up metastore"
-if [ $(influxd backup ${backup_dir}) ]; then
-    echo "Error: metastore backup failed, stopping." >&2
-    rm -rf "${backup_dir}"
-    exit 1
-fi
 
 echo "Backing up database ${db_name}"
-if [ $(influxd backup -database ${db_name} ${backup_dir}) ]; then
+influxd backup -portable -db ${db_name} ${backup_dir} 1>/dev/null
+if [ $? -ne 0 ]; then
     echo "Error: database ${db_name} backup failed, stopping." >&2
     rm -rf "${backup_dir}"
     exit 1
 fi
 
-if [ $(tar -cJf "./${backup_file_name}" ${backup_dir}) ]; then
+if [ $(tar -cf "./${backup_file_name}" ${backup_dir}) ]; then
     echo "Error: backup directory compression failed, stopping." >&2
     rm -rf "${backup_dir}"
     exit 1
 fi
 rm -rf "${backup_dir}"
+
+xz -z -T 0 "./${backup_file_name}"
+backup_file_name="${backup_file_name}.xz"
 
 if [ ${local_mode} -eq 1 ]; then
     echo "Backup file: /tmp/${backup_file_name}"
