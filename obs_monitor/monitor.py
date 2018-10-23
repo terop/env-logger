@@ -11,7 +11,10 @@ from datetime import datetime
 from email.mime.text import MIMEText
 from os.path import exists
 
+import iso8601
 import psycopg2
+from influxdb import InfluxDBClient
+from pytz import timezone
 
 
 class ObservationMonitor:
@@ -81,8 +84,8 @@ class BeaconMonitor:
                 return result[0] if result else datetime.now()
 
     def check_beacon(self):
-        """Checks last BLE beacon scan time and sends an email if the threshold is
-        exceeded."""
+        """Checks the latest BLE beacon scan time and sends an email if the
+        threshold is exceeded."""
         last_obs_time = self.get_beacon_scan_time()
         time_diff = datetime.now(tz=last_obs_time.tzinfo) - last_obs_time
 
@@ -102,12 +105,75 @@ class BeaconMonitor:
             if self._state['email_sent'] == 'True':
                 send_email(self._config['email'],
                            'env-logger: BLE beacon scanned',
-                           'BLE beacon scanned around {}.'
+                           'BLE beacon scanned was around {}.'
                            .format(datetime.now().isoformat()))
                 self._state['email_sent'] = 'False'
 
     def get_state(self):
         """Returns the BLE beacon scan state."""
+        return self._state
+
+
+class RuuvitagMonitor:
+    """Class for monitoring RuuviTag beacon observations."""
+    def __init__(self, config, state):
+        self._config = config
+        self._state = state
+
+    def get_ruuvitag_scan_time(self):
+        """Returns recording time of the latest RuuviTag beacon observation."""
+        results = {}
+        client = InfluxDBClient(host=self._config['ruuvitag']['Host'],
+                                username=self._config['ruuvitag']['Username'],
+                                password=self._config['ruuvitag']['Password'],
+                                database=self._config['ruuvitag']['Database'],
+                                ssl=True, verify_ssl=True)
+        for location in self._config['ruuvitag']['Location'].split(','):
+            result = client.query("SELECT time, temperature FROM observations "
+                                  "WHERE location = '{}' ORDER BY time DESC LIMIT 1;"
+                                  .format(location))
+            res = [point for point in result.get_points()]
+            if res:
+                results[location] = iso8601.parse_date(res[0]['time']) \
+                                           .astimezone(tz=timezone(
+                                               self._config['ruuvitag']['LocalTimezone']))
+            else:
+                results[location] = datetime.now()
+
+        return results
+
+    def check_ruuvitag(self):
+        """Checks the latest RuuviTag beacon scan time and sends an email if the
+        threshold is exceeded."""
+        last_obs_time = self.get_ruuvitag_scan_time()
+
+        for location in self._config['ruuvitag']['Location'].split(','):
+            time_diff = datetime.now(tz=last_obs_time[location].tzinfo) - last_obs_time[location]
+
+            # Timeout is in minutes
+            if int(time_diff.seconds) > int(self._config['ruuvitag']['Timeout']) * 60:
+                if self._state[location]['email_sent'] == 'False':
+                    if send_email(self._config['email'],
+                                  'env-logger: RuuviTag beacon inactivity warning',
+                                  'No RuuviTag observation for location "{}" has been '
+                                  'scanned in env-logger after {} (timeout {} minutes). '
+                                  'Please check for possible problems.'
+                                  .format(location, last_obs_time[location].isoformat(),
+                                          self._config['ruuvitag']['Timeout'])):
+                        self._state[location]['email_sent'] = 'True'
+                    else:
+                        self._state[location]['email_sent'] = 'False'
+            else:
+                if self._state[location]['email_sent'] == 'True':
+                    send_email(self._config['email'],
+                               'env-logger: Ruuvitag beacon scanned',
+                               'A RuuviTag observation for location "{}" '
+                               'was scanned around {}.'
+                               .format(location, datetime.now().isoformat()))
+                    self._state[location]['email_sent'] = 'False'
+
+    def get_state(self):
+        """Returns the RuuviTag scan state."""
         return self._state
 
 
@@ -151,7 +217,11 @@ def main():
             state = json.load(state_file)
     except FileNotFoundError:
         state = {'observation': {'email_sent': 'False'},
-                 'beacon': {'email_sent': 'False'}}
+                 'beacon': {'email_sent': 'False'},
+                 'ruuvitag': {}}
+        for location in config['ruuvitag']['Location'].split(','):
+            state['ruuvitag'][location] = {}
+            state['ruuvitag'][location]['email_sent'] = 'False'
 
     if config['observation']['Enabled'] == 'True':
         obs = ObservationMonitor(config, state['observation'])
@@ -161,6 +231,10 @@ def main():
         beacon = BeaconMonitor(config, state['beacon'])
         beacon.check_beacon()
         state['beacon'] = beacon.get_state()
+    if config['ruuvitag']['Enabled'] == 'True':
+        ruuvitag = RuuvitagMonitor(config, state['ruuvitag'])
+        ruuvitag.check_ruuvitag()
+        state['ruuvitag'] = ruuvitag.get_state()
 
     with open(state_file_name, 'w') as state_file:
         json.dump(state, state_file, indent=4)

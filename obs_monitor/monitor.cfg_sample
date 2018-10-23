@@ -5,14 +5,26 @@ Password = b4dpassw0rd
 Database = env_logger
 
 [observation]
+Enabled = True
 # Timeout in minutes
 Timeout = 5
-Enabled = True
 
 [beacon]
+Enabled = True
 # Timeout in hours
 Timeout = 24
+
+[ruuvitag]
 Enabled = True
+Host = example.com
+Username = theuser
+Password = badp4ssw0rd
+Database = env_logger
+LocalTimezone = Europe/Helsinki
+# Timeout in minutes
+Timeout = 7
+# Multiple comma separated locations are supported
+Location = inside,outside
 
 [email]
 Server = example.com
