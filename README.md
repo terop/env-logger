@@ -12,7 +12,7 @@ is needed. Database definitions can be found in `db-def.sql` and
 a database with the required tables must exist before the application
 can be started. Users and Yubikeys must be added to the `users` and `yubikeys`
 tables respectively before running the application. This can be done
-with the `add_user.py` script. Dependencies needed by the script can be installed
+with the `scripts/add_user.py` script. Dependencies needed by the script can be installed
 with the `pip install -r requirements.txt` command. A user's password can be
 hashed with the `(hashers/derive "<password>")` command in a Clojure REPL where
 the `buddy-hashers` library is installed and imported as `hashers`.
@@ -96,4 +96,4 @@ container can be executed with the `java -jar <name>.jar` command.
 
 See the MIT license in the LICENSE file.
 
-Copyright © 2014-2017 Tero Paloheimo
+Copyright © 2014-2018 Tero Paloheimo
