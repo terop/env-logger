@@ -1,2 +1,3 @@
 venv/
 monitor.cfg
+monitor_state.json

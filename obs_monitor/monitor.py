@@ -4,6 +4,7 @@ if observations are not received within a specified time."""
 
 import argparse
 import configparser
+import json
 import smtplib
 import sys
 from datetime import datetime
@@ -51,59 +52,63 @@ def send_email(config, subject, message):
     return True
 
 
-def check_obs_time(config, last_obs_time):
+def check_obs_time(config, state, last_obs_time):
     """Checks last observation time and send an email if the threshold is
     exceeded. Returns 'True' when an email is sent and 'False' otherwise."""
     time_diff = datetime.now(tz=last_obs_time.tzinfo) - last_obs_time
 
-    if int(time_diff.seconds / 60) > int(config['monitor']['Timeout']):
-        if config['monitor']['EmailSent'] == 'False':
-            return str(send_email(config['email'],
-                                  'env-logger: observation inactivity warning',
-                                  'No observations have been received in the env-logger '
-                                  'backend after {} (timeout {} minutes). Please check for '
-                                  'possible problems.'
-                                  .format(last_obs_time.isoformat(),
-                                          config['monitor']['Timeout'])))
-        return str(True)
+    if int(time_diff.seconds / 60) > int(config['observation']['Timeout']):
+        if state['email_sent'] == 'False':
+            if send_email(config['email'],
+                          'env-logger: observation inactivity warning',
+                          'No observations have been received in the env-logger '
+                          'backend after {} (timeout {} minutes). Please check for '
+                          'possible problems.'.format(last_obs_time.isoformat(),
+                                                      config['observation']['Timeout'])):
+                state['email_sent'] = 'True'
+            else:
+                state['email_sent'] = 'False'
+    else:
+        if state['email_sent'] == 'True':
+            send_email(config['email'], 'env-logger: back online',
+                       'env-logger is back online at {}.'
+                       .format(datetime.now().isoformat()))
+            state['email_sent'] = 'False'
 
-    if config['monitor']['EmailSent'] == 'True':
-        send_email(config['email'], 'env-logger: back online',
-                   'env-logger is back online at {}.'
-                   .format(datetime.now().isoformat()))
-        return str(False)
-
-    return str(False)
+    return state
 
 
-def check_beacon_scan_time(config, last_obs_time):
+def check_beacon_scan_time(config, state, last_obs_time):
     """Checks last BLE beacon scan time and send an email if the threshold is
     exceeded. Returns 'True' when an email is sent and 'False' otherwise."""
     time_diff = datetime.now(tz=last_obs_time.tzinfo) - last_obs_time
 
     # Timeout is in hours
     if int(time_diff.seconds) > int(config['beacon']['Timeout']) * 60 * 60:
-        if config['beacon']['EmailSent'] == 'False':
-            return str(send_email(config['email'],
-                                  'env-logger: BLE beacon inactivity warning',
-                                  'No BLE beacon has been scanned in env-logger '
-                                  'after {} (timeout {} hours). Please check for '
-                                  'possible problems.'
-                                  .format(last_obs_time.isoformat(),
-                                          config['beacon']['Timeout'])))
-        return str(True)
+        if state['email_sent'] == 'False':
+            if send_email(config['email'],
+                          'env-logger: BLE beacon inactivity warning',
+                          'No BLE beacon has been scanned in env-logger '
+                          'after {} (timeout {} hours). Please check for '
+                          'possible problems.'.format(last_obs_time.isoformat(),
+                                                      config['beacon']['Timeout'])):
+                state['email_sent'] = 'True'
+            else:
+                state['email_sent'] = 'False'
+    else:
+        if state['email_sent'] == 'True':
+            send_email(config['email'], 'env-logger: BLE beacon back online',
+                       'BLE beacon scanned around {}.'
+                       .format(datetime.now().isoformat()))
+            state['email_sent'] = 'False'
 
-    if config['beacon']['EmailSent'] == 'True':
-        send_email(config['email'], 'env-logger: BLE beacon back online',
-                   'BLE beacon scanned around {}.'
-                   .format(datetime.now().isoformat()))
-        return str(False)
-
-    return str(False)
+    return state
 
 
 def main():
     """Module main function."""
+    state_file_name = 'monitor_state.json'
+
     parser = argparse.ArgumentParser(description='Monitors observation reception.')
     parser.add_argument('config_file', type=str, help='configuration file to use')
 
@@ -116,16 +121,25 @@ def main():
     config = configparser.ConfigParser()
     config.read(args.config_file)
 
-    if config['monitor']['Enable'] == 'True':
-        config['monitor']['EmailSent'] = check_obs_time(config,
-                                                        get_latest_obs_time(config['db']))
-    if config['beacon']['Enable'] == 'True':
-        config['beacon']['EmailSent'] = check_beacon_scan_time(
+    try:
+        with open(state_file_name, 'r') as state_file:
+            state = json.load(state_file)
+    except FileNotFoundError:
+        state = {'observation': {'email_sent': 'False'},
+                 'beacon': {'email_sent': 'False'}}
+
+    if config['observation']['Enabled'] == 'True':
+        state['observation'] = check_obs_time(config,
+                                              state['observation'],
+                                              get_latest_obs_time(config['db']))
+    if config['beacon']['Enabled'] == 'True':
+        state['beacon'] = check_beacon_scan_time(
             config,
+            state['beacon'],
             get_latest_beacon_scan_time(config['db']))
 
-    with open(args.config_file, 'w') as config_file:
-        config.write(config_file)
+    with open(state_file_name, 'w') as state_file:
+        json.dump(state, state_file, indent=4)
 
 
 if __name__ == '__main__':

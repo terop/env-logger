@@ -4,17 +4,15 @@ User = theuser
 Password = b4dpassw0rd
 Database = env_logger
 
-[monitor]
+[observation]
 # Timeout in minutes
 Timeout = 5
-Enable = True
-EmailSent = False
+Enabled = True
 
 [beacon]
 # Timeout in hours
 Timeout = 24
-Enable = True
-EmailSent = False
+Enabled = True
 
 [email]
 Server = example.com
