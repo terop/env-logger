@@ -9,7 +9,7 @@ Enabled = True
 # Timeout in minutes
 Timeout = 5
 
-[beacon]
+[blebeacon]
 Enabled = True
 # Timeout in hours
 Timeout = 24

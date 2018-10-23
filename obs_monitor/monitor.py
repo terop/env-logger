@@ -90,14 +90,14 @@ class BeaconMonitor:
         time_diff = datetime.now(tz=last_obs_time.tzinfo) - last_obs_time
 
         # Timeout is in hours
-        if int(time_diff.seconds) > int(self._config['beacon']['Timeout']) * 60 * 60:
+        if int(time_diff.seconds) > int(self._config['blebeacon']['Timeout']) * 60 * 60:
             if self._state['email_sent'] == 'False':
                 if send_email(self._config['email'],
                               'env-logger: BLE beacon inactivity warning',
                               'No BLE beacon has been scanned in env-logger '
                               'after {} (timeout {} hours). Please check for '
                               'possible problems.'.format(last_obs_time.isoformat(),
-                                                          self._config['beacon']['Timeout'])):
+                                                          self._config['blebeacon']['Timeout'])):
                     self._state['email_sent'] = 'True'
                 else:
                     self._state['email_sent'] = 'False'
@@ -217,7 +217,7 @@ def main():
             state = json.load(state_file)
     except FileNotFoundError:
         state = {'observation': {'email_sent': 'False'},
-                 'beacon': {'email_sent': 'False'},
+                 'blebeacon': {'email_sent': 'False'},
                  'ruuvitag': {}}
         for location in config['ruuvitag']['Location'].split(','):
             state['ruuvitag'][location] = {}
@@ -227,10 +227,10 @@ def main():
         obs = ObservationMonitor(config, state['observation'])
         obs.check_observation()
         state['observation'] = obs.get_state()
-    if config['beacon']['Enabled'] == 'True':
-        beacon = BeaconMonitor(config, state['beacon'])
+    if config['blebeacon']['Enabled'] == 'True':
+        beacon = BeaconMonitor(config, state['blebeacon'])
         beacon.check_beacon()
-        state['beacon'] = beacon.get_state()
+        state['blebeacon'] = beacon.get_state()
     if config['ruuvitag']['Enabled'] == 'True':
         ruuvitag = RuuvitagMonitor(config, state['ruuvitag'])
         ruuvitag.check_ruuvitag()
