@@ -14,23 +14,101 @@ from os.path import exists
 import psycopg2
 
 
-def get_latest_obs_time(config):
-    """Returns the recording time of the latest observation."""
-    with psycopg2.connect(host=config['Host'], database=config['Database'],
-                          user=config['User'], password=config['Password']) as conn:
-        with conn.cursor() as cursor:
-            cursor.execute('SELECT recorded FROM observations ORDER BY id DESC LIMIT 1')
-            return cursor.fetchone()[0]
+class ObservationMonitor:
+    """Class for monitoring environment observations."""
+
+    def __init__(self, config, state):
+        self._config = config
+        self._state = state
+
+    def get_obs_time(self):
+        """Returns the recording time of the latest observation."""
+        with psycopg2.connect(host=self._config['db']['Host'],
+                              database=self._config['db']['Database'],
+                              user=self._config['db']['User'],
+                              password=self._config['db']['Password']) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute('SELECT recorded FROM observations ORDER BY id DESC LIMIT 1')
+                result = cursor.fetchone()
+                return result[0] if result else datetime.now()
+
+    def check_observation(self):
+        """Checks when the last observation has been received and sends an email
+        if the threshold is exceeded."""
+        last_obs_time = self.get_obs_time()
+        time_diff = datetime.now(tz=last_obs_time.tzinfo) - last_obs_time
+
+        if int(time_diff.seconds / 60) > int(self._config['observation']['Timeout']):
+            if self._state['email_sent'] == 'False':
+                if send_email(self._config['email'],
+                              'env-logger: observation inactivity warning',
+                              'No observations have been received in the env-logger '
+                              'backend after {} (timeout {} minutes). Please check for '
+                              'possible problems.'.format(last_obs_time.isoformat(),
+                                                          self._config['observation']['Timeout'])):
+                    self._state['email_sent'] = 'True'
+                else:
+                    self._state['email_sent'] = 'False'
+        else:
+            if self._state['email_sent'] == 'True':
+                send_email(self._config['email'],
+                           'env-logger: observation received',
+                           'An observation has been received around {}.'
+                           .format(datetime.now().isoformat()))
+                self._state['email_sent'] = 'False'
+
+    def get_state(self):
+        """Returns the observation state."""
+        return self._state
 
 
-def get_latest_beacon_scan_time(config):
-    """Returns the recording time of the latest BLE beacon scan."""
-    with psycopg2.connect(host=config['Host'], database=config['Database'],
-                          user=config['User'], password=config['Password']) as conn:
-        with conn.cursor() as cursor:
-            cursor.execute('SELECT recorded FROM observations WHERE id = '
-                           '(SELECT obs_id FROM beacons ORDER BY id DESC LIMIT 1)')
-            return cursor.fetchone()[0]
+class BeaconMonitor:
+    """Class for monitoring BLE beacon scans."""
+    def __init__(self, config, state):
+        self._config = config
+        self._state = state
+
+    def get_beacon_scan_time(self):
+        """Returns the recording time of the latest BLE beacon scan."""
+        with psycopg2.connect(host=self._config['db']['Host'],
+                              database=self._config['db']['Database'],
+                              user=self._config['db']['User'],
+                              password=self._config['db']['Password']) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute('SELECT recorded FROM observations WHERE id = '
+                               '(SELECT obs_id FROM beacons ORDER BY id DESC LIMIT 1)')
+                result = cursor.fetchone()
+                return result[0] if result else datetime.now()
+
+    def check_beacon(self):
+        """Checks last BLE beacon scan time and sends an email if the threshold is
+        exceeded."""
+        last_obs_time = self.get_beacon_scan_time()
+        time_diff = datetime.now(tz=last_obs_time.tzinfo) - last_obs_time
+
+        # Timeout is in hours
+        if int(time_diff.seconds) > int(self._config['beacon']['Timeout']) * 60 * 60:
+            if self._state['email_sent'] == 'False':
+                if send_email(self._config['email'],
+                              'env-logger: BLE beacon inactivity warning',
+                              'No BLE beacon has been scanned in env-logger '
+                              'after {} (timeout {} hours). Please check for '
+                              'possible problems.'.format(last_obs_time.isoformat(),
+                                                          self._config['beacon']['Timeout'])):
+                    self._state['email_sent'] = 'True'
+                else:
+                    self._state['email_sent'] = 'False'
+        else:
+            if self._state['email_sent'] == 'True':
+                send_email(self._config['email'],
+                           'env-logger: BLE beacon scanned',
+                           'BLE beacon scanned around {}.'
+                           .format(datetime.now().isoformat()))
+                self._state['email_sent'] = 'False'
+
+    def get_state(self):
+        """Returns the BLE beacon scan state."""
+        return self._state
 
 
 def send_email(config, subject, message):
@@ -50,59 +128,6 @@ def send_email(config, subject, message):
         return False
 
     return True
-
-
-def check_obs_time(config, state, last_obs_time):
-    """Checks last observation time and send an email if the threshold is
-    exceeded. Returns 'True' when an email is sent and 'False' otherwise."""
-    time_diff = datetime.now(tz=last_obs_time.tzinfo) - last_obs_time
-
-    if int(time_diff.seconds / 60) > int(config['observation']['Timeout']):
-        if state['email_sent'] == 'False':
-            if send_email(config['email'],
-                          'env-logger: observation inactivity warning',
-                          'No observations have been received in the env-logger '
-                          'backend after {} (timeout {} minutes). Please check for '
-                          'possible problems.'.format(last_obs_time.isoformat(),
-                                                      config['observation']['Timeout'])):
-                state['email_sent'] = 'True'
-            else:
-                state['email_sent'] = 'False'
-    else:
-        if state['email_sent'] == 'True':
-            send_email(config['email'], 'env-logger: back online',
-                       'env-logger is back online at {}.'
-                       .format(datetime.now().isoformat()))
-            state['email_sent'] = 'False'
-
-    return state
-
-
-def check_beacon_scan_time(config, state, last_obs_time):
-    """Checks last BLE beacon scan time and send an email if the threshold is
-    exceeded. Returns 'True' when an email is sent and 'False' otherwise."""
-    time_diff = datetime.now(tz=last_obs_time.tzinfo) - last_obs_time
-
-    # Timeout is in hours
-    if int(time_diff.seconds) > int(config['beacon']['Timeout']) * 60 * 60:
-        if state['email_sent'] == 'False':
-            if send_email(config['email'],
-                          'env-logger: BLE beacon inactivity warning',
-                          'No BLE beacon has been scanned in env-logger '
-                          'after {} (timeout {} hours). Please check for '
-                          'possible problems.'.format(last_obs_time.isoformat(),
-                                                      config['beacon']['Timeout'])):
-                state['email_sent'] = 'True'
-            else:
-                state['email_sent'] = 'False'
-    else:
-        if state['email_sent'] == 'True':
-            send_email(config['email'], 'env-logger: BLE beacon back online',
-                       'BLE beacon scanned around {}.'
-                       .format(datetime.now().isoformat()))
-            state['email_sent'] = 'False'
-
-    return state
 
 
 def main():
@@ -129,14 +154,13 @@ def main():
                  'beacon': {'email_sent': 'False'}}
 
     if config['observation']['Enabled'] == 'True':
-        state['observation'] = check_obs_time(config,
-                                              state['observation'],
-                                              get_latest_obs_time(config['db']))
+        obs = ObservationMonitor(config, state['observation'])
+        obs.check_observation()
+        state['observation'] = obs.get_state()
     if config['beacon']['Enabled'] == 'True':
-        state['beacon'] = check_beacon_scan_time(
-            config,
-            state['beacon'],
-            get_latest_beacon_scan_time(config['db']))
+        beacon = BeaconMonitor(config, state['beacon'])
+        beacon.check_beacon()
+        state['beacon'] = beacon.get_state()
 
     with open(state_file_name, 'w') as state_file:
         json.dump(state, state_file, indent=4)
