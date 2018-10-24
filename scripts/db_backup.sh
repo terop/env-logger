@@ -6,15 +6,12 @@
 # SSH key authentication without a password MUST be in place before running
 # this script.
 
-# Change these values as needed BEFORE running!
-target_host=lakka.kapsi.fi
-target_user=tpalohei
-target_directory=/home/users/tpalohei/siilo
-
 usage() {
     cat >&2 <<EOF
-This scripts backs up a PostgreSQL database and uploads the backup to a user
-specified remote host.
+This scripts backs up a PostgreSQL database and uploads the backup to a remote
+host.
+Settings are read from a file named 'backup_conf.sh' which must exist in the
+same directory as this file.
 
 Usage: $0 [-h] [-l] <database name>
 Flags:
@@ -47,6 +44,13 @@ if [ -z "${db_name}" ]; then
     echo 'Database name must be provided, exiting.' >&2
     exit 1
 fi
+
+conf_file=backup_conf.sh
+if [ ! -e ${conf_file} ]; then
+    echo "Error: configuration file '${conf_file}' not found, exiting." >&2
+    exit 1
+fi
+. ./${conf_file}
 
 target_directory="$target_directory/${db_name}_backup"
 backup_file_name="${db_name}_$(date -Iseconds).sql"

@@ -6,15 +6,12 @@
 # SSH key authentication without a password MUST be in place before running
 # this script.
 
-# Change these values as needed BEFORE running!
-target_host=example.com
-target_user=myuser
-target_directory=/home/mydir
-
 usage() {
     cat <<EOF >&2
 A script for backing up InfluxDB metastore and database data
-and uploading the backup file to a remote machine.
+and uploading the backup file to a remote host.
+Settings are read from a file named 'backup_conf.sh' which must exist in the
+same directory as this file.
 
 Usage: $0 [-h] [-l] <database name>
 Flags:
@@ -45,6 +42,13 @@ if [ -z "${db_name}" ]; then
     echo 'Database name must be provided, exiting.' >&2
     exit 1
 fi
+
+conf_file=backup_conf.sh
+if [ ! -e ${conf_file} ]; then
+    echo "Error: configuration file '${conf_file}' not found, exiting." >&2
+    exit 1
+fi
+. ./${conf_file}
 
 backup_dir="influx_backup_${db_name}"
 backup_file_name="influxdb_${db_name}_$(date -Iminutes).tar"
