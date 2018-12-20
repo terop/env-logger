@@ -1,7 +1,7 @@
 (defproject env-logger "0.2.11-SNAPSHOT"
   :description "A simple data logger"
   :url "https://github.com/terop/env-logger"
-  :dependencies [[org.clojure/clojure "1.9.0"]
+  :dependencies [[org.clojure/clojure "1.10.0"]
                  [org.immutant/web "2.1.10"]
                  [compojure "1.6.1"]
                  [ring "1.7.1"]

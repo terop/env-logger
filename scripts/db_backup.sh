@@ -21,7 +21,7 @@ EOF
 }
 
 local_backup=0
-db_name=$1
+db_name=
 
 while getopts 'lh' OPTION; do
   case "${OPTION}" in
