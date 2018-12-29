@@ -41,7 +41,7 @@ class ObservationMonitor:
         last_obs_time = self.get_obs_time()
         time_diff = datetime.now(tz=last_obs_time.tzinfo) - last_obs_time
 
-        if int(time_diff.seconds / 60) > int(self._config['observation']['Timeout']):
+        if int(time_diff.total_seconds() / 60) > int(self._config['observation']['Timeout']):
             if self._state['email_sent'] == 'False':
                 if send_email(self._config['email'],
                               'env-logger: observation inactivity warning',
@@ -90,7 +90,7 @@ class BeaconMonitor:
         time_diff = datetime.now(tz=last_obs_time.tzinfo) - last_obs_time
 
         # Timeout is in hours
-        if int(time_diff.seconds) > int(self._config['blebeacon']['Timeout']) * 60 * 60:
+        if int(time_diff.total_seconds()) > int(self._config['blebeacon']['Timeout']) * 60 * 60:
             if self._state['email_sent'] == 'False':
                 if send_email(self._config['email'],
                               'env-logger: BLE beacon inactivity warning',
@@ -151,7 +151,7 @@ class RuuvitagMonitor:
             time_diff = datetime.now(tz=last_obs_time[location].tzinfo) - last_obs_time[location]
 
             # Timeout is in minutes
-            if int(time_diff.seconds) > int(self._config['ruuvitag']['Timeout']) * 60:
+            if int(time_diff.total_seconds()) > int(self._config['ruuvitag']['Timeout']) * 60:
                 if self._state[location]['email_sent'] == 'False':
                     if send_email(self._config['email'],
                                   'env-logger: RuuviTag beacon inactivity warning',
