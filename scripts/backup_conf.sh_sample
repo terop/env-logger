@@ -3,4 +3,4 @@
 # Change these values before running!
 target_host=example.com
 target_user=myuser
-target_directory=/home/myuser/backup
+target_base_directory=/home/myuser/backup

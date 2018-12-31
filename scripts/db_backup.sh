@@ -72,6 +72,8 @@ if [ $local_backup -eq 1 ]; then
     exit 0
 fi
 
+target_directory="${target_base_directory}/${db_name}"
+
 echo "Uploading ${backup_file_name} to ${target_host}:${target_directory}"
 scp "./${backup_file_name}" "${target_user}@${target_host}:${target_directory}" >/dev/null
 if [ $? -eq 0 ]; then
