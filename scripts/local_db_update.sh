@@ -2,6 +2,8 @@
 
 # This a script for updating the local env-logger database from a backup snapshot.
 
+set -e
+
 if [ $# -ne 2 ]; then
     echo "Usage: $0 <DB name> <DB snapshot name>"
     echo "Example: $0 env_logger db_snapshot.sql"
@@ -19,4 +21,5 @@ TRUNCATE TABLE yardcam_images;
 EOF
 
 echo "Adding new values"
+psql "${db_name}" -c 'ALTER TABLE weather_data ALTER pressure DROP NOT NULL;'
 psql "${db_name}" < "${snapshot_name}"
