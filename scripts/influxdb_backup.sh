@@ -6,6 +6,8 @@
 # SSH key authentication without a password MUST be in place before running
 # this script.
 
+set -e
+
 usage() {
     cat <<EOF >&2
 A script for backing up InfluxDB metastore and database data
@@ -79,10 +81,11 @@ if [ ${local_mode} -eq 1 ]; then
     exit 0
 fi
 
-echo "Uploading file to ${target_host}:${target_directory}"
-if [ $(scp "./${backup_file_name}" "${target_user}@${target_host}:${target_directory}/") ]; then
-    echo "File upload failed."
-else
+echo "Uploading ${backup_file_name} to ${target_host}:${target_directory}"
+scp "./${backup_file_name}" "${target_user}@${target_host}:${target_directory}" >/dev/null
+if [ $? -eq 0 ]; then
     echo "File upload succeeded!"
+else
+    echo "File upload failed."
 fi
 rm "./${backup_file_name}"

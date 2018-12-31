@@ -6,6 +6,8 @@
 # SSH key authentication without a password MUST be in place before running
 # this script.
 
+set -e
+
 usage() {
     cat >&2 <<EOF
 This scripts backs up a PostgreSQL database and uploads the backup to a remote
@@ -52,7 +54,6 @@ if [ ! -e ${conf_file} ]; then
 fi
 . ./${conf_file}
 
-target_directory="$target_directory/${db_name}_backup"
 backup_file_name="${db_name}_$(date -Iseconds).sql"
 
 echo "Dumping database ${db_name} to file ${backup_file_name}"
@@ -71,10 +72,11 @@ if [ $local_backup -eq 1 ]; then
     exit 0
 fi
 
-echo "Uploading file to ${target_host}:${target_directory}"
-if [ $(scp "./${backup_file_name}" "${target_user}@${target_host}:${target_directory}/") ]; then
-    echo "File upload failed."
-else
+echo "Uploading ${backup_file_name} to ${target_host}:${target_directory}"
+scp "./${backup_file_name}" "${target_user}@${target_host}:${target_directory}" >/dev/null
+if [ $? -eq 0 ]; then
     echo "File upload succeeded!"
+else
+    echo "File upload failed."
 fi
 rm ./"${backup_file_name}"
