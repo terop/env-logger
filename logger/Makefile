@@ -2,6 +2,9 @@
 CC=gcc
 CFLAGS=-Wall -Wextra
 
+# Dependencies on Debian:
+# sudp apt install build-essential libbluetooth-dev
+
 all: scan
 
 scan: ble_beacon_scan.c
