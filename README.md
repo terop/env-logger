@@ -96,4 +96,4 @@ container can be executed with the `java -jar <name>.jar` command.
 
 See the MIT license in the LICENSE file.
 
-Copyright © 2014-2018 Tero Paloheimo
+Copyright © 2014-2019 Tero Paloheimo
