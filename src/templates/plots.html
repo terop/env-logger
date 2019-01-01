@@ -154,13 +154,15 @@
         </div>
         <div id="imageButtonDiv" class="leftMargin">
             <input type="checkbox" id="showImages">
-            <label for="showImages">Show images</label>
+            <label for="showImages">Show image{% if logged-in? %}s{% endif %}</label>
         </div>
         <div id="imageDiv" class="leftMargin displayNone">
-            <img src="" id="yardcamImage" alt="Yardcam image"
-                 style="margin: 0 0 15px 15px;">
             <img src="" id="testbedImage" alt="FMI Testbed image"
                  style="margin: 0 0 15px 30px;">
+            {% if logged-in? %}
+                <img src="" id="yardcamImage" alt="Yardcam image"
+                     style="margin: 0 0 15px 15px;">
+            {% endif %}
         </div>
 
         <script src="https://code.jquery.com/jquery-3.3.1.min.js"

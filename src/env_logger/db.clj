@@ -244,7 +244,6 @@
                                            [:w.temperature "fmi_temperature"]
                                            :w.cloudiness
                                            :w.pressure
-                                           :o.yc_image_name
                                            [:o.outside_temperature
                                             "o_temperature"]
                                            :o.tb_image_name]

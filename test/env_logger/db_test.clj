@@ -249,7 +249,6 @@
             :fmi_temperature 20.0
             :o_temperature 5.0
             :pressure 1006.5
-            :yc_image_name "testimage.jpg"
             :tb_image_name nil
             :temp_delta -15.0}
            (first (get-weather-obs-days test-postgres 1))))))

@@ -68,6 +68,7 @@ var parseData = function (observation) {
         if (beaconName === '' && observation['name']) {
             beaconName = observation['name'];
         }
+        yardcamImageNames.push(observation['yc_image_name']);
     } else {
         var date = observation['time'] ? observation['time'] : observation['recorded'];
         dataPoint = [new Date(date),
@@ -77,7 +78,6 @@ var parseData = function (observation) {
                      observation['cloudiness'],
                      observation['pressure']];
     }
-    yardcamImageNames.push(observation['yc_image_name']);
     testbedImageNames.push(observation['tb_image_name']);
 
     return dataPoint;
@@ -209,8 +209,10 @@ if (plotData.length === 0) {
                                 pointClickCallback: function (e, point) {
                                     document.getElementById('showImages').checked = true;
                                     document.getElementById('imageDiv').classList.remove('displayNone');
-                                    showYardcamImage(point.idx);
                                     showTestbedImage(point.idx);
+                                    if (mode === 'all') {
+                                        showYardcamImage(point.idx);
+                                    }
                                 }
                             });
     // Disable the pressure series by default as its values are in a very different
