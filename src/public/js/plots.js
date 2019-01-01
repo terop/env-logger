@@ -162,6 +162,8 @@ if (plotData.length === 0) {
             if (result) {
                 document.getElementById('yardcamImage').src = ycImageBasepath +
                     result[1] + '/' + imageName;
+                document.getElementById('yardcamImageLink').href = ycImageBasepath +
+                    result[1] + '/' + imageName;
                 // For improved viewing scroll page to bottom after loading the image
                 window.setTimeout(function() {
                     window.scroll(0, document.body.scrollHeight);

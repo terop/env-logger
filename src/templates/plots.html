@@ -156,18 +156,19 @@
             <input type="checkbox" id="showImages">
             <label for="showImages">Show image{% if logged-in? %}s{% endif %}</label>
         </div>
-        <div id="imageDiv" class="leftMargin displayNone">
-            <img src="" id="testbedImage" alt="FMI Testbed image"
-                 style="margin: 0 0 15px 30px;">
+        <div id="imageDiv" class="leftMargin displayNone" style="margin-bottom: 20px;">
+            <img src="" id="testbedImage" alt="FMI Testbed image">
             {% if logged-in? %}
-                <img src="" id="yardcamImage" alt="Yardcam image"
-                     style="margin: 0 0 15px 15px;">
+                <a id="yardcamImageLink" href="" target="_blank">
+                    <img src="" id="yardcamImage" alt="Yardcam image"
+                         style="margin-left: 30px; transform: scale(0.9);">
+                </a>
             {% endif %}
         </div>
 
         <script src="https://code.jquery.com/jquery-3.3.1.min.js"
-	        integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
-	        crossorigin="anonymous"></script>
+                integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+                crossorigin="anonymous"></script>
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
                 integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
                 crossorigin="anonymous"></script>
