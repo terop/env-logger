@@ -1,2 +1,3 @@
 ble_beacon_scan
 logger_influx_config.json
+logger_config.json
