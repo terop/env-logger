@@ -15,7 +15,7 @@
                  [clj-http "3.9.1"]
                  [org.clojure/tools.logging "0.4.1"]
                  [org.slf4j/slf4j-log4j12 "1.7.25"]
-                 [com.yubico/yubico-validation-client2 "3.0.2"]
+                 [com.yubico/yubico-validation-client2 "3.0.3"]
                  [buddy/buddy-hashers "1.3.0"]
                  [buddy/buddy-auth "2.1.0"]
                  [org.clojars.pntblnk/clj-ldap "0.0.16"]
