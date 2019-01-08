@@ -7,9 +7,11 @@ web service. Data is read from a RuuviTag sensor."""
 
 from datetime import datetime
 from distutils.util import strtobool
+from os.path import exists
 import argparse
 import json
 import logging
+import sys
 
 from ruuvitag_sensor.ruuvitag import RuuviTag
 from influxdb import InfluxDBClient
@@ -43,25 +45,8 @@ def write_data(client, data, tags):
     return client.write_points(json_body)
 
 
-def main():
-    """Main function of the module."""
-    logging.basicConfig(format='%(asctime)s %(message)s')
-
-    parser = argparse.ArgumentParser(description='Record sensor values from a RuuviTag '
-                                     'and save it to InfluxDB server.')
-    parser.add_argument('config', type=str, help='configuration file')
-    parser.add_argument('--device', type=str, help='Bluetooth device to use')
-
-    args = parser.parse_args()
-    device = args.device if args.device else 'hci0'
-
-    with open(args.config, 'r') as config_file:
-        try:
-            config = json.load(config_file)
-        except json.JSONDecodeError as err:
-            logging.error('Could not parse configuration file: %s', err)
-            return
-
+def scan_tags(config, device):
+    """Scan tag(s) and upload data."""
     database = config['database']
     client = InfluxDBClient(host=database['host'],
                             port=database['port'],
@@ -84,6 +69,32 @@ def main():
         if not write_data(client, data, tag['influx_tags']):
             logging.error('Could not write data %s to database', data)
             continue
+
+
+def main():
+    """Main function of the module."""
+    logging.basicConfig(format='%(asctime)s %(message)s')
+
+    parser = argparse.ArgumentParser(description='Record sensor values from a RuuviTag '
+                                     'and save it to InfluxDB server.')
+    parser.add_argument('config', type=str, help='Configuration file')
+    parser.add_argument('--device', type=str, help='Bluetooth device to use')
+
+    args = parser.parse_args()
+    device = args.device if args.device else 'hci0'
+
+    if not exists(args.config):
+        logging.error('Could not find configuration file: %s', args.config)
+        sys.exit(1)
+
+    with open(args.config, 'r') as config_file:
+        try:
+            config = json.load(config_file)
+        except json.JSONDecodeError as err:
+            logging.error('Could not parse configuration file: %s', err)
+            sys.exit(1)
+
+    scan_tags(config, device)
 
 
 if __name__ == '__main__':
