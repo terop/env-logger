@@ -4,6 +4,7 @@ web service."""
 
 import argparse
 import json
+import logging
 import signal
 import subprocess
 import sys
@@ -71,7 +72,7 @@ def get_ble_beacons(config):
 def store_in_db(config, data):
     """Stores the data in the backend database with a HTTP POST request."""
     if data == {}:
-        print('Received no data, exiting', file=sys.stderr)
+        logging.error('Received no data, exiting')
         return
 
     data['timestamp'] = datetime.now(
@@ -81,14 +82,15 @@ def store_in_db(config, data):
                          params={'obs-string': json.dumps(data),
                                  'code': config['authentication_code']})
 
-    timestamp = datetime.now().isoformat()
-    print('{}: Request data: {}, response: code {}, text {}'
-          .format(timestamp, {'obs-string': json.dumps(data)},
-                  resp.status_code, resp.text))
+    logging.info('Request data: %s, response: code %s, text %s',
+                 {'obs-string': json.dumps(data)},
+                 resp.status_code, resp.text)
 
 
 def main():
     """Module main function."""
+    logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
+
     parser = argparse.ArgumentParser(description='Sends data to the env-logger backend.')
     parser.add_argument('config', type=str, help='Configuration file')
     parser.add_argument('--dummy', action='store_true',
@@ -97,14 +99,14 @@ def main():
     args = parser.parse_args()
 
     if not exists(args.config):
-        print('Could not find configuration file: {}'.format(args.config), file=sys.stderr)
+        logging.error('Could not find configuration file: %s', args.config)
         sys.exit(1)
 
     with open(args.config, 'r') as config_file:
         try:
             config = json.load(config_file)
         except json.JSONDecodeError as err:
-            print('Could not parse configuration file: {}'.format(err), file=sys.stderr)
+            logging.error('Could not parse configuration file: %s', err)
             sys.exit(1)
 
     if args.dummy:
