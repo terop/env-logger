@@ -1,4 +1,3 @@
-
 -- Tables definitions for PostgreSQL
 
 -- Observations table
@@ -28,6 +27,16 @@ CREATE TABLE weather_data (
        temperature REAL NOT NULL,
        cloudiness SMALLINT NOT NULL,
        pressure REAL NOT NULL
+);
+
+-- RuuviTag beacon observation data
+CREATE TABLE ruuvitag_observations(
+       id SERIAL PRIMARY KEY,
+       recorded TIMESTAMP WITH TIME ZONE NOT NULL,
+       location VARCHAR(15) NOT NULL,
+       temperature REAL NOT NULL,
+       pressure REAL NOT NULL,
+       humidity REAL NOT NULL
 );
 
 -- User table
