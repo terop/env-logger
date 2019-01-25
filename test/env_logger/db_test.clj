@@ -270,7 +270,8 @@
                              "SELECT image_id FROM yardcam_images"))))
     (is (true? (insert-yc-image-name test-postgres "testimage.jpg")))
     (is (= 1 (count (j/query test-postgres
-                             "SELECT image_id FROM yardcam_images"))))))
+                             "SELECT image_id FROM yardcam_images"))))
+    (is (false? (insert-yc-image-name test-postgres nil)))))
 
 (deftest yc-image-name-query
   (testing "Querying of the yardcam image name"
@@ -290,9 +291,9 @@
 
 (deftest testbed-image-storage
   (testing "Storage of a Testbed image"
-    (is (true? (store-tb-image-name test-postgres
-                                    (get-last-obs-id test-postgres)
-                                    "testbed-2017-04-21T19:16+0300.png")))))
+    (is (true? (insert-tb-image-name test-postgres
+                                     (get-last-obs-id test-postgres)
+                                     "testbed-2017-04-21T19:16+0300.png")))))
 
 (deftest wd-insert
   (testing "Insert of FMI weather data"
@@ -306,6 +307,17 @@
       (is (pos? (insert-wd test-postgres
                            obs-id
                            weather-data))))))
+
+(deftest ruuvitag-observation-insert
+  (testing "Insert of RuuviTag observation"
+    (let [ruuvitag-obs {:location "indoor"
+                        :temperature 21
+                        :pressure 1100
+                        :humidity 25}]
+      (is (pos? (insert-ruuvitag-observation test-postgres
+                                             ruuvitag-obs)))
+      (= -1 (insert-ruuvitag-observation test-postgres
+                                         (dissoc ruuvitag-obs :temperature))))))
 
 (deftest beacon-insert
   (testing "Insert of beacon(s)"

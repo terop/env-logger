@@ -40,9 +40,9 @@
     (j/query db-con
              "SELECT 1")
     true
-    (catch PSQLException pge
+    (catch PSQLException pe
       (log/error "DB connection establishment failed, message:"
-                 (.getMessage pge))
+                 (.getMessage pe))
       false)))
 
 (defn get-yc-image
@@ -89,6 +89,21 @@
                           :cloudiness (:cloudiness weather-data)
                           :pressure (:pressure weather-data)}))))
 
+(defn insert-ruuvitag-observation
+  "Insert a RuuviTag weather observation into the database."
+  [db-con observation]
+  (try
+    (:id (first (j/insert! db-con
+                           :ruuvitag_observations
+                           {:location (:location observation)
+                            :temperature (:temperature observation)
+                            :pressure (:pressure observation)
+                            :humidity (:humidity observation)})))
+    (catch PSQLException pe
+      (log/error "RuuviTag observation insert failed, message:"
+                 (.getMessage pe))
+      -1)))
+
 (defn insert-observation
   "Inserts a observation to the database. Optionally corrects the temperature
   with an offset."
@@ -121,9 +136,9 @@
                                "transaction after beacon scan insert"))
                 (j/db-set-rollback-only! t-con)
                 false))))
-        (catch PSQLException pge
+        (catch PSQLException pe
           (log/error "Database insert failed, message:"
-                     (.getMessage pge))
+                     (.getMessage pe))
           (j/db-set-rollback-only! t-con)
           false)))
     false))
@@ -293,9 +308,9 @@
       (if (= 1 (count result))
         {:start (f/unparse formatter (:start (first result)))}
         {:start ""}))
-    (catch PSQLException pge
+    (catch PSQLException pe
       (log/error "Observation start date fetching failed, message:"
-                 (.getMessage pge))
+                 (.getMessage pe))
       {:error :db-error})))
 
 (defn get-obs-end-date
@@ -310,9 +325,9 @@
       (if (= 1 (count result))
         {:end (f/unparse formatter (:end (first result)))}
         {:end ""}))
-    (catch PSQLException pge
+    (catch PSQLException pe
       (log/error "Observation end date fetching failed, message:"
-                 (.getMessage pge))
+                 (.getMessage pe))
       {:error :db-error})))
 
 (defn insert-yc-image-name
@@ -323,11 +338,16 @@
   (let [result (j/query db-con
                         (sql/format (sql/build :select [:image_id]
                                                :from :yardcam_images)))]
-    (when (pos? (count result))
-      (j/execute! db-con "DELETE FROM yardcam_images"))
-    (= 1 (count (j/insert! db-con
-                           :yardcam_images
-                           {:image_name image-name})))))
+    (try
+      (when (pos? (count result))
+        (j/execute! db-con "DELETE FROM yardcam_images"))
+      (= 1 (count (j/insert! db-con
+                             :yardcam_images
+                             {:image_name image-name})))
+      (catch PSQLException pe
+        (log/error "Yardcam image name insert failed, message:"
+                   (.getMessage pe))
+        false))))
 
 (defn get-last-obs-id
   "Returns the ID of the last observation."
@@ -337,7 +357,7 @@
                                          :from :observations))
                   {:row-fn #(:id %)})))
 
-(defn store-tb-image-name
+(defn insert-tb-image-name
   "Saves a Testbed image name and associates it with given observation ID.
   Returns true on success and false otherwise."
   [db-con obs-id image-name]

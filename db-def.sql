@@ -32,7 +32,7 @@ CREATE TABLE weather_data (
 -- RuuviTag beacon observation data
 CREATE TABLE ruuvitag_observations(
        id SERIAL PRIMARY KEY,
-       recorded TIMESTAMP WITH TIME ZONE NOT NULL,
+       recorded TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
        location VARCHAR(15) NOT NULL,
        temperature REAL NOT NULL,
        pressure REAL NOT NULL,

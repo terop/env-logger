@@ -1,6 +1,7 @@
 (ns env-logger.handler
   "The main namespace of the application"
-  (:require [cheshire.core :refer [generate-string parse-string]]
+  (:require [clojure.set]
+            [cheshire.core :refer [generate-string parse-string]]
             [compojure.core :refer [GET POST DELETE defroutes]]
             [compojure.route :as route]
             [immutant.web :as web]
@@ -88,6 +89,12 @@
 (def response-unauthorized {:status 401
                             :headers {"Content-Type" "text/plain"}
                             :body "Unauthorized"})
+(def response-invalid-request {:status 400
+                               :headers {"Content-Type" "text/plain"}
+                               :body "Invalid request"})
+(def response-server-error {:status 500
+                            :headers {"Content-Type" "text/plain"}
+                            :body "Internal Server Error"})
 
 (def auth-backend (session-backend
                    {:unauthorized-handler unauthorized-handler}))
@@ -203,7 +210,7 @@
         (if-not (check-auth-code (:code (:params request)))
           response-unauthorized
           (if-not (db/test-db-connection db/postgres)
-            "false"
+            response-server-error
             (let [start-time (calculate-start-time)
                   start-time-int (t/interval (t/plus start-time
                                                      (t/minutes 4))
@@ -224,33 +231,46 @@
                 (async/send! channel
                              (generate-string (db/get-observations db/postgres
                                                                    :limit 1))))
-              (generate-string insert-status)))))
+              (if insert-status
+                "OK" response-server-error)))))
+  ;; RuuviTag observation storage
+  (POST "/rt-observations" request
+        (if-not (check-auth-code (:code (:params request)))
+          response-unauthorized
+          (if-not (db/test-db-connection db/postgres)
+            response-server-error
+            (if (pos? (db/insert-ruuvitag-observation
+                       db/postgres
+                       (parse-string (:observation (:params request)) true)))
+              "OK" response-server-error))))
   ;; Testbed image name storage
   (POST "/tb-image" request
         (if-not (check-auth-code (:code (:params request)))
           response-unauthorized
           (if-not (db/test-db-connection db/postgres)
-            "false"
+            response-server-error
             (if (re-find #"testbed-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+\d{4}\.png"
                          (:name (:params request)))
-              (generate-string (db/store-tb-image-name db/postgres
-                                                       (db/get-last-obs-id
-                                                        db/postgres)
-                                                       (:name (:params
-                                                               request))))
-              "false"))))
+              (if (db/insert-tb-image-name db/postgres
+                                           (db/get-last-obs-id
+                                            db/postgres)
+                                           (:name (:params
+                                                   request)))
+                "OK" response-server-error)
+              response-invalid-request))))
   ;; Latest yardcam image name storage
-  (POST "/image" request
+  (POST "/yc-image" request
         (if-not (check-auth-code (:code (:params request)))
           response-unauthorized
           (if-not (db/test-db-connection db/postgres)
-            "false"
+            response-server-error
             (if (re-find #"yc-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+[\d:]+\.jpg"
                          (:image-name (:params request)))
-              (generate-string (db/insert-yc-image-name db/postgres
-                                                        (:image-name
-                                                         (:params request))))
-              "false"))))
+              (if (db/insert-yc-image-name db/postgres
+                                           (:image-name
+                                            (:params request)))
+                "OK" response-server-error)
+              response-invalid-request))))
   ;; Profile handling
   (POST "/profile" request
         (str (u/insert-profile db/postgres
