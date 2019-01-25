@@ -1,8 +1,0 @@
-{
-    "arduino_url": "http://192.168.1.123",
-    "upload_url": "https://example.com/env-logger/observations",
-    "authentication_code": "badcode",
-    "beacon_mac": ["20:91:48:22:67:F4"],
-    "beacon_scan_time": 10,
-    "beacon_scan_path": "/home/user/env-logger/logger"
-}

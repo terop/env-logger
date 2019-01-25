@@ -16,6 +16,7 @@ from time import sleep
 
 import pytz
 import requests
+from ruuvitag_sensor.ruuvitag import RuuviTag
 
 # NOTE! The ble_beacon_scan program's rights must be adjusted with the following command:
 # sudo setcap 'cap_net_raw,cap_net_admin+eip' ble_beacon_scan
@@ -29,6 +30,38 @@ def get_env_data(arduino_url):
     if not resp.ok:
         return {}
     return resp.json()
+
+
+def scan_ruuvitags(config, device, auth_code):
+    """Scan RuuviTag(s) and upload data."""
+
+    def read_tag(tag_mac, device):
+        """Read data from the RuuviTag with the provided MAC address.
+        Returns a dictionary containing the data."""
+        sensor = RuuviTag(tag_mac, bt_device=device)
+        sensor.update()
+
+        # get latest state (does not get it from the device)
+        return sensor.state
+
+    for tag in config['tags']:
+        all_data = read_tag(tag['tag_mac'], device)
+        if all_data == {}:
+            logging.error('Could not read data from tag with MAC: %s',
+                          tag['tag_mac'])
+            continue
+
+        data = {'location': tag['location'],
+                'temperature': all_data['temperature'],
+                'pressure': all_data['pressure'],
+                'humidity': all_data['humidity']}
+
+        resp = requests.post(config['url'],
+                             params={'observation': json.dumps(data),
+                                     'code': auth_code})
+
+        logging.info("RuuviTag observation request data: '%s', response: code %s, text '%s'",
+                     json.dumps(data), resp.status_code, resp.text)
 
 
 def get_ble_beacons(config):
@@ -64,15 +97,14 @@ def get_ble_beacons(config):
     for address in addresses:
         if address in config['beacon_mac']:
             beacons.append(OrderedDict(sorted({'mac': address,
-                                               'rssi': round(mean(addresses[address]))}.
-                                              items())))
+                                               'rssi': round(mean(addresses[address]))}.items())))
     return beacons
 
 
-def store_in_db(config, data):
+def store_to_db(config, data, auth_code):
     """Stores the data in the backend database with a HTTP POST request."""
     if data == {}:
-        logging.error('Received no data, exiting')
+        logging.error('Received no data, stopping')
         return
 
     data['timestamp'] = datetime.now(
@@ -80,23 +112,25 @@ def store_in_db(config, data):
     data = OrderedDict(sorted(data.items()))
     resp = requests.post(config['upload_url'],
                          params={'obs-string': json.dumps(data),
-                                 'code': config['authentication_code']})
+                                 'code': auth_code})
 
-    logging.info('Request data: %s, response: code %s, text %s',
-                 {'obs-string': json.dumps(data)},
-                 resp.status_code, resp.text)
+    logging.info("Weather observation request data: '%s', response: code %s, text '%s'",
+                 json.dumps(data), resp.status_code, resp.text)
 
 
 def main():
     """Module main function."""
     logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 
-    parser = argparse.ArgumentParser(description='Sends data to the env-logger backend.')
+    parser = argparse.ArgumentParser(description='Scans environment data and sends it '
+                                     'to the env-logger backend.')
     parser.add_argument('config', type=str, help='Configuration file')
+    parser.add_argument('--device', type=str, help='Bluetooth device to use')
     parser.add_argument('--dummy', action='store_true',
-                        help='send dummy data (meant for testing)')
+                        help='Send dummy data (meant for testing)')
 
     args = parser.parse_args()
+    device = args.device if args.device else 'hci0'
 
     if not exists(args.config):
         logging.error('Could not find configuration file: %s', args.config)
@@ -115,19 +149,23 @@ def main():
                     'outside_temp': 5,
                     'beacons': []}
     else:
-        env_data = get_env_data(config['arduino_url'])
+        env_config = config['environment']
+        env_data = get_env_data(env_config['arduino_url'])
 
-        env_data['beacons'] = get_ble_beacons(config)
+        env_data['beacons'] = get_ble_beacons(env_config)
+        # Possible retry if first scan fails
         for _ in range(2):
             if env_data['beacons']:
                 break
 
-            orig_scan_time = config['beacon_scan_time']
-            config['beacon_scan_time'] /= 2
-            env_data['beacons'] = get_ble_beacons(config)
-            config['beacon_scan_time'] = orig_scan_time
+            orig_scan_time = env_config['beacon_scan_time']
+            env_config['beacon_scan_time'] /= 2
+            env_data['beacons'] = get_ble_beacons(env_config)
+            env_config['beacon_scan_time'] = orig_scan_time
 
-    store_in_db(config, env_data)
+    scan_ruuvitags(config['ruuvitag'], device, config['authentication_code'])
+
+    store_to_db(env_config, env_data, config['authentication_code'])
 
 
 if __name__ == '__main__':
