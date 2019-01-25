@@ -6,6 +6,11 @@
 # SSH key authentication without a password MUST be in place before running
 # this script.
 
+# This script assumes that ~/.pgpass file with valid content and 0600 permission
+# is in place. If not then this script will not work. Format for the ~/.pgpass
+# file is shown below:
+# server:port:database:username:password
+
 set -e
 
 usage() {
@@ -54,18 +59,15 @@ if [ ! -e ${conf_file} ]; then
 fi
 . ./${conf_file}
 
-backup_file_name="${db_name}_$(date -Iseconds).sql"
+backup_file_name="${db_name}_$(date -Iseconds).sql.xz"
 
 echo "Dumping database ${db_name} to file ${backup_file_name}"
 
-if [ $(pg_dump -a -f "${backup_file_name}" "${db_name}") ]; then
+if [ $(pg_dump -c -w "${db_name}" | xz -z -T 0 > ${backup_file_name}) ]; then
     echo "pg_dump failed, deleting file. Exiting."
     rm "${backup_file_name}"
     return 1
 fi
-
-xz -z -T 0 "./${backup_file_name}"
-backup_file_name="${backup_file_name}.xz"
 
 if [ $local_backup -eq 1 ]; then
     echo "Backup file: ${backup_file_name}"
