@@ -1,4 +1,1 @@
-psycopg2
-influxdb
-iso8601
-pytz
+psycopg2-binary

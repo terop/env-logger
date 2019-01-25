@@ -11,10 +11,7 @@ from datetime import datetime
 from email.mime.text import MIMEText
 from os.path import exists
 
-import iso8601
 import psycopg2
-from influxdb import InfluxDBClient
-from pytz import timezone
 
 
 class ObservationMonitor:
@@ -123,22 +120,18 @@ class RuuvitagMonitor:
     def get_ruuvitag_scan_time(self):
         """Returns recording time of the latest RuuviTag beacon observation."""
         results = {}
-        client = InfluxDBClient(host=self._config['ruuvitag']['Host'],
-                                username=self._config['ruuvitag']['Username'],
-                                password=self._config['ruuvitag']['Password'],
-                                database=self._config['ruuvitag']['Database'],
-                                ssl=True, verify_ssl=True)
-        for location in self._config['ruuvitag']['Location'].split(','):
-            result = client.query("SELECT time, temperature FROM observations "
-                                  "WHERE location = '{}' ORDER BY time DESC LIMIT 1;"
-                                  .format(location))
-            res = [point for point in result.get_points()]
-            if res:
-                results[location] = iso8601.parse_date(res[0]['time']) \
-                                           .astimezone(tz=timezone(
-                                               self._config['ruuvitag']['LocalTimezone']))
-            else:
-                results[location] = datetime.now()
+
+        with psycopg2.connect(host=self._config['db']['Host'],
+                              database=self._config['db']['Database'],
+                              user=self._config['db']['User'],
+                              password=self._config['db']['Password']) as conn:
+            with conn.cursor() as cursor:
+                for location in self._config['ruuvitag']['Location'].split(','):
+                    cursor.execute("""SELECT recorded FROM ruuvitag_observations WHERE
+                    location = %s ORDER BY recorded DESC LIMIT 1""", (location,))
+
+                    result = cursor.fetchone()
+                    results[location] = result[0] if result else datetime.now()
 
         return results
 
@@ -154,7 +147,8 @@ class RuuvitagMonitor:
             if int(time_diff.total_seconds()) > int(self._config['ruuvitag']['Timeout']) * 60:
                 if self._state[location]['email_sent'] == 'False':
                     if send_email(self._config['email'],
-                                  'env-logger: RuuviTag beacon inactivity warning',
+                                  'env-logger: RuuviTag beacon "{}" inactivity warning'
+                                  .format(location),
                                   'No RuuviTag observation for location "{}" has been '
                                   'scanned in env-logger after {} (timeout {} minutes). '
                                   'Please check for possible problems.'
@@ -166,7 +160,7 @@ class RuuvitagMonitor:
             else:
                 if self._state[location]['email_sent'] == 'True':
                     send_email(self._config['email'],
-                               'env-logger: Ruuvitag beacon scanned',
+                               'env-logger: Ruuvitag beacon "{}" scanned'.format(location),
                                'A RuuviTag observation for location "{}" '
                                'was scanned around {}.'
                                .format(location, datetime.now().isoformat()))
