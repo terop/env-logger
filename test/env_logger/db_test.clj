@@ -316,6 +316,11 @@
                         :humidity 25}]
       (is (pos? (insert-ruuvitag-observation test-postgres
                                              ruuvitag-obs)))
+      (is (pos? (insert-ruuvitag-observation
+                 test-postgres
+                 (assoc ruuvitag-obs
+                        :recorded
+                        (f/parse "2019-01-25T20:45:18.424048+02:00")))))
       (= -1 (insert-ruuvitag-observation test-postgres
                                          (dissoc ruuvitag-obs :temperature))))))
 

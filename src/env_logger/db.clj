@@ -93,12 +93,17 @@
   "Insert a RuuviTag weather observation into the database."
   [db-con observation]
   (try
-    (:id (first (j/insert! db-con
-                           :ruuvitag_observations
-                           {:location (:location observation)
-                            :temperature (:temperature observation)
-                            :pressure (:pressure observation)
-                            :humidity (:humidity observation)})))
+    (let [values {:location (:location observation)
+                  :temperature (:temperature observation)
+                  :pressure (:pressure observation)
+                  :humidity (:humidity observation)}]
+      (:id (first (j/insert! db-con
+                             :ruuvitag_observations
+                             (if (:timestamp observation)
+                               (assoc values
+                                      :recorded
+                                      (f/parse (:timestamp observation)))
+                               values)))))
     (catch PSQLException pe
       (log/error "RuuviTag observation insert failed, message:"
                  (.getMessage pe))
