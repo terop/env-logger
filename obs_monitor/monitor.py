@@ -11,6 +11,7 @@ from datetime import datetime
 from email.mime.text import MIMEText
 from os.path import exists
 
+import iso8601
 import psycopg2
 
 
@@ -171,6 +172,67 @@ class RuuvitagMonitor:
         return self._state
 
 
+class YardcamImageMonitor:
+    """Class for monitoring Yardcam images."""
+    def __init__(self, config, state):
+        self._config = config
+        self._state = state
+
+    def get_yardcam_image_name(self):
+        """Returns the image name of the latest Yardcam image."""
+        with psycopg2.connect(host=self._config['db']['Host'],
+                              database=self._config['db']['Database'],
+                              user=self._config['db']['User'],
+                              password=self._config['db']['Password']) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""SELECT yc_image_name FROM observations
+                ORDER BY id DESC LIMIT 1""")
+
+                result = cursor.fetchone()
+                return result[0] if result else None
+
+    def send_yardcam_email(self, image_ts=None):
+        """"Sends an email about a missing Yardcam image."""
+        if send_email(self._config['email'],
+                      'env-logger: Yardcam image inactivity warning',
+                      'No Yardcam image name has been stored '
+                      'in env-logger{} (timeout {} minutes). '
+                      'Please check for possible problems.'
+                      .format(' after {}'.format(image_ts.isoformat()) if image_ts else '',
+                              self._config['yardcam']['Timeout'])):
+            self._state['email_sent'] = 'True'
+        else:
+            self._state['email_sent'] = 'False'
+
+    def check_yardcam(self):
+        """Checks the latest Yardcam image name timestamp and sends an email if
+        the threshold is exceeded."""
+        image_name = self.get_yardcam_image_name()
+
+        if not image_name:
+            if self._state['email_sent'] == 'False':
+                self.send_yardcam_email()
+                return
+
+        image_ts = iso8601.parse_date(image_name.strip('yc-').strip('.jpg'))
+        time_diff = int((datetime.now(tz=image_ts.tzinfo) - image_ts).total_seconds() / 60)
+
+        if time_diff > int(self._config['yardcam']['Timeout']):
+            if self._state['email_sent'] == 'False':
+                self.send_yardcam_email(image_ts)
+        else:
+            if self._state['email_sent'] == 'True':
+                send_email(self._config['email'],
+                           'env-logger: Yardcam image found',
+                           'A Yardcam image ({}) has been stored around {}.'
+                           .format(image_name, datetime.now().isoformat()))
+                self._state['email_sent'] = 'False'
+
+    def get_state(self):
+        """Returns the RuuviTag scan state."""
+        return self._state
+
+
 def send_email(config, subject, message):
     """Sends an email with provided subject and message to specified recipients."""
     msg = MIMEText(message)
@@ -212,6 +274,7 @@ def main():
     except FileNotFoundError:
         state = {'observation': {'email_sent': 'False'},
                  'blebeacon': {'email_sent': 'False'},
+                 'yardcam': {'email_sent': 'False'},
                  'ruuvitag': {}}
         for location in config['ruuvitag']['Location'].split(','):
             state['ruuvitag'][location] = {}
@@ -229,6 +292,10 @@ def main():
         ruuvitag = RuuvitagMonitor(config, state['ruuvitag'])
         ruuvitag.check_ruuvitag()
         state['ruuvitag'] = ruuvitag.get_state()
+    if config['yardcam']['Enabled'] == 'True':
+        yardcam = YardcamImageMonitor(config, state['yardcam'])
+        yardcam.check_yardcam()
+        state['yardcam'] = yardcam.get_state()
 
     with open(state_file_name, 'w') as state_file:
         json.dump(state, state_file, indent=4)

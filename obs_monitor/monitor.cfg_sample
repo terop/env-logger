@@ -21,6 +21,11 @@ Timeout = 7
 # Multiple comma separated locations are supported
 Location = inside,outside
 
+[yardcam]
+Enabled = True
+# Timeout in minutes
+Timeout = 15
+
 [email]
 Server = example.com
 Username = theuser
