@@ -1,6 +1,7 @@
 (ns env-logger.handler
   "The main namespace of the application"
   (:require [clojure.set]
+            [clojure.string :as s]
             [cheshire.core :refer [generate-string parse-string]]
             [compojure.core :refer [GET POST DELETE defroutes]]
             [compojure.route :as route]
@@ -264,13 +265,25 @@
           response-unauthorized
           (if-not (db/test-db-connection db/postgres)
             response-server-error
-            (if (re-find #"yc-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+[\d:]+\.jpg"
-                         (:image-name (:params request)))
-              (if (db/insert-yc-image-name db/postgres
-                                           (:image-name
-                                            (:params request)))
-                "OK" response-server-error)
-              response-invalid-request))))
+            (let [image-name (:image-name (:params request))
+                  formatter (f/formatter "Y-M-d H:mZ")
+                  pattern #"^yc-(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+[\d:]+)\.jpg$"]
+              (if (and image-name
+                       (re-find pattern image-name)
+                       (<= (-> (t/interval (f/parse formatter
+                                                    (s/replace
+                                                     (nth
+                                                      (re-matches pattern
+                                                                  image-name)
+                                                      1)
+                                                     "T" " "))
+                                           (t/now))
+                               .toDuration .getStandardMinutes)
+                           (get-conf-value :yc-max-time-diff)))
+                (if (db/insert-yc-image-name db/postgres
+                                             image-name)
+                  "OK" response-server-error)
+                response-invalid-request)))))
   ;; Profile handling
   (POST "/profile" request
         (str (u/insert-profile db/postgres
