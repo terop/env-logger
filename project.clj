@@ -11,7 +11,7 @@
                  [honeysql "0.9.4"]
                  [clj-time "0.15.1"]
                  [cheshire "5.8.1"]
-                 [selmer "1.12.8"]
+                 [selmer "1.12.12"]
                  [clj-http "3.9.1"]
                  [org.clojure/tools.logging "0.4.1"]
                  [org.slf4j/slf4j-log4j12 "1.7.26"]
