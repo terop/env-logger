@@ -160,6 +160,7 @@ if (plotData.length === 0) {
             var pattern = /yc-([\d-]+)T.+/,
                 result = pattern.exec(imageName);
             if (result) {
+                document.getElementById('yardcamImageLink').style.display = '';
                 document.getElementById('yardcamImage').src = ycImageBasepath +
                     result[1] + '/' + imageName;
                 document.getElementById('yardcamImageLink').href = ycImageBasepath +
@@ -170,7 +171,7 @@ if (plotData.length === 0) {
                 }, 500);
             }
         } else {
-            alert('No yardcam image to show');
+            document.getElementById('yardcamImageLink').style.display = 'none';
         }
     };
 

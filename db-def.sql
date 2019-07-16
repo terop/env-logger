@@ -55,9 +55,9 @@ CREATE TABLE yubikeys (
 );
 
 -- Table for storing the name of the latest yardcam image
-CREATE TABLE yardcam_images (
+CREATE TABLE yardcam_image (
        image_id SERIAL PRIMARY KEY,
-       image_name VARCHAR(40) NOT NULL UNIQUE
+       image_name VARCHAR(40)
 );
 
 -- Table for user profiles

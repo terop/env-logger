@@ -5,6 +5,7 @@
             [clj-time.local :as l]
             [clj-time.jdbc]
             [clojure.java.jdbc :as j]
+            [clojure.string :as s]
             [honeysql.core :as sql]
             [honeysql.helpers :refer :all]
             [clojure.tools.logging :as log]
@@ -45,14 +46,34 @@
                  (.getMessage pe))
       false)))
 
+(defn yc-image-age-check
+  "Returns true when the yardcam image date is older than (now - diff-minutes)
+  minutes and false otherwise."
+  [yc-image diff-minutes]
+  (let [yc-image-pattern #"yc-(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+\d{2}:\d{2}).+"
+        match (re-find yc-image-pattern
+                       yc-image)]
+    (>= (t/in-minutes
+         (t/interval
+          (f/parse (f/formatter "y-M-d H:mZ")
+                   (s/replace (nth match 1) "T" " "))
+          (t/now)))
+       diff-minutes)))
+
 (defn get-yc-image
   "Returns the name of the latest yardcam image."
   [db-con]
-  (:image_name (first (j/query db-con
-                               (sql/format
-                                (sql/build
-                                 :select [:image_name]
-                                 :from [:yardcam_images]))))))
+  (let [yc-image-pattern #"yc-(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+\d{2}:\d{2}).+"
+        image-name (:image_name (first (j/query db-con
+                                                (sql/format
+                                                 (sql/build
+                                                  :select [:image_name]
+                                                  :from [:yardcam_image])))))]
+    (when (and image-name
+               (re-matches yc-image-pattern image-name)
+               (not (yc-image-age-check image-name
+                                        (get-conf-value :yc-max-time-diff))))
+      image-name)))
 
 (defn insert-plain-observation
   "Insert a row into observations table."
@@ -237,7 +258,15 @@
                                                (format "%.2f"
                                                        (- (:o_temperature %)
                                                           (:fmi_temperature
-                                                           %)))))})
+                                                           %)))))
+                                :yc_image_name (if (:yc_image_name %)
+                                                 (if-not (yc-image-age-check
+                                                          (:yc_image_name %)
+                                                          (get-conf-value
+                                                           :yc-max-time-diff))
+                                                   (:yc_image_name %)
+                                                   nil)
+                                                 nil)})
                         :mac_address)})))
 
 (defn get-obs-days
@@ -342,12 +371,12 @@
   [db-con image-name]
   (let [result (j/query db-con
                         (sql/format (sql/build :select [:image_id]
-                                               :from :yardcam_images)))]
+                                               :from :yardcam_image)))]
     (try
       (when (pos? (count result))
-        (j/execute! db-con "DELETE FROM yardcam_images"))
+        (j/execute! db-con "DELETE FROM yardcam_image"))
       (= 1 (count (j/insert! db-con
-                             :yardcam_images
+                             :yardcam_image
                              {:image_name image-name})))
       (catch PSQLException pe
         (log/error "Yardcam image name insert failed, message:"

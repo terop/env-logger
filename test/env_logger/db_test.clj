@@ -5,6 +5,7 @@
             [clj-time.format :as f]
             [clj-time.jdbc]
             [clojure.java.jdbc :as j]
+            [clojure.string :as s]
             [env-logger.config :refer [db-conf get-conf-value]]
             [env-logger.db :refer :all])
   (:import (org.postgresql.util PSQLException
@@ -48,7 +49,7 @@
               :temperature 20})
   (test-fn)
   (j/execute! test-postgres "DELETE FROM observations")
-  (j/execute! test-postgres "DELETE FROM yardcam_images"))
+  (j/execute! test-postgres "DELETE FROM yardcam_image"))
 
 ;; Fixture run at the start and end of tests
 (use-fixtures :once clean-test-database)
@@ -57,6 +58,17 @@
   "Returns the the current datetime in UTC ISO 8601 formatted."
   []
   (str (l/to-local-date-time current-dt)))
+
+(defn get-yc-image-name
+  "Returns a valid yardcam image name using the current datetime or the current
+  datetime minus an optional time unit."
+  [& minus-time]
+  (str "yc-" (s/replace (f/unparse
+                         (f/formatter-local "y-MM-dd HH:mmZZ")
+                         (if minus-time
+                           (t/minus (l/local-now) (nth minus-time 0))
+                           (l/local-now)))
+                         " " "T") ".jpg"))
 
 (deftest insert-observations
   (testing "Full observation insert"
@@ -114,11 +126,11 @@
             :fmi_temperature 20.0
             :o_temperature 5.0
             :pressure 1006.5
-            :yc_image_name "testimage.jpg"
             :name "7C:EC:79:3F:BE:97"
             :rssi -68
             :tb_image_name nil
-            :temp_delta -15.0}
+            :temp_delta -15.0
+            :yc_image_name (get-yc-image-name)}
            (nth (get-obs-days test-postgres 3) 1)))))
 
 (deftest obs-interval-select
@@ -260,27 +272,39 @@
 
 (deftest yc-image-name-storage
   (testing "Storing of the latest Yardcam image name"
+    (j/execute! test-postgres "DELETE FROM yardcam_image")
     (j/insert! test-postgres
-               :yardcam_images
-               {:image_name "testimage.jpg"})
+               :yardcam_image
+               {:image_name (get-yc-image-name)})
     (j/insert! test-postgres
-               :yardcam_images
-               {:image_name "testimage2.jpg"})
+               :yardcam_image
+               {:image_name (get-yc-image-name (t/minutes 5))})
     (is (= 2 (count (j/query test-postgres
-                             "SELECT image_id FROM yardcam_images"))))
-    (is (true? (insert-yc-image-name test-postgres "testimage.jpg")))
+                             "SELECT image_id FROM yardcam_image"))))
+    (is (true? (insert-yc-image-name test-postgres
+                                     (get-yc-image-name))))
     (is (= 1 (count (j/query test-postgres
-                             "SELECT image_id FROM yardcam_images"))))
-    (is (false? (insert-yc-image-name test-postgres nil)))))
+                             "SELECT image_id FROM yardcam_image"))))))
 
 (deftest yc-image-name-query
   (testing "Querying of the yardcam image name"
-    (j/execute! test-postgres "DELETE FROM yardcam_images")
+    (j/execute! test-postgres "DELETE FROM yardcam_image")
     (is (nil? (get-yc-image test-postgres)))
     (j/insert! test-postgres
-               :yardcam_images
-               {:image_name "testimage.jpg"})
-    (is (= "testimage.jpg" (get-yc-image test-postgres)))))
+               :yardcam_image
+               {:image_name "testbed.jpg"})
+    (is (nil? (get-yc-image test-postgres)))
+    (j/execute! test-postgres "DELETE FROM yardcam_image")
+    (j/insert! test-postgres
+               :yardcam_image
+               {:image_name (get-yc-image-name (t/hours 4))})
+    (is (nil? (get-yc-image test-postgres)))
+    (let [valid-name (get-yc-image-name)]
+      (j/execute! test-postgres "DELETE FROM yardcam_image")
+      (j/insert! test-postgres
+               :yardcam_image
+               {:image_name valid-name})
+      (is (= valid-name (get-yc-image test-postgres))))))
 
 (deftest last-observation-id
   (testing "Query of last observation's ID"
@@ -344,7 +368,7 @@
                                          :inside_temp 20
                                          :outside_temp 5
                                          :offset 6
-                                         :image-name "testimage.jpg"})))))
+                                         :image-name (get-yc-image-name)})))))
 
 (deftest db-connection-test
   (testing "Connection to the DB"
@@ -354,3 +378,9 @@
                                     "Test exception"
                                     (PSQLState/COMMUNICATION_ERROR))))]
       (is (false? (test-db-connection test-postgres))))))
+
+(deftest yc-image-age-check-test
+  (testing "Yardcam image date checking"
+    (is (true? (yc-image-age-check (get-yc-image-name (t/minutes 10)) 9)))
+    (is (false? (yc-image-age-check (get-yc-image-name) 1)))
+    (is (false? (yc-image-age-check (get-yc-image-name) 5)))))

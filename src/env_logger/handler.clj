@@ -267,18 +267,18 @@
             response-server-error
             (let [image-name (:image-name (:params request))
                   formatter (f/formatter "Y-M-d H:mZ")
-                  pattern #"^yc-(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+[\d:]+)\.jpg$"]
+                  pattern #"^yc-(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+[\d:]+).+$"]
               (if (and image-name
                        (re-find pattern image-name)
-                       (<= (-> (t/interval (f/parse formatter
-                                                    (s/replace
-                                                     (nth
-                                                      (re-matches pattern
-                                                                  image-name)
-                                                      1)
-                                                     "T" " "))
-                                           (t/now))
-                               .toDuration .getStandardMinutes)
+                       (<= (t/in-minutes (t/interval
+                                          (f/parse formatter
+                                                   (s/replace
+                                                    (nth
+                                                     (re-matches pattern
+                                                                 image-name)
+                                                     1)
+                                                    "T" " "))
+                                           (t/now)))
                            (get-conf-value :yc-max-time-diff)))
                 (if (db/insert-yc-image-name db/postgres
                                              image-name)

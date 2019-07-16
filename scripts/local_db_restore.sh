@@ -21,7 +21,7 @@ echo "Truncating tables"
 psql "${db_name}" <<EOF
 TRUNCATE TABLE users CASCADE;
 TRUNCATE TABLE observations CASCADE;
-TRUNCATE TABLE yardcam_images;
+TRUNCATE TABLE yardcam_image;
 EOF
 
 echo "Adding new values"
