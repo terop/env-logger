@@ -24,8 +24,7 @@
             [env-logger.grabber :refer [calculate-start-time
                                         get-latest-fmi-weather-data
                                         weather-query-ok?]]
-            [env-logger.user :as u]
-            [env-logger.ruuvitag :refer :all])
+            [env-logger.user :as u])
   (:import com.yubico.client.v2.YubicoClient
            java.io.ByteArrayInputStream)
   (:gen-class))
@@ -119,19 +118,17 @@
   [logged-in? start-date end-date]
   (generate-string
    (if logged-in?
-     (let [formatter (f/formatter "d.M.y")
+     (let [;; formatter (f/formatter "d.M.y")
            db-obs (db/get-obs-interval db/postgres
                                        {:start start-date
                                         :end end-date})]
        (if (get-conf-value :ruuvitag-enabled?)
-         (map-db-and-rt-obs db-obs
-                            (get-rt-obs
-                             (get-conf-value :ruuvitag-influx)
-                             (f/parse formatter
-                                      start-date)
-                             (t/plus (f/parse formatter
-                                              end-date)
-                                     (t/days 1))))
+         (db/combine-db-and-rt-obs db-obs
+                                   (db/get-ruuvitag-obs
+                                    db/postgres
+                                    (db/make-local-dt start-date "start")
+                                    (db/make-local-dt end-date "end")
+                                    "indoor"))
          db-obs))
      (db/get-weather-obs-interval db/postgres
                                   {:start start-date
@@ -145,11 +142,13 @@
      (let [db-obs (db/get-obs-days db/postgres
                                    initial-days)]
        (if (get-conf-value :ruuvitag-enabled?)
-         (map-db-and-rt-obs db-obs
-                            (get-rt-obs (get-conf-value :ruuvitag-influx)
-                                        (t/minus (t/now)
-                                                 (t/days initial-days))
-                                        (t/now)))
+         (db/combine-db-and-rt-obs db-obs
+                                   (db/get-ruuvitag-obs
+                                    db/postgres
+                                    (t/minus (t/now)
+                                             (t/days initial-days))
+                                    (t/now)
+                                    "indoor"))
          db-obs))
      (db/get-weather-obs-days db/postgres
                               initial-days))))

@@ -42,7 +42,7 @@
              "SELECT 1")
     true
     (catch PSQLException pe
-      (log/error "DB connection establishment failed, message:"
+      (log/error "DB connection establishment failed:"
                  (.getMessage pe))
       false)))
 
@@ -126,7 +126,7 @@
                                       (f/parse (:timestamp observation)))
                                values)))))
     (catch PSQLException pe
-      (log/error "RuuviTag observation insert failed, message:"
+      (log/error "RuuviTag observation insert failed:"
                  (.getMessage pe))
       -1)))
 
@@ -163,7 +163,7 @@
                 (j/db-set-rollback-only! t-con)
                 false))))
         (catch PSQLException pe
-          (log/error "Database insert failed, message:"
+          (log/error "Database insert failed:"
                      (.getMessage pe))
           (j/db-set-rollback-only! t-con)
           false)))
@@ -343,7 +343,7 @@
         {:start (f/unparse formatter (:start (first result)))}
         {:start ""}))
     (catch PSQLException pe
-      (log/error "Observation start date fetching failed, message:"
+      (log/error "Observation start date fetching failed:"
                  (.getMessage pe))
       {:error :db-error})))
 
@@ -360,9 +360,40 @@
         {:end (f/unparse formatter (:end (first result)))}
         {:end ""}))
     (catch PSQLException pe
-      (log/error "Observation end date fetching failed, message:"
+      (log/error "Observation end date fetching failed:"
                  (.getMessage pe))
       {:error :db-error})))
+
+(defn get-ruuvitag-obs
+  "Returns RuuviTag observations lying between the provided timestamps
+  and having the given location."
+  [db-con start end location]
+  (try
+    (let [query (sql/format (sql/build :select [:temperature
+                                                :humidity]
+                                       :from :ruuvitag_observations
+                                       :where [:and
+                                               [:= :location location]
+                                               [:>= :recorded start]
+                                               [:<= :recorded end]]
+                                       :order-by [[:id :asc]]))
+          result (j/query db-con query
+                          {:row-fn (fn [obs]
+                                     {:rt-temperature (:temperature obs)
+                                      :rt-humidity (:humidity obs)})})]
+      result)
+    (catch PSQLException pe
+      (log/error "RuuviTag observation fetching failed:"
+                 (.getMessage pe))
+      {})))
+
+(defn combine-db-and-rt-obs
+  "Combines each DB and RuuviTag observations into map and returns all
+  observations as a list."
+  [db-obs rt-obs]
+  (for [i (range (min (count db-obs) (count rt-obs)))]
+    (merge (nth db-obs i)
+           (nth rt-obs i))))
 
 (defn insert-yc-image-name
   "Stores the name of the latest Yardcam image. Rows from the table are
@@ -379,7 +410,7 @@
                              :yardcam_image
                              {:image_name image-name})))
       (catch PSQLException pe
-        (log/error "Yardcam image name insert failed, message:"
+        (log/error "Yardcam image name insert failed:"
                    (.getMessage pe))
         false))))
 

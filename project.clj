@@ -18,8 +18,7 @@
                  [com.yubico/yubico-validation-client2 "3.0.5"]
                  [buddy/buddy-hashers "1.4.0"]
                  [buddy/buddy-auth "2.2.0"]
-                 [org.clojars.pntblnk/clj-ldap "0.0.16"]
-                 [org.influxdb/influxdb-java "2.15"]]
+                 [org.clojars.pntblnk/clj-ldap "0.0.16"]]
   :main env-logger.handler
   :aot [env-logger.handler
         clojure.tools.logging.impl]

@@ -384,3 +384,54 @@
     (is (true? (yc-image-age-check (get-yc-image-name (t/minutes 10)) 9)))
     (is (false? (yc-image-age-check (get-yc-image-name) 1)))
     (is (false? (yc-image-age-check (get-yc-image-name) 5)))))
+
+(deftest get-ruuvitag-obs-test
+  (testing "RuuviTag observation fetching"
+    (j/execute! test-postgres "DELETE FROM ruuvitag_observations")
+    (j/insert! test-postgres
+               :ruuvitag_observations
+               {:location "indoor"
+                :temperature 22.0
+                :pressure 1024.0
+                :humidity 45.0})
+    (j/insert! test-postgres
+               :ruuvitag_observations
+               {:location "indoor"
+                :temperature 21.0
+                :pressure 1023.0
+                :humidity 45.0})
+    (j/insert! test-postgres
+               :ruuvitag_observations
+               {:location "balcony"
+                :temperature 15.0
+                :pressure 1024.0
+                :humidity 30.0})
+    (is (= '({:rt-temperature 15.0
+              :rt-humidity 30.0})
+           (get-ruuvitag-obs test-postgres
+                             (t/minus (t/now) (t/minutes 5))
+                             (t/now)
+                             "balcony")))
+    (is (= 2 (count (get-ruuvitag-obs test-postgres
+                                      (t/minus (t/now) (t/minutes 5))
+                                      (t/now)
+                                      "indoor"))))))
+
+(deftest combine-db-and-rt-obs-test
+  (testing "DB and RuuviTag observation combining"
+    (is (= '({:brightness 0
+              :temperature 14.0
+              :cloudiness 2
+              :fmi_temperature 20.0
+              :o_temperature 5.0
+              :pressure 1006.5
+              :rt-temperature 22.0
+              :rt-humidity 45.0})
+           (combine-db-and-rt-obs '({:brightness 0
+                                     :temperature 14.0
+                                     :cloudiness 2
+                                     :fmi_temperature 20.0
+                                     :o_temperature 5.0
+                                     :pressure 1006.5})
+                                  '({:rt-temperature 22.0
+                                     :rt-humidity 45.0}))))))
