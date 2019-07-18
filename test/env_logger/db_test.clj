@@ -62,13 +62,16 @@
 (defn get-yc-image-name
   "Returns a valid yardcam image name using the current datetime or the current
   datetime minus an optional time unit."
-  [& minus-time]
-  (str "yc-" (s/replace (f/unparse
-                         (f/formatter-local "y-MM-dd HH:mmZZ")
-                         (if minus-time
-                           (t/minus (l/local-now) (nth minus-time 0))
-                           (l/local-now)))
+  ([]
+   (str "yc-" (s/replace (f/unparse
+                          (f/formatter-local "Y-MM-dd HH:mmZZ")
+                          (l/local-now))
                          " " "T") ".jpg"))
+  ([minus-time]
+   (str "yc-" (s/replace (f/unparse
+                          (f/formatter-local "Y-MM-dd HH:mmZZ")
+                          (t/minus (l/local-now) minus-time))
+                         " " "T") ".jpg")))
 
 (deftest insert-observations
   (testing "Full observation insert"

@@ -118,8 +118,7 @@
   [logged-in? start-date end-date]
   (generate-string
    (if logged-in?
-     (let [;; formatter (f/formatter "d.M.y")
-           db-obs (db/get-obs-interval db/postgres
+     (let [db-obs (db/get-obs-interval db/postgres
                                        {:start start-date
                                         :end end-date})]
        (if (get-conf-value :ruuvitag-enabled?)
@@ -153,53 +152,93 @@
      (db/get-weather-obs-days db/postgres
                               initial-days))))
 
+(defn yc-image-validity-check
+  "Checks whether the yardcam image has the right format and is not too old.
+  Returns true when the image name is valid and false otherwise."
+  [image-name]
+  (let [formatter (f/formatter "Y-M-d H:mZ")
+        pattern #"^yc-(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+[\d:]+).+$"]
+    (boolean (and image-name
+                  (re-find pattern image-name)
+                  (<= (t/in-minutes (t/interval
+                                     (f/parse formatter
+                                              (s/replace
+                                               (nth
+                                                (re-matches pattern
+                                                            image-name)
+                                                1)
+                                               "T" " "))
+                                     (t/now)))
+                      (get-conf-value :yc-max-time-diff))))))
+
+(defn get-plot-page-data
+  "Returns data needed for rendering the plot page."
+  [request]
+  (let [start-date (when (seq (:startDate (:params request)))
+                     (:startDate (:params request)))
+        end-date (when (seq (:endDate (:params request)))
+                   (:endDate (:params request)))
+        obs-dates (merge (db/get-obs-start-date db/postgres)
+                         (db/get-obs-end-date db/postgres))
+        formatter (f/formatter "d.M.y")
+        logged-in? (authenticated? request)
+        ruuvitag-enabled? (get-conf-value :ruuvitag-enabled?)
+        initial-days (get-conf-value :initial-show-days)
+        common-values {:obs-dates obs-dates
+                       :logged-in? logged-in?
+                       :ruuvitag-enabled? ruuvitag-enabled?
+                       :ws-url (get-conf-value :ws-url)
+                       :yc-image-basepath (get-conf-value
+                                           :yc-image-basepath)
+                       :tb-image-basepath (get-conf-value
+                                           :tb-image-basepath)
+                       :profiles (when-not (empty? (:session
+                                                    request))
+                                   (u/get-profiles db/postgres
+                                                   (name (:identity
+                                                          request))))}]
+    (merge common-values
+           (if (or start-date end-date)
+             {:data (data-custom-dates logged-in?
+                                       start-date
+                                       end-date)
+              :start-date start-date
+              :end-date end-date}
+             {:data (data-default-dates logged-in?
+                                        initial-days)
+              :start-date
+              (f/unparse formatter
+                         (t/minus (f/parse formatter
+                                           (:end obs-dates))
+                                  (t/days initial-days)))
+              :end-date (:end obs-dates)}))))
+
+(defn handle-observation-insert
+  "Handles the insertion of an observation to the database."
+  [obs-string]
+  (let [start-time (calculate-start-time)
+        start-time-int (t/interval (t/plus start-time
+                                           (t/minutes 4))
+                                   (t/plus start-time
+                                           (t/minutes 7)))
+        weather-data (when (and (t/within? start-time-int (t/now))
+                                (weather-query-ok? db/postgres 3))
+                       (get-latest-fmi-weather-data
+                        (get-conf-value :fmi-api-key)
+                        (get-conf-value :station-id)))]
+    (db/insert-observation db/postgres
+                           (assoc (parse-string obs-string
+                                                true)
+                                  :weather-data weather-data))))
+
 (defroutes routes
   ;; Index and login
   (GET "/" request
        (if-not (db/test-db-connection db/postgres)
          (render-file "templates/error.html"
                       {})
-         (let [start-date (when (not= "" (:startDate
-                                          (:params request)))
-                            (:startDate (:params request)))
-               end-date (when (not= "" (:endDate (:params request)))
-                          (:endDate (:params request)))
-               obs-dates (merge (db/get-obs-start-date db/postgres)
-                                (db/get-obs-end-date db/postgres))
-               formatter (f/formatter "d.M.y")
-               logged-in? (authenticated? request)
-               ruuvitag-enabled? (get-conf-value :ruuvitag-enabled?)
-               initial-days (get-conf-value :initial-show-days)
-               common-values {:obs-dates obs-dates
-                              :logged-in? logged-in?
-                              :ruuvitag-enabled? ruuvitag-enabled?
-                              :ws-url (get-conf-value :ws-url)
-                              :yc-image-basepath (get-conf-value
-                                                  :yc-image-basepath)
-                              :tb-image-basepath (get-conf-value
-                                                  :tb-image-basepath)
-                              :profiles (when-not (empty? (:session
-                                                           request))
-                                          (u/get-profiles db/postgres
-                                                          (name (:identity
-                                                                 request))))}]
-           (render-file "templates/plots.html"
-                        (merge common-values
-                               (if (or (not (nil? start-date))
-                                       (not (nil? end-date)))
-                                 {:data (data-custom-dates logged-in?
-                                                           start-date
-                                                           end-date)
-                                  :start-date start-date
-                                  :end-date end-date}
-                                 {:data (data-default-dates logged-in?
-                                                            initial-days)
-                                  :start-date
-                                  (f/unparse formatter
-                                             (t/minus (f/parse formatter
-                                                               (:end obs-dates))
-                                                      (t/days initial-days)))
-                                  :end-date (:end obs-dates)}))))))
+         (render-file "templates/plots.html"
+                      (get-plot-page-data request))))
   (GET "/login" [] (render-file "templates/login.html" {}))
   (POST "/login" [] login-authenticate)
   (GET "/logout" request
@@ -211,28 +250,15 @@
           response-unauthorized
           (if-not (db/test-db-connection db/postgres)
             response-server-error
-            (let [start-time (calculate-start-time)
-                  start-time-int (t/interval (t/plus start-time
-                                                     (t/minutes 4))
-                                             (t/plus start-time
-                                                     (t/minutes 7)))
-                  weather-data (when (and (t/within? start-time-int (t/now))
-                                          (weather-query-ok? db/postgres 3))
-                                 (get-latest-fmi-weather-data
-                                  (get-conf-value :fmi-api-key)
-                                  (get-conf-value :station-id)))
-                  insert-status (db/insert-observation
-                                 db/postgres
-                                 (assoc (parse-string (:obs-string (:params
-                                                                    request))
-                                                      true)
-                                        :weather-data weather-data))]
-              (doseq [channel @channels]
-                (async/send! channel
-                             (generate-string (db/get-observations db/postgres
-                                                                   :limit 1))))
-              (if insert-status
-                "OK" response-server-error)))))
+              (if (handle-observation-insert (:obs-string (:params request)))
+                (do
+                  (doseq [channel @channels]
+                    (async/send! channel
+                                 (generate-string
+                                  (db/get-observations db/postgres
+                                                       :limit 1))))
+                  "OK")
+                response-server-error))))
   ;; RuuviTag observation storage
   (POST "/rt-observations" request
         (if-not (check-auth-code (:code (:params request)))
@@ -264,21 +290,8 @@
           response-unauthorized
           (if-not (db/test-db-connection db/postgres)
             response-server-error
-            (let [image-name (:image-name (:params request))
-                  formatter (f/formatter "Y-M-d H:mZ")
-                  pattern #"^yc-(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+[\d:]+).+$"]
-              (if (and image-name
-                       (re-find pattern image-name)
-                       (<= (t/in-minutes (t/interval
-                                          (f/parse formatter
-                                                   (s/replace
-                                                    (nth
-                                                     (re-matches pattern
-                                                                 image-name)
-                                                     1)
-                                                    "T" " "))
-                                           (t/now)))
-                           (get-conf-value :yc-max-time-diff)))
+            (let [image-name (:image-name (:params request))]
+              (if (yc-image-validity-check image-name)
                 (if (db/insert-yc-image-name db/postgres
                                              image-name)
                   "OK" response-server-error)
