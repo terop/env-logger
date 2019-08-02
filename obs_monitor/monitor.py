@@ -97,8 +97,6 @@ class BeaconMonitor:
                               'possible problems.'.format(last_obs_time.isoformat(),
                                                           self._config['blebeacon']['Timeout'])):
                     self._state['email_sent'] = 'True'
-                else:
-                    self._state['email_sent'] = 'False'
         else:
             if self._state['email_sent'] == 'True':
                 send_email(self._config['email'],
