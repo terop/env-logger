@@ -1,15 +1,20 @@
-dist: trusty
-sudo: false
 language: clojure
 jdk:
-  - oraclejdk8
+  - openjdk8
+  - openjdk11
 env:
-  - POSTGRESQL_DB_HOST=localhost POSTGRESQL_DB_PORT=5432 POSTGRESQL_DB_USERNAME=postgres POSTGRESQL_DB_PASSWORD=
+  global:
+  - POSTGRESQL_DB_HOST=localhost
+  - POSTGRESQL_DB_PORT=5432
+  - POSTGRESQL_DB_USERNAME=postgres
+  - POSTGRESQL_DB_PASSWORD=
 services:
   - postgresql
 addons:
-  postgresql: "9.6"
+  postgresql: "10"
 before_script:
   - psql -U postgres -c 'CREATE DATABASE env_logger_test;'
   - psql -U postgres env_logger_test < db-def.sql
   - cp resources/config.edn_sample resources/config.edn
+script:
+  - lein test
