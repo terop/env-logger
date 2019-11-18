@@ -128,20 +128,23 @@ def main():
     logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 
     parser = argparse.ArgumentParser(description='Scans environment data and sends it '
-                                     'to the env-logger backend.')
-    parser.add_argument('config', type=str, help='Configuration file')
+                                     'to the env-logger backend. A configuration file '
+                                     'named "logger_config.json" is used unless '
+                                     'provided with --config.')
+    parser.add_argument('--config', type=str, help='Configuration file')
     parser.add_argument('--device', type=str, help='Bluetooth device to use')
     parser.add_argument('--dummy', action='store_true',
                         help='Send dummy data (meant for testing)')
 
     args = parser.parse_args()
+    config = args.config if args.config else 'logger_config.json'
     device = args.device if args.device else 'hci0'
 
-    if not exists(args.config):
-        logging.error('Could not find configuration file: %s', args.config)
+    if not exists(config):
+        logging.error('Could not find configuration file: %s', config)
         sys.exit(1)
 
-    with open(args.config, 'r') as config_file:
+    with open(config, 'r') as config_file:
         try:
             config = json.load(config_file)
         except json.JSONDecodeError as err:
