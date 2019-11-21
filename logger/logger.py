@@ -23,9 +23,9 @@ from ruuvitag_sensor.ruuvitag import RuuviTag
 # Otherwise beacon scanning will not work as a non-root user!
 
 
-def get_timestamp():
+def get_timestamp(timezone):
     """Returns the current timestamp in ISO 8601 format."""
-    return datetime.now(pytz.timezone('Europe/Helsinki')).isoformat()
+    return datetime.now(pytz.timezone(timezone)).isoformat()
 
 
 def get_env_data(arduino_url):
@@ -56,7 +56,7 @@ def scan_ruuvitags(config, device, auth_code):
                           tag['tag_mac'])
             continue
 
-        data = {'timestamp': get_timestamp(),
+        data = {'timestamp': get_timestamp(config['timezone']),
                 'location': tag['location'],
                 'temperature': all_data['temperature'],
                 'pressure': all_data['pressure'],
@@ -113,7 +113,7 @@ def store_to_db(config, data, auth_code):
         logging.error('Received no data, stopping')
         return
 
-    data['timestamp'] = get_timestamp()
+    data['timestamp'] = get_timestamp(config['timezone'])
     data = OrderedDict(sorted(data.items()))
     resp = requests.post(config['upload_url'],
                          params={'obs-string': json.dumps(data),
