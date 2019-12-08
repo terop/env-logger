@@ -1,5 +1,2 @@
 pytz
 requests
-# Only needed for RuuviTag
-# See extra dependencies from https://github.com/ttu/ruuvitag-sensor
-ruuvitag_sensor

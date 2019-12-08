@@ -5,18 +5,19 @@ web service."""
 import argparse
 import json
 import logging
+import os
 import signal
 import subprocess
 import sys
 from collections import OrderedDict
 from datetime import datetime
 from os.path import exists
+from shutil import which
 from statistics import mean
 from time import sleep
 
 import pytz
 import requests
-from ruuvitag_sensor.ruuvitag import RuuviTag
 
 # NOTE! The ble_beacon_scan program's rights must be adjusted with the following command:
 # sudo setcap 'cap_net_raw,cap_net_admin+eip' ble_beacon_scan
@@ -36,35 +37,81 @@ def get_env_data(arduino_url):
         return {}
     return resp.json()
 
+# NOTE! Bluewalker (https://gitlab.com/jtaimisto/bluewalker) is needed for RuuviTag scanning.
+# Install it with "go get gitlab.com/jtaimisto/bluewalker". The binary must be placed in
+# PATH. Passwordless sudo access is needed for bluewalker and hciconfig commands.
 
-def scan_ruuvitags(config, device, auth_code):
+
+def scan_ruuvitags(config, device):
     """Scan RuuviTag(s) and upload data."""
 
-    def read_tag(tag_mac, device):
-        """Read data from the RuuviTag with the provided MAC address.
-        Returns a dictionary containing the data."""
-        sensor = RuuviTag(tag_mac, bt_device=device)
-        sensor.update()
+    def _get_tag_location(config, tag_mac):
+        """Get RuuviTag location based on tag MAC address."""
+        for tag in config['ruuvitag']['tags']:
+            if tag_mac == tag['tag_mac'].lower():
+                return tag['location']
 
-        # get latest state (does not get it from the device)
-        return sensor.state
+        return None
 
-    for tag in config['tags']:
-        all_data = read_tag(tag['tag_mac'], device)
-        if all_data == {}:
-            logging.error('Could not read data from tag with MAC: %s',
-                          tag['tag_mac'])
+    json_filename = 'bluewalker.json'
+
+    command = which('bluewalker', os.X_OK)
+    if not command:
+        logging.error('Could not find the bluewalker binary')
+        sys.exit(1)
+
+    # The Bluetooth device must be down before starting the scan
+    try:
+        subprocess.run('sudo hciconfig {} down'.format(device),
+                       shell=True, check=True)
+    except subprocess.CalledProcessError as cpe:
+        logging.error('Failed to set device %s down before scan, rc: %s',
+                      device, cpe.returncode)
+        sys.exit(1)
+
+    mac_addr = ''
+    tag_macs = [tag['tag_mac'] for tag in config['ruuvitag']['tags']]
+    for mac in tag_macs:
+        mac_addr += '{}{},random'.format(';' if mac_addr else '', mac)
+
+    try:
+        subprocess.run('sudo {} -device {} -duration 3 -ruuvi -json '
+                       '-filter-addr "{}" -output-file {}'''.
+                       format(command, device, mac_addr, json_filename),
+                       shell=True, check=True)
+    except subprocess.CalledProcessError as cpe:
+        logging.error('bluewalker command failed with rc: %s', cpe.returncode)
+        sys.exit(1)
+
+    with open(json_filename, 'r') as json_file:
+        tag_data = [json.loads(line.strip()) for line in json_file.readlines()]
+
+    os.remove(json_filename)
+
+    if not tag_data:
+        return
+
+    # Get the last data values
+    tag_data = tag_data[(len(tag_data) - len(tag_macs)):]
+    tag_found = {}
+
+    for tag in tag_data:
+        mac = tag['device']['address']
+        if mac in tag_found:
             continue
 
-        data = {'timestamp': get_timestamp(config['timezone']),
-                'location': tag['location'],
-                'temperature': all_data['temperature'],
-                'pressure': all_data['pressure'],
-                'humidity': all_data['humidity']}
+        tag_found[mac] = True
 
-        resp = requests.post(config['url'],
+        data = {'timestamp': get_timestamp(config['timezone']),
+                'location': _get_tag_location(config, mac),
+                'temperature': tag['sensors']['temperature'],
+                'pressure': tag['sensors']['pressure'] / 100.0,
+                'humidity': tag['sensors']['humidity'],
+                'voltage': tag['sensors']['voltage'] / 1000.0}
+
+        resp = requests.post(config['ruuvitag']['url'],
                              params={'observation': json.dumps(data),
-                                     'code': auth_code})
+                                     'code': config['authentication_code']})
 
         logging.info("RuuviTag observation request data: '%s', response: code %s, text '%s'",
                      json.dumps(data), resp.status_code, resp.text)
@@ -107,13 +154,13 @@ def get_ble_beacons(config):
     return beacons
 
 
-def store_to_db(config, data, auth_code):
+def store_to_db(timezone, config, data, auth_code):
     """Stores the data in the backend database with a HTTP POST request."""
     if data == {}:
         logging.error('Received no data, stopping')
         return
 
-    data['timestamp'] = get_timestamp(config['timezone'])
+    data['timestamp'] = get_timestamp(timezone)
     data = OrderedDict(sorted(data.items()))
     resp = requests.post(config['upload_url'],
                          params={'obs-string': json.dumps(data),
@@ -171,9 +218,9 @@ def main():
             env_data['beacons'] = get_ble_beacons(env_config)
             env_config['beacon_scan_time'] = orig_scan_time
 
-    scan_ruuvitags(config['ruuvitag'], device, config['authentication_code'])
+    scan_ruuvitags(config, device)
 
-    store_to_db(env_config, env_data, config['authentication_code'])
+    store_to_db(config['timezone'], env_config, env_data, config['authentication_code'])
 
 
 if __name__ == '__main__':
