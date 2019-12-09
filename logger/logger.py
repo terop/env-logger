@@ -75,8 +75,8 @@ def scan_ruuvitags(config, device):
         mac_addr += '{}{},random'.format(';' if mac_addr else '', mac)
 
     try:
-        subprocess.run('sudo {} -device {} -duration 3 -ruuvi -json '
-                       '-filter-addr "{}" -output-file {}'''.
+        subprocess.run('sudo {} -device {} -duration 5 -ruuvi -json '
+                       '-filter-addr "{}" -output-file {}'.
                        format(command, device, mac_addr, json_filename),
                        shell=True, check=True)
     except subprocess.CalledProcessError as cpe:
@@ -91,10 +91,7 @@ def scan_ruuvitags(config, device):
     if not tag_data:
         return
 
-    # Get the last data values
-    tag_data = tag_data[(len(tag_data) - len(tag_macs)):]
     tag_found = {}
-
     for tag in tag_data:
         mac = tag['device']['address']
         if mac in tag_found:
@@ -107,7 +104,7 @@ def scan_ruuvitags(config, device):
                 'temperature': tag['sensors']['temperature'],
                 'pressure': tag['sensors']['pressure'] / 100.0,
                 'humidity': tag['sensors']['humidity'],
-                'voltage': tag['sensors']['voltage'] / 1000.0}
+                'battery_voltage': tag['sensors']['voltage'] / 1000.0}
 
         resp = requests.post(config['ruuvitag']['url'],
                              params={'observation': json.dumps(data),
