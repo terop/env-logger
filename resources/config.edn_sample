@@ -15,7 +15,8 @@
  ;; Use LDAP as authentication backend
  :use-ldap false
  ;; Timezone to use in date and time formatting
- :timezone "Europe/Helsinki"
+ ;; Special value "automatic" means that the system timezone is used
+ :timezone "automatic"
  ;; Temperature correction offset in degree Celsius
  :correction {:enabled true
               :offset 6}

@@ -10,7 +10,8 @@
             [honeysql.helpers :refer :all]
             [clojure.tools.logging :as log]
             [env-logger.config :refer :all])
-  (:import org.postgresql.util.PSQLException))
+  (:import java.time.ZoneId
+           org.postgresql.util.PSQLException))
 
 (let [db-host (get (System/getenv)
                    "POSTGRESQL_DB_HOST"
@@ -172,9 +173,14 @@
 (defn format-datetime
   "Changes the timezone and formats the datetime with the given formatter."
   [datetime formatter]
-  (l/format-local-time (t/to-time-zone datetime (t/time-zone-for-id
-                                                 (get-conf-value :timezone)))
-                       formatter))
+  (let [conf-timezone (get-conf-value :timezone)]
+    (l/format-local-time (t/to-time-zone datetime
+                                         (t/time-zone-for-id
+                                          (if (= conf-timezone "automatic")
+                                            (str
+                                             (java.time.ZoneId/systemDefault))
+                                            conf-timezone)))
+                         formatter)))
 
 (defn validate-date
   "Checks if the given date is nil or if non-nil, it is in the dd.mm.yyyy
