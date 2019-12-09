@@ -340,7 +340,8 @@
     (let [ruuvitag-obs {:location "indoor"
                         :temperature 21
                         :pressure 1100
-                        :humidity 25}]
+                        :humidity 25
+                        :battery_voltage 2.921}]
       (is (pos? (insert-ruuvitag-observation test-postgres
                                              ruuvitag-obs)))
       (is (pos? (insert-ruuvitag-observation

@@ -118,7 +118,8 @@
     (let [values {:location (:location observation)
                   :temperature (:temperature observation)
                   :pressure (:pressure observation)
-                  :humidity (:humidity observation)}]
+                  :humidity (:humidity observation)
+                  :battery_voltage (:battery_voltage observation)}]
       (:id (first (j/insert! db-con
                              :ruuvitag_observations
                              (if (:timestamp observation)

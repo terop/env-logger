@@ -36,7 +36,8 @@ CREATE TABLE ruuvitag_observations(
        location VARCHAR(15) NOT NULL,
        temperature REAL NOT NULL,
        pressure REAL NOT NULL,
-       humidity REAL NOT NULL
+       humidity REAL NOT NULL,
+       battery_voltage REAL NOT NULL
 );
 
 -- User table
