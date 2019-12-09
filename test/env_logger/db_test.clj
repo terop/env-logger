@@ -397,19 +397,22 @@
                {:location "indoor"
                 :temperature 22.0
                 :pressure 1024.0
-                :humidity 45.0})
+                :humidity 45.0
+                :battery_voltage 2.910})
     (j/insert! test-postgres
                :ruuvitag_observations
                {:location "indoor"
                 :temperature 21.0
                 :pressure 1023.0
-                :humidity 45.0})
+                :humidity 45.0
+                :battery_voltage 2.890})
     (j/insert! test-postgres
                :ruuvitag_observations
                {:location "balcony"
                 :temperature 15.0
                 :pressure 1024.0
-                :humidity 30.0})
+                :humidity 30.0
+                :battery_voltage 2.805})
     (is (= '({:rt-temperature 15.0
               :rt-humidity 30.0})
            (get-ruuvitag-obs test-postgres
