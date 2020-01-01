@@ -134,7 +134,7 @@ if (plotData.length === 0) {
         }
 
         lastObservation.forEach(function (element, index) {
-            if (!element)
+            if (element === null)
                 // Ignore observation values which have the null value
                 return;
 
