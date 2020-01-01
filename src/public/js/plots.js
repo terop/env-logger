@@ -1,4 +1,3 @@
-
 // Formats the given date as 'dd.mm.yyyy hh:MM:ss'
 var formatDate = function (date) {
     return moment(date).format('DD.MM.YYYY HH:mm:ss');
@@ -135,6 +134,10 @@ if (plotData.length === 0) {
         }
 
         lastObservation.forEach(function (element, index) {
+            if (!element)
+                // Ignore observation values which have the null value
+                return;
+
             observationText += labels[index] + ': ';
             if (index === 0) {
                 // Reformat date
