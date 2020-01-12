@@ -10,8 +10,8 @@
             [cheshire.core :refer [parse-string]]))
 
 (defn parse-xml
-  "Parse the provided string as XML"
-  [s]
+  "Parse the provided string as XML."
+  [^String s]
   (xml/parse
    (java.io.ByteArrayInputStream. (.getBytes s))))
 

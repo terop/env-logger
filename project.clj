@@ -1,6 +1,7 @@
 (defproject env-logger "0.2.11-SNAPSHOT"
   :description "A simple data logger"
   :url "https://github.com/terop/env-logger"
+  :license {:name "MIT"}
   :dependencies [[org.clojure/clojure "1.10.1"]
                  [org.immutant/web "2.1.10"]
                  [compojure "1.6.1"]
@@ -19,10 +20,12 @@
                  [buddy/buddy-hashers "1.4.0"]
                  [buddy/buddy-auth "2.2.0"]
                  [org.clojars.pntblnk/clj-ldap "0.0.16"]]
-  :main env-logger.handler
+  :main ^:skip-aot env-logger.handler
   :aot [env-logger.handler
         clojure.tools.logging.impl]
+  :target-path "target/%s"
   :profiles
   {:dev {:dependencies [[clj-http-fake "1.0.3"]]
          :resource-paths ["resources"]
-         :env {:squiggly {:checkers [:eastwood :kibit :typed]}}}})
+         :env {:squiggly {:checkers [:eastwood :kibit :typed]}}}
+   :uberjar {:aot :all}})
