@@ -17,6 +17,13 @@ fi
 db_name=$1
 snapshot_name=$2
 
+file_out=$(file -ib ${snapshot_name})
+if [ $(echo "${file_out}"|grep -c xz) -eq 1 ]; then
+    echo "Uncompressed snapshot, decompressing before restore"
+    unxz ${snapshot_name}
+    snapshot_name=$(echo ${snapshot_name}|sed 's/.xz//')
+fi
+
 echo "Truncating tables"
 psql "${db_name}" <<EOF
 TRUNCATE TABLE users CASCADE;
