@@ -1,15 +1,17 @@
 (ns env-logger.db
   "Namespace containing the application's database function"
-  (:require [clj-time.core :as t]
-            [clj-time.format :as f]
-            [clj-time.local :as l]
-            [clj-time.jdbc]
+  (:require [clj-time
+             [core :as t]
+             [format :as f]
+             [local :as l]
+             [jdbc]]
             [clojure.java.jdbc :as j]
             [clojure.string :as s]
-            [honeysql.core :as sql]
-            [honeysql.helpers :refer :all]
             [clojure.tools.logging :as log]
-            [env-logger.config :refer :all])
+            [env-logger.config :refer :all]
+            [honeysql
+             [core :as sql]
+             [helpers :refer :all]])
   (:import java.time.ZoneId
            org.postgresql.util.PSQLException))
 

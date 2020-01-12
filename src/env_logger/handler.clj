@@ -1,33 +1,36 @@
 (ns env-logger.handler
   "The main namespace of the application"
-  (:require [clojure.set]
-            [clojure.string :as s]
-            [cheshire.core :refer [generate-string parse-string]]
-            [compojure.core :refer [GET POST DELETE defroutes]]
-            [compojure.route :as route]
-            [immutant.web :as web]
-            [immutant.web.middleware :refer [wrap-development wrap-websocket]]
-            [immutant.web.async :as async]
-            [ring.middleware.defaults :refer :all]
-            [ring.util.response :as resp]
-            [selmer.parser :refer [render-file]]
-            [clj-time.core :as t]
-            [clj-time.format :as f]
-            [buddy.hashers :as h]
-            [buddy.auth :refer [authenticated?]]
+  (:require [buddy
+             [auth :refer [authenticated?]]
+             [hashers :as h]]
             [buddy.auth.backends.session :refer [session-backend]]
             [buddy.auth.middleware :refer [wrap-authentication
                                            wrap-authorization]]
+            [cheshire.core :refer [generate-string parse-string]]
+            [clj-time
+             [core :as t]
+             [format :as f]]
+            [clojure set
+             [string :as s]]
             [clojure.tools.logging :as log]
-            [env-logger.config :refer [get-conf-value]]
-            [env-logger.db :as db]
-            [env-logger.grabber :refer [calculate-start-time
-                                        get-latest-fmi-weather-data
-                                        weather-query-ok?]]
-            [env-logger.user :as u])
-  (:import com.yubico.client.v2.YubicoClient
-           java.io.ByteArrayInputStream)
-  (:gen-class))
+            [compojure
+             [core :refer [defroutes DELETE GET POST]]
+             [route :as route]]
+            [env-logger
+             [config :refer [get-conf-value]]
+             [db :as db]
+             [grabber :refer [calculate-start-time
+                              get-latest-fmi-weather-data
+                              weather-query-ok?]]
+             [user :as u]]
+            [immutant.web :as web]
+            [immutant.web
+             [async :as async]
+             [middleware :refer [wrap-development wrap-websocket]]]
+            [ring.middleware.defaults :refer :all]
+            [ring.util.response :as resp]
+            [selmer.parser :refer [render-file]])
+  (:import com.yubico.client.v2.YubicoClient))
 
 (defn otp-value-valid?
   "Checks whether the provided Yubico OTP value is valid. Returns true

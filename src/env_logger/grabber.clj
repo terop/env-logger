@@ -1,13 +1,14 @@
 (ns env-logger.grabber
   "Namespace for data grabbing functions"
-  (:require [clj-http.client :as client]
-            [clojure.xml :as xml]
+  (:require [cheshire.core :refer [parse-string]]
+            [clj-http.client :as client]
+            [clj-time
+             [coerce :as e]
+             [core :as t]
+             [format :as f]]
             [clojure.java.jdbc :as j]
-            [clj-time.core :as t]
-            [clj-time.format :as f]
-            [clj-time.coerce :as e]
             [clojure.tools.logging :as log]
-            [cheshire.core :refer [parse-string]]))
+            [clojure.xml :as xml]))
 
 (defn parse-xml
   "Parse the provided string as XML."

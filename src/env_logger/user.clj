@@ -1,11 +1,10 @@
 (ns env-logger.user
   "Namespace for user and profile functionality"
-  (:require [clojure.java.jdbc :as j]
-            [honeysql.core :as sql]
-            [clj-ldap.client :as ldap]
+  (:require [clj-ldap.client :as ldap]
+            [clojure.java.jdbc :as j]
             [clojure.tools.logging :as log]
-            [honeysql.helpers :refer :all]
-            [env-logger.config :refer [ldap-conf]])
+            [env-logger.config :refer [ldap-conf]]
+            [honeysql.core :as sql])
   (:import java.sql.BatchUpdateException
            org.postgresql.util.PSQLException))
 
