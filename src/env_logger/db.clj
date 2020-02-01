@@ -12,7 +12,8 @@
             [honeysql
              [core :as sql]
              [helpers :refer :all]])
-  (:import java.time.ZoneId
+  (:import java.text.NumberFormat
+           java.time.ZoneId
            org.postgresql.util.PSQLException))
 
 (let [db-host (get (System/getenv)
@@ -61,7 +62,7 @@
           (f/parse (f/formatter "y-M-d H:mZ")
                    (s/replace (nth match 1) "T" " "))
           (t/now)))
-       diff-minutes)))
+        diff-minutes)))
 
 (defn get-yc-image
   "Returns the name of the latest yardcam image."
@@ -378,19 +379,22 @@
   and having the given location."
   [db-con start end location]
   (try
-    (let [query (sql/format (sql/build :select [:temperature
+    (let [nf (NumberFormat/getInstance)
+          query (sql/format (sql/build :select [:temperature
                                                 :humidity]
                                        :from :ruuvitag_observations
                                        :where [:and
                                                [:= :location location]
                                                [:>= :recorded start]
                                                [:<= :recorded end]]
-                                       :order-by [[:id :asc]]))
-          result (j/query db-con query
-                          {:row-fn (fn [obs]
-                                     {:rt-temperature (:temperature obs)
-                                      :rt-humidity (:humidity obs)})})]
-      result)
+                                       :order-by [[:id :asc]]))]
+      (.applyPattern nf "0.0#")
+      (j/query db-con query
+               {:row-fn (fn [obs]
+                          {:rt-temperature (Float/parseFloat
+                                            (. nf format (:temperature obs)))
+                           :rt-humidity (Float/parseFloat
+                                         (. nf format (:humidity obs)))})}))
     (catch PSQLException pe
       (log/error "RuuviTag observation fetching failed:"
                  (.getMessage pe))
