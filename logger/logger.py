@@ -101,9 +101,9 @@ def scan_ruuvitags(config, device):
 
         data = {'timestamp': get_timestamp(config['timezone']),
                 'location': _get_tag_location(config, mac),
-                'temperature': tag['sensors']['temperature'],
-                'pressure': tag['sensors']['pressure'] / 100.0,
-                'humidity': tag['sensors']['humidity'],
+                'temperature': round(tag['sensors']['temperature'], 2),
+                'pressure': round(tag['sensors']['pressure'] / 100.0, 2),
+                'humidity': round(tag['sensors']['humidity'], 2),
                 'battery_voltage': tag['sensors']['voltage'] / 1000.0}
 
         resp = requests.post(config['ruuvitag']['url'],
