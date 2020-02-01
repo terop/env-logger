@@ -1,5 +1,6 @@
 (ns env-logger.handler
   "The main namespace of the application"
+  (:gen-class)
   (:require [buddy
              [auth :refer [authenticated?]]
              [hashers :as h]]
