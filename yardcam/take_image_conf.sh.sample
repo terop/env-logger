@@ -1,0 +1,10 @@
+#!/bin/sh
+
+# Change these values before running!
+target_host=example.com
+target_user=myuser
+target_directory=/home/myuser/images
+# These values are only needed if env-logger integration is in use
+env_logger_integration=0
+env_logger_url=https://example.com/env-logger
+auth_code=badcode
