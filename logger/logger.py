@@ -75,7 +75,7 @@ def scan_ruuvitags(config, device):
         mac_addr += '{}{},random'.format(';' if mac_addr else '', mac)
 
     try:
-        subprocess.run('sudo {} -device {} -duration 5 -ruuvi -json '
+        subprocess.run('sudo {} -device {} -duration 8 -ruuvi -json '
                        '-filter-addr "{}" -output-file {}'.
                        format(command, device, mac_addr, json_filename),
                        shell=True, check=True)
