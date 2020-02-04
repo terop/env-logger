@@ -54,8 +54,7 @@ class ObservationMonitor:
             if self._state['email_sent'] == 'True':
                 send_email(self._config['email'],
                            'env-logger: observation received',
-                           'An observation has been received around {}.'
-                           .format(datetime.now().isoformat()))
+                           f'An observation has been received at {last_obs_time.isoformat()}.')
                 self._state['email_sent'] = 'False'
 
     def get_state(self):
@@ -101,8 +100,7 @@ class BeaconMonitor:
             if self._state['email_sent'] == 'True':
                 send_email(self._config['email'],
                            'env-logger: BLE beacon scanned',
-                           'BLE beacon scanned was around {}.'
-                           .format(datetime.now().isoformat()))
+                           f'BLE beacon scanned was at {last_obs_time.isoformat()}.')
                 self._state['email_sent'] = 'False'
 
     def get_state(self):
@@ -160,9 +158,8 @@ class RuuvitagMonitor:
                 if self._state[location]['email_sent'] == 'True':
                     send_email(self._config['email'],
                                'env-logger: Ruuvitag beacon "{}" scanned'.format(location),
-                               'A RuuviTag observation for location "{}" '
-                               'was scanned around {}.'
-                               .format(location, datetime.now().isoformat()))
+                               f'A RuuviTag observation for location "{location}" '
+                               f'was scanned at {last_obs_time.isoformat()}.')
                     self._state[location]['email_sent'] = 'False'
 
     def get_state(self):
@@ -211,6 +208,7 @@ class YardcamImageMonitor:
             if self._state['email_sent'] == 'False':
                 self.send_yardcam_email()
                 return
+            return
 
         image_ts = iso8601.parse_date(image_name.strip('yc-').strip('.jpg'))
         time_diff = int((datetime.now(tz=image_ts.tzinfo) - image_ts).total_seconds() / 60)
@@ -222,8 +220,8 @@ class YardcamImageMonitor:
             if self._state['email_sent'] == 'True':
                 send_email(self._config['email'],
                            'env-logger: Yardcam image found',
-                           'A Yardcam image ({}) has been stored around {}.'
-                           .format(image_name, datetime.now().isoformat()))
+                           f'A Yardcam image ({image_name}) has been stored '
+                           f'at {image_ts.isoformat()}.')
                 self._state['email_sent'] = 'False'
 
     def get_state(self):
@@ -261,7 +259,7 @@ def main():
     if not exists(args.config_file):
         print('Error: could not find configuration file {}'.format(args.config_file),
               file=sys.stderr)
-        exit(1)
+        sys.exit(1)
 
     config = configparser.ConfigParser()
     config.read(args.config_file)
