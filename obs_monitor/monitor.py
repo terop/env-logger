@@ -144,8 +144,7 @@ class RuuvitagMonitor:
             if int(time_diff.total_seconds()) > int(self._config['ruuvitag']['Timeout']) * 60:
                 if self._state[location]['email_sent'] == 'False':
                     if send_email(self._config['email'],
-                                  'env-logger: RuuviTag beacon "{}" inactivity warning'
-                                  .format(location),
+                                  f'env-logger: RuuviTag beacon "{location}" inactivity warning',
                                   'No RuuviTag observation for location "{}" has been '
                                   'scanned in env-logger after {} (timeout {} minutes). '
                                   'Please check for possible problems.'
@@ -157,9 +156,9 @@ class RuuvitagMonitor:
             else:
                 if self._state[location]['email_sent'] == 'True':
                     send_email(self._config['email'],
-                               'env-logger: Ruuvitag beacon "{}" scanned'.format(location),
+                               f'env-logger: Ruuvitag beacon "{location}" scanned',
                                f'A RuuviTag observation for location "{location}" '
-                               f'was scanned at {last_obs_time.isoformat()}.')
+                               f'was scanned at {last_obs_time[location].isoformat()}.')
                     self._state[location]['email_sent'] = 'False'
 
     def get_state(self):
