@@ -19,10 +19,6 @@ from time import sleep
 import pytz
 import requests
 
-# NOTE! The ble_beacon_scan program's rights must be adjusted with the following command:
-# sudo setcap 'cap_net_raw,cap_net_admin+eip' ble_beacon_scan
-# Otherwise beacon scanning will not work as a non-root user!
-
 
 def get_timestamp(timezone):
     """Returns the current timestamp in ISO 8601 format."""
@@ -36,10 +32,6 @@ def get_env_data(arduino_url):
     if not resp.ok:
         return {}
     return resp.json()
-
-# NOTE! Bluewalker (https://gitlab.com/jtaimisto/bluewalker) is needed for RuuviTag scanning.
-# Install it with "go get gitlab.com/jtaimisto/bluewalker". The binary must be placed in
-# PATH. Passwordless sudo access is needed for bluewalker and hciconfig commands.
 
 
 def scan_ruuvitags(config, device):

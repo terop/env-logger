@@ -3,7 +3,7 @@ CC=gcc
 CFLAGS=-Wall -Wextra
 
 # Dependencies on Debian:
-# sudp apt install build-essential libbluetooth-dev
+# sudo apt install build-essential libbluetooth-dev
 
 all: scan
 
