@@ -136,7 +136,7 @@
 (deftest test-weather-data-extraction-wfs
   (testing "Tests FMI weather data (WFS) extraction"
     (with-fake-routes {
-                       #"https:\/\/data\.fmi\.fi\/fmi-apikey\/(.+)"
+                       #"https:\/\/opendata\.fmi\.fi\/wfs\?(.+)"
                        (fn [_] {:status 200
                                 :body "<?xml version=\"1.0\"
                                              encoding=\"UTF-8\"?>
@@ -196,16 +196,16 @@
               :temperature 2.0
               :cloudiness 8
               :pressure 1006.5}
-             (-get-latest-fmi-weather-data-wfs "api-key" 87874))))
+             (-get-latest-fmi-weather-data-wfs 87874))))
     (with-fake-routes {
-                       #"https://data.fmi.fi/fmi-apikey/.+"
+                       #"https://opendata.fmi.fi/wfs\?.+"
                        (fn [req] {:status 200
                                   :body "not XML content"})}
-      (is (nil? (-get-latest-fmi-weather-data-wfs "my-api-key" 87874))))
+      (is (nil? (-get-latest-fmi-weather-data-wfs 87874))))
     (with-fake-routes {
-                       #"https://data.fmi.fi/fmi-apikey/.+"
+                       #"https://opendata.fmi.fi/wfs\?.+"
                        (fn [req] {:status 400})}
-      (is (nil? (-get-latest-fmi-weather-data-wfs "my-api-key" 87874))))))
+      (is (nil? (-get-latest-fmi-weather-data-wfs 87874))))))
 
 (deftest test-weather-data-extraction-json
   (testing "Tests FMI weather data (JSON) extraction"
@@ -267,11 +267,11 @@
               :temperature 11.0
               :cloudiness 2
               :pressure 1026.0}
-             (get-latest-fmi-weather-data "api-key" 87874)))
+             (get-latest-fmi-weather-data 87874)))
       (with-fake-routes {
                          #"https:\/\/ilmatieteenlaitos.fi\/observation-data(.+)"
                          (fn [_] {:status 403})
-                         #"https:\/\/data\.fmi\.fi\/fmi-apikey\/(.+)"
+                         #"https:\/\/opendata\.fmi\.fi\/wfs\?(.+)"
                          (fn [_] {:status 200
                                   :body "<?xml version=\"1.0\"
                                              encoding=\"UTF-8\"?>
@@ -331,13 +331,13 @@
                 :temperature 2.0
                 :cloudiness 8
                 :pressure 1006.5}
-               (get-latest-fmi-weather-data "api-key" 87874))))
+               (get-latest-fmi-weather-data 87874))))
       (with-fake-routes {
                          #"https:\/\/ilmatieteenlaitos.fi\/observation-data(.+)"
                          (fn [_] {:status 403})
-                         #"https:\/\/data\.fmi\.fi\/fmi-apikey\/(.+)"
+                         #"https:\/\/opendata\.fmi\.fi\/wfs\?(.+)"
                          (fn [_] {:status 404})}
-        (is (nil? (get-latest-fmi-weather-data "api-key" 87874)))))))
+        (is (nil? (get-latest-fmi-weather-data 87874)))))))
 
 (deftest weather-query-ok
   (testing "Test when it is OK to query for FMI weather data"

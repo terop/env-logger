@@ -55,11 +55,11 @@
 (defn -get-latest-fmi-weather-data-wfs
   "Fetches the latest FMI data from the FMI WFS for the given weather
   observation station. If fetching or parsing failed, nil is returned."
-  [fmi-api-key station-id]
-  (let [url (format (str "https://data.fmi.fi/fmi-apikey/%s/wfs?request="
-                         "getFeature&storedquery_id=fmi::observations::"
-                         "weather::simple&fmisid=%d&parameters=t2m,n_man,p_sea"
-                         "&starttime=%s") fmi-api-key station-id
+  [station-id]
+  (let [url (format (str "https://opendata.fmi.fi/wfs?service=WFS&version=2.0.0"
+                         "&request=getFeature&storedquery_id="
+                         "fmi::observations::weather::simple&fmisid=%d&"
+                         "parameters=t2m,n_man,p_sea&starttime=%s") station-id
                     (f/unparse (f/formatters :date-time-no-ms)
                                (calculate-start-time)))
         response (try
@@ -109,9 +109,9 @@
   2) WFS
   for the given weather observation station. If fetching or parsing failed,
   nil is returned."
-  [fmi-api-key station-id]
+  [station-id]
   (or (-get-latest-fmi-weather-data-json station-id)
-      (-get-latest-fmi-weather-data-wfs fmi-api-key station-id)))
+      (-get-latest-fmi-weather-data-wfs station-id)))
 
 (defn weather-query-ok?
   "Tells whether it is OK to query the FMI API for weather observations.

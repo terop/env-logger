@@ -228,7 +228,6 @@
         weather-data (when (and (t/within? start-time-int (t/now))
                                 (weather-query-ok? db/postgres 3))
                        (get-latest-fmi-weather-data
-                        (get-conf-value :fmi-api-key)
                         (get-conf-value :station-id)))]
     (db/insert-observation db/postgres
                            (assoc (parse-string obs-string
