@@ -17,8 +17,8 @@ Timeout = 24
 [ruuvitag]
 Enabled = True
 # Timeout in minutes
-Timeout = 7
-# Multiple comma separated locations are supported
+Timeout = 10
+# Multiple locations separated by a comma are supported
 Location = inside,outside
 
 [yardcam]
