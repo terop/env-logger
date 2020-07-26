@@ -180,12 +180,12 @@ class YardcamImageMonitor:
                               password=self._config['db']['Password']) as conn:
             with conn.cursor() as cursor:
                 cursor.execute("""SELECT yc_image_name FROM observations
-                ORDER BY id DESC LIMIT 1""")
+                WHERE yc_image_name IS NOT NULL ORDER BY id DESC LIMIT 1""")
 
                 result = cursor.fetchone()
                 return result[0] if result else None
 
-    def send_yardcam_email(self, image_ts=None):
+    def send_yardcam_email(self, image_ts):
         """"Sends an email about a missing Yardcam image."""
         if send_email(self._config['email'],
                       'env-logger: Yardcam image inactivity warning',
@@ -202,12 +202,6 @@ class YardcamImageMonitor:
         """Checks the latest Yardcam image name timestamp and sends an email if
         the threshold is exceeded."""
         image_name = self.get_yardcam_image_name()
-
-        if not image_name:
-            if self._state['email_sent'] == 'False':
-                self.send_yardcam_email()
-                return
-            return
 
         image_ts = iso8601.parse_date(image_name.strip('yc-').strip('.jpg'))
         time_diff = int((datetime.now(tz=image_ts.tzinfo) - image_ts).total_seconds() / 60)
