@@ -8,4 +8,4 @@ clean:
 	lein clean
 
 update: # update Docker base image
-	docker pull openjdk:8-jre-slim
+	docker pull openjdk:11-jre-slim

@@ -1,4 +1,4 @@
-FROM openjdk:8-jre-slim
+FROM openjdk:11-jre-slim
 LABEL maintainer="tero.paloheimo@iki.fi"
 
 ADD target/uberjar/env-logger-0.2.11-SNAPSHOT-standalone.jar /usr/src/logger.jar
