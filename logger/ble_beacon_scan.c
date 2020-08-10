@@ -112,8 +112,9 @@ int le_set_reports_mask(int device)
 
 void print_help(const char *program_name)
 {
-    fprintf(stderr, "Usage: %s [-h] [-t seconds] [-f output file]\n" \
+    fprintf(stderr, "Usage: %s [-h] [-d device] [-t seconds] [-f output file]\n" \
             "-h: print this help\n" \
+            "-d: Bluetooth device name (hciX) to use\n" \
             "-t: how many seconds to run this program\n" \
             "-f: write scan results to file with the provided name\n",
             program_name);
@@ -137,17 +138,21 @@ int check_stop_time(time_t end_time)
 
 int main(int argc, char* argv[])
 {
-    // Handle options
-    uint8_t stdout_print = 1;
+    const size_t DEVICE_NAME_MAX_LENGTH = 5;
     char *outfile_name = NULL;
+    char device_name[DEVICE_NAME_MAX_LENGTH];
+    uint8_t stdout_print = 1;
     uint8_t running_time = 0;
     int opt;
 
-    while ((opt = getopt(argc, argv, "hf:t:")) != -1) {
+    while ((opt = getopt(argc, argv, "hd:f:t:")) != -1) {
         switch (opt) {
         case 'h':
             print_help(argv[0]);
             return -1;
+        case 'd':
+            strcpy(device_name, optarg);
+            break;
         case 'f':
             // Ignoring malloc errors on purpose
             outfile_name = malloc(strlen(optarg) + 1);
@@ -178,7 +183,7 @@ int main(int argc, char* argv[])
     }
 
     // Get HCI device
-    const int device = hci_open_dev(hci_get_route(NULL));
+    const int device = hci_open_dev(strcmp(device_name, "") ? hci_devid(device_name) : hci_get_route(NULL));
     if (device < 0) {
         perror("Failed to open HCI device");
         return 0;

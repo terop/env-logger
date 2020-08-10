@@ -106,12 +106,13 @@ def scan_ruuvitags(config, device):
                      json.dumps(data), resp.status_code, resp.text)
 
 
-def get_ble_beacons(config):
+def get_ble_beacons(config, device):
     """Returns the MAC addresses and RSSI values of predefined Bluetooth BLE
     beacons in the vicinity in a dict."""
     try:
         proc = subprocess.Popen(['{}/ble_beacon_scan'.format(config['beacon_scan_path']),
-                                 '-t', str(config['beacon_scan_time'])], stdout=subprocess.PIPE)
+                                 '-t', str(config['beacon_scan_time']), '-d', device],
+                                stdout=subprocess.PIPE)
         sleep(config['beacon_scan_time'] + 2)
         if proc.poll() is None:
             proc.send_signal(signal.SIGINT)
@@ -196,7 +197,7 @@ def main():
         env_config = config['environment']
         env_data = get_env_data(env_config['arduino_url'])
 
-        env_data['beacons'] = get_ble_beacons(env_config)
+        env_data['beacons'] = get_ble_beacons(env_config, device)
         # Possible retry if first scan fails
         for _ in range(2):
             if env_data['beacons']:
@@ -204,7 +205,7 @@ def main():
 
             orig_scan_time = env_config['beacon_scan_time']
             env_config['beacon_scan_time'] /= 2
-            env_data['beacons'] = get_ble_beacons(env_config)
+            env_data['beacons'] = get_ble_beacons(env_config, device)
             env_config['beacon_scan_time'] = orig_scan_time
 
     scan_ruuvitags(config, device)
