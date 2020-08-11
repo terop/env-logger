@@ -169,13 +169,17 @@ def main():
                                      'named "logger_config.json" is used unless '
                                      'provided with --config.')
     parser.add_argument('--config', type=str, help='Configuration file')
-    parser.add_argument('--device', type=str, help='Bluetooth device to use')
+    parser.add_argument('--rt-device', type=str,
+                        help='Bluetooth device to use for RuuviTag scanning')
+    parser.add_argument('--ble-device', type=str,
+                        help='Bluetooth device to use for BLE beacon scanning')
     parser.add_argument('--dummy', action='store_true',
                         help='Send dummy data (meant for testing)')
 
     args = parser.parse_args()
     config = args.config if args.config else 'logger_config.json'
-    device = args.device if args.device else 'hci0'
+    rt_device = args.rt_device if args.rt_device else 'hci0'
+    ble_device = args.ble_device if args.ble_device else 'hci0'
 
     if not exists(config):
         logging.error('Could not find configuration file: %s', config)
@@ -197,7 +201,7 @@ def main():
         env_config = config['environment']
         env_data = get_env_data(env_config['arduino_url'])
 
-        env_data['beacons'] = get_ble_beacons(env_config, device)
+        env_data['beacons'] = get_ble_beacons(env_config, ble_device)
         # Possible retry if first scan fails
         for _ in range(2):
             if env_data['beacons']:
@@ -205,10 +209,10 @@ def main():
 
             orig_scan_time = env_config['beacon_scan_time']
             env_config['beacon_scan_time'] /= 2
-            env_data['beacons'] = get_ble_beacons(env_config, device)
+            env_data['beacons'] = get_ble_beacons(env_config, ble_device)
             env_config['beacon_scan_time'] = orig_scan_time
 
-    scan_ruuvitags(config, device)
+    scan_ruuvitags(config, rt_device)
 
     store_to_db(config['timezone'], env_config, env_data, config['authentication_code'])
 
