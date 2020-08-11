@@ -6,6 +6,7 @@ import argparse
 import configparser
 import json
 import smtplib
+import re
 import sys
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
@@ -177,18 +178,27 @@ class YardcamImageMonitor:
         """Returns the name and date and time of the latest Yardcam image."""
         url_base = self._config['yardcam']['UrlBase']
         todays_date = datetime.now().strftime('%Y-%m-%d')
+        image_page = f'{url_base}/{todays_date}'
 
-        resp = requests.get(f'{url_base}/{todays_date}')
+        resp = requests.get(image_page)
         if not resp.ok and resp.status_code == 404:
             date = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
             resp = requests.get(f'{url_base}/{date}')
 
         if not resp.ok:
+            print(f'Yardcam image HTTP request of URL "{image_page}" failed with '
+                  f'HTTP status code {resp.status_code}', file=sys.stderr)
             return None, None
 
         tree = BeautifulSoup(resp.content, features='lxml')
         image_name = tree.find_all('tr')[-2].find_all('td')[1].text
         image_ts = tree.find_all('tr')[-2].find_all('td')[-3].text.strip()
+
+        if not re.match(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}', image_ts):
+            print(f'Image date and time from {image_ts} is not in the expected format',
+                  file=sys.stderr)
+            return None, None
+
         return image_name, datetime.strptime(image_ts, '%Y-%m-%d %H:%M')
 
     def send_yardcam_email(self, image_ts):
