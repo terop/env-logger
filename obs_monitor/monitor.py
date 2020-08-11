@@ -241,8 +241,7 @@ def send_email(config, subject, message):
             server.login(config['User'], config['Password'])
             server.send_message(msg)
     except smtplib.SMTPException as smtp_e:
-        print('Failed to send email with subject "{}": {}'
-              .format(subject, str(smtp_e)), file=sys.stderr)
+        print(f'Failed to send email with subject "{subject}": {str(smtp_e)}', file=sys.stderr)
         return False
 
     return True
@@ -253,16 +252,17 @@ def main():
     state_file_name = 'monitor_state.json'
 
     parser = argparse.ArgumentParser(description='Monitors observation reception.')
-    parser.add_argument('config_file', type=str, help='configuration file to use')
+    parser.add_argument('--config', type=str, help='configuration file to use')
 
     args = parser.parse_args()
-    if not exists(args.config_file):
-        print('Error: could not find configuration file {}'.format(args.config_file),
-              file=sys.stderr)
+    config_file = args.config if args.config else 'monitor.cfg'
+
+    if not exists(config_file):
+        print(f'Error: could not find configuration file {args.config_file}', file=sys.stderr)
         sys.exit(1)
 
     config = configparser.ConfigParser()
-    config.read(args.config_file)
+    config.read(config_file)
 
     try:
         with open(state_file_name, 'r') as state_file:
