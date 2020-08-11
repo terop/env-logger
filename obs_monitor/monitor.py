@@ -7,12 +7,13 @@ import configparser
 import json
 import smtplib
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from os.path import exists
 
-import iso8601
 import psycopg2
+import requests
+from bs4 import BeautifulSoup
 
 
 class ObservationMonitor:
@@ -172,18 +173,23 @@ class YardcamImageMonitor:
         self._config = config
         self._state = state
 
-    def get_yardcam_image_name(self):
-        """Returns the image name of the latest Yardcam image."""
-        with psycopg2.connect(host=self._config['db']['Host'],
-                              database=self._config['db']['Database'],
-                              user=self._config['db']['User'],
-                              password=self._config['db']['Password']) as conn:
-            with conn.cursor() as cursor:
-                cursor.execute("""SELECT yc_image_name FROM observations
-                WHERE yc_image_name IS NOT NULL ORDER BY id DESC LIMIT 1""")
+    def get_yardcam_image_info(self):
+        """Returns the name and date and time of the latest Yardcam image."""
+        url_base = self._config['yardcam']['UrlBase']
+        todays_date = datetime.now().strftime('%Y-%m-%d')
 
-                result = cursor.fetchone()
-                return result[0] if result else None
+        resp = requests.get(f'{url_base}/{todays_date}')
+        if not resp.ok and resp.status_code == 404:
+            date = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
+            resp = requests.get(f'{url_base}/{date}')
+
+        if not resp.ok:
+            return None, None
+
+        tree = BeautifulSoup(resp.content, features='lxml')
+        image_name = tree.find_all('tr')[-2].find_all('td')[1].text
+        image_ts = tree.find_all('tr')[-2].find_all('td')[-3].text.strip()
+        return image_name, datetime.strptime(image_ts, '%Y-%m-%d %H:%M')
 
     def send_yardcam_email(self, image_ts):
         """"Sends an email about a missing Yardcam image."""
@@ -201,20 +207,21 @@ class YardcamImageMonitor:
     def check_yardcam(self):
         """Checks the latest Yardcam image name timestamp and sends an email if
         the threshold is exceeded."""
-        image_name = self.get_yardcam_image_name()
+        image_name, image_dt = self.get_yardcam_image_info()
+        if not image_name:
+            return
 
-        image_ts = iso8601.parse_date(image_name.strip('yc-').strip('.jpg'))
-        time_diff = int((datetime.now(tz=image_ts.tzinfo) - image_ts).total_seconds() / 60)
+        time_diff = int((datetime.now() - image_dt).total_seconds() / 60)
 
         if time_diff > int(self._config['yardcam']['Timeout']):
             if self._state['email_sent'] == 'False':
-                self.send_yardcam_email(image_ts)
+                self.send_yardcam_email(image_dt)
         else:
             if self._state['email_sent'] == 'True':
                 send_email(self._config['email'],
                            'env-logger: Yardcam image found',
                            f'A Yardcam image ({image_name}) has been stored '
-                           f'at {image_ts.isoformat()}.')
+                           f'at {image_dt.isoformat()}.')
                 self._state['email_sent'] = 'False'
 
     def get_state(self):

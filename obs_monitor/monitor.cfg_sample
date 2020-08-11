@@ -23,6 +23,7 @@ Location = inside,outside
 
 [yardcam]
 Enabled = True
+UrlBase = https://example.com/yardcam
 # Timeout in minutes
 Timeout = 15
 

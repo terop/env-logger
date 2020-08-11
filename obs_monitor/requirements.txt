@@ -1,2 +1,2 @@
+BeautifulSoup
 psycopg2-binary
-iso8601
