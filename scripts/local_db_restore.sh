@@ -24,15 +24,20 @@ if [ $(echo "${file_out}"|grep -c xz) -eq 1 ]; then
     snapshot_name=$(echo ${snapshot_name}|sed 's/.xz//')
 fi
 
-echo "Truncating tables"
-psql "${db_name}" <<EOF
+# The environment logger database requires special steps before a backup
+# can be restored
+if [ ${db_name} = "env_logger" ]; then
+    echo "Truncating tables"
+    psql "${db_name}" <<EOF
 TRUNCATE TABLE users CASCADE;
 TRUNCATE TABLE observations CASCADE;
 TRUNCATE TABLE yardcam_image;
 EOF
 
+    # Pressure data has not been collected from the beginning and thus contains
+    # NULL values causing restore to fail
+    psql "${db_name}" -c 'ALTER TABLE weather_data ALTER pressure DROP NOT NULL;'
+fi
+
 echo "Adding new values"
-# Pressure data has not been collected from the beginning and thus contains
-# NULL values causing restore to fail
-psql "${db_name}" -c 'ALTER TABLE weather_data ALTER pressure DROP NOT NULL;'
 psql "${db_name}" < "${snapshot_name}"
