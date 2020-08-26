@@ -145,6 +145,8 @@ int main(int argc, char* argv[])
     uint8_t running_time = 0;
     int opt;
 
+    memset(device_name, 0, DEVICE_NAME_MAX_LENGTH);
+
     while ((opt = getopt(argc, argv, "hd:f:t:")) != -1) {
         switch (opt) {
         case 'h':
@@ -160,11 +162,10 @@ int main(int argc, char* argv[])
             stdout_print = 0;
             break;
         case 't':
-            if (atoi(optarg) <= 0) {
+            if ((running_time = atoi(optarg)) <= 0) {
                 fprintf(stderr, "Program running time may not be zero or negative\n");
-                return 0;
+                return 1;
             }
-            running_time = atoi(optarg);
             break;
         default: /* '?' */
             print_help(argv[0]);
