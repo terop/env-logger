@@ -7,7 +7,7 @@
                  [compojure "1.6.2"]
                  [ring "1.8.1"]
                  [ring/ring-defaults "0.3.2"]
-                 [org.postgresql/postgresql "42.2.14"]
+                 [org.postgresql/postgresql "42.2.16"]
                  [org.clojure/java.jdbc "0.7.11"]
                  [honeysql "1.0.444"]
                  [clj-time "0.15.2"]
