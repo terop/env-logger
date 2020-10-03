@@ -1,6 +1,6 @@
 // Formats the given date as 'dd.mm.yyyy hh:MM:ss'
 var formatDate = function (date) {
-    return moment(date).format('DD.MM.YYYY HH:mm:ss');
+    return luxon.DateTime.fromJSDate(date).toFormat('dd.MM.yyyy HH:mm:ss');
 };
 
 // Persist checkbox state in local storage
@@ -278,12 +278,11 @@ wsOperations();
 
 // Function validating date field values
 var validateDates = function (event) {
-    var datePattern = /\d{1,2}\.\d{1,2}\.\d{4}/,
-        startDate = document.getElementById('startDate').value,
+    var startDate = document.getElementById('startDate').value,
         endDate = document.getElementById('endDate').value;
 
-    if ((startDate && !datePattern.exec(startDate)) ||
-        (endDate && !datePattern.exec(endDate))) {
+    if ((startDate && luxon.DateTime.fromISO(startDate).invalid) ||
+        (endDate && luxon.DateTime.fromISO(endDate).invalid)) {
         alert('Error: either the start or end date is invalid!');
         event.preventDefault();
         return;

@@ -7,7 +7,6 @@
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
               integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u"
               crossorigin="anonymous">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dygraph/2.1.0/dygraph.min.css" />
         <style>
             input[type="text"] {
@@ -38,8 +37,8 @@
             #yardcamImage {
                 height: auto;
                 width: auto;
-                max-width: 700px;
-                max-height: 700px;
+                max-width: 800px;
+                max-height: 800px;
             }
             div.dygraph-title {
                 font-size: 0.85em;
@@ -94,8 +93,13 @@
         <div class="leftMargin clearBoth">
             <h4>Date interval to show</h4>
             <form method="get" action="">
-                <input type="text" name="startDate" id="startDate" value="{{start-date}}">&nbsp;-&nbsp;
-                <input type="text" name="endDate" id="endDate" value="{{end-date}}">
+                <input type="date" name="startDate" id="startDate" value="{{start-date}}"
+                       {% if not obs-dates.start|empty? %}min="{{obs-dates.start}}"{% endif %}
+                       {% if not obs-dates.end|empty? %}max="{{obs-dates.end}}"{% endif %}>
+                &nbsp;-&nbsp;
+                <input type="date" name="endDate" id="endDate" value="{{end-date}}"
+                       {% if not obs-dates.start|empty? %}min="{{obs-dates.start}}"{% endif %}
+                       {% if not obs-dates.end|empty? %}max="{{obs-dates.end}}"{% endif %}>
                 <input type="submit" class="btn btn-primary" id="submitBtn" value="Refresh">
             </form>
         </div>
@@ -172,9 +176,9 @@
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
                 integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
                 crossorigin="anonymous"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/dygraph/2.1.0/dygraph.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.27.0/moment.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/luxon@1.25.0/build/global/luxon.min.js"
+                integrity="sha256-OVk2fwTRcXYlVFxr/ECXsakqelJbOg5WCj1dXSIb+nU=" crossorigin="anonymous"></script>
         <script>
             var mode = '{% if logged-in? %}all{% else %}weather{% endif %}',
                 ruuvitagEnabled = {% if ruuvitag-enabled? %}true{% else %}false{% endif %},
@@ -186,22 +190,5 @@
         {% if logged-in? %}
             <script src="js/profiles.js"></script>
         {% endif %}
-        <script>
-            var datepickerOptions = {
-                format: 'dd.mm.yyyy',
-                weekStart: 1,
-                endDate: new Date().toLocaleDateString().replace(/\//g, '.'),
-                todayBtn: true,
-                calendarWeeks: true,
-                autoclose: true
-            };
-            {% if not obs-dates.start|empty? %}
-            datepickerOptions['startDate'] = '{{ obs-dates.start }}';
-            {% endif %}
-            {% if not obs-dates.end|empty? %}
-            datepickerOptions['endDate'] = '{{ obs-dates.end }}';
-            {% endif %}
-            $('#startDate,#endDate').datepicker(datepickerOptions);
-        </script>
     </body>
 </html>
