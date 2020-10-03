@@ -51,18 +51,23 @@
       false)))
 
 (defn yc-image-age-check
-  "Returns true when the yardcam image date is older than (now - diff-minutes)
-  minutes and false otherwise."
-  [yc-image diff-minutes]
+  "Returns true when the yardcam image datetime is older than
+  ((yardcam datetime - reference datetime) - diff-minutes) minutes
+  and false otherwise. Also return true if
+  (yardcam datetime - reference datetime) < 0."
+  [yc-image ref-dt diff-minutes]
   (let [yc-image-pattern #"yc-(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+\d{2}:\d{2}).+"
         match (re-find yc-image-pattern
-                       yc-image)]
-    (>= (t/in-minutes
-         (t/interval
-          (f/parse (f/formatter "y-M-d H:mZ")
-                   (s/replace (nth match 1) "T" " "))
-          (t/now)))
-        diff-minutes)))
+                       yc-image)
+        yc-dt (f/parse (f/formatter "y-M-d H:mZ")
+                       (s/replace (nth match 1) "T" " "))]
+    (try
+      (>= (t/in-minutes
+           (t/interval yc-dt ref-dt))
+          diff-minutes)
+      (catch IllegalArgumentException iae
+        ;; ref-dt < yc-dt results in IllegalArgumentException
+        true))))
 
 (defn get-yc-image
   "Returns the name of the latest yardcam image."
@@ -76,6 +81,7 @@
     (when (and image-name
                (re-matches yc-image-pattern image-name)
                (not (yc-image-age-check image-name
+                                        (t/now)
                                         (get-conf-value :yc-max-time-diff))))
       image-name)))
 
@@ -187,18 +193,18 @@
                          formatter)))
 
 (defn validate-date
-  "Checks if the given date is nil or if non-nil, it is in the dd.mm.yyyy
-  or d.m.yyyy format."
+  "Checks if the given date is nil or if non-nil, it is in the yyyy-mm-dd
+  or yyyy-m-d format."
   [date]
   (if (nil? date)
     true
-    (not (nil? (re-find #"\d{1,2}\.\d{1,2}\.\d{4}" date)))))
+    (not (nil? (re-find #"\d{4}-\d{1,2}-\d{1,2}" date)))))
 
 (defn make-local-dt
   "Creates SQL datetime in local time from the provided date string.
   Mode is either start or end."
   [date mode]
-  (l/to-local-date-time (f/parse (f/formatter "d.M.y H:m:s")
+  (l/to-local-date-time (f/parse (f/formatter "y-M-d H:m:s")
                                  (format "%s %s" date (if (= mode "start")
                                                         "00:00:00"
                                                         "23:59:59")))))
@@ -272,6 +278,7 @@
                                 :yc_image_name (if (:yc_image_name %)
                                                  (if-not (yc-image-age-check
                                                           (:yc_image_name %)
+                                                          (:recorded %)
                                                           (get-conf-value
                                                            :yc-max-time-diff))
                                                    (:yc_image_name %)
@@ -344,7 +351,7 @@
   "Fetches the first date of all observations."
   [db-con]
   (try
-    (let [formatter (f/formatter "d.M.y")
+    (let [formatter (f/formatter "y-MM-dd")
           result (j/query db-con
                           (sql/format
                            (sql/build :select [[:%min.recorded "start"]]
@@ -361,7 +368,7 @@
   "Fetches the last date of all observations."
   [db-con]
   (try
-    (let [formatter (f/formatter "d.M.y")
+    (let [formatter (f/formatter "y-MM-dd")
           result (j/query db-con
                           (sql/format
                            (sql/build :select [[:%max.recorded "end"]]

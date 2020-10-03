@@ -42,9 +42,8 @@
   (j/execute! test-postgres "DELETE FROM observations")
   (j/insert! test-postgres
              :observations
-             {:recorded (l/to-local-date-time
-                         (t/minus current-dt
-                                  (t/days 4)))
+             {:recorded (l/to-local-date-time (t/minus current-dt
+                                                       (t/days 4)))
               :brightness 5
               :temperature 20})
   (test-fn)
@@ -133,12 +132,12 @@
             :rssi -68
             :tb_image_name nil
             :temp_delta -15.0
-            :yc_image_name (get-yc-image-name)}
+            :yc_image_name nil}
            (nth (get-obs-days test-postgres 3) 1)))))
 
 (deftest obs-interval-select
   (testing "Select observations between one or two dates"
-    (let [formatter (f/formatter "d.M.y")]
+    (let [formatter (f/formatter "y-MM-dd")]
       (is (= 4 (count (get-obs-interval
                        test-postgres
                        {:start nil
@@ -194,7 +193,7 @@
 
 (deftest start-and-end-date-query
   (testing "Selecting start and end dates of all observations"
-    (let [formatter (f/formatter "d.M.y")]
+    (let [formatter (f/formatter "y-MM-dd")]
       (is (= (f/unparse formatter (t/minus current-dt
                                            (t/days 4)))
              (:start (get-obs-start-date test-postgres))))
@@ -218,21 +217,21 @@
   (testing "Tests for date validation"
     (is (true? (validate-date nil)))
     (is (false? (validate-date "foobar")))
-    (is (false? (validate-date "1.12.201")))
-    (is (true? (validate-date "1.12.2016")))
-    (is (true? (validate-date "01.12.2016")))))
+    (is (false? (validate-date "202-08-25")))
+    (is (true? (validate-date "2020-9-27")))
+    (is (true? (validate-date "2020-09-27")))))
 
 (deftest date-to-datetime
   (testing "Testing date to datetime conversion"
-    (let [formatter (f/formatter "d.M.y H:m:s")]
-      (is (= (l/to-local-date-time (f/parse formatter "1.12.2016 00:00:00"))
-             (make-local-dt "1.12.2016" "start")))
-      (is (= (l/to-local-date-time (f/parse formatter "1.12.2016 23:59:59"))
-             (make-local-dt "1.12.2016" "end"))))))
+    (let [formatter (f/formatter "y-M-d H:m:s")]
+      (is (= (l/to-local-date-time (f/parse formatter "2020-9-27 00:00:00"))
+             (make-local-dt "2020-9-27" "start")))
+      (is (= (l/to-local-date-time (f/parse formatter "2020-9-27 23:59:59"))
+             (make-local-dt "2020-9-27" "end"))))))
 
 (deftest weather-obs-interval-select
   (testing "Select weather observations between one or two dates"
-    (let [formatter (f/formatter "d.M.y")]
+    (let [formatter (f/formatter "y-M-d")]
       (is (= 1 (count (get-weather-obs-interval test-postgres
                                                 {:start nil
                                                  :end nil}))))
@@ -385,9 +384,12 @@
 
 (deftest yc-image-age-check-test
   (testing "Yardcam image date checking"
-    (is (true? (yc-image-age-check (get-yc-image-name (t/minutes 10)) 9)))
-    (is (false? (yc-image-age-check (get-yc-image-name) 1)))
-    (is (false? (yc-image-age-check (get-yc-image-name) 5)))))
+    (is (true? (yc-image-age-check (get-yc-image-name (t/minutes 10))
+                                   (t/now) 9)))
+    (is (false? (yc-image-age-check (get-yc-image-name) (t/now) 1)))
+    (is (false? (yc-image-age-check (get-yc-image-name) (t/now) 5)))
+    (is (true? (yc-image-age-check (get-yc-image-name)
+                                   (t/minus (t/now) (t/minutes 10)) 9)))))
 
 (deftest get-ruuvitag-obs-test
   (testing "RuuviTag observation fetching"

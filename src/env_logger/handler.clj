@@ -27,8 +27,9 @@
             [immutant.web :as web]
             [immutant.web
              [async :as async]
-             [middleware :refer [wrap-development wrap-websocket]]]
+             [middleware :refer [wrap-websocket]]]
             [ring.middleware.defaults :refer :all]
+            [ring.middleware.reload :refer [wrap-reload]]
             [ring.util.response :as resp]
             [selmer.parser :refer [render-file]])
   (:import com.yubico.client.v2.YubicoClient))
@@ -184,7 +185,7 @@
                    (:endDate (:params request)))
         obs-dates (merge (db/get-obs-start-date db/postgres)
                          (db/get-obs-end-date db/postgres))
-        formatter (f/formatter "d.M.y")
+        formatter (f/formatter "y-MM-dd")
         logged-in? (authenticated? request)
         ruuvitag-enabled? (get-conf-value :ruuvitag-enabled?)
         initial-days (get-conf-value :initial-show-days)
@@ -338,5 +339,5 @@
         opts {:host ip :port port}]
     (web/run (if production?
                handler
-               (wrap-development handler))
+               (wrap-reload handler))
       opts)))
