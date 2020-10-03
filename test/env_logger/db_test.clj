@@ -132,7 +132,7 @@
             :rssi -68
             :tb_image_name nil
             :temp_delta -15.0
-            :yc_image_name nil}
+            :yc_image_name (get-yc-image-name)}
            (nth (get-obs-days test-postgres 3) 1)))))
 
 (deftest obs-interval-select
@@ -384,10 +384,10 @@
 
 (deftest yc-image-age-check-test
   (testing "Yardcam image date checking"
-    (is (true? (yc-image-age-check (get-yc-image-name (t/minutes 10))
-                                   (t/now) 9)))
-    (is (false? (yc-image-age-check (get-yc-image-name) (t/now) 1)))
-    (is (false? (yc-image-age-check (get-yc-image-name) (t/now) 5)))
+    (is (false? (yc-image-age-check (get-yc-image-name (t/minutes 10))
+                                    (t/now) 9)))
+    (is (true? (yc-image-age-check (get-yc-image-name) (t/now) 1)))
+    (is (true? (yc-image-age-check (get-yc-image-name) (t/now) 5)))
     (is (true? (yc-image-age-check (get-yc-image-name)
                                    (t/minus (t/now) (t/minutes 10)) 9)))))
 

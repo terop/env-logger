@@ -51,8 +51,8 @@
       false)))
 
 (defn yc-image-age-check
-  "Returns true when the yardcam image datetime is older than
-  ((yardcam datetime - reference datetime) - diff-minutes) minutes
+  "Returns true when the following condition is true:
+  (yardcam datetime - reference datetime) <= diff-minutes
   and false otherwise. Also return true if
   (yardcam datetime - reference datetime) < 0."
   [yc-image ref-dt diff-minutes]
@@ -62,7 +62,7 @@
         yc-dt (f/parse (f/formatter "y-M-d H:mZ")
                        (s/replace (nth match 1) "T" " "))]
     (try
-      (>= (t/in-minutes
+      (<= (t/in-minutes
            (t/interval yc-dt ref-dt))
           diff-minutes)
       (catch IllegalArgumentException iae
@@ -80,9 +80,9 @@
                                                   :from [:yardcam_image])))))]
     (when (and image-name
                (re-matches yc-image-pattern image-name)
-               (not (yc-image-age-check image-name
-                                        (t/now)
-                                        (get-conf-value :yc-max-time-diff))))
+               (yc-image-age-check image-name
+                                   (t/now)
+                                   (get-conf-value :yc-max-time-diff)))
       image-name)))
 
 (defn insert-plain-observation
@@ -276,11 +276,11 @@
                                                           (:fmi_temperature
                                                            %)))))
                                 :yc_image_name (if (:yc_image_name %)
-                                                 (if-not (yc-image-age-check
-                                                          (:yc_image_name %)
-                                                          (:recorded %)
-                                                          (get-conf-value
-                                                           :yc-max-time-diff))
+                                                 (if (yc-image-age-check
+                                                      (:yc_image_name %)
+                                                      (:recorded %)
+                                                      (get-conf-value
+                                                       :yc-max-time-diff))
                                                    (:yc_image_name %)
                                                    nil)
                                                  nil)})
