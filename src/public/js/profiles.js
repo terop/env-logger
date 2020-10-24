@@ -1,19 +1,11 @@
-
 // Shows or hides an element with the given ID. The default action is to show.
 var changeVisibility = function (id, hide) {
     if (hide && hide === true) {
-        document.getElementById(id).classList.add('displayNone');
+        document.getElementById(id).classList.add('display-none');
     } else {
-        document.getElementById(id).classList.remove('displayNone');
+        document.getElementById(id).classList.remove('display-none');
     }
 };
-
-document.getElementById('showProfiles')
-    .addEventListener('click',
-                      function () {
-                          document.getElementById('profilesDiv').classList.toggle('displayNone');
-                      },
-                      false);
 
 // Hides all data series
 var hideAllSeries = function () {
@@ -47,6 +39,8 @@ document.getElementById('newProfile')
     .addEventListener('click',
                       function () {
                           changeVisibility('newProfileDiv');
+                          changeVisibility('newProfileButtons');
+                          changeVisibility('profileButtons', true);
                       },
                       false);
 
@@ -55,6 +49,8 @@ document.getElementById('cancelProfile')
                       function () {
                           document.getElementById('profileName').value = '';
                           changeVisibility('newProfileDiv', true);
+                          changeVisibility('newProfileButtons', true);
+                          changeVisibility('profileButtons');
                       },
                       false);
 
@@ -100,12 +96,12 @@ var saveProfileHandler = function () {
         return false;
     }
 
-    $.post('profile', {
-        name: profileName,
-        profile: JSON.stringify(checked)
-    })
-        .done(function (data, textStatus, jqXHR) {
-            if (textStatus === 'success' && data === 'true') {
+    const params = new URLSearchParams();
+    params.append('name', profileName);
+    params.append('profile', JSON.stringify(checked));
+    axios.post('profile', params)
+        .then(function (response) {
+            if (response.statusText === 'OK' && response.data === true) {
                 alert('Profile saved successfully');
 
                 var profileDropdown = document.getElementById('profiles'),
@@ -117,15 +113,21 @@ var saveProfileHandler = function () {
                     showProfileControls();
                 }
                 changeVisibility('newProfileDiv', true);
+                changeVisibility('newProfileButtons', true);
+                changeVisibility('profileButtons');
                 document.getElementById('profileName').value = '';
             } else {
                 alert('An error occurred when saving the profile');
             }
+            return true;
         })
-        .fail(function (jqXHR, textStatus, errorThrown) {
+        .catch(function (error) {
             alert('An error occurred when saving the profile');
-            console.log('Profile save error: ' + errorThrown);
+            console.log('Profile save error: ' + error.toJSON());
+            return false;
         });
+
+    return true;
 };
 document.getElementById('saveProfile').addEventListener('click',
                                                         saveProfileHandler,
@@ -137,13 +139,9 @@ var deleteProfileHandler = function (event) {
         var selectedIndex = document.getElementById('profiles').selectedIndex,
             name = document.getElementById('profiles').item(selectedIndex).text;
 
-        $.ajax({
-            url: 'profile',
-            method: 'DELETE',
-            data: {name: name}
-        })
-            .done(function (data, textStatus, jqXHR) {
-                if (textStatus === 'success' && data === 'true') {
+        axios.delete('profile/' + name)
+            .then(function (response) {
+                if (response.statusText === 'OK' && response.data === true) {
                     var profileDropdown = document.getElementById('profiles');
                     profileDropdown.removeChild(document.getElementById('profiles').item(selectedIndex));
                     if (!profileDropdown.childElementCount) {
@@ -154,9 +152,9 @@ var deleteProfileHandler = function (event) {
                     alert('An error occurred when deleting the profile');
                 }
             })
-            .fail(function (jqXHR, textStatus, errorThrown) {
+            .catch(function (error) {
                 alert('An error occurred when deleting the profile');
-                console.log('Profile delete error: ' + errorThrown);
+                console.log('Profile delete error: ' + error.toJSON());
             });
     }
 };

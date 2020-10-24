@@ -254,15 +254,15 @@
           response-unauthorized
           (if-not (db/test-db-connection db/postgres)
             response-server-error
-              (if (handle-observation-insert (:obs-string (:params request)))
-                (do
-                  (doseq [channel @channels]
-                    (async/send! channel
-                                 (generate-string
-                                  (db/get-observations db/postgres
-                                                       :limit 1))))
-                  "OK")
-                response-server-error))))
+            (if (handle-observation-insert (:obs-string (:params request)))
+              (do
+                (doseq [channel @channels]
+                  (async/send! channel
+                               (generate-string
+                                (db/get-observations db/postgres
+                                                     :limit 1))))
+                "OK")
+              response-server-error))))
   ;; RuuviTag observation storage
   (POST "/rt-observations" request
         (if-not (check-auth-code (:code (:params request)))
@@ -306,10 +306,10 @@
                                (name (:identity request))
                                (:name (:params request))
                                (:profile (:params request)))))
-  (DELETE "/profile" request
+  (DELETE "/profile/:prof-name" prof-name
           (str (u/delete-profile db/postgres
-                                 (name (:identity request))
-                                 (:name (:params request)))))
+                                 (name (:identity prof-name))
+                                 (:prof-name (:params prof-name)))))
   ;; Serve static files
   (route/files "/")
   (route/not-found "404 Not Found"))

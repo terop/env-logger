@@ -153,7 +153,7 @@ if (plotData.length === 0) {
         observationText = observationText.slice(0, -2);
 
         document.getElementById('lastObservation').innerHTML = observationText;
-        document.getElementById('lastObservation').classList.remove('displayNone');
+        document.getElementById('lastObservation').classList.remove('display-none');
     };
     showLastObservation();
 
@@ -214,7 +214,7 @@ if (plotData.length === 0) {
                                 },
                                 pointClickCallback: function (e, point) {
                                     document.getElementById('showImages').checked = true;
-                                    document.getElementById('imageDiv').classList.remove('displayNone');
+                                    document.getElementById('imageDiv').classList.remove('display-none');
                                     showTestbedImage(point.idx);
                                     if (mode === 'all') {
                                         showYardcamImage(point.idx);
@@ -295,7 +295,7 @@ document.getElementById('submitBtn').addEventListener('click',
                                                       false);
 
 var toggleImageDiv = function () {
-    document.getElementById('imageDiv').classList.toggle('displayNone');
+    document.getElementById('imageDiv').classList.toggle('display-none');
 };
 
 document.getElementById('showImages').addEventListener('click',
