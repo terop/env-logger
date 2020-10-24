@@ -221,7 +221,10 @@ if (plotData.length === 0) {
                                     }
                                 }
                             });
-    // Disable the pressure series by default as its values are in a very different
+    // Hide the inside temperature series by default as RuuviTag temperature shows
+    // the temperature better
+    graph.setVisibility(getCheckboxIndex('showTemperature'), false);
+    // Hide the pressure series by default as its values are in a very different
     // range as the other values
     graph.setVisibility(getCheckboxIndex('showPressure'), false);
 }
