@@ -24,18 +24,16 @@ var getCheckboxIndex = function (checkboxId) {
                    'showTempDelta': 3,
                    'showBrightness': 4,
                    'showCloudiness': 5,
-                   'showPressure': 6,
-                   'showBeacon': 7};
+                   'showBeacon': 6};
         if (ruuvitagEnabled) {
-            mapping['showRTTemperature'] = 8;
-            mapping['showRTHumidity'] = 9;
+            mapping['showRTTemperature'] = 7;
+            mapping['showRTHumidity'] = 8;
         }
     } else {
         mapping = {'showOutsideTemperature': 0,
                    'showFMITemperature': 1,
                    'showTempDelta': 2,
-                   'showCloudiness': 3,
-                   'showPressure': 4};
+                   'showCloudiness': 3};
     }
     return mapping[checkboxId];
 };
@@ -58,7 +56,6 @@ var parseData = function (observation) {
                      observation['temp_delta'],
                      observation['brightness'],
                      observation['cloudiness'],
-                     observation['pressure'],
                      observation['rssi']];
         if (ruuvitagEnabled) {
             dataPoint.push(observation['rt-temperature']);
@@ -74,8 +71,7 @@ var parseData = function (observation) {
                      observation['o_temperature'],
                      observation['fmi_temperature'],
                      observation['temp_delta'],
-                     observation['cloudiness'],
-                     observation['pressure']];
+                     observation['cloudiness']];
     }
     testbedImageNames.push(observation['tb_image_name']);
 
@@ -93,14 +89,14 @@ var transformData = function (jsonData) {
     if (mode === 'all') {
         labels = ['Date', 'Inside temperature', 'Temperature (outside)',
                   'Temperature (FMI)', 'Temperature delta',
-                  'Brightness', 'Cloudiness', 'Pressure (FMI)', 'Beacon'];
+                  'Brightness', 'Cloudiness', 'Beacon'];
         if (ruuvitagEnabled) {
             labels.push('RuuviTag inside temperature');
             labels.push('RuuviTag humidity');
         }
     } else {
         labels = ['Date', 'Temperature (outside)', 'Temperature (FMI)',
-                  'Temperature delta', 'Cloudiness', 'Pressure (FMI)'];
+                  'Temperature delta', 'Cloudiness'];
     }
     plotData = observations.map(function (element) {
         return parseData(element);
@@ -224,9 +220,6 @@ if (plotData.length === 0) {
     // Hide the inside temperature series by default as RuuviTag temperature shows
     // the temperature better
     graph.setVisibility(getCheckboxIndex('showTemperature'), false);
-    // Hide the pressure series by default as its values are in a very different
-    // range as the other values
-    graph.setVisibility(getCheckboxIndex('showPressure'), false);
 }
 
 var checkboxes = document.getElementsByClassName('selectBox');

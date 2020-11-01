@@ -33,10 +33,6 @@ TRUNCATE TABLE users CASCADE;
 TRUNCATE TABLE observations CASCADE;
 TRUNCATE TABLE yardcam_image;
 EOF
-
-    # Pressure data has not been collected from the beginning and thus contains
-    # NULL values causing restore to fail
-    psql "${db_name}" -c 'ALTER TABLE weather_data ALTER pressure DROP NOT NULL;'
 fi
 
 echo "Adding new values"

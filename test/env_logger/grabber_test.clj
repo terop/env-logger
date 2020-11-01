@@ -24,8 +24,7 @@
   (testing "Data extraction function tests"
     (is (= {:date "2017-11-13T19:10:00Z"
             :temperature 2.0
-            :cloudiness 8
-            :pressure 1006.5}
+            :cloudiness 8}
            (extract-data
             [{:tag :wfs:member,
               :attrs nil,
@@ -194,8 +193,7 @@
 </wfs:FeatureCollection>"})}
       (is (= {:date "2017-11-13T19:10:00Z"
               :temperature 2.0
-              :cloudiness 8
-              :pressure 1006.5}
+              :cloudiness 8}
              (-get-latest-fmi-weather-data-wfs 87874))))
     (with-fake-routes {
                        #"https://opendata.fmi.fi/wfs\?.+"
@@ -238,13 +236,10 @@
                                   "t2m" [[1539208800000 9.0]
                                          [1539212400000 11.0]]
                                   "TotalCloudCover" [[1539208800000 0]
-                                                     [1539212400000 2]]
-                                  "Pressure" [[1539208800000 1024.8]
-                                              [1539212400000 1026.0]]})})}
+                                                     [1539212400000 2]]})})}
       (is (= {:date "2018-10-16T16:50:00Z"
               :temperature 11.0
-              :cloudiness 2
-              :pressure 1026.0}
+              :cloudiness 2}
              (-get-latest-fmi-weather-data-json 87874))))))
 
 (deftest test-weather-data-extraction
@@ -260,13 +255,10 @@
                                   "t2m" [[1539208800000 9.0]
                                          [1539212400000 11.0]]
                                   "TotalCloudCover" [[1539208800000 0]
-                                                     [1539212400000 2]]
-                                  "Pressure" [[1539208800000 1024.8]
-                                              [1539212400000 1026.0]]})})}
+                                                     [1539212400000 2]]})})}
       (is (= {:date "2018-10-16T16:50:00Z"
               :temperature 11.0
-              :cloudiness 2
-              :pressure 1026.0}
+              :cloudiness 2}
              (get-latest-fmi-weather-data 87874)))
       (with-fake-routes {
                          #"https:\/\/ilmatieteenlaitos.fi\/observation-data(.+)"
@@ -329,8 +321,7 @@
 </wfs:FeatureCollection>"})}
         (is (= {:date "2017-11-13T19:10:00Z"
                 :temperature 2.0
-                :cloudiness 8
-                :pressure 1006.5}
+                :cloudiness 8}
                (get-latest-fmi-weather-data 87874))))
       (with-fake-routes {
                          #"https:\/\/ilmatieteenlaitos.fi\/observation-data(.+)"

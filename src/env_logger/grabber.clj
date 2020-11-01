@@ -36,8 +36,7 @@
                                      (:tag %))))))]
       {:date (nth (first data) 0)
        :temperature (Float/parseFloat (nth (first data) 2))
-       :cloudiness (int (Float/parseFloat (nth (nth data 1) 2)))
-       :pressure (Float/parseFloat (nth (nth data 2) 2))})))
+       :cloudiness (int (Float/parseFloat (nth (nth data 1) 2)))})))
 
 (defn calculate-start-time
   "Calculates the start time for the data request and returns it as a
@@ -93,15 +92,13 @@
                                       (str e)))))]
     (when (and json-resp
                (not (or (zero? (count (get json-resp "t2m")))
-                        (zero? (count (get json-resp "TotalCloudCover")))
-                        (zero? (count (get json-resp "Pressure"))))))
+                        (zero? (count (get json-resp "TotalCloudCover"))))))
       {:date (f/unparse (f/formatter :date-time-no-ms)
                         (t/from-time-zone
                          (e/from-long (get json-resp "latestObservationTime"))
                          (t/time-zone-for-id (get json-resp "timeZoneId"))))
        :temperature ((last (get json-resp "t2m")) 1)
-       :cloudiness (int ((last (get json-resp "TotalCloudCover")) 1))
-       :pressure ((last (get json-resp "Pressure")) 1)})))
+       :cloudiness (int ((last (get json-resp "TotalCloudCover")) 1))})))
 
 (defn get-latest-fmi-weather-data
   "Fetches the latest FMI weather data either using

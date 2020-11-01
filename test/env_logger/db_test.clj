@@ -81,8 +81,7 @@
                                   :mac "7C:EC:79:3F:BE:97"}]}
           weather-data {:date (iso8601-dt-str)
                         :temperature 20
-                        :cloudiness 2
-                        :pressure 1006.5}]
+                        :cloudiness 2}]
       (is (true? (insert-observation test-postgres
                                      (merge observation
                                             {:outside_temp 5
@@ -127,7 +126,6 @@
             :cloudiness 2
             :fmi_temperature 20.0
             :o_temperature 5.0
-            :pressure 1006.5
             :name "7C:EC:79:3F:BE:97"
             :rssi -68
             :tb_image_name nil
@@ -262,7 +260,6 @@
             :cloudiness 2
             :fmi_temperature 20.0
             :o_temperature 5.0
-            :pressure 1006.5
             :tb_image_name nil
             :temp_delta -15.0}
            (first (get-weather-obs-days test-postgres 1))))))
@@ -328,8 +325,7 @@
                                  {:row-fn #(:id %)}))
           weather-data {:date (iso8601-dt-str)
                         :temperature 20
-                        :cloudiness 2
-                        :pressure 1006.5}]
+                        :cloudiness 2}]
       (is (pos? (insert-wd test-postgres
                            obs-id
                            weather-data))))))

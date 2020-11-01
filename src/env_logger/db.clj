@@ -117,8 +117,7 @@
                          {:obs_id obs-id
                           :time (f/parse (:date weather-data))
                           :temperature (:temperature weather-data)
-                          :cloudiness (:cloudiness weather-data)
-                          :pressure (:pressure weather-data)}))))
+                          :cloudiness (:cloudiness weather-data)}))))
 
 (defn insert-ruuvitag-observation
   "Insert a RuuviTag weather observation into the database."
@@ -239,7 +238,6 @@
                              :o.recorded
                              [:w.temperature "fmi_temperature"]
                              :w.cloudiness
-                             :w.pressure
                              :o.yc_image_name
                              [:o.outside_temperature "o_temperature"]
                              :b.mac_address
@@ -309,7 +307,6 @@
            (sql/format (sql/build :select [:w.time
                                            [:w.temperature "fmi_temperature"]
                                            :w.cloudiness
-                                           :w.pressure
                                            [:o.outside_temperature
                                             "o_temperature"]
                                            :o.tb_image_name]
