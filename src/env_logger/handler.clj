@@ -188,12 +188,7 @@
                        :yc-image-basepath (get-conf-value
                                            :yc-image-basepath)
                        :tb-image-basepath (get-conf-value
-                                           :tb-image-basepath)
-                       :profiles (when-not (empty? (:session
-                                                    request))
-                                   (u/get-profiles db/postgres
-                                                   (name (:identity
-                                                          request))))}]
+                                           :tb-image-basepath)}]
     (merge common-values
            (if (or start-date end-date)
              {:data (data-custom-dates logged-in?
@@ -292,16 +287,6 @@
                                              image-name)
                   "OK" response-server-error)
                 response-invalid-request)))))
-  ;; Profile handling
-  (POST "/profile" request
-        (str (u/insert-profile db/postgres
-                               (name (:identity request))
-                               (:name (:params request))
-                               (:profile (:params request)))))
-  (DELETE "/profile/:prof-name" prof-name
-          (str (u/delete-profile db/postgres
-                                 (name (:identity prof-name))
-                                 (:prof-name (:params prof-name)))))
   ;; Serve static files
   (route/files "/")
   (route/not-found "404 Not Found"))

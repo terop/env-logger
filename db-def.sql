@@ -59,11 +59,3 @@ CREATE TABLE yardcam_image (
        image_id SERIAL PRIMARY KEY,
        image_name VARCHAR(40)
 );
-
--- Table for user profiles
-CREATE TABLE profiles (
-       profile_id SERIAL PRIMARY KEY,
-       user_id INTEGER REFERENCES users (user_id) ON DELETE CASCADE,
-       name VARCHAR(100) NOT NULL,
-       profile JSONB NOT NULL
-);

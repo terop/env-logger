@@ -1,5 +1,5 @@
 (ns env-logger.user
-  "Namespace for user and profile functionality"
+  "Namespace for user functionality"
   (:require [clj-ldap.client :as ldap]
             [clojure.java.jdbc :as j]
             [clojure.tools.logging :as log]
@@ -66,59 +66,3 @@
                                          :where [:= :username
                                                  username]))
                   {:row-fn #(:user_id %)})))
-
-;; Profile handling
-(defn insert-profile
-  "Inserts a user profile into the database. Returns true on success and false
-  otherwise."
-  [db-con username profile-name profile]
-  (let [user-id (get-user-id db-con username)]
-    (if user-id
-      (try
-        (if (= 1 (first (j/execute! db-con
-                                    [(str "INSERT INTO profiles (user_id, "
-                                          "name, profile) VALUES (?, ?, "
-                                          "to_json(?::json))")
-                                     user-id profile-name profile])))
-          true false)
-        (catch java.sql.BatchUpdateException bue
-          (log/error "Profile insert failed, message: "
-                     (.getMessage bue))
-          false))
-      false)))
-
-(defn get-profiles
-  "Returns the profile(s) for the given user. Returns an empty list if the user
-  has no profiles or doesn't exist."
-  [db-con username]
-  (j/query db-con
-           (sql/format (sql/build :select [:name
-                                           :profile]
-                                  :from [[:users :u]]
-                                  :join [[:profiles :p]
-                                         [:= :u.user_id
-                                          :p.user_id]]
-                                  :where [:= :u.username
-                                          username]))
-           {:row-fn #(merge %
-                            {:profile (.getValue (:profile %))})}))
-
-(defn delete-profile
-  "Deletes the given profile of the given user. Returns true on success
-  and false otherwise."
-  [db-con username profile-name]
-  (let [profile-id (first (j/query db-con
-                                   (sql/format
-                                    (sql/build :select [:profile_id]
-                                               :from [:profiles]
-                                               :where [:and
-                                                       [:= :user_id
-                                                        (get-user-id db-con
-                                                                     username)]
-                                                       [:= :name
-                                                        profile-name]]))
-                                   {:row-fn #(:profile_id %)}))]
-    (if (pos? (first (j/delete! db-con
-                                :profiles
-                                ["profile_id = ?" profile-id])))
-      true false)))
