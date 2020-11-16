@@ -108,7 +108,7 @@
         <span id="plotData" class="display-none">{{ data }}</span>
 
         {% if logged-in? %}
-            <div class="left-margin">
+            <div class="left-margin" id="weatherCheckboxDiv">
                 <input type="checkbox" id="showWeatherChart" checked>
                 <label for="showWeatherChart">Show weather chart</label>
             </div>
@@ -121,7 +121,7 @@
         </div>
 
         {% if logged-in? %}
-            <div class="left-margin">
+            <div class="left-margin" id="otherCheckboxDiv">
                 <input type="checkbox" id="showOtherChart" checked>
                 <label for="showOtherChart">Show other chart</label>
             </div>
