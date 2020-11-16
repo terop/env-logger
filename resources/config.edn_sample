@@ -4,8 +4,6 @@
             :name "db_name"
             :username "foobar"
             :password "testpwd1!"}
- ;; RuuviTag settings
- :ruuvitag-enabled? true
  ;; LDAP settings
  :ldap {:host "localhost"
         :port "389"
@@ -14,6 +12,8 @@
         :password "b4dpassw0rd"}
  ;; Use LDAP as authentication backend
  :use-ldap false
+  ;; RuuviTag locations to show
+ :ruuvitag-locations ["indoor"]
  ;; Timezone to use in date and time formatting
  ;; Special value "automatic" means that the system timezone is used
  :timezone "automatic"

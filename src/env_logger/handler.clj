@@ -123,17 +123,14 @@
   [logged-in? start-date end-date]
   (generate-string
    (if logged-in?
-     (let [db-obs (db/get-obs-interval db/postgres
-                                       {:start start-date
-                                        :end end-date})]
-       (if (get-conf-value :ruuvitag-enabled?)
-         (db/combine-db-and-rt-obs db-obs
-                                   (db/get-ruuvitag-obs
-                                    db/postgres
-                                    (db/make-local-dt start-date "start")
-                                    (db/make-local-dt end-date "end")
-                                    "indoor"))
-         db-obs))
+     (db/combine-db-and-ruuvitag-obs (db/get-obs-interval db/postgres
+                                                          {:start start-date
+                                                           :end end-date})
+                                     (db/get-ruuvitag-obs
+                                      db/postgres
+                                      (db/make-local-dt start-date "start")
+                                      (db/make-local-dt end-date "end")
+                                      (get-conf-value :ruuvitag-locations)))
      (db/get-weather-obs-interval db/postgres
                                   {:start start-date
                                    :end end-date}))))
@@ -143,17 +140,14 @@
   [logged-in? initial-days]
   (generate-string
    (if logged-in?
-     (let [db-obs (db/get-obs-days db/postgres
-                                   initial-days)]
-       (if (get-conf-value :ruuvitag-enabled?)
-         (db/combine-db-and-rt-obs db-obs
-                                   (db/get-ruuvitag-obs
-                                    db/postgres
-                                    (t/minus (t/now)
-                                             (t/days initial-days))
-                                    (t/now)
-                                    "indoor"))
-         db-obs))
+     (db/combine-db-and-ruuvitag-obs (db/get-obs-days db/postgres
+                                                      initial-days)
+                                     (db/get-ruuvitag-obs
+                                      db/postgres
+                                      (t/minus (t/now)
+                                               (t/days initial-days))
+                                      (t/now)
+                                      (get-conf-value :ruuvitag-locations)))
      (db/get-weather-obs-days db/postgres
                               initial-days))))
 
@@ -187,11 +181,9 @@
                          (db/get-obs-end-date db/postgres))
         formatter (f/formatter "y-MM-dd")
         logged-in? (authenticated? request)
-        ruuvitag-enabled? (get-conf-value :ruuvitag-enabled?)
         initial-days (get-conf-value :initial-show-days)
         common-values {:obs-dates obs-dates
                        :logged-in? logged-in?
-                       :ruuvitag-enabled? ruuvitag-enabled?
                        :ws-url (get-conf-value :ws-url)
                        :yc-image-basepath (get-conf-value
                                            :yc-image-basepath)

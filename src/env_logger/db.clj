@@ -380,31 +380,33 @@
 
 (defn get-ruuvitag-obs
   "Returns RuuviTag observations lying between the provided timestamps
-  and having the given location."
-  [db-con start end location]
+  and having the given location(s)."
+  [db-con start end locations]
   (try
     (let [nf (NumberFormat/getInstance)
-          query (sql/format (sql/build :select [:temperature
+          query (sql/format (sql/build :select [:location
+                                                :temperature
                                                 :humidity]
                                        :from :ruuvitag_observations
                                        :where [:and
-                                               [:= :location location]
+                                               [:in :location locations]
                                                [:>= :recorded start]
                                                [:<= :recorded end]]
                                        :order-by [[:id :asc]]))]
       (.applyPattern nf "0.0#")
       (j/query db-con query
                {:row-fn (fn [obs]
-                          {:rt-temperature (Float/parseFloat
-                                            (. nf format (:temperature obs)))
-                           :rt-humidity (Float/parseFloat
-                                         (. nf format (:humidity obs)))})}))
+                          {(keyword (str "rt_" (:location obs)))
+                           {:temperature (Float/parseFloat
+                                          (. nf format (:temperature obs)))
+                            :humidity (Float/parseFloat
+                                       (. nf format (:humidity obs)))}})}))
     (catch PSQLException pe
       (log/error "RuuviTag observation fetching failed:"
                  (.getMessage pe))
       {})))
 
-(defn combine-db-and-rt-obs
+(defn combine-db-and-ruuvitag-obs
   "Combines each DB and RuuviTag observations into map and returns all
   observations as a list."
   [db-obs rt-obs]

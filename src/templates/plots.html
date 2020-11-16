@@ -7,7 +7,8 @@
 
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css"
               integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2" crossorigin="anonymous">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dygraph/2.1.0/dygraph.min.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.css"
+              integrity="sha256-aa0xaJgmK/X74WM224KMQeNQC2xYKwlAt08oZqjeF0E=" crossorigin="anonymous">
 
         <style>
             body {
@@ -26,18 +27,12 @@
             .display-none {
                 display: none;
             }
-            .no-data {
-                color: red;
-                font-size: 1.2em;
-                font-weight: bold;
-                display: none;
-            }
             .no-profiles {
                 font-size: 1.2em;
                 font-weight: bold;
             }
-            div.dygraph-title {
-                font-size: 0.85em;
+            .hide-all {
+                margin-left: 30px;
             }
 
             #plotControls > div > label {
@@ -49,7 +44,7 @@
                 max-width: 800px;
                 max-height: 800px;
             }
-            #submitBtn {
+            #updateBtn {
                 margin-left: 30px;
             }
             #lastObservation {
@@ -58,6 +53,17 @@
             }
             #startDate,#endDate {
                 width: 140px;
+            }
+            #noDataError {
+                width: 50%;
+                margin-top: 20px;
+            }
+            #weatherDiv,#otherDiv {
+                width: 63%;
+                height: 680px;
+            }
+            #lastObservation {
+                font-size: 0.9em;
             }
         </style>
     </head>
@@ -137,59 +143,43 @@
                 <input type="date" name="endDate" id="endDate" value="{{end-date}}"
                        {% if not obs-dates.start|empty? %}min="{{obs-dates.start}}"{% endif %}
                        {% if not obs-dates.end|empty? %}max="{{obs-dates.end}}"{% endif %}>
-                <input type="submit" class="btn btn-primary" id="submitBtn" value="Refresh">
+                <input type="submit" class="btn btn-primary" id="updateBtn" value="Refresh">
             </form>
         </div>
 
         <div class="left-margin display-none" id="lastObservation"></div>
 
-        <div id="graphDiv" style="float: left;">
-            <span id="noDataError" class="left-margin no-data">No observations found</span>
+        <div class="left-margin display-none alert alert-danger" id="noDataError" role="alert">
+            No observations found!
         </div>
-        <div id="labelDiv" style="float: left;"></div>
         <span id="plotData" class="display-none">{{ data }}</span>
 
-        <div id="plotControls">
-            <div class="left-margin clear-both checkboxes">
-                {% if logged-in? %}
-                    <input type="checkbox" class="selectBox" id="showTemperature">
-                    <label for="showTemperature">Inside temperature</label>
-                    <input type="checkbox" class="selectBox" id="showOutsideTemperature" checked="checked">
-                    <label for="showOutsideTemperature">Temperature (outside)</label>
-                    <input type="checkbox" class="selectBox" id="showFMITemperature" checked="checked">
-                    <label for="showFMITemperature">Temperature (FMI)</label>
-                    <input type="checkbox" class="selectBox" id="showTempDelta" checked="checked">
-                    <label for="showTempDelta">Temperature delta</label>
-                    <input type="checkbox" id="showAll" style="margin-left: 180px;">
-                    <label for="showAll" id="showAllLabel">Show all</label>
-                    <br>
-                    <input type="checkbox" class="selectBox" id="showBrightness" checked="checked">
-                    <label for="showBrightness">Brightness</label>
-                    <input type="checkbox" class="selectBox" id="showCloudiness" checked="checked">
-                    <label for="showCloudiness">Cloudiness</label>
-                    <br>
-                    <input type="checkbox" class="selectBox" id="showBeacon" checked="checked">
-                    <label id="showBeaconLabel" for="showBeacon">Beacon</label>
-                    {% if ruuvitag-enabled? %}
-                        <input type="checkbox" class="selectBox" id="showRTTemperature" checked="checked">
-                        <label for="showRTTemperature">RuuviTag inside temperature</label>
-                        <input type="checkbox" class="selectBox" id="showRTHumidity" checked="checked">
-                        <label for="showRTHumidity">RuuviTag humidity</label>
-                    {% endif %}
-                {% else %}
-                    <input type="checkbox" class="selectBox" id="showOutsideTemperature" checked="checked">
-                    <label for="showOutsideTemperature">Temperature (outside)</label>
-                    <input type="checkbox" class="selectBox" id="showFMITemperature" checked="checked">
-                    <label for="showFMITemperature">Temperature (FMI)</label>
-                    <input type="checkbox" class="selectBox" id="showTempDelta" checked="checked">
-                    <label for="showTempDelta">Temperature delta</label>
-                    <input type="checkbox" class="selectBox" id="showCloudiness" checked="checked">
-                    <label for="showCloudiness">Cloudiness</label>
-                    <input type="checkbox" id="showAll" style="margin-left: 100px;">
-                    <label for="showAll" id="showAllLabel">Show all</label>
-                {% endif %}
+        {% if logged-in? %}
+            <div class="left-margin">
+                <input type="checkbox" id="showWeatherChart" checked>
+                <label for="showWeatherChart">Show weather chart</label>
             </div>
+        {% endif %}
+        <div class="left-margin" id="weatherDiv">
+            <canvas id="weatherChart"></canvas>
+
+            <input type="button" id="weatherResetZoom" class="btn btn-light" value="Reset chart zoom" />
+            <input type="button" id="weatherHideAll" class="btn btn-danger hide-all" value="Hide all series" />
         </div>
+
+        {% if logged-in? %}
+            <div class="left-margin">
+                <input type="checkbox" id="showOtherChart" checked>
+                <label for="showOtherChart">Show other chart</label>
+            </div>
+            <div class="left-margin" id="otherDiv">
+                <canvas id="otherChart"></canvas>
+
+                <input type="button" id="otherResetZoom" class="btn btn-light" value="Reset chart zoom" />
+                <input type="button" id="otherHideAll" class="btn btn-danger hide-all" value="Hide all series" />
+            </div>
+        {% endif %}
+
         <div id="imageButtonDiv" class="left-margin">
             <input type="checkbox" id="showImages">
             <label for="showImages">Show image{% if logged-in? %}s{% endif %}</label>
@@ -208,19 +198,23 @@
                 integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.bundle.min.js"
                 integrity="sha384-ho+j7jyWK8fNQe+A12Hb8AhRq26LrZ/JpcUGGOn+Y7RsweNrtN/tE3MoK7ZeZDyx" crossorigin="anonymous"></script>
-        <script src="https://cdn.jsdelivr.net/npm/luxon@1.25.0/build/global/luxon.min.js"
-                integrity="sha256-OVk2fwTRcXYlVFxr/ECXsakqelJbOg5WCj1dXSIb+nU=" crossorigin="anonymous"></script>
         <script src="https://cdn.jsdelivr.net/npm/axios@0.21.0/dist/axios.min.js"
                 integrity="sha256-OPn1YfcEh9W2pwF1iSS+yDk099tYj+plSrCS6Esa9NA=" crossorigin="anonymous"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/dygraph/2.1.0/dygraph.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/luxon@1.25.0/build/global/luxon.min.js"
+                integrity="sha256-OVk2fwTRcXYlVFxr/ECXsakqelJbOg5WCj1dXSIb+nU=" crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.bundle.min.js"
+                integrity="sha256-eA+ych7t31OjiXs3fYU0iWjn9HvXMiCLmunP2Gpghok=" crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"
+                integrity="sha256-eVNjHw5UeU0jUqPPpZHAkU1z4U+QFBBY488WvueTm88=" crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@0.7.7/dist/chartjs-plugin-zoom.min.js"
+                integrity="sha256-6S7w9Wue7EBvlJh/Li/cPecjTNN+yBm/AoCePQA9Xi8=" crossorigin="anonymous"></script>
         <script>
             var mode = '{% if logged-in? %}all{% else %}weather{% endif %}',
-                ruuvitagEnabled = {% if ruuvitag-enabled? %}true{% else %}false{% endif %},
                 ycImageBasepath = '{{ yc-image-basepath }}',
                 tbImageBasepath = '{{ tb-image-basepath }}',
                 socket = new WebSocket('{{ ws-url }}');
         </script>
-        <script src="js/plots.js"></script>
+        <script src="js/charts.js"></script>
         {% if logged-in? %}
             <script src="js/profiles.js"></script>
         {% endif %}

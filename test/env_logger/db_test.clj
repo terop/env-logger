@@ -411,18 +411,18 @@
                 :pressure 1024.0
                 :humidity 30.0
                 :battery_voltage 2.805})
-    (is (= '({:rt-temperature 15.0
-              :rt-humidity 30.0})
+    (is (= '({:rt_balcony {:temperature 15.0,
+                           :humidity 30.0}})
            (get-ruuvitag-obs test-postgres
                              (t/minus (t/now) (t/minutes 5))
                              (t/now)
-                             "balcony")))
+                             ["balcony"])))
     (is (= 2 (count (get-ruuvitag-obs test-postgres
                                       (t/minus (t/now) (t/minutes 5))
                                       (t/now)
-                                      "indoor"))))))
+                                      ["indoor"]))))))
 
-(deftest combine-db-and-rt-obs-test
+(deftest combine-db-and-ruuvitag-obs-test
   (testing "DB and RuuviTag observation combining"
     (is (= '({:brightness 0
               :temperature 14.0
@@ -430,13 +430,13 @@
               :fmi_temperature 20.0
               :o_temperature 5.0
               :pressure 1006.5
-              :rt-temperature 22.0
-              :rt-humidity 45.0})
-           (combine-db-and-rt-obs '({:brightness 0
-                                     :temperature 14.0
-                                     :cloudiness 2
-                                     :fmi_temperature 20.0
-                                     :o_temperature 5.0
-                                     :pressure 1006.5})
-                                  '({:rt-temperature 22.0
-                                     :rt-humidity 45.0}))))))
+              :rt_temperature 22.0
+              :rt_humidity 45.0})
+           (combine-db-and-ruuvitag-obs '({:brightness 0
+                                           :temperature 14.0
+                                           :cloudiness 2
+                                           :fmi_temperature 20.0
+                                           :o_temperature 5.0
+                                           :pressure 1006.5})
+                                        '({:rt_temperature 22.0
+                                           :rt_humidity 45.0}))))))
