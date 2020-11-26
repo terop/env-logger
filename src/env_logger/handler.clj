@@ -25,9 +25,6 @@
                               weather-query-ok?]]
              [user :as u]]
             [immutant.web :as web]
-            [immutant.web
-             [async :as async]
-             [middleware :refer [wrap-websocket]]]
             [ring.middleware.defaults :refer :all]
             [ring.middleware.reload :refer [wrap-reload]]
             [ring.util.response :as resp]
@@ -104,20 +101,6 @@
 (def auth-backend (session-backend
                    {:unauthorized-handler unauthorized-handler}))
 
-(defonce channels (atom #{}))
-
-(def websocket-callbacks
-  "WebSocket callback functions."
-  {:on-open (fn [channel]
-              (swap! channels conj channel))
-   :on-close (fn [channel {:keys [code reason]}]
-               (swap! channels clojure.set/difference #{channel}))
-   :on-message (fn [ch m]
-                 ;; Do nothing as clients are not supposed to send anything
-                 )
-   :on-error (fn [channel throwable]
-               (log/error "WS exception:" throwable))})
-
 (defn data-custom-dates
   "Gets data for a custom date range."
   [logged-in? start-date end-date]
@@ -184,7 +167,6 @@
         initial-days (get-conf-value :initial-show-days)
         common-values {:obs-dates obs-dates
                        :logged-in? logged-in?
-                       :ws-url (get-conf-value :ws-url)
                        :yc-image-basepath (get-conf-value
                                            :yc-image-basepath)
                        :tb-image-basepath (get-conf-value
@@ -242,14 +224,7 @@
           (if-not (db/test-db-connection db/postgres)
             response-server-error
             (if (handle-observation-insert (:obs-string (:params request)))
-              (do
-                (doseq [channel @channels]
-                  (async/send! channel
-                               (generate-string
-                                (db/get-observations db/postgres
-                                                     :limit 1))))
-                "OK")
-              response-server-error))))
+              "OK" response-server-error))))
   ;; RuuviTag observation storage
   (POST "/rt-observations" request
         (if-not (check-auth-code (:code (:params request)))
@@ -311,7 +286,6 @@
         handler (as-> routes $
                   (wrap-authorization $ auth-backend)
                   (wrap-authentication $ auth-backend)
-                  (wrap-websocket $ websocket-callbacks)
                   (wrap-defaults $ defaults-config))
         opts {:host ip :port port}]
     (web/run (if production?

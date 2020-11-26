@@ -379,28 +379,6 @@ if (JSON.parse(document.getElementById('plotData').innerText).length === 0) {
 
 restoreDatasetState();
 
-// Various WebSocket operations
-var wsOperations = function () {
-    socket.onerror = function(error) {
-        console.log('WebSocket error: ' + error);
-    };
-
-    socket.onopen = function(event) {
-        console.log('WebSocket connected to: ' + event.currentTarget.url);
-    };
-
-    socket.onmessage = function(event) {
-        plotData.push(parseData(JSON.parse(event.data)[0]));
-        graph.updateOptions({'file': plotData});
-    };
-
-    socket.onclose = function(event) {
-        console.log('WebSocket disconnected: ' + event.code + ', reason ' + event.reason);
-        socket = undefined;
-    };
-};
-wsOperations();
-
 // Function validating date field values
 var validateDates = function (event) {
     var startDate = document.getElementById('startDate').value,

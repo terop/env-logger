@@ -162,8 +162,7 @@
         <script>
             var mode = '{% if logged-in? %}all{% else %}weather{% endif %}',
                 ycImageBasepath = '{{ yc-image-basepath }}',
-                tbImageBasepath = '{{ tb-image-basepath }}',
-                socket = new WebSocket('{{ ws-url }}');
+                tbImageBasepath = '{{ tb-image-basepath }}';
         </script>
         <script src="js/charts.js"></script>
     </body>
