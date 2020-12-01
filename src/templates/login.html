@@ -41,11 +41,6 @@
             .form-signin .form-control:focus {
                 z-index: 2;
             }
-            .form-signin input[type="email"] {
-                margin-bottom: -1px;
-                border-bottom-right-radius: 0;
-                border-bottom-left-radius: 0;
-            }
             .form-signin input[type="password"] {
                 margin-bottom: 10px;
                 border-top-left-radius: 0;
@@ -66,12 +61,18 @@
                 <div class="alert alert-danger text-center" role="alert">{{ error }}</div>
             {% endif %}
 
-            <label for="username">Username</label>
-            <input type="text" id="username" name="username" class="form-control" required autofocus>
-            <label for="password">Password</label>
-            <input type="password" id="password" name="password" class="form-control">
-            <label for="otp">Yubikey OTP</label>
-            <input type="password" id="otp" name="otp" class="form-control">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" class="form-control" required autofocus>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="otp">Yubikey OTP</label>
+                <input type="password" id="otp" name="otp" class="form-control">
+            </div>
 
             <button class="btn btn-lg btn-primary btn-block" type="submit">Log in</button>
         </form>
