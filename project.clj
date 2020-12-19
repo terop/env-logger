@@ -17,9 +17,9 @@
                  [org.clojure/tools.logging "1.1.0"]
                  [org.slf4j/slf4j-log4j12 "1.7.30"]
                  [com.yubico/yubico-validation-client2 "3.1.0"]
-                 [buddy/buddy-hashers "1.6.0"]
+                 [buddy/buddy-hashers "1.7.0"]
                  [buddy/buddy-auth "2.2.0"]
-                 [org.clojars.pntblnk/clj-ldap "0.0.16"]]
+                 [org.clojars.pntblnk/clj-ldap "0.0.17"]]
   :main ^:skip-aot env-logger.handler
   :aot [env-logger.handler
         clojure.tools.logging.impl]
