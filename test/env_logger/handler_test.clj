@@ -1,6 +1,6 @@
 (ns env-logger.handler-test
   (:require [clojure.test :refer :all]
-            [clj-time.core :as t]
+            [java-time :as t]
             [env-logger.config :refer [get-conf-value]]
             [env-logger.handler :as h]
             [env-logger.db-test :refer [get-yc-image-name]]))
@@ -17,8 +17,8 @@
     (is (false? (h/yc-image-validity-check "test.jpg")))
     (is (true? (h/yc-image-validity-check (get-yc-image-name))))
     (is (true? (h/yc-image-validity-check
-                 (get-yc-image-name (t/minutes (get-conf-value
-                                                :yc-max-time-diff))))))
+                (get-yc-image-name (t/minutes (get-conf-value
+                                               :yc-max-time-diff))))))
     (is (false? (h/yc-image-validity-check
-                 (get-yc-image-name (t/minutes (+ (get-conf-value
-                                                   :yc-max-time-diff) 1))))))))
+                 (get-yc-image-name (t/minutes (inc (get-conf-value
+                                                     :yc-max-time-diff)))))))))

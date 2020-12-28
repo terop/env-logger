@@ -1,11 +1,8 @@
 (ns env-logger.db-test
   (:require [clojure.test :refer :all]
-            [clj-time.core :as t]
-            [clj-time.local :as l]
-            [clj-time.format :as f]
-            [clj-time.jdbc]
             [clojure.java.jdbc :as j]
             [clojure.string :as s]
+            [java-time :as t]
             [env-logger.config :refer [db-conf get-conf-value]]
             [env-logger.db :refer :all])
   (:import (org.postgresql.util PSQLException
@@ -32,8 +29,10 @@
                       :password db-password}))
 
 ;; Current datetime used in tests
-(def current-dt (t/now))
-(def formatter :date-hour-minute-second)
+(def current-dt (t/local-date-time))
+(def current-dt-zoned (t/format (t/formatter :iso-offset-date-time)
+                                (t/zoned-date-time)))
+(def date-fmt (t/formatter :iso-local-date))
 
 (defn clean-test-database
   "Cleans the test database before and after running tests. Also inserts one
@@ -42,8 +41,7 @@
   (j/execute! test-postgres "DELETE FROM observations")
   (j/insert! test-postgres
              :observations
-             {:recorded (l/to-local-date-time (t/minus current-dt
-                                                       (t/days 4)))
+             {:recorded (t/minus current-dt (t/days 4))
               :brightness 5
               :temperature 20})
   (test-fn)
@@ -53,33 +51,27 @@
 ;; Fixture run at the start and end of tests
 (use-fixtures :once clean-test-database)
 
-(defn iso8601-dt-str
-  "Returns the the current datetime in UTC ISO 8601 formatted."
-  []
-  (str (l/to-local-date-time current-dt)))
-
 (defn get-yc-image-name
   "Returns a valid yardcam image name using the current datetime or the current
   datetime minus an optional time unit."
   ([]
-   (str "yc-" (s/replace (f/unparse
-                          (f/formatter-local "Y-MM-dd HH:mmZZ")
-                          (l/local-now))
+   (str "yc-" (s/replace (t/format (t/formatter "Y-MM-dd HH:mmXXX")
+                                   (t/offset-date-time))
                          " " "T") ".jpg"))
   ([minus-time]
-   (str "yc-" (s/replace (f/unparse
-                          (f/formatter-local "Y-MM-dd HH:mmZZ")
-                          (t/minus (l/local-now) minus-time))
+   (str "yc-" (s/replace (t/format (t/formatter "Y-MM-dd HH:mmXXX")
+                                   (t/minus (t/offset-date-time)
+                                            minus-time))
                          " " "T") ".jpg")))
 
 (deftest insert-observations
   (testing "Full observation insert"
-    (let [observation {:timestamp (iso8601-dt-str)
+    (let [observation {:timestamp current-dt-zoned
                        :inside_light 0
                        :inside_temp 20
                        :beacons [{:rssi -68
                                   :mac "7C:EC:79:3F:BE:97"}]}
-          weather-data {:date (iso8601-dt-str)
+          weather-data {:date (str current-dt)
                         :temperature 20
                         :cloudiness 2}]
       (is (true? (insert-observation test-postgres
@@ -112,16 +104,9 @@
                                           "Test exception")))]
         (is (false? (insert-observation test-postgres observation)))))))
 
-(deftest date-formatting
-  (testing "Date formatting function"
-    (is (= (l/format-local-time current-dt formatter)
-           (format-datetime (l/to-local-date-time current-dt)
-                            :date-hour-minute-second)))))
-
 (deftest n-days-observations
   (testing "Selecting observations from N days"
     (is (= {:brightness 0
-            :recorded (l/format-local-time current-dt formatter)
             :temperature 14.0
             :cloudiness 2
             :fmi_temperature 20.0
@@ -131,54 +116,52 @@
             :tb_image_name nil
             :temp_delta -15.0
             :yc_image_name (get-yc-image-name)}
-           (nth (get-obs-days test-postgres 3) 1)))))
+           (dissoc (nth (get-obs-days test-postgres 3) 1) :recorded)))))
 
 (deftest obs-interval-select
   (testing "Select observations between one or two dates"
-    (let [formatter (f/formatter "y-MM-dd")]
-      (is (= 4 (count (get-obs-interval
+    (is (= 4 (count (get-obs-interval
+                     test-postgres
+                     {:start nil
+                      :end nil}))))
+    (is (= 3 (count (get-obs-interval
+                     test-postgres
+                     {:start (t/format date-fmt
+                                       (t/minus (t/local-date)
+                                                (t/days 2)))
+                      :end nil}))))
+    (is (= 1 (count (get-obs-interval
+                     test-postgres
+                     {:start nil
+                      :end (t/format date-fmt
+                                     (t/minus (t/local-date)
+                                              (t/days 2)))}))))
+    (is (= 4 (count (get-obs-interval
+                     test-postgres
+                     {:start (t/format date-fmt
+                                       (t/minus (t/local-date)
+                                                (t/days 6)))
+                      :end (t/format date-fmt (t/local-date-time))}))))
+    (is (zero? (count (get-obs-interval
+                       test-postgres
+                       {:start (t/format date-fmt
+                                         (t/minus (t/local-date)
+                                                  (t/days 11)))
+                        :end (t/format date-fmt
+                                       (t/minus (t/local-date)
+                                                (t/days 10)))}))))
+    (is (zero? (count (get-obs-interval
+                       test-postgres
+                       {:start "foobar"
+                        :end nil}))))
+    (is (zero? (count (get-obs-interval
                        test-postgres
                        {:start nil
-                        :end nil}))))
-      (is (= 3 (count (get-obs-interval
+                        :end "foobar"}))))
+    (is (zero? (count (get-obs-interval
                        test-postgres
-                       {:start (f/unparse formatter
-                                          (t/minus current-dt
-                                                   (t/days 1)))
-                        :end nil}))))
-      (is (= 1 (count (get-obs-interval
-                       test-postgres
-                       {:start nil
-                        :end (f/unparse formatter
-                                        (t/minus current-dt
-                                                 (t/days 2)))}))))
-      (is (= 4 (count (get-obs-interval
-                       test-postgres
-                       {:start (f/unparse formatter
-                                          (t/minus current-dt
-                                                   (t/days 6)))
-                        :end (f/unparse formatter
-                                        current-dt)}))))
-      (is (zero? (count (get-obs-interval
-                         test-postgres
-                         {:start (f/unparse formatter
-                                            (t/minus current-dt
-                                                     (t/days 11)))
-                          :end (f/unparse formatter
-                                          (t/minus current-dt
-                                                   (t/days 10)))}))))
-      (is (zero? (count (get-obs-interval
-                         test-postgres
-                         {:start "foobar"
-                          :end nil}))))
-      (is (zero? (count (get-obs-interval
-                         test-postgres
-                         {:start nil
-                          :end "foobar"}))))
-      (is (zero? (count (get-obs-interval
-                         test-postgres
-                         {:start "bar"
-                          :end "foo"})))))))
+                       {:start "bar"
+                        :end "foo"}))))))
 
 (deftest get-observations-tests
   (testing "Observation querying with arbitrary WHERE clause and LIMIT"
@@ -191,25 +174,24 @@
 
 (deftest start-and-end-date-query
   (testing "Selecting start and end dates of all observations"
-    (let [formatter (f/formatter "y-MM-dd")]
-      (is (= (f/unparse formatter (t/minus current-dt
-                                           (t/days 4)))
-             (:start (get-obs-start-date test-postgres))))
-      (is (= (f/unparse formatter current-dt)
-             (:end (get-obs-end-date test-postgres))))
-      (with-redefs [j/query (fn [db query] '())]
-        (is (= {:start ""}
-               (get-obs-start-date test-postgres)))
-        (is (= {:end ""}
-               (get-obs-end-date test-postgres))))
-      (with-redefs [j/query (fn [db query]
-                              (throw (PSQLException.
-                                      "Test exception"
-                                      (PSQLState/COMMUNICATION_ERROR))))]
-        (is (= {:error :db-error}
-               (get-obs-start-date test-postgres)))
-        (is (= {:error :db-error}
-               (get-obs-end-date test-postgres)))))))
+    (is (= (t/format date-fmt (t/minus current-dt
+                                       (t/days 4)))
+           (:start (get-obs-start-date test-postgres))))
+    (is (= (t/format date-fmt current-dt)
+           (:end (get-obs-end-date test-postgres))))
+    (with-redefs [j/query (fn [db query] '())]
+      (is (= {:start ""}
+             (get-obs-start-date test-postgres)))
+      (is (= {:end ""}
+             (get-obs-end-date test-postgres))))
+    (with-redefs [j/query (fn [db query]
+                            (throw (PSQLException.
+                                    "Test exception"
+                                    (PSQLState/COMMUNICATION_ERROR))))]
+      (is (= {:error :db-error}
+             (get-obs-start-date test-postgres)))
+      (is (= {:error :db-error}
+             (get-obs-end-date test-postgres))))))
 
 (deftest date-validation
   (testing "Tests for date validation"
@@ -221,42 +203,40 @@
 
 (deftest date-to-datetime
   (testing "Testing date to datetime conversion"
-    (let [formatter (f/formatter "y-M-d H:m:s")]
-      (is (= (l/to-local-date-time (f/parse formatter "2020-9-27 00:00:00"))
-             (make-local-dt "2020-9-27" "start")))
-      (is (= (l/to-local-date-time (f/parse formatter "2020-9-27 23:59:59"))
-             (make-local-dt "2020-9-27" "end"))))))
+    (is (= "2020-09-27T00:00"
+           (str (make-local-dt "2020-09-27" "start"))))
+    (is (= "2020-09-27T23:59:59"
+           (str (make-local-dt "2020-09-27" "end"))))))
 
 (deftest weather-obs-interval-select
   (testing "Select weather observations between one or two dates"
-    (let [formatter (f/formatter "y-M-d")]
-      (is (= 1 (count (get-weather-obs-interval test-postgres
-                                                {:start nil
-                                                 :end nil}))))
-      (is (= 1 (count (get-weather-obs-interval
+    (is (= 1 (count (get-weather-obs-interval test-postgres
+                                              {:start nil
+                                               :end nil}))))
+    (is (= 1 (count (get-weather-obs-interval
+                     test-postgres
+                     {:start (t/format date-fmt
+                                       (t/minus current-dt
+                                                (t/days 1)))
+                      :end nil}))))
+    (is (zero? (count (get-weather-obs-interval
                        test-postgres
-                       {:start (f/unparse formatter
-                                          (t/minus current-dt
-                                                   (t/days 1)))
-                        :end nil}))))
-      (is (zero? (count (get-weather-obs-interval
-                         test-postgres
-                         {:start nil
-                          :end (f/unparse formatter
-                                          (t/minus current-dt
-                                                   (t/days 2)))}))))
-      (is (zero? (count (get-weather-obs-interval
-                         test-postgres
-                         {:start (f/unparse formatter
-                                            (t/minus current-dt
-                                                     (t/days 5)))
-                          :end (f/unparse formatter
-                                          (t/minus current-dt
-                                                   (t/days 3)))})))))))
+                       {:start nil
+                        :end (t/format date-fmt
+                                       (t/minus current-dt
+                                                (t/days 2)))}))))
+    (is (zero? (count (get-weather-obs-interval
+                       test-postgres
+                       {:start (t/format date-fmt
+                                         (t/minus current-dt
+                                                  (t/days 5)))
+                        :end (t/format date-fmt
+                                       (t/minus current-dt
+                                                (t/days 3)))}))))))
 
 (deftest weather-days-observations
   (testing "Selecting weather observations from N days"
-    (is (= {:time (l/format-local-time current-dt formatter)
+    (is (= {:time (str current-dt)
             :cloudiness 2
             :fmi_temperature 20.0
             :o_temperature 5.0
@@ -301,8 +281,8 @@
     (let [valid-name (get-yc-image-name)]
       (j/execute! test-postgres "DELETE FROM yardcam_image")
       (j/insert! test-postgres
-               :yardcam_image
-               {:image_name valid-name})
+                 :yardcam_image
+                 {:image_name valid-name})
       (is (= valid-name (get-yc-image test-postgres))))))
 
 (deftest last-observation-id
@@ -323,7 +303,7 @@
     (let [obs-id (first (j/query test-postgres
                                  "SELECT MIN(id) AS id FROM observations"
                                  {:row-fn #(:id %)}))
-          weather-data {:date (iso8601-dt-str)
+          weather-data {:date (t/local-date-time)
                         :temperature 20
                         :cloudiness 2}]
       (is (pos? (insert-wd test-postgres
@@ -343,7 +323,7 @@
                  test-postgres
                  (assoc ruuvitag-obs
                         :recorded
-                        (f/parse "2019-01-25T20:45:18.424048+02:00")))))
+                        (t/zoned-date-time "2019-01-25T20:45:18+02:00")))))
       (= -1 (insert-ruuvitag-observation test-postgres
                                          (dissoc ruuvitag-obs :temperature))))))
 
@@ -361,8 +341,7 @@
 (deftest plain-observation-insert
   (testing "Insert of a row into the observations table"
     (is (pos? (insert-plain-observation test-postgres
-                                        {:timestamp (str (l/to-local-date-time
-                                                          current-dt))
+                                        {:timestamp current-dt-zoned
                                          :inside_light 0
                                          :inside_temp 20
                                          :outside_temp 5
@@ -381,11 +360,18 @@
 (deftest yc-image-age-check-test
   (testing "Yardcam image date checking"
     (is (false? (yc-image-age-check (get-yc-image-name (t/minutes 10))
-                                    (t/now) 9)))
-    (is (true? (yc-image-age-check (get-yc-image-name) (t/now) 1)))
-    (is (true? (yc-image-age-check (get-yc-image-name) (t/now) 5)))
+                                    (t/zoned-date-time)
+                                    9)))
     (is (true? (yc-image-age-check (get-yc-image-name)
-                                   (t/minus (t/now) (t/minutes 10)) 9)))))
+                                   (t/zoned-date-time)
+                                   1)))
+    (is (true? (yc-image-age-check (get-yc-image-name)
+                                   (t/zoned-date-time)
+                                   5)))
+    (is (true? (yc-image-age-check (get-yc-image-name)
+                                   (t/minus (t/zoned-date-time)
+                                            (t/minutes 10))
+                                   9)))))
 
 (deftest get-ruuvitag-obs-test
   (testing "RuuviTag observation fetching"
@@ -414,12 +400,13 @@
     (is (= '({:rt_balcony {:temperature 15.0,
                            :humidity 30.0}})
            (get-ruuvitag-obs test-postgres
-                             (t/minus (t/now) (t/minutes 5))
-                             (t/now)
+                             (t/minus (t/local-date-time) (t/minutes 5))
+                             (t/local-date-time)
                              ["balcony"])))
     (is (= 2 (count (get-ruuvitag-obs test-postgres
-                                      (t/minus (t/now) (t/minutes 5))
-                                      (t/now)
+                                      (t/minus (t/local-date-time)
+                                               (t/minutes 5))
+                                      (t/local-date-time)
                                       ["indoor"]))))))
 
 (deftest combine-db-and-ruuvitag-obs-test

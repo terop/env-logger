@@ -8,9 +8,7 @@
             [buddy.auth.middleware :refer [wrap-authentication
                                            wrap-authorization]]
             [cheshire.core :refer [generate-string parse-string]]
-            [clj-time
-             [core :as t]
-             [format :as f]]
+            [java-time :as t]
             [clojure set
              [string :as s]]
             [clojure.tools.logging :as log]
@@ -21,7 +19,7 @@
              [config :refer [get-conf-value]]
              [db :as db]
              [grabber :refer [calculate-start-time
-                              get-latest-fmi-weather-data
+                              get-fmi-weather-data
                               weather-query-ok?]]
              [user :as u]]
             [immutant.web :as web]
@@ -127,9 +125,9 @@
                                                       initial-days)
                                      (db/get-ruuvitag-obs
                                       db/postgres
-                                      (t/minus (t/now)
-                                               (t/days initial-days))
-                                      (t/now)
+                                      (t/minus (t/local-date-time)
+                                                (t/days initial-days))
+                                      (t/local-date-time)
                                       (get-conf-value :ruuvitag-locations)))
      (db/get-weather-obs-days db/postgres
                               initial-days))))
@@ -138,19 +136,15 @@
   "Checks whether the yardcam image has the right format and is not too old.
   Returns true when the image name is valid and false otherwise."
   [image-name]
-  (let [formatter (f/formatter "Y-M-d H:mZ")
-        pattern #"^yc-(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+[\d:]+).+$"]
+  (let [pattern #"^yc-(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+[\d:]+).+$"]
     (boolean (and image-name
                   (re-find pattern image-name)
-                  (<= (t/in-minutes (t/interval
-                                     (f/parse formatter
-                                              (s/replace
-                                               (nth
-                                                (re-matches pattern
-                                                            image-name)
-                                                1)
-                                               "T" " "))
-                                     (t/now)))
+                  (<= (t/as (t/interval (t/zoned-date-time
+                                           (t/formatter :iso-offset-date-time)
+                                           (nth (re-matches pattern image-name)
+                                                1))
+                                          (t/zoned-date-time))
+                             :minutes)
                       (get-conf-value :yc-max-time-diff))))))
 
 (defn get-plot-page-data
@@ -162,7 +156,6 @@
                    (:endDate (:params request)))
         obs-dates (merge (db/get-obs-start-date db/postgres)
                          (db/get-obs-end-date db/postgres))
-        formatter (f/formatter "y-MM-dd")
         logged-in? (authenticated? request)
         initial-days (get-conf-value :initial-show-days)
         common-values {:obs-dates obs-dates
@@ -180,24 +173,23 @@
               :end-date end-date}
              {:data (data-default-dates logged-in?
                                         initial-days)
-              :start-date
-              (f/unparse formatter
-                         (t/minus (f/parse formatter
-                                           (:end obs-dates))
-                                  (t/days initial-days)))
+              :start-date (t/format (t/formatter :iso-local-date)
+                                    (t/minus (t/local-date (t/formatter
+                                                            :iso-local-date)
+                                                           (:end obs-dates))
+                                             (t/days initial-days)))
               :end-date (:end obs-dates)}))))
 
 (defn handle-observation-insert
   "Handles the insertion of an observation to the database."
   [obs-string]
   (let [start-time (calculate-start-time)
-        start-time-int (t/interval (t/plus start-time
-                                           (t/minutes 4))
-                                   (t/plus start-time
-                                           (t/minutes 7)))
-        weather-data (when (and (t/within? start-time-int (t/now))
+        start-time-int (t/interval (t/plus start-time (t/minutes 4))
+                                   (t/plus start-time (t/minutes 7)))
+        weather-data (when (and (t/contains? start-time-int
+                                             (t/zoned-date-time))
                                 (weather-query-ok? db/postgres 3))
-                       (get-latest-fmi-weather-data
+                       (get-fmi-weather-data
                         (get-conf-value :station-id)))]
     (db/insert-observation db/postgres
                            (assoc (parse-string obs-string

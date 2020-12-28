@@ -1,13 +1,12 @@
 (ns env-logger.grabber-test
   (:require [clojure.test :refer :all]
             [clojure.java.jdbc :as j]
+            [clojure.string :as s]
             [clj-http.fake :refer [with-fake-routes]]
-            [clj-time.core :as t]
-            [clj-time.format :as f]
+            [java-time :as t]
             [cheshire.core :refer [generate-string]]
             [env-logger.grabber :refer :all])
-  (:import org.joda.time.DateTime
-           org.joda.time.DateTimeZone))
+  (:import java.time.ZonedDateTime))
 
 (deftest test-parse-xml
   (testing "XML parser tests"
@@ -22,7 +21,7 @@
 
 (deftest test-data-extraction
   (testing "Data extraction function tests"
-    (is (= {:date "2017-11-13T19:10:00Z"
+    (is (= {:date #inst "2017-11-13T19:10:00.000000000-00:00"
             :temperature 2.0
             :cloudiness 8}
            (extract-data
@@ -119,18 +118,22 @@
 
 (deftest test-start-time-calculation
   (testing "Tests the start time calculation"
-    (with-redefs [t/now (fn [] (new DateTime 2016 8 13 5 27
-                                    DateTimeZone/UTC))]
-      (is (= "2016-08-13T05:20:00Z" (f/unparse (f/formatters :date-time-no-ms)
-                                               (calculate-start-time)))))
-    (with-redefs [t/now (fn [] (new DateTime 2016 8 13 5 20
-                                    DateTimeZone/UTC))]
-      (is (= "2016-08-13T05:20:00Z" (f/unparse (f/formatters :date-time-no-ms)
-                                               (calculate-start-time)))))
-    (with-redefs [t/now (fn [] (new DateTime 2016 8 13 5 29 59
-                                    DateTimeZone/UTC))]
-      (is (= "2016-08-13T05:20:00Z" (f/unparse (f/formatters :date-time-no-ms)
-                                               (calculate-start-time)))))))
+    (with-redefs [t/zoned-date-time (fn []
+                                      (ZonedDateTime/of 2020 12 28
+                                                        9 3 50 0
+                                                        (t/zone-id
+                                                         "Europe/Helsinki")))]
+      (is (= "2020-12-28T09:00"
+             (first (s/split (str (t/local-date-time (calculate-start-time)))
+                             #"\.")))))
+    (with-redefs [t/zoned-date-time (fn []
+                                      (ZonedDateTime/of 2020 12 28
+                                                        9 9 50 0
+                                                        (t/zone-id
+                                                         "Europe/Helsinki")))]
+      (is (= "2020-12-28T09:00"
+             (first (s/split (str (t/local-date-time (calculate-start-time)))
+                             #"\[")))))))
 
 (deftest test-weather-data-extraction-wfs
   (testing "Tests FMI weather data (WFS) extraction"
@@ -191,31 +194,31 @@
     </BsWfs:BsWfsElement>
   </wfs:member>
 </wfs:FeatureCollection>"})}
-      (is (= {:date "2017-11-13T19:10:00Z"
+      (is (= {:date #inst "2017-11-13T19:10:00.000000000-00:00"
               :temperature 2.0
               :cloudiness 8}
-             (-get-latest-fmi-weather-data-wfs 87874))))
+             (-get-fmi-weather-data-wfs 87874))))
     (with-fake-routes {
                        #"https://opendata.fmi.fi/wfs\?.+"
                        (fn [req] {:status 200
                                   :body "not XML content"})}
-      (is (nil? (-get-latest-fmi-weather-data-wfs 87874))))
+      (is (nil? (-get-fmi-weather-data-wfs 87874))))
     (with-fake-routes {
                        #"https://opendata.fmi.fi/wfs\?.+"
                        (fn [req] {:status 400})}
-      (is (nil? (-get-latest-fmi-weather-data-wfs 87874))))))
+      (is (nil? (-get-fmi-weather-data-wfs 87874))))))
 
 (deftest test-weather-data-extraction-json
   (testing "Tests FMI weather data (JSON) extraction"
     (with-fake-routes {
                        #"https:\/\/ilmatieteenlaitos.fi\/observation-data(.+)"
                        (fn [_] {:status 403})}
-      (is (nil? (-get-latest-fmi-weather-data-json 87874))))
+      (is (nil? (-get-fmi-weather-data-json 87874))))
     (with-fake-routes {
                        #"https:\/\/ilmatieteenlaitos.fi\/observation-data(.+)"
                        (fn [_] {:status 200
                                 :body "Invalid JSON"})}
-      (is (nil? (-get-latest-fmi-weather-data-json 87874))))
+      (is (nil? (-get-fmi-weather-data-json 87874))))
     (with-fake-routes {
                        #"https:\/\/ilmatieteenlaitos.fi\/observation-data(.+)"
                        (fn [_] {:status 200
@@ -224,7 +227,7 @@
                                         "latestObservationTime" 1539719400000,
                                         "timeZoneId" "Europe/Helsinki",
                                         "TotalCloudCover" []})})}
-      (is (nil? (-get-latest-fmi-weather-data-json 87874))))
+      (is (nil? (-get-fmi-weather-data-json 87874))))
     (with-fake-routes {
                        #"https:\/\/ilmatieteenlaitos.fi\/observation-data(.+)"
                        (fn [_] {:status 200
@@ -237,10 +240,10 @@
                                          [1539212400000 11.0]]
                                   "TotalCloudCover" [[1539208800000 0]
                                                      [1539212400000 2]]})})}
-      (is (= {:date "2018-10-16T16:50:00Z"
+      (is (= {:date #inst "2018-10-16T16:50:00.000000000-00:00"
               :temperature 11.0
               :cloudiness 2}
-             (-get-latest-fmi-weather-data-json 87874))))))
+             (-get-fmi-weather-data-json 87874))))))
 
 (deftest test-weather-data-extraction
   (testing "Tests FMI weather data (JSON and WFS) extraction"
@@ -256,10 +259,10 @@
                                          [1539212400000 11.0]]
                                   "TotalCloudCover" [[1539208800000 0]
                                                      [1539212400000 2]]})})}
-      (is (= {:date "2018-10-16T16:50:00Z"
+      (is (= {:date #inst "2018-10-16T16:50:00.000000000-00:00"
               :temperature 11.0
               :cloudiness 2}
-             (get-latest-fmi-weather-data 87874)))
+             (get-fmi-weather-data 87874)))
       (with-fake-routes {
                          #"https:\/\/ilmatieteenlaitos.fi\/observation-data(.+)"
                          (fn [_] {:status 403})
@@ -319,30 +322,30 @@
     </BsWfs:BsWfsElement>
   </wfs:member>
 </wfs:FeatureCollection>"})}
-        (is (= {:date "2017-11-13T19:10:00Z"
+        (is (= {:date #inst "2017-11-13T19:10:00.000000000-00:00"
                 :temperature 2.0
                 :cloudiness 8}
-               (get-latest-fmi-weather-data 87874))))
+               (get-fmi-weather-data 87874))))
       (with-fake-routes {
                          #"https:\/\/ilmatieteenlaitos.fi\/observation-data(.+)"
                          (fn [_] {:status 403})
                          #"https:\/\/opendata\.fmi\.fi\/wfs\?(.+)"
                          (fn [_] {:status 404})}
-        (is (nil? (get-latest-fmi-weather-data 87874)))))))
+        (is (nil? (get-fmi-weather-data 87874)))))))
 
 (deftest weather-query-ok
   (testing "Test when it is OK to query for FMI weather data"
     (with-redefs [j/query (fn [db query] '())]
       (is (true? (weather-query-ok? {} 5))))
     (with-redefs [j/query (fn [db query]
-                            (list {:recorded (t/minus (t/now)
+                            (list {:recorded (t/minus (t/offset-date-time)
                                                       (t/minutes 3))}))]
       (is (false? (weather-query-ok? {} 5))))
     (with-redefs [j/query (fn [db query]
-                            (list {:recorded (t/minus (t/now)
+                            (list {:recorded (t/minus (t/offset-date-time)
                                                       (t/minutes 3))}))]
-      (is (false? (weather-query-ok? {} 3))))
+      (is (true? (weather-query-ok? {} 3))))
     (with-redefs [j/query (fn [db query]
-                            (list {:recorded (t/minus (t/now)
+                            (list {:recorded (t/minus (t/offset-date-time)
                                                       (t/minutes 6))}))]
       (is (true? (weather-query-ok? {} 5))))))

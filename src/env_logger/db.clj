@@ -1,19 +1,15 @@
 (ns env-logger.db
   "Namespace containing the application's database function"
-  (:require [clj-time
-             [core :as t]
-             [format :as f]
-             [local :as l]
-             [jdbc]]
-            [clojure.java.jdbc :as j]
+  (:require [clojure.java.jdbc :as j]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
             [env-logger.config :refer :all]
             [honeysql
              [core :as sql]
-             [helpers :refer :all]])
+             [helpers :refer :all]]
+            [java-time :as t])
   (:import java.text.NumberFormat
-           java.time.ZoneId
+           java.time.DateTimeException
            org.postgresql.util.PSQLException))
 
 (let [db-host (get (System/getenv)
@@ -59,14 +55,13 @@
   (let [yc-image-pattern #"yc-(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+\d{2}:\d{2}).+"
         match (re-find yc-image-pattern
                        yc-image)
-        yc-dt (f/parse (f/formatter "y-M-d H:mZ")
-                       (s/replace (nth match 1) "T" " "))]
+        yc-dt (t/zoned-date-time (t/formatter :iso-offset-date-time)
+                                  (nth match 1))]
     (try
-      (<= (t/in-minutes
-           (t/interval yc-dt ref-dt))
+      (<= (t/as (t/interval yc-dt ref-dt) :minutes)
           diff-minutes)
-      (catch IllegalArgumentException iae
-        ;; ref-dt < yc-dt results in IllegalArgumentException
+      (catch DateTimeException dte
+        ;; ref-dt < yc-dt results in DateTimeException
         true))))
 
 (defn get-yc-image
@@ -81,7 +76,7 @@
     (when (and image-name
                (re-matches yc-image-pattern image-name)
                (yc-image-age-check image-name
-                                   (t/now)
+                                   (t/zoned-date-time)
                                    (get-conf-value :yc-max-time-diff)))
       image-name)))
 
@@ -90,8 +85,8 @@
   [db-con observation]
   (:id (first (j/insert! db-con
                          :observations
-                         {:recorded (f/parse
-                                     (:timestamp observation))
+                         {:recorded (t/sql-timestamp (t/zoned-date-time
+                                                      (:timestamp observation)))
                           :temperature (- (:inside_temp
                                            observation)
                                           (:offset observation))
@@ -115,7 +110,7 @@
   (:id (first (j/insert! db-con
                          :weather_data
                          {:obs_id obs-id
-                          :time (f/parse (:date weather-data))
+                          :time (t/local-date-time (:date weather-data))
                           :temperature (:temperature weather-data)
                           :cloudiness (:cloudiness weather-data)}))))
 
@@ -133,7 +128,9 @@
                              (if (:timestamp observation)
                                (assoc values
                                       :recorded
-                                      (f/parse (:timestamp observation)))
+                                      (t/sql-timestamp (t/zoned-date-time
+                                                        (:timestamp
+                                                         observation))))
                                values)))))
     (catch PSQLException pe
       (log/error "RuuviTag observation insert failed:"
@@ -179,18 +176,6 @@
           false)))
     false))
 
-(defn format-datetime
-  "Changes the timezone and formats the datetime with the given formatter."
-  [datetime formatter]
-  (let [conf-timezone (get-conf-value :timezone)]
-    (l/format-local-time (t/to-time-zone datetime
-                                         (t/time-zone-for-id
-                                          (if (= conf-timezone "automatic")
-                                            (str
-                                             (java.time.ZoneId/systemDefault))
-                                            conf-timezone)))
-                         formatter)))
-
 (defn validate-date
   "Checks if the given date is nil or if non-nil, it is in the yyyy-mm-dd
   or yyyy-m-d format."
@@ -203,10 +188,9 @@
   "Creates SQL datetime in local time from the provided date string.
   Mode is either start or end."
   [date mode]
-  (l/to-local-date-time (f/parse (f/formatter "y-M-d H:m:s")
-                                 (format "%s %s" date (if (= mode "start")
-                                                        "00:00:00"
-                                                        "23:59:59")))))
+  (t/local-date-time (format "%sT%s" date (if (= mode "start")
+                                             "00:00:00"
+                                             "23:59:59"))))
 
 (defmacro get-by-interval
   "Fetches observations in an interval using the provided function."
@@ -219,10 +203,10 @@
        (let [~start-dt (if (:start ~dates)
                          (make-local-dt (:start ~dates) "start")
                          ;; Hack to avoid SQL WHERE hacks
-                         (t/date-time 2010 1 1))
+                         (t/local-date-time 2010 1 1))
              ~end-dt (if (:end ~dates)
                        (make-local-dt (:end ~dates) "end")
-                       (t/now))]
+                       (t/local-date-time))]
          (~fetch-fn ~db-con :where [:and
                                     [:>= ~dt-column ~start-dt]
                                     [:<= ~dt-column ~end-dt]])))))
@@ -260,9 +244,9 @@
              (sql/format limit-query)
              {:row-fn #(dissoc
                         (merge %
-                               {:recorded (format-datetime
-                                           (:recorded %)
-                                           :date-hour-minute-second)
+                               {:recorded (t/format
+                                           (t/formatter :iso-local-date-time)
+                                           (t/local-date-time (:recorded %)))
                                 :name (get beacon-names
                                            (:mac_address %)
                                            (:mac_address %))
@@ -289,8 +273,8 @@
   [db-con n]
   (get-observations db-con
                     :where [:>= :recorded
-                            (t/minus (t/now)
-                                     (t/days n))]))
+                            (t/minus (t/local-date-time)
+                                      (t/days n))]))
 
 (defn get-obs-interval
   "Fetches observations in an interval between the provided dates."
@@ -316,9 +300,9 @@
                                   :where where
                                   :order-by [[:w.id :asc]]))
            {:row-fn #(merge %
-                            {:time (format-datetime
-                                    (:time %)
-                                    :date-hour-minute-second)
+                            {:time (t/format
+                                    (t/formatter :iso-local-date-time)
+                                    (t/local-date-time (:time %)))
                              :temp_delta (when (and (:fmi_temperature %)
                                                     (:o_temperature %))
                                            (Float/parseFloat
@@ -333,7 +317,7 @@
   [db-con n]
   (get-weather-observations db-con
                             :where [:>= :time
-                                    (t/minus (t/now)
+                                    (t/minus (t/local-date-time)
                                              (t/days n))]))
 
 (defn get-weather-obs-interval
@@ -348,13 +332,13 @@
   "Fetches the first date of all observations."
   [db-con]
   (try
-    (let [formatter (f/formatter "y-MM-dd")
-          result (j/query db-con
+    (let [result (j/query db-con
                           (sql/format
                            (sql/build :select [[:%min.recorded "start"]]
                                       :from :observations)))]
       (if (= 1 (count result))
-        {:start (f/unparse formatter (:start (first result)))}
+        {:start (t/format (t/formatter :iso-local-date)
+                          (t/local-date-time (:start (first result))))}
         {:start ""}))
     (catch PSQLException pe
       (log/error "Observation start date fetching failed:"
@@ -365,13 +349,13 @@
   "Fetches the last date of all observations."
   [db-con]
   (try
-    (let [formatter (f/formatter "y-MM-dd")
-          result (j/query db-con
+    (let [result (j/query db-con
                           (sql/format
                            (sql/build :select [[:%max.recorded "end"]]
                                       :from :observations)))]
       (if (= 1 (count result))
-        {:end (f/unparse formatter (:end (first result)))}
+        {:end (t/format (t/formatter :iso-local-date)
+                        (t/local-date-time (:end (first result))))}
         {:end ""}))
     (catch PSQLException pe
       (log/error "Observation end date fetching failed:"
@@ -415,7 +399,7 @@
            (nth rt-obs i))))
 
 (defn insert-yc-image-name
-  "Stores the name of the latest Yardcam image. Rows from the table are
+  "Stores the name of the latest yardcam image. Rows from the table are
   deleted before a new row is inserted. Returns true on success and
   false otherwise."
   [db-con image-name]
