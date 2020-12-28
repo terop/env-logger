@@ -154,8 +154,7 @@
                      (:startDate (:params request)))
         end-date (when (seq (:endDate (:params request)))
                    (:endDate (:params request)))
-        obs-dates (merge (db/get-obs-start-date db/postgres)
-                         (db/get-obs-end-date db/postgres))
+        obs-dates (db/get-obs-date-interval db/postgres)
         logged-in? (authenticated? request)
         initial-days (get-conf-value :initial-show-days)
         common-values {:obs-dates obs-dates

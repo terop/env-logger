@@ -174,24 +174,20 @@
 
 (deftest start-and-end-date-query
   (testing "Selecting start and end dates of all observations"
-    (is (= (t/format date-fmt (t/minus current-dt
-                                       (t/days 4)))
-           (:start (get-obs-start-date test-postgres))))
-    (is (= (t/format date-fmt current-dt)
-           (:end (get-obs-end-date test-postgres))))
+    (is (= {:start (t/format date-fmt (t/minus current-dt
+                                               (t/days 4)))
+            :end (t/format date-fmt current-dt)}
+           (get-obs-date-interval test-postgres)))
     (with-redefs [j/query (fn [db query] '())]
-      (is (= {:start ""}
-             (get-obs-start-date test-postgres)))
-      (is (= {:end ""}
-             (get-obs-end-date test-postgres))))
+      (is (= {:start ""
+              :end ""}
+             (get-obs-date-interval test-postgres))))
     (with-redefs [j/query (fn [db query]
                             (throw (PSQLException.
                                     "Test exception"
                                     (PSQLState/COMMUNICATION_ERROR))))]
       (is (= {:error :db-error}
-             (get-obs-start-date test-postgres)))
-      (is (= {:error :db-error}
-             (get-obs-end-date test-postgres))))))
+             (get-obs-date-interval test-postgres))))))
 
 (deftest date-validation
   (testing "Tests for date validation"

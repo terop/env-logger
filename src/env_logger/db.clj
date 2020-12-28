@@ -328,37 +328,24 @@
                    dates
                    :time))
 
-(defn get-obs-start-date
-  "Fetches the first date of all observations."
+(defn get-obs-date-interval
+  "Fetches the interval (start and end) of all observations."
   [db-con]
   (try
     (let [result (j/query db-con
                           (sql/format
-                           (sql/build :select [[:%min.recorded "start"]]
+                           (sql/build :select [[:%min.recorded "start"]
+                                               [:%max.recorded "end"]]
                                       :from :observations)))]
       (if (= 1 (count result))
         {:start (t/format (t/formatter :iso-local-date)
-                          (t/local-date-time (:start (first result))))}
-        {:start ""}))
-    (catch PSQLException pe
-      (log/error "Observation start date fetching failed:"
-                 (.getMessage pe))
-      {:error :db-error})))
-
-(defn get-obs-end-date
-  "Fetches the last date of all observations."
-  [db-con]
-  (try
-    (let [result (j/query db-con
-                          (sql/format
-                           (sql/build :select [[:%max.recorded "end"]]
-                                      :from :observations)))]
-      (if (= 1 (count result))
-        {:end (t/format (t/formatter :iso-local-date)
+                          (t/local-date-time (:start (first result))))
+         :end (t/format (t/formatter :iso-local-date)
                         (t/local-date-time (:end (first result))))}
-        {:end ""}))
+        {:start ""
+         :end ""}))
     (catch PSQLException pe
-      (log/error "Observation end date fetching failed:"
+      (log/error "Observation interval fetch failed:"
                  (.getMessage pe))
       {:error :db-error})))
 
