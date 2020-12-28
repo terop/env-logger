@@ -6,7 +6,9 @@
             [env-logger.config :refer [db-conf get-conf-value]]
             [env-logger.db :refer :all])
   (:import (org.postgresql.util PSQLException
-                                PSQLState)))
+                                PSQLState)
+           (java.util Date
+                      TimeZone)))
 
 (let [db-host (get (System/getenv)
                    "POSTGRESQL_DB_HOST"
@@ -423,3 +425,11 @@
                                            :pressure 1006.5})
                                         '({:rt_temperature 22.0
                                            :rt_humidity 45.0}))))))
+
+(deftest get-tz-offset-test
+  (testing "Timezone offset calcutation"
+    (let [in-daylight? (.inDaylightTime (TimeZone/getTimeZone
+                                         (get-conf-value :timezone))
+                                        (new Date))]
+      (is (= (if in-daylight? 3 2) (get-tz-offset "Europe/Helsinki")))
+      (is (zero? (get-tz-offset "UTC"))))))

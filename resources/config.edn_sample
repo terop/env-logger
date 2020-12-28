@@ -12,11 +12,11 @@
         :password "b4dpassw0rd"}
  ;; Use LDAP as authentication backend
  :use-ldap false
-  ;; RuuviTag locations to show
+ ;; RuuviTag locations to show
  :ruuvitag-locations ["indoor"]
- ;; Timezone to use in date and time formatting
- ;; Special value "automatic" means that the system timezone is used
- :timezone "automatic"
+ ;; Timezone offset to use in observation storing and display
+ ;; Set to UTC if no offset is needed
+ :timezone "UTC"
  ;; Temperature correction offset in degree Celsius
  :correction {:enabled true
               :offset 6}

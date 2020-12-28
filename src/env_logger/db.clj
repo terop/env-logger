@@ -10,6 +10,8 @@
             [java-time :as t])
   (:import java.text.NumberFormat
            java.time.DateTimeException
+           (java.util Date
+                      TimeZone)
            org.postgresql.util.PSQLException))
 
 (let [db-host (get (System/getenv)
@@ -80,13 +82,23 @@
                                    (get-conf-value :yc-max-time-diff)))
       image-name)))
 
+(defn get-tz-offset
+  "Returns the offset in hours to UTC for the given timezone."
+  [tz]
+  (/ (/ (/ (.getOffset (TimeZone/getTimeZone tz)
+                       (.getTime (new Date))) 1000) 60) 60))
+
 (defn insert-plain-observation
   "Insert a row into observations table."
   [db-con observation]
   (:id (first (j/insert! db-con
                          :observations
-                         {:recorded (t/sql-timestamp (t/zoned-date-time
-                                                      (:timestamp observation)))
+                         {:recorded (t/sql-timestamp
+                                     (t/minus (t/zoned-date-time
+                                               (:timestamp observation))
+                                              (t/hours (get-tz-offset
+                                                        (get-conf-value
+                                                         :timezone)))))
                           :temperature (- (:inside_temp
                                            observation)
                                           (:offset observation))
@@ -110,7 +122,12 @@
   (:id (first (j/insert! db-con
                          :weather_data
                          {:obs_id obs-id
-                          :time (t/local-date-time (:date weather-data))
+                          :time (t/sql-timestamp
+                                 (t/minus (t/local-date-time
+                                           (:date weather-data))
+                                          (t/hours (get-tz-offset
+                                                    (get-conf-value
+                                                     :timezone)))))
                           :temperature (:temperature weather-data)
                           :cloudiness (:cloudiness weather-data)}))))
 
@@ -128,9 +145,13 @@
                              (if (:timestamp observation)
                                (assoc values
                                       :recorded
-                                      (t/sql-timestamp (t/zoned-date-time
-                                                        (:timestamp
-                                                         observation))))
+                                      (t/sql-timestamp
+                                       (t/minus (t/zoned-date-time
+                                                 (:timestamp
+                                                  observation))
+                                                (t/hours (get-tz-offset
+                                                          (get-conf-value
+                                                           :timezone))))))
                                values)))))
     (catch PSQLException pe
       (log/error "RuuviTag observation insert failed:"
@@ -246,7 +267,11 @@
                         (merge %
                                {:recorded (t/format
                                            (t/formatter :iso-local-date-time)
-                                           (t/local-date-time (:recorded %)))
+                                           (t/plus (t/local-date-time
+                                                    (:recorded %))
+                                                   (t/hours (get-tz-offset
+                                                             (get-conf-value
+                                                              :timezone)))))
                                 :name (get beacon-names
                                            (:mac_address %)
                                            (:mac_address %))
@@ -302,7 +327,10 @@
            {:row-fn #(merge %
                             {:time (t/format
                                     (t/formatter :iso-local-date-time)
-                                    (t/local-date-time (:time %)))
+                                    (t/plus (t/local-date-time (:time %))
+                                            (t/hours (get-tz-offset
+                                                      (get-conf-value
+                                                       :timezone)))))
                              :temp_delta (when (and (:fmi_temperature %)
                                                     (:o_temperature %))
                                            (Float/parseFloat
