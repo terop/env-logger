@@ -99,7 +99,7 @@
                         (zero? (count (get json-resp "TotalCloudCover"))))))
       {:date (t/sql-timestamp (t/zoned-date-time
                                (str (.toInstant
-                                     (new java.util.Date
+                                     (new Date
                                           (get json-resp
                                                "latestObservationTime"))))))
        :temperature ((last (get json-resp "t2m")) 1)

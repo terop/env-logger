@@ -18,8 +18,8 @@
  ;; Set to UTC if no offset is needed
  :timezone "UTC"
  ;; Temperature correction offset in degree Celsius
- :correction {:enabled true
-              :offset 6}
+ :correction {:enabled false
+              :offset 0}
  ;; How many days to initially show in the plot
  :initial-show-days 2
  ;; Yubico OTP parameters

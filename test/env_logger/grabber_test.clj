@@ -6,7 +6,8 @@
             [java-time :as t]
             [cheshire.core :refer [generate-string]]
             [env-logger.grabber :refer :all])
-  (:import java.time.ZonedDateTime))
+  (:import java.time.ZonedDateTime
+           java.util.Date))
 
 (deftest test-parse-xml
   (testing "XML parser tests"
@@ -240,7 +241,9 @@
                                          [1539212400000 11.0]]
                                   "TotalCloudCover" [[1539208800000 0]
                                                      [1539212400000 2]]})})}
-      (is (= {:date #inst "2018-10-16T16:50:00.000000000-00:00"
+      (is (= {:date (t/sql-timestamp (t/zoned-date-time
+                                      (str (.toInstant (new Date
+                                                            1539719400000)))))
               :temperature 11.0
               :cloudiness 2}
              (-get-fmi-weather-data-json 87874))))))
@@ -259,7 +262,9 @@
                                          [1539212400000 11.0]]
                                   "TotalCloudCover" [[1539208800000 0]
                                                      [1539212400000 2]]})})}
-      (is (= {:date #inst "2018-10-16T16:50:00.000000000-00:00"
+      (is (= {:date (t/sql-timestamp (t/zoned-date-time
+                                      (str (.toInstant (new Date
+                                                            1539719400000)))))
               :temperature 11.0
               :cloudiness 2}
              (get-fmi-weather-data 87874)))
