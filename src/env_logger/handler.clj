@@ -136,16 +136,16 @@
   "Checks whether the yardcam image has the right format and is not too old.
   Returns true when the image name is valid and false otherwise."
   [image-name]
-  (let [pattern #"^yc-(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+[\d:]+).+$"]
-    (boolean (and image-name
-                  (re-find pattern image-name)
-                  (<= (t/as (t/interval (t/zoned-date-time
-                                           (t/formatter :iso-offset-date-time)
-                                           (nth (re-matches pattern image-name)
-                                                1))
-                                          (t/zoned-date-time))
-                             :minutes)
-                      (get-conf-value :yc-max-time-diff))))))
+  (boolean (and image-name
+                (re-find db/yc-image-pattern image-name)
+                (<= (t/as (t/interval (t/zoned-date-time
+                                       (t/formatter :iso-offset-date-time)
+                                       (nth (re-find db/yc-image-pattern
+                                                     image-name)
+                                            1))
+                                      (t/zoned-date-time))
+                          :minutes)
+                    (get-conf-value :yc-max-time-diff)))))
 
 (defn get-plot-page-data
   "Returns data needed for rendering the plot page."

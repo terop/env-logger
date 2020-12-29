@@ -6,8 +6,8 @@
   (testing "Basic configuration value reading"
     (is (nil? (get-conf-value :foo :use-sample true)))
     (is (true? (get-conf-value :in-production :use-sample true)))
-    (is (= 6 (get-conf-value :correction :k :offset :use-sample true)))
-    (is (true? (get-conf-value :correction :k :enabled :use-sample true)))))
+    (is (zero? (get-conf-value :correction :k :offset :use-sample true)))
+    (is (false? (get-conf-value :correction :k :enabled :use-sample true)))))
 
 (deftest read-database-conf-value
   (testing "Database configuration value reading"

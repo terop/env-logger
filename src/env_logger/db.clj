@@ -36,6 +36,9 @@
                  :user db-user
                  :password db-password}))
 
+(def yc-image-pattern
+  #"yc-(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:?\+\d{2}(:?:\d{2})?|Z)).+")
+
 (defn test-db-connection
   "Tests the connection to the DB."
   [db-con]
@@ -54,11 +57,10 @@
   and false otherwise. Also return true if
   (yardcam datetime - reference datetime) < 0."
   [yc-image ref-dt diff-minutes]
-  (let [yc-image-pattern #"yc-(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+\d{2}:\d{2}).+"
-        match (re-find yc-image-pattern
+  (let [match (re-find yc-image-pattern
                        yc-image)
         yc-dt (t/zoned-date-time (t/formatter :iso-offset-date-time)
-                                  (nth match 1))]
+                                 (nth match 1))]
     (try
       (<= (t/as (t/interval yc-dt ref-dt) :minutes)
           diff-minutes)
@@ -69,8 +71,7 @@
 (defn get-yc-image
   "Returns the name of the latest yardcam image."
   [db-con]
-  (let [yc-image-pattern #"yc-(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+\d{2}:\d{2}).+"
-        image-name (:image_name (first (j/query db-con
+  (let [image-name (:image_name (first (j/query db-con
                                                 (sql/format
                                                  (sql/build
                                                   :select [:image_name]
@@ -211,8 +212,8 @@
   Mode is either start or end."
   [date mode]
   (t/local-date-time (format "%sT%s" date (if (= mode "start")
-                                             "00:00:00"
-                                             "23:59:59"))))
+                                            "00:00:00"
+                                            "23:59:59"))))
 
 (defmacro get-by-interval
   "Fetches observations in an interval using the provided function."
@@ -300,7 +301,7 @@
   (get-observations db-con
                     :where [:>= :recorded
                             (t/minus (t/local-date-time)
-                                      (t/days n))]))
+                                     (t/days n))]))
 
 (defn get-obs-interval
   "Fetches observations in an interval between the provided dates."
