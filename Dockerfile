@@ -1,6 +1,10 @@
-FROM openjdk:11-jre-slim
+FROM ardoq/leiningen:jdk11-2.9.4 as builder
 LABEL maintainer="tero.paloheimo@iki.fi"
+WORKDIR /usr/home/app
+ADD . /usr/home/app
+RUN lein uberjar
 
-ADD target/uberjar/env-logger-0.2.11-SNAPSHOT-standalone.jar /usr/src/logger.jar
+FROM gcr.io/distroless/java-debian10:11
+COPY --from=builder /usr/home/app/target/uberjar/env-logger*-standalone.jar logger.jar
 EXPOSE 8080
-CMD ["java", "-jar", "/usr/src/logger.jar"]
+CMD ["logger.jar"]

@@ -24,7 +24,7 @@
   :main ^:skip-aot env-logger.handler
   :aot [env-logger.handler
         clojure.tools.logging.impl]
-  :target-path "target/%s"
+  :target-path "target/%s/"
   :profiles
   {:dev {:dependencies [[clj-http-fake "1.0.3"]]
          :resource-paths ["resources"]
