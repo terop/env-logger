@@ -69,7 +69,7 @@ take_image() {
 
     image_filename="yc-$(date -Iminutes).jpg"
     echo "Taking image and saving it to file ${image_filename}"
-    fswebcam -d "${camera_device}" --log file:fswebcam.log -r 1280x720 -S 4 ${font_arg} \
+    fswebcam -d "${camera_device}" --log file:fswebcam.log -r 1280x720 -S 5 ${font_arg} \
              --jpeg 95 --timestamp "%d-%m-%Y %H:%M (%Z)" --top-banner --save ${image_filename}
     if [ $? -ne 0 ]; then
         echo "fswebcam command failed with rc $?"
