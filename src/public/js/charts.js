@@ -266,8 +266,7 @@ if (JSON.parse(document.getElementById('plotData').innerText).length === 0) {
                 label: labelValues[dataMode][key],
                 borderColor: colors[index],
                 data: dataSets[dataMode][key],
-                // Hide inside temperature by default because the data is bad
-                hidden: key !== 'temperature' ? false : true,
+                hidden: false,
                 fill: false,
                 pointRadius: 1,
                 borderWidth: 1
