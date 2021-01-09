@@ -69,8 +69,8 @@
 (deftest insert-observations
   (testing "Full observation insert"
     (let [observation {:timestamp current-dt-zoned
-                       :inside_light 0
-                       :inside_temp 20
+                       :insideLight 0
+                       :insideTemperature 20
                        :beacons [{:rssi -68
                                   :mac "7C:EC:79:3F:BE:97"}]}
           weather-data {:date (str current-dt)
@@ -78,11 +78,11 @@
                         :cloudiness 2}]
       (is (true? (insert-observation test-postgres
                                      (merge observation
-                                            {:outside_temp 5
+                                            {:outsideTemperature 5
                                              :weather-data weather-data}))))
       (is (true? (insert-observation test-postgres
                                      (merge observation
-                                            {:outside_temp nil
+                                            {:outsideTemperature nil
                                              :weather-data nil}))))
       (is (false? (insert-observation test-postgres {})))
       (with-redefs [insert-wd (fn [_ _ _] -1)]
@@ -90,7 +90,7 @@
                                         "SELECT COUNT(id) FROM observations"))]
           (is (false? (insert-observation test-postgres
                                           (merge observation
-                                                 {:outside_temp 5
+                                                 {:outsideTemperature 5
                                                   :weather-data
                                                   weather-data}))))
           (is (= obs-count
@@ -99,7 +99,7 @@
       (with-redefs [insert-beacons (fn [_ _ _] '(-1))]
         (is (false? (insert-observation test-postgres
                                         (merge observation
-                                               {:outside_temp nil
+                                               {:outsideTemperature nil
                                                 :weather-data nil})))))
       (with-redefs [insert-plain-observation
                     (fn [_ _ _ _] (throw (PSQLException.
@@ -109,7 +109,7 @@
 (deftest n-days-observations
   (testing "Selecting observations from N days"
     (is (= {:brightness 0
-            :temperature 14.0
+            :temperature 20.0
             :cloudiness 2
             :fmi_temperature 20.0
             :o_temperature 5.0
@@ -340,9 +340,9 @@
   (testing "Insert of a row into the observations table"
     (is (pos? (insert-plain-observation test-postgres
                                         {:timestamp current-dt-zoned
-                                         :inside_light 0
-                                         :inside_temp 20
-                                         :outside_temp 5
+                                         :insideLight 0
+                                         :insideTemperature 20
+                                         :outsideTemperature 5
                                          :offset 6
                                          :image-name (get-yc-image-name)})))))
 

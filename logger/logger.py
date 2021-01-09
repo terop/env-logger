@@ -18,6 +18,7 @@ from time import sleep
 
 import pytz
 import requests
+import serial
 
 
 def get_timestamp(timezone):
@@ -25,13 +26,30 @@ def get_timestamp(timezone):
     return datetime.now(pytz.timezone(timezone)).isoformat()
 
 
-def get_env_data(arduino_url):
-    """Fetches the environment data from the Arduino. Returns the parsed
-    JSON object or an empty dictionary on failure."""
-    resp = requests.get(arduino_url)
+def get_env_data(env_settings):
+    """Fetches the environment data from the Arduino and Wio Terminal.
+    Returns the parsed JSON object or an empty dictionary on failure."""
+    # Read Arduino
+    resp = requests.get(env_settings['arduino_url'])
     if not resp.ok:
+        logging.error('Cannot read Arduino data')
         return {}
-    return resp.json()
+
+    data = resp.json()
+
+    # Read Wio Terminal
+    try:
+        with serial.Serial(env_settings['terminal_serial'], 115200, timeout=10) as ser:
+            terminal_data = json.loads(ser.readline())
+    except serial.serialutil.SerialException as exc:
+        logging.error('Cannot read Wio Terminal serial: %s', exc)
+        return {}
+
+    final_data = {'insideTemperature': terminal_data['temperature'],
+                  'outsideTemperature': data['outsideTemperature'],
+                  'insideLight': terminal_data['light']}
+
+    return final_data
 
 
 def scan_ruuvitags(config, device):
@@ -193,13 +211,13 @@ def main():
             sys.exit(1)
 
     if args.dummy:
-        env_data = {'inside_light': 10,
-                    'inside_temp': 20,
-                    'outside_temp': 5,
+        env_data = {'insideLight': 10,
+                    'insideTemperature': 20,
+                    'outsideTemperature': 5,
                     'beacons': []}
     else:
         env_config = config['environment']
-        env_data = get_env_data(env_config['arduino_url'])
+        env_data = get_env_data(env_config)
 
         env_data['beacons'] = get_ble_beacons(env_config, ble_device)
         # Possible retry if first scan fails

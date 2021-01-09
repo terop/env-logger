@@ -1,6 +1,13 @@
 #include <SPI.h>
 #include <Ethernet.h>
 
+#include <ArduinoJson.h>
+
+/*
+ * Required libraries:
+ * ArduinoJson
+ */
+
 // Input pins
 const int photoresistorPin = A1;
 
@@ -31,9 +38,21 @@ const double ROOM_TEMP = 298.15;   // room temperature in Kelvin
    down here. Again, needed for conversion equations. */
 const double RESISTOR_ROOM_TEMP = 10000.0;
 
+// Reads the sensors and returns them in a JSON object
+DynamicJsonDocument readSensors()
+{
+  DynamicJsonDocument doc(96);
+
+  doc["insideTemperature"] = readThermistor(A3, 9750.0, 3950.0);
+  doc["insideLight"] = analogRead(photoresistorPin);
+  doc["outsideTemperature"] = readThermistor(A2, 9800.0, 3380.0);
+
+  return doc;
+}
+
 void setup() {
   // Open serial communications and wait for port to open:
-  // Serial.begin(9600);
+  Serial.begin(9600);
 
   // start the Ethernet connection and the server:
   Ethernet.begin(mac, ip);
@@ -41,11 +60,13 @@ void setup() {
 }
 
 void loop() {
-  // listen for incoming clients
+  // Listen for incoming clients
   EthernetClient client = server.available();
+
   if (client) {
     // An HTTP request ends with a blank line
     boolean currentLineIsBlank = true;
+
     while (client.connected()) {
       if (client.available()) {
         char c = client.read();
@@ -53,18 +74,17 @@ void loop() {
         // character) and the line is blank, the http request has ended,
         // so you can send a reply
         if (c == '\n' && currentLineIsBlank) {
-          // send a standard http response header
+          DynamicJsonDocument doc = readSensors();
+
+          // Send a standard http response header
           client.println("HTTP/1.1 200 OK");
           client.println("Content-Type: application/json");
           client.println("Connection: close");
+          client.print("Content-Length: ");
+          client.println(measureJsonPretty(doc));
           client.println();
-          client.print("{\"inside_temp\":");
-          client.print(readThermistor(A3, 9750.0, 3950.0));
-          client.print(", \"inside_light\":");
-          client.print(analogRead(photoresistorPin));
-          client.print(", \"outside_temp\":");
-          client.print(readThermistor(A2, 9800.0, 3380.0));
-          client.println("}");
+
+          serializeJson(doc, client);
           break;
         }
         if (c == '\n') {
@@ -79,7 +99,7 @@ void loop() {
     }
     // Give the web browser time to receive the data
     delay(1);
-    // Close the connection:
+    // Close the connection
     client.stop();
   }
 }

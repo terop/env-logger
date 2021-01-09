@@ -99,12 +99,13 @@
                                               (t/hours (get-tz-offset
                                                         (get-conf-value
                                                          :timezone)))))
-                          :temperature (- (:inside_temp
+                          :temperature (- (:insideTemperature
                                            observation)
                                           (:offset observation))
-                          :brightness (:inside_light observation)
+                          :brightness (:insideLight observation)
                           :yc_image_name (:image-name observation)
-                          :outside_temperature (:outside_temp observation)}))))
+                          :outside_temperature (:outsideTemperature
+                                                observation)}))))
 
 (defn insert-beacons
   "Insert one or more beacons into the beacons table."
