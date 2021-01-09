@@ -45,8 +45,8 @@ def get_env_data(env_settings):
         logging.error('Cannot read Wio Terminal serial: %s', exc)
         return {}
 
-    final_data = {'insideTemperature': terminal_data['temperature'],
-                  'outsideTemperature': data['outsideTemperature'],
+    final_data = {'insideTemperature': round(terminal_data['temperature'], 2),
+                  'outsideTemperature': round(data['outsideTemperature'], 2),
                   'insideLight': terminal_data['light']}
 
     return final_data
