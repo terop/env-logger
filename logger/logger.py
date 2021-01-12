@@ -35,18 +35,22 @@ def get_env_data(env_settings):
         logging.error('Cannot read Arduino data')
         return {}
 
-    data = resp.json()
+    arduino_data = resp.json()
 
     # Read Wio Terminal
     try:
         with serial.Serial(env_settings['terminal_serial'], 115200, timeout=10) as ser:
-            terminal_data = json.loads(ser.readline())
+            raw_data = ser.readline()
+            if raw_data.decode() == '':
+                logging.error('Got no serial data from Wio Terminal')
+                return {}
+            terminal_data = json.loads(raw_data)
     except serial.serialutil.SerialException as exc:
         logging.error('Cannot read Wio Terminal serial: %s', exc)
         return {}
 
     final_data = {'insideTemperature': round(terminal_data['temperature'], 2),
-                  'outsideTemperature': round(data['outsideTemperature'], 2),
+                  'outsideTemperature': round(arduino_data['outsideTemperature'], 2),
                   'insideLight': terminal_data['light']}
 
     return final_data
@@ -180,7 +184,7 @@ def store_to_db(timezone, config, data, auth_code):
 
 def main():
     """Module main function."""
-    logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
+    logging.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s', level=logging.INFO)
 
     parser = argparse.ArgumentParser(description='Scans environment data and sends it '
                                      'to the env-logger backend. A configuration file '
