@@ -396,36 +396,20 @@
                 :pressure 1024.0
                 :humidity 30.0
                 :battery_voltage 2.805})
-    (is (= '({:rt_balcony {:temperature 15.0,
-                           :humidity 30.0}})
-           (get-ruuvitag-obs test-postgres
-                             (t/minus (t/local-date-time) (t/minutes 5))
-                             (t/local-date-time)
-                             ["balcony"])))
+    (is (= '{:location "balcony"
+             :temperature 15.0
+             :humidity 30.0}
+           (dissoc (first (get-ruuvitag-obs test-postgres
+                                            (t/minus (t/local-date-time)
+                                                     (t/minutes 5))
+                                            (t/local-date-time)
+                                            ["balcony"]))
+                   :recorded)))
     (is (= 2 (count (get-ruuvitag-obs test-postgres
                                       (t/minus (t/local-date-time)
                                                (t/minutes 5))
                                       (t/local-date-time)
                                       ["indoor"]))))))
-
-(deftest combine-db-and-ruuvitag-obs-test
-  (testing "DB and RuuviTag observation combining"
-    (is (= '({:brightness 0
-              :temperature 14.0
-              :cloudiness 2
-              :fmi_temperature 20.0
-              :o_temperature 5.0
-              :pressure 1006.5
-              :rt_temperature 22.0
-              :rt_humidity 45.0})
-           (combine-db-and-ruuvitag-obs '({:brightness 0
-                                           :temperature 14.0
-                                           :cloudiness 2
-                                           :fmi_temperature 20.0
-                                           :o_temperature 5.0
-                                           :pressure 1006.5})
-                                        '({:rt_temperature 22.0
-                                           :rt_humidity 45.0}))))))
 
 (deftest get-tz-offset-test
   (testing "Timezone offset calcutation"

@@ -6,7 +6,7 @@ const colors = [
 
 var labelValues = {'weather': {},
                    'other': {}},
-    plotData = [],
+    chartData = [],
     dataLabels = [],
     dataSets = {'weather': [],
                 'other': []},
@@ -54,8 +54,64 @@ var restoreDatasetState = function () {
     }
 };
 
+// Parse RuuviTag observations
+// rtObservations - observations as JSON
+// rtLabels - RuuviTag labels
+// observationCount - number of non-RuuviTag observations
+var parseRTData = function (rtObservations, rtLabels, observationCount) {
+    const labelCount = rtLabels.length,
+          timeDiffThreshold = 10;
+    var location = null,
+        dateRef = null,
+        obsByDate = {};
+
+    for (const label of rtLabels) {
+        dataSets['other'][`rt_${label}_temperature`] = [];
+        dataSets['other'][`rt_${label}_humidity`] = [];
+    }
+
+    for (var i = 0; i < rtObservations.length; i++) {
+        const obs = rtObservations[i];
+
+        if (!dateRef)
+            dateRef = obs['recorded'];
+
+        location = obs['location'];
+
+        const diff = luxon.DateTime.fromISO(dateRef).diff(luxon.DateTime.fromISO(
+            obs['recorded']), 'seconds');
+
+        if (Math.abs(diff.toObject()['seconds']) > timeDiffThreshold) {
+            dateRef = obs['recorded'];
+        }
+
+        if (obsByDate[dateRef] === undefined)
+            obsByDate[dateRef] = {};
+
+        if (obsByDate[dateRef] !== undefined) {
+            if (obsByDate[dateRef][location] === undefined)
+                obsByDate[dateRef][location] = {};
+
+            obsByDate[dateRef][location]['temperature'] = obs['temperature'];
+            obsByDate[dateRef][location]['humidity'] = obs['humidity'];
+        }
+    }
+
+    for (const key of Object.keys(obsByDate)) {
+        for (const label of rtLabels) {
+            if (obsByDate[key][label] !== undefined) {
+                dataSets['other'][`rt_${label}_temperature`].push(obsByDate[key][label]['temperature']);
+                dataSets['other'][`rt_${label}_humidity`].push(obsByDate[key][label]['humidity']);
+            } else {
+                dataSets['other'][`rt_${label}_temperature`].push(null);
+                dataSets['other'][`rt_${label}_humidity`].push(null);
+            }
+        }
+    }
+};
+
 // Parses an observation.
-// observation - JSON input
+// observation - observation as JSON
 var parseData = function (observation) {
     const weatherFields = ['o_temperature', 'fmi_temperature', 'temp_delta',
                            'cloudiness'],
@@ -71,20 +127,6 @@ var parseData = function (observation) {
                     dataSets[dataMode][key].push(observation[key]);
                 else
                     dataSets[dataMode][key] = [observation[key]];
-            }
-            if (dataMode === 'other' && key.indexOf('rt') !== -1) {
-                const tag = key.slice(3),
-                      temp_key = `rt_${tag}_temperature`,
-                      humidity_key = `rt_${tag}_humidity`;
-                if (dataSets[dataMode][temp_key] !== undefined)
-                    dataSets[dataMode][temp_key].push(observation[key]['temperature']);
-                else
-                    dataSets[dataMode][temp_key] = [observation[key]['temperature']];
-
-                if (dataSets[dataMode][humidity_key] !== undefined)
-                    dataSets[dataMode][humidity_key].push(observation[key]['humidity']);
-                else
-                    dataSets[dataMode][humidity_key] = [observation[key]['humidity']];
             }
         }
     };
@@ -104,8 +146,7 @@ var parseData = function (observation) {
 
         yardcamImageNames.push(observation['yc_image_name']);
     } else {
-        const date = observation['time'] ? observation['time'] : observation['recorded'];
-        dataLabels.push(new Date(date));
+        dataLabels.push(new Date(observation['time']));
 
         processFields('weather', observation, weatherFields);
     }
@@ -113,19 +154,12 @@ var parseData = function (observation) {
 };
 
 
-var getRTLabels = function(observations) {
-    var labels = null;
+var getRTLabels = function(rtNames) {
+    var labels = {};
 
-    for (var i = 0; i < observations.length; i++) {
-        for (const key in observations[i]) {
-            if (key.indexOf('rt') !== -1) {
-                const tag = key.slice(3);
-                labels = {};
-                labels[`rt_${tag}_temperature`] = `RT "${tag}" temperature`;
-                labels[`rt_${tag}_humidity`] = `RT "${tag}" humidity`;
-                break;
-            }
-        }
+    for (const name of rtNames) {
+        labels[`rt_${name}_temperature`] = `RT "${name}" temperature`;
+        labels[`rt_${name}_humidity`] = `RT "${name}" humidity`;
     }
 
     return labels;
@@ -134,12 +168,9 @@ var getRTLabels = function(observations) {
 // Transform data to Chart.js compatible format. Returns the data series labels.
 // jsonData - JSON input data
 var transformData = function (jsonData) {
-    var observations = JSON.parse(jsonData),
-        labels = null;
+    const observations = JSON.parse(jsonData),
+          rtObservations = JSON.parse(document.getElementById('rtData').innerText);
     observationCount = observations.length;
-
-    // Get labels for RuuviTag data
-    const rtLabels = getRTLabels(observations.slice(0, 5));
 
     observations.map(function (element) {
         parseData(element);
@@ -147,6 +178,14 @@ var transformData = function (jsonData) {
 
     // Data labels
     if (mode === 'all') {
+        // Hack because of JSON unparsing problem in the backend
+        const rtNames = JSON.parse(rtNamesRaw.replaceAll('&quot;', '"'));
+
+        // Get labels for RuuviTag data
+        const rtLabels = getRTLabels(rtNames);
+
+        parseRTData(rtObservations, rtNames, observations.length);
+
         labelValues['other'] = {'temperature': 'Inside temperature',
                                 'brightness': 'Brightness',
                                 'rssi': beaconName !== '' ? 'Beacon "' + beaconName + '" RSSI' : 'Beacon RSSI'};
@@ -165,7 +204,7 @@ var transformData = function (jsonData) {
     return labelValues;
 };
 
-if (JSON.parse(document.getElementById('plotData').innerText).length === 0) {
+if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
     document.getElementById('noDataError').style.display = 'block';
     document.getElementById('weatherDiv').style.display = 'none';
     document.getElementById('weatherCheckboxDiv').style.display = 'none';
@@ -175,7 +214,7 @@ if (JSON.parse(document.getElementById('plotData').innerText).length === 0) {
         document.getElementById('otherCheckboxDiv').style.display = 'none';
     }
 } else {
-    labelValues = transformData(document.getElementById('plotData').innerText);
+    labelValues = transformData(document.getElementById('chartData').innerText);
 
     // Show last observation with FMI data for quick viewing
     var showLastObservation = function () {

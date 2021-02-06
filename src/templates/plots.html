@@ -105,7 +105,8 @@
         <div class="left-margin display-none alert alert-danger" id="noDataError" role="alert">
             No observations found!
         </div>
-        <span id="plotData" class="display-none">{{ data }}</span>
+        <span id="chartData" class="display-none">{{ data }}</span>
+        <span id="rtData" class="display-none">{{ rt-data }}</span>
 
         {% if logged-in? %}
             <div class="left-margin" id="weatherCheckboxDiv">
@@ -160,9 +161,10 @@
         <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@0.7.7/dist/chartjs-plugin-zoom.min.js"
                 integrity="sha256-6S7w9Wue7EBvlJh/Li/cPecjTNN+yBm/AoCePQA9Xi8=" crossorigin="anonymous"></script>
         <script>
-            var mode = '{% if logged-in? %}all{% else %}weather{% endif %}',
-                ycImageBasepath = '{{ yc-image-basepath }}',
-                tbImageBasepath = '{{ tb-image-basepath }}';
+            const mode = '{% if logged-in? %}all{% else %}weather{% endif %}',
+                  ycImageBasepath = '{{ yc-image-basepath }}',
+                  tbImageBasepath = '{{ tb-image-basepath }}',
+                  rtNamesRaw = '{% if logged-in? %}{{ rt-names }}{% else %}null{% endif %}';
         </script>
         <script src="js/charts.js"></script>
     </body>

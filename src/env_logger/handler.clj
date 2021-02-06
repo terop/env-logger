@@ -99,39 +99,6 @@
 (def auth-backend (session-backend
                    {:unauthorized-handler unauthorized-handler}))
 
-(defn data-custom-dates
-  "Gets data for a custom date range."
-  [logged-in? start-date end-date]
-  (generate-string
-   (if logged-in?
-     (db/combine-db-and-ruuvitag-obs (db/get-obs-interval db/postgres
-                                                          {:start start-date
-                                                           :end end-date})
-                                     (db/get-ruuvitag-obs
-                                      db/postgres
-                                      (db/make-local-dt start-date "start")
-                                      (db/make-local-dt end-date "end")
-                                      (get-conf-value :ruuvitag-locations)))
-     (db/get-weather-obs-interval db/postgres
-                                  {:start start-date
-                                   :end end-date}))))
-
-(defn data-default-dates
-  "Gets data for the default date range."
-  [logged-in? initial-days]
-  (generate-string
-   (if logged-in?
-     (db/combine-db-and-ruuvitag-obs (db/get-obs-days db/postgres
-                                                      initial-days)
-                                     (db/get-ruuvitag-obs
-                                      db/postgres
-                                      (t/minus (t/local-date-time)
-                                                (t/days initial-days))
-                                      (t/local-date-time)
-                                      (get-conf-value :ruuvitag-locations)))
-     (db/get-weather-obs-days db/postgres
-                              initial-days))))
-
 (defn yc-image-validity-check
   "Checks whether the yardcam image has the right format and is not too old.
   Returns true when the image name is valid and false otherwise."
@@ -162,16 +129,42 @@
                        :yc-image-basepath (get-conf-value
                                            :yc-image-basepath)
                        :tb-image-basepath (get-conf-value
-                                           :tb-image-basepath)}]
+                                           :tb-image-basepath)
+                       :rt-names (generate-string
+                                  (get-conf-value :ruuvitag-locations))}]
     (merge common-values
            (if (or start-date end-date)
-             {:data (data-custom-dates logged-in?
-                                       start-date
-                                       end-date)
+             {:data (generate-string
+                     (if logged-in?
+                       (db/get-obs-interval db/postgres
+                                            {:start start-date
+                                             :end end-date})
+                       (db/get-weather-obs-interval db/postgres
+                                                    {:start start-date
+                                                     :end end-date})))
+              :rt-data (generate-string
+                        (when logged-in?
+                          (db/get-ruuvitag-obs
+                           db/postgres
+                           (db/make-local-dt start-date "start")
+                           (db/make-local-dt end-date "end")
+                           (get-conf-value :ruuvitag-locations))))
               :start-date start-date
               :end-date end-date}
-             {:data (data-default-dates logged-in?
+             {:data (generate-string
+                     (if logged-in?
+                       (db/get-obs-days db/postgres
                                         initial-days)
+                       (db/get-weather-obs-days db/postgres
+                                                initial-days)))
+              :rt-data (generate-string
+                        (when logged-in?
+                          (db/get-ruuvitag-obs
+                           db/postgres
+                           (t/minus (t/local-date-time)
+                                    (t/days initial-days))
+                           (t/local-date-time)
+                           (get-conf-value :ruuvitag-locations))))
               :start-date (t/format (t/formatter :iso-local-date)
                                     (t/minus (t/local-date (t/formatter
                                                             :iso-local-date)

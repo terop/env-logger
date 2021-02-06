@@ -385,7 +385,8 @@
   [db-con start end locations]
   (try
     (let [nf (NumberFormat/getInstance)
-          query (sql/format (sql/build :select [:location
+          query (sql/format (sql/build :select [:recorded
+                                                :location
                                                 :temperature
                                                 :humidity]
                                        :from :ruuvitag_observations
@@ -397,23 +398,22 @@
       (.applyPattern nf "0.0#")
       (j/query db-con query
                {:row-fn (fn [obs]
-                          {(keyword (str "rt_" (:location obs)))
-                           {:temperature (Float/parseFloat
-                                          (. nf format (:temperature obs)))
-                            :humidity (Float/parseFloat
-                                       (. nf format (:humidity obs)))}})}))
+                          {:location (:location obs)
+                           :recorded (t/format
+                                      (t/formatter :iso-local-date-time)
+                                      (t/plus (t/local-date-time
+                                               (:recorded obs))
+                                              (t/hours (get-tz-offset
+                                                        (get-conf-value
+                                                         :timezone)))))
+                           :temperature (Float/parseFloat
+                                         (. nf format (:temperature obs)))
+                           :humidity (Float/parseFloat
+                                      (. nf format (:humidity obs)))})}))
     (catch PSQLException pe
       (log/error "RuuviTag observation fetching failed:"
                  (.getMessage pe))
       {})))
-
-(defn combine-db-and-ruuvitag-obs
-  "Combines each DB and RuuviTag observations into map and returns all
-  observations as a list."
-  [db-obs rt-obs]
-  (for [i (range (min (count db-obs) (count rt-obs)))]
-    (merge (nth db-obs i)
-           (nth rt-obs i))))
 
 (defn insert-yc-image-name
   "Stores the name of the latest yardcam image. Rows from the table are
