@@ -164,7 +164,8 @@
             const mode = '{% if logged-in? %}all{% else %}weather{% endif %}',
                   ycImageBasepath = '{{ yc-image-basepath }}',
                   tbImageBasepath = '{{ tb-image-basepath }}',
-                  rtNamesRaw = '{% if logged-in? %}{{ rt-names }}{% else %}null{% endif %}';
+                  rtNamesRaw = '{% if logged-in? %}{{ rt-names }}{% else %}null{% endif %}',
+                  rtHideHumidity = '{{ rt-hide-humidity }}';
         </script>
         <script src="js/charts.js"></script>
     </body>

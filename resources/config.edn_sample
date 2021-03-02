@@ -44,4 +44,6 @@
  ;; Authentication code for observation and image storage
  :auth-code "somebadvalue"
  ;; Maximum time difference for yardcam images in minutes
- :yc-max-time-diff 15}
+ :yc-max-time-diff 15
+ ;; Hide RuuviTag humidity data series by default
+ :hide-ruuvitag-humidity true}
