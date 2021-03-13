@@ -2,7 +2,7 @@
   :description "A simple data logger"
   :url "https://github.com/terop/env-logger"
   :license {:name "MIT"}
-  :dependencies [[org.clojure/clojure "1.10.2"]
+  :dependencies [[org.clojure/clojure "1.10.3"]
                  [org.immutant/web "2.1.10"]
                  [compojure "1.6.2"]
                  [ring "1.9.1"]
