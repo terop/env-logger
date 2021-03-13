@@ -1,9 +1,9 @@
 
 build: update # build container
-	docker build -t env-logger .
+	podman build -t env-logger .
 
 clean:
 	lein clean
 
 update: # update runtime base image
-	docker pull gcr.io/distroless/java-debian10:11
+	podman pull gcr.io/distroless/java-debian10:11
