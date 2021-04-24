@@ -412,9 +412,9 @@
                                       ["indoor"]))))))
 
 (deftest get-tz-offset-test
-  (testing "Timezone offset calcutation"
+  (testing "Timezone offset calculation"
     (let [in-daylight? (.inDaylightTime (TimeZone/getTimeZone
-                                         (get-conf-value :timezone))
+                                         "Europe/Helsinki")
                                         (new Date))]
       (is (= (if in-daylight? 3 2) (get-tz-offset "Europe/Helsinki")))
       (is (zero? (get-tz-offset "UTC"))))))
