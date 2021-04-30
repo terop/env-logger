@@ -22,7 +22,7 @@
                               get-fmi-weather-data
                               weather-query-ok?]]
              [user :as u]]
-            [immutant.web :as web]
+            [ring.adapter.jetty :refer [run-jetty]]
             [ring.middleware.defaults :refer :all]
             [ring.middleware.reload :refer [wrap-reload]]
             [ring.util.response :as resp]
@@ -256,8 +256,7 @@
 (defn -main
   "Starts the web server."
   []
-  (let [ip (get (System/getenv) "APP_IP" "0.0.0.0")
-        port (Integer/parseInt (get (System/getenv)
+  (let [port (Integer/parseInt (get (System/getenv)
                                     "APP_PORT" "8080"))
         production? (get-conf-value :in-production)
         defaults-config (if production?
@@ -274,8 +273,8 @@
                   (wrap-authorization $ auth-backend)
                   (wrap-authentication $ auth-backend)
                   (wrap-defaults $ defaults-config))
-        opts {:host ip :port port}]
-    (web/run (if production?
-               handler
-               (wrap-reload handler))
-      opts)))
+        opts {:port port}]
+    (run-jetty (if production?
+                 handler
+                 (wrap-reload handler))
+               opts)))

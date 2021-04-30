@@ -3,7 +3,6 @@
   :url "https://github.com/terop/env-logger"
   :license {:name "MIT"}
   :dependencies [[org.clojure/clojure "1.10.3"]
-                 [org.immutant/web "2.1.10"]
                  [compojure "1.6.2"]
                  [ring "1.9.3"]
                  [ring/ring-defaults "0.3.2"]
