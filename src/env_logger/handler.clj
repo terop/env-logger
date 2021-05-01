@@ -5,8 +5,11 @@
              [auth :refer [authenticated?]]
              [hashers :as h]]
             [buddy.auth.backends.session :refer [session-backend]]
+            [buddy.auth.backends.token :refer [jwe-backend]]
             [buddy.auth.middleware :refer [wrap-authentication
                                            wrap-authorization]]
+            [buddy.core.nonce :as nonce]
+            [buddy.sign.jwt :as jwt]
             [cheshire.core :refer [generate-string parse-string]]
             [java-time :as t]
             [clojure set
@@ -25,9 +28,11 @@
             [ring.adapter.jetty :refer [run-jetty]]
             [ring.middleware.defaults :refer :all]
             [ring.middleware.reload :refer [wrap-reload]]
+            [ring.middleware.json :refer [wrap-json-params wrap-json-response]]
             [ring.util.response :as resp]
             [selmer.parser :refer [render-file]])
-  (:import com.yubico.client.v2.YubicoClient))
+  (:import java.time.Instant
+           com.yubico.client.v2.YubicoClient))
 
 (defn otp-value-valid?
   "Checks whether the provided Yubico OTP value is valid. Returns true
@@ -96,8 +101,48 @@
                             :headers {"Content-Type" "text/plain"}
                             :body "Internal Server Error"})
 
+(def jwe-secret (nonce/random-bytes 32))
+
+(def jwe-auth-backend (jwe-backend {:secret jwe-secret
+                                    :options {:alg :a256kw :enc :a128gcm}}))
+
 (def auth-backend (session-backend
                    {:unauthorized-handler unauthorized-handler}))
+
+(defn token-login
+  "Login method for getting an token for data access."
+  [request]
+  (let [auth-data (get-conf-value :data-user-auth-data)
+        username (get-in request [:params :username])
+        password (get-in request [:params :password])
+        valid? (and (and username
+                         (= username (:username auth-data)))
+                    (and password
+                         (h/check password (:password auth-data))))]
+    (if valid?
+      (let [claims {:user (keyword username)
+                    :exp (. (. (. Instant now) plusSeconds
+                               (get-conf-value :jwt-token-timeout))
+                            getEpochSecond)}
+            token (jwt/encrypt claims jwe-secret {:alg :a256kw :enc :a128gcm})]
+        (generate-string token))
+      response-unauthorized)))
+
+(defn get-last-obs-data
+  "Get data for observation with a non-null FMI temperature value."
+  [request]
+  (if-not (authenticated? request)
+    response-unauthorized
+    {:status 200
+     :body {:data (first (filter #(not (nil? (:fmi_temperature %)))
+                                 (reverse (db/get-obs-days db/postgres 1))))
+            :rt-data (take (count (get-conf-value :ruuvitag-locations))
+                           (reverse (db/get-ruuvitag-obs
+                                     db/postgres
+                                     (t/minus (t/local-date-time)
+                                              (t/minutes 45))
+                                     (t/local-date-time)
+                                     (get-conf-value :ruuvitag-locations))))}}))
 
 (defn yc-image-validity-check
   "Checks whether the yardcam image has the right format and is not too old.
@@ -204,6 +249,8 @@
   (GET "/logout" request
        (assoc (resp/redirect (str (get-conf-value :url-path) "/"))
               :session {}))
+  (POST "/token-login" [] token-login)
+  (GET "/get-last-obs" [] get-last-obs-data)
   ;; Observation storing
   (POST "/observations" request
         (if-not (check-auth-code (:code (:params request)))
@@ -271,8 +318,10 @@
                                     [:security :anti-forgery] false))
         handler (as-> routes $
                   (wrap-authorization $ auth-backend)
-                  (wrap-authentication $ auth-backend)
-                  (wrap-defaults $ defaults-config))
+                  (wrap-authentication $ jwe-auth-backend auth-backend)
+                  (wrap-defaults $ defaults-config)
+                  (wrap-json-response $ {:pretty false})
+                  (wrap-json-params $ {:keywords? true}))
         opts {:port port}]
     (run-jetty (if production?
                  handler

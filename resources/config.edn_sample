@@ -46,4 +46,11 @@
  ;; Maximum time difference for yardcam images in minutes
  :yc-max-time-diff 15
  ;; Hide RuuviTag humidity data series by default
- :hide-ruuvitag-humidity true}
+ :hide-ruuvitag-humidity true
+ ;; JWT token timeout in seconds
+ :jwt-token-timeout 7200
+ ;; Data read user data
+ ;; Password hash is created with the following command from buddy-hashers:
+ ;; (derive "<password>" {:alg :bcrypt+blake2b-512})
+ :data-user-auth-data {:username "data-reader"
+                       :password ""}}
