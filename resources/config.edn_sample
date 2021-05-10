@@ -45,8 +45,8 @@
  :auth-code "somebadvalue"
  ;; Maximum time difference for yardcam images in minutes
  :yc-max-time-diff 15
- ;; Hide RuuviTag humidity data series by default
- :hide-ruuvitag-humidity true
+  ;; Hide RuuviTag data series by default
+ :hide-ruuvitag-data true
  ;; JWT token timeout in seconds
  :jwt-token-timeout 7200
  ;; Data read user data

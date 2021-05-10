@@ -331,8 +331,8 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
                 label: labelValues[dataMode][key],
                 borderColor: colors[index],
                 data: dataSets[dataMode][key],
-                hidden: (rtHideHumidity === 'true' &&
-                         labelValues[dataMode][key].indexOf('humidity') !== -1) ?
+                hidden: (dataMode === 'other' && hideRt === 'true' &&
+                         labelValues[dataMode][key].indexOf('RT ') !== -1) ?
                     true : false,
                 fill: false,
                 pointRadius: 1,

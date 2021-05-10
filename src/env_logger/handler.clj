@@ -177,9 +177,8 @@
                                            :tb-image-basepath)
                        :rt-names (generate-string
                                   (get-conf-value :ruuvitag-locations))
-                       :rt-hide-humidity (generate-string
-                                          (get-conf-value
-                                           :hide-ruuvitag-humidity))}]
+                       :hide-rt (generate-string (get-conf-value
+                                                  :hide-ruuvitag-data))}]
     (merge common-values
            (if (or start-date end-date)
              {:data (generate-string
