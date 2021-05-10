@@ -234,14 +234,13 @@
 
 (deftest weather-days-observations
   (testing "Selecting weather observations from N days"
-    (let [obs (first (get-weather-obs-days test-postgres 1))]
-      (is (= {:time (first (s/split (str current-dt) #"\."))
-              :cloudiness 2
-              :fmi_temperature 20.0
-              :o_temperature 5.0
-              :tb_image_name nil
-              :temp_delta -15.0}
-             (assoc obs :time (first (s/split (:time obs) #"\."))))))))
+    (is (= {:cloudiness 2
+            :fmi_temperature 20.0
+            :o_temperature 5.0
+            :tb_image_name nil
+            :temp_delta -15.0}
+           (dissoc (first (get-weather-obs-days test-postgres 1))
+                   :time)))))
 
 (deftest weather-observation-select
   (testing "Selecting weather observations with an arbitrary WHERE clause"

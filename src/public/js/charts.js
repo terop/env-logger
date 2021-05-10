@@ -20,10 +20,30 @@ var formatDate = function (date) {
     return luxon.DateTime.fromJSDate(date).toFormat('dd.MM.yyyy HH:mm:ss');
 };
 
+// Check "zoom enabled" from session storage
+var checkZoomState = function () {
+    if (sessionStorage.getItem('zoomEnabled')) {
+        zoomEnabled = JSON.parse(sessionStorage.getItem('zoomEnabled'));
+        sessionStorage.removeItem('zoomEnabled');
+    } else {
+        zoomEnabled = false;
+    }
+    if (zoomEnabled) {
+        document.getElementById('weatherResetZoom').classList.remove('display-none');
+        document.getElementById('imageButtonDiv').classList.add('display-none');
+        if (mode === 'all')
+            document.getElementById('otherResetZoom').classList.remove('display-none');
+    } else {
+        document.getElementById('weatherResetZoom').classList.add('display-none');
+        if (mode === 'all')
+            document.getElementById('otherResetZoom').classList.add('display-none');
+    }
+};
+
 // Persist state of chart data sets
 var persistDatasetState = function () {
     var hidden = {'weather': {},
-                 'other': {}};
+                  'other': {}};
 
     for (var i = 0; i < weatherChart.data.datasets.length; i++)
         hidden['weather'][i.toString()] = !!weatherChart.getDatasetMeta(i).hidden;
@@ -78,8 +98,8 @@ var parseRTData = function (rtObservations, rtLabels, observationCount) {
 
         location = obs['location'];
 
-        const diff = luxon.DateTime.fromISO(dateRef).diff(luxon.DateTime.fromISO(
-            obs['recorded']), 'seconds');
+        const diff = luxon.DateTime.fromMillis(dateRef).diff(
+            luxon.DateTime.fromMillis(obs['recorded']), 'seconds');
 
         if (Math.abs(diff.toObject()['seconds']) > timeDiffThreshold) {
             dateRef = obs['recorded'];
@@ -219,7 +239,8 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
     // Show last observation with FMI data for quick viewing
     var showLastObservation = function () {
         var lastObservationIndex = observationCount - 1,
-            observationText = 'Date: ' + formatDate(dataLabels[lastObservationIndex]) + ', ';
+            observationText = 'Date: ' + formatDate(dataLabels[lastObservationIndex]) + ', ',
+            itemsAdded = 0;
 
         for (var i = lastObservationIndex; i > 0; i--) {
             if (dataSets['weather']['fmi_temperature'][i] !== null) {
@@ -231,12 +252,15 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
         for (const key in labelValues['weather']) {
             observationText += labelValues['weather'][key] + ': ' +
                 dataSets['weather'][key][lastObservationIndex] + ', ';
+            itemsAdded++;
         }
         if (mode === 'all') {
-            observationText += '<br>';
             for (const key in labelValues['other']) {
+                if ((itemsAdded % 5) === 0)
+                    observationText += '<br>';
                 observationText += labelValues['other'][key] + ': ' +
                     dataSets['other'][key][lastObservationIndex] + ', ';
+                itemsAdded++;
             }
         }
 
@@ -284,6 +308,8 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
         }
     };
 
+    checkZoomState();
+
     var generateDataConfig = function(dataMode) {
         var config = {
             labels: dataLabels,
@@ -318,39 +344,43 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
         return config;
     };
     const scaleOptions = {
-        xAxes: [{
+        x: {
             type: 'time',
-            distribution: 'linear',
+            min: dataLabels[0],
+            max: dataLabels[dataLabels.length - 1],
             time: {
                 unit: 'hour',
-                tooltipFormat: 'D.M.YYYY HH:mm:ss',
+                tooltipFormat: 'd.L.yyyy HH:mm:ss',
                 displayFormats: {
                     hour: 'HH',
                     minute: 'HH:mm'
                 }
             },
-            scaleLabel: {
+            title: {
                 display: true,
-                labelString: 'Time'
+                text: 'Time'
             }
-        }],
-        yAxes: [{
-            scaleLabel: {
+        },
+        y: {
+            title: {
                 display: true,
-                labelString: 'Value'
+                text: 'Value'
             },
             ticks: {
                 beginAtZero: true
             }
-        }]
+        }
     },
-          tooltipOptions = {
+          interactionOptions = {
               mode: 'index'
           },
           plugins = {
+              title: {
+                  display: true
+              },
               zoom: {
                   zoom: {
-                      enabled: true,
+                      enabled: zoomEnabled,
                       drag: true,
                       mode: 'x'
                   }
@@ -363,43 +393,40 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
               document.getElementById('showImages').checked = true;
               document.getElementById('imageDiv').classList.remove('display-none');
 
-              showTestbedImage(elements[0]._index);
+              showTestbedImage(elements[0].index);
               if (mode === 'all')
-                  showYardcamImage(elements[0]._index);
+                  showYardcamImage(elements[0].index);
           };
 
-    Chart.defaults.global.animation.duration = 400;
+    Chart.defaults.animation.duration = 400;
 
-    var weatherCtx = document.getElementById('weatherChart').getContext('2d');
-    var weatherChart = new Chart(weatherCtx, {
+    plugins.title.text = 'Weather observations';
+    var weatherChart = new Chart(document.getElementById('weatherChart').getContext('2d'), {
         type: 'line',
         data: generateDataConfig('weather'),
         options: {
-            title: {
-                text: 'Weather observations',
-                display: true
-            },
             scales: scaleOptions,
-            tooltips: tooltipOptions,
+            interaction: interactionOptions,
             plugins: plugins,
-            onClick: onClickFunction
+            onClick: !zoomEnabled ? onClickFunction : null,
+            spanGaps: true,
+            normalized: true
         }
     });
 
     if (mode === 'all') {
-        var otherCtx = document.getElementById('otherChart').getContext('2d');
-        var otherChart = new Chart(otherCtx, {
+        plugins.title.text = 'Other observations';
+        var otherChart = new Chart(document.getElementById('otherChart').getContext('2d'), {
             type: 'line',
             data: generateDataConfig('other'),
             options: {
-                title: {
-                    text: 'Other observations',
-                    display: true
-                },
                 scales: scaleOptions,
-                tooltips: tooltipOptions,
+                interaction: interactionOptions,
                 plugins: plugins,
-                onClick: onClickFunction
+                onClick: !zoomEnabled ? onClickFunction : null,
+                spanGaps: true,
+                showLine: false,
+                normalized: true
             }
         });
         document.getElementById('otherResetZoom').addEventListener(
@@ -431,6 +458,11 @@ var validateDates = function (event) {
         return;
     }
     persistDatasetState();
+};
+
+var handleZoomButtonClick = function(event) {
+    sessionStorage.zoomEnabled = JSON.stringify(event.target.checked);
+    document.location.reload();
 };
 
 document.getElementById('updateBtn').addEventListener('click',
@@ -473,10 +505,14 @@ document.getElementById('weatherHideAll')
 
 if (mode === 'all')
     document.getElementById('otherHideAll')
-        .addEventListener('click',
-                          function () {
-                              for (var i = 0; i < otherChart.data.datasets.length; i++)
-                                  otherChart.getDatasetMeta(i).hidden = true;
-                              otherChart.update();
-                          },
-                          false);
+    .addEventListener('click',
+                      function () {
+                          for (var i = 0; i < otherChart.data.datasets.length; i++)
+                              otherChart.getDatasetMeta(i).hidden = true;
+                          otherChart.update();
+                      },
+                      false);
+
+document.getElementById('enableZoom').addEventListener('click',
+                                                       handleZoomButtonClick,
+                                                       false);
