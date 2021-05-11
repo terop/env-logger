@@ -420,9 +420,10 @@
 
 (deftest convert-to-epoch-ms-test
   (testing "Unix epoch time calculation"
-    (is (= 1620723600000
-           (convert-to-epoch-ms (t/to-sql-timestamp
-                                 (t/local-date-time 2021 5 11 12 0)))))
-    (is (= 1609582380000
-           (convert-to-epoch-ms (t/to-sql-timestamp
-                                 (t/local-date-time 2021 1 2 13 13)))))))
+    (with-redefs [get-conf-value (fn [_] "UTC")]
+      (is (= 1620734400000
+             (convert-to-epoch-ms (t/to-sql-timestamp
+                                   (t/local-date-time 2021 5 11 12 0)))))
+      (is (= 1609593180000
+             (convert-to-epoch-ms (t/to-sql-timestamp
+                                   (t/local-date-time 2021 1 2 13 13))))))))
