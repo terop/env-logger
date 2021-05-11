@@ -214,13 +214,13 @@ def main():
             logging.error('Could not parse configuration file: %s', err)
             sys.exit(1)
 
+    env_config = config['environment']
     if args.dummy:
         env_data = {'insideLight': 10,
                     'insideTemperature': 20,
                     'outsideTemperature': 5,
                     'beacons': []}
     else:
-        env_config = config['environment']
         env_data = get_env_data(env_config)
 
         env_data['beacons'] = get_ble_beacons(env_config, ble_device)
