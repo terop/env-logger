@@ -417,3 +417,12 @@
                                         (new Date))]
       (is (= (if in-daylight? 3 2) (get-tz-offset "Europe/Helsinki")))
       (is (zero? (get-tz-offset "UTC"))))))
+
+(deftest convert-to-epoch-ms-test
+  (testing "Unix epoch time calculation"
+    (is (= 1620723600000
+           (convert-to-epoch-ms (t/to-sql-timestamp
+                                 (t/local-date-time 2021 5 11 12 0)))))
+    (is (= 1609582380000
+           (convert-to-epoch-ms (t/to-sql-timestamp
+                                 (t/local-date-time 2021 1 2 13 13)))))))
