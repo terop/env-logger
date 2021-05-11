@@ -1,12 +1,12 @@
 #!/bin/sh
 
-# This a script for restoring the local env-logger database from a backup snapshot.
+# This a script for restoring a local database from a backup snapshot.
 
 set -e
 
 if [ $# -ne 2 ]; then
     cat <<EOF
-This a script for restoring the local env-logger database from a backup snapshot.
+This a script for restoring a local database from a backup snapshot.
 
 Usage: $0 <DB name> <DB snapshot name>
 Example: $0 env_logger db_snapshot.sql
