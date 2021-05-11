@@ -100,7 +100,7 @@
                                                (:timestamp observation))
                                               (t/hours (get-tz-offset
                                                         (get-conf-value
-                                                         :timezone)))))
+                                                         :store-timezone)))))
                           :temperature (- (:insideTemperature
                                            observation)
                                           (:offset observation))
@@ -130,7 +130,7 @@
                                            (:date weather-data))
                                           (t/hours (get-tz-offset
                                                     (get-conf-value
-                                                     :timezone)))))
+                                                     :store-timezone)))))
                           :temperature (:temperature weather-data)
                           :cloudiness (:cloudiness weather-data)}))))
 
@@ -154,7 +154,7 @@
                                                   observation))
                                                 (t/hours (get-tz-offset
                                                           (get-conf-value
-                                                           :timezone))))))
+                                                           :store-timezone))))))
                                values)))))
     (catch PSQLException pe
       (log/error "RuuviTag observation insert failed:"
@@ -264,7 +264,7 @@
                                  :order-by [[:o.id :desc]])
                       (sql/build where-query :order-by [[:o.id :asc]]))
         beacon-names (get-conf-value :beacon-name)
-        tz-offset (get-tz-offset (get-conf-value :timezone))]
+        tz-offset (get-tz-offset (get-conf-value :display-timezone))]
     (j/query db-con
              (sql/format limit-query)
              {:row-fn #(dissoc
@@ -315,7 +315,7 @@
 (defn get-weather-observations
   "Fetches weather observations filtered by the provided SQL WHERE clause."
   [db-con & {:keys [where]}]
-  (let [tz-offset (get-tz-offset (get-conf-value :timezone))]
+  (let [tz-offset (get-tz-offset (get-conf-value :display-timezone))]
     (j/query db-con
              (sql/format (sql/build :select [:w.time
                                              [:w.temperature "fmi_temperature"]
@@ -397,7 +397,7 @@
                                                [:>= :recorded start]
                                                [:<= :recorded end]]
                                        :order-by [[:id :asc]]))
-          tz-offset (get-tz-offset (get-conf-value :timezone))]
+          tz-offset (get-tz-offset (get-conf-value :display-timezone))]
       (.applyPattern nf "0.0#")
       (j/query db-con query
                {:row-fn (fn [obs]

@@ -14,9 +14,12 @@
  :use-ldap false
  ;; RuuviTag locations to show
  :ruuvitag-locations ["indoor"]
- ;; Timezone offset to use in observation storing and display
+ ;; Timezone offset to use in observation storing
  ;; Set to UTC if no offset is needed
- :timezone "UTC"
+ :store-timezone "UTC"
+ ;; Timezone offset to use in observation display
+ ;; Set to UTC if no offset is needed
+ :display-timezone "UTC"
  ;; Temperature correction offset in degree Celsius
  :correction {:enabled false
               :offset 0}
@@ -45,7 +48,7 @@
  :auth-code "somebadvalue"
  ;; Maximum time difference for yardcam images in minutes
  :yc-max-time-diff 15
-  ;; Hide RuuviTag data series by default
+ ;; Hide RuuviTag data series by default
  :hide-ruuvitag-data true
  ;; JWT token timeout in seconds
  :jwt-token-timeout 7200
