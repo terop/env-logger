@@ -20,26 +20,6 @@ var formatDate = function (date) {
     return luxon.DateTime.fromJSDate(date).toFormat('dd.MM.yyyy HH:mm:ss');
 };
 
-// Check "zoom enabled" from session storage
-var checkZoomState = function () {
-    if (sessionStorage.getItem('zoomEnabled')) {
-        zoomEnabled = JSON.parse(sessionStorage.getItem('zoomEnabled'));
-        sessionStorage.removeItem('zoomEnabled');
-    } else {
-        zoomEnabled = false;
-    }
-    if (zoomEnabled) {
-        document.getElementById('weatherResetZoom').classList.remove('display-none');
-        document.getElementById('imageButtonDiv').classList.add('display-none');
-        if (mode === 'all')
-            document.getElementById('otherResetZoom').classList.remove('display-none');
-    } else {
-        document.getElementById('weatherResetZoom').classList.add('display-none');
-        if (mode === 'all')
-            document.getElementById('otherResetZoom').classList.add('display-none');
-    }
-};
-
 // Persist state of chart data sets
 var persistDatasetState = function () {
     var hidden = {'weather': {},
@@ -308,8 +288,6 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
         }
     };
 
-    checkZoomState();
-
     var generateDataConfig = function(dataMode) {
         var config = {
             labels: dataLabels,
@@ -380,7 +358,7 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
               },
               zoom: {
                   zoom: {
-                      enabled: zoomEnabled,
+                      enabled: false,
                       drag: true,
                       mode: 'x'
                   }
@@ -408,7 +386,7 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
             scales: scaleOptions,
             interaction: interactionOptions,
             plugins: plugins,
-            onClick: !zoomEnabled ? onClickFunction : null,
+            onClick: onClickFunction,
             spanGaps: true,
             normalized: true
         }
@@ -423,7 +401,7 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
                 scales: scaleOptions,
                 interaction: interactionOptions,
                 plugins: plugins,
-                onClick: !zoomEnabled ? onClickFunction : null,
+                onClick: onClickFunction,
                 spanGaps: true,
                 showLine: false,
                 normalized: true
@@ -461,8 +439,25 @@ var validateDates = function (event) {
 };
 
 var handleZoomButtonClick = function(event) {
-    sessionStorage.zoomEnabled = JSON.stringify(event.target.checked);
-    document.location.reload();
+    const zoomEnabled = event.target.checked;
+
+    weatherChart.options.plugins.zoom.zoom.enabled = zoomEnabled;
+    weatherChart.update();
+    if (mode === 'all') {
+        otherChart.options.plugins.zoom.zoom.enabled = zoomEnabled;
+        otherChart.update();
+    }
+
+    if (zoomEnabled) {
+        document.getElementById('weatherResetZoom').classList.remove('display-none');
+        document.getElementById('imageButtonDiv').classList.add('display-none');
+        if (mode === 'all')
+            document.getElementById('otherResetZoom').classList.remove('display-none');
+    } else {
+        document.getElementById('weatherResetZoom').classList.add('display-none');
+        if (mode === 'all')
+            document.getElementById('otherResetZoom').classList.add('display-none');
+    }
 };
 
 document.getElementById('updateBtn').addEventListener('click',
