@@ -92,11 +92,10 @@
 
 (defn convert-to-epoch-ms
   "Converts the given datetime value to Unix epoch time in milliseconds."
-  [dt]
+  [tz-offset dt]
   (* (.toEpochSecond
       (t/minus (t/local-date-time dt)
-               (t/hours (get-tz-offset
-                         (get-conf-value :display-timezone))))
+               (t/hours tz-offset))
       (ZoneOffset/UTC))
      1000))
 
@@ -273,12 +272,14 @@
                       (sql/build where-query :limit limit
                                  :order-by [[:o.id :desc]])
                       (sql/build where-query :order-by [[:o.id :asc]]))
-        beacon-names (get-conf-value :beacon-name)]
+        beacon-names (get-conf-value :beacon-name)
+        tz-offset (get-tz-offset (get-conf-value :display-timezone))]
     (j/query db-con
              (sql/format limit-query)
              {:row-fn #(dissoc
                         (merge %
-                               {:recorded (convert-to-epoch-ms (:recorded %))
+                               {:recorded (convert-to-epoch-ms tz-offset
+                                                               (:recorded %))
                                 :name (get beacon-names
                                            (:mac_address %)
                                            (:mac_address %))
@@ -319,27 +320,28 @@
 (defn get-weather-observations
   "Fetches weather observations filtered by the provided SQL WHERE clause."
   [db-con & {:keys [where]}]
-  (j/query db-con
-           (sql/format (sql/build :select [:w.time
-                                           [:w.temperature "fmi_temperature"]
-                                           :w.cloudiness
-                                           [:o.outside_temperature
-                                            "o_temperature"]
-                                           :o.tb_image_name]
-                                  :from [[:weather-data :w]]
-                                  :join [[:observations :o]
-                                         [:= :w.obs_id :o.id]]
-                                  :where where
-                                  :order-by [[:w.id :asc]]))
-           {:row-fn #(merge %
-                            {:time (convert-to-epoch-ms (:time %))
-                             :temp_delta (when (and (:fmi_temperature %)
-                                                    (:o_temperature %))
-                                           (Float/parseFloat
-                                            (format "%.2f"
-                                                    (- (:o_temperature %)
-                                                       (:fmi_temperature
-                                                        %)))))})}))
+  (let [tz-offset (get-tz-offset (get-conf-value :display-timezone))]
+    (j/query db-con
+             (sql/format (sql/build :select [:w.time
+                                             [:w.temperature "fmi_temperature"]
+                                             :w.cloudiness
+                                             [:o.outside_temperature
+                                              "o_temperature"]
+                                             :o.tb_image_name]
+                                    :from [[:weather-data :w]]
+                                    :join [[:observations :o]
+                                           [:= :w.obs_id :o.id]]
+                                    :where where
+                                    :order-by [[:w.id :asc]]))
+             {:row-fn #(merge %
+                              {:time (convert-to-epoch-ms tz-offset (:time %))
+                               :temp_delta (when (and (:fmi_temperature %)
+                                                      (:o_temperature %))
+                                             (Float/parseFloat
+                                              (format "%.2f"
+                                                      (- (:o_temperature %)
+                                                         (:fmi_temperature
+                                                          %)))))})})))
 
 (defn get-weather-obs-days
   "Fetches the weather observations from the last N days."
@@ -393,12 +395,14 @@
                                                [:in :location locations]
                                                [:>= :recorded start]
                                                [:<= :recorded end]]
-                                       :order-by [[:id :asc]]))]
+                                       :order-by [[:id :asc]]))
+          tz-offset (get-tz-offset (get-conf-value :display-timezone))]
       (.applyPattern nf "0.0#")
       (j/query db-con query
                {:row-fn (fn [obs]
                           {:location (:location obs)
-                           :recorded (convert-to-epoch-ms (:recorded obs))
+                           :recorded (convert-to-epoch-ms tz-offset
+                                                          (:recorded obs))
                            :temperature (Float/parseFloat
                                          (. nf format (:temperature obs)))
                            :humidity (Float/parseFloat

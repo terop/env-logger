@@ -420,10 +420,13 @@
 
 (deftest convert-to-epoch-ms-test
   (testing "Unix epoch time calculation"
-    (with-redefs [get-conf-value (fn [_] "UTC")]
+    (let [tz-offset (get-tz-offset (get-conf-value :display-timezone
+                                                   :use-sample true))]
       (is (= 1620734400000
-             (convert-to-epoch-ms (t/to-sql-timestamp
+             (convert-to-epoch-ms tz-offset
+                                  (t/to-sql-timestamp
                                    (t/local-date-time 2021 5 11 12 0)))))
       (is (= 1609593180000
-             (convert-to-epoch-ms (t/to-sql-timestamp
+             (convert-to-epoch-ms tz-offset
+                                  (t/to-sql-timestamp
                                    (t/local-date-time 2021 1 2 13 13))))))))
