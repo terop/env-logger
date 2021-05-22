@@ -41,11 +41,11 @@
             </div>
         </nav>
 
-        {% if error %}
-            <div class="alert alert-danger text-center" role="alert">{{ error }}</div>
-        {% endif %}
-
         <main class="form-signin">
+            {% if error %}
+                <div class="alert alert-danger text-center" role="alert">{{ error }}</div>
+            {% endif %}
+
             <form method="post" action="login">
                 <h1 class="h3 mb-3 fw-normal">Please sign in</h1>
 
