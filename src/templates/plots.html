@@ -102,11 +102,6 @@
         <span id="chartData" class="display-none">{{ data }}</span>
         <span id="rtData" class="display-none">{{ rt-data }}</span>
 
-        <div class="left-margin">
-            <input type="checkbox" id="enableZoom">
-            <label for="enableZoom">Enable chart zoom</label>
-        </div>
-
         {% if logged-in? %}
             <div class="left-margin" id="weatherCheckboxDiv">
                 <input type="checkbox" id="showWeatherChart" checked>
@@ -116,7 +111,7 @@
         <div class="left-margin" id="weatherDiv">
             <canvas id="weatherChart"></canvas>
 
-            <input type="button" id="weatherResetZoom" class="btn btn-light display-none" value="Reset chart zoom" />
+            <input type="button" id="weatherResetZoom" class="btn btn-light" value="Reset chart zoom" />
             <input type="button" id="weatherHideAll" class="btn btn-danger hide-all" value="Hide all series" />
         </div>
 
@@ -128,7 +123,7 @@
             <div class="left-margin" id="otherDiv">
                 <canvas id="otherChart"></canvas>
 
-                <input type="button" id="otherResetZoom" class="btn btn-light display-none" value="Reset chart zoom" />
+                <input type="button" id="otherResetZoom" class="btn btn-light" value="Reset chart zoom" />
                 <input type="button" id="otherHideAll" class="btn btn-danger hide-all" value="Hide all series" />
             </div>
         {% endif %}
