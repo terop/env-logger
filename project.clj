@@ -14,7 +14,7 @@
                  [org.threeten/threeten-extra "1.6.0"]
                  [cheshire "5.10.0"]
                  [selmer "1.12.40"]
-                 [clj-http "3.12.1"]
+                 [clj-http "3.12.2"]
                  [org.clojure/tools.logging "1.1.0"]
                  [org.slf4j/slf4j-log4j12 "1.7.30"]
                  [com.yubico/yubico-validation-client2 "3.1.0"]
