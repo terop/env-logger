@@ -323,9 +323,7 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
     };
     const scaleOptions = {
         x: {
-            type: 'time',
-            min: dataLabels[0],
-            max: dataLabels[dataLabels.length - 1],
+            type: 'timeseries',
             time: {
                 unit: 'hour',
                 tooltipFormat: 'd.L.yyyy HH:mm:ss',
