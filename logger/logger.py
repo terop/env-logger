@@ -106,6 +106,7 @@ def scan_ruuvitags(config, device):
         return
 
     tag_found = {}
+    timestamp = get_timestamp(config['timezone'])
     for tag in tag_data:
         mac = tag['device']['address']
         if mac in tag_found:
@@ -113,7 +114,7 @@ def scan_ruuvitags(config, device):
 
         tag_found[mac] = True
 
-        data = {'timestamp': get_timestamp(config['timezone']),
+        data = {'timestamp': timestamp,
                 'location': _get_tag_location(config, mac),
                 'temperature': round(tag['sensors']['temperature'], 2),
                 'pressure': round(tag['sensors']['pressure'] / 100.0, 2),
