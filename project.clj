@@ -4,10 +4,10 @@
   :license {:name "MIT"}
   :dependencies [[org.clojure/clojure "1.10.3"]
                  [ring "1.9.3"]
-                 [ring/ring-defaults "0.3.2"]
+                 [ring/ring-defaults "0.3.3"]
                  [ring/ring-json "0.5.1"]
                  [compojure "1.6.2"]
-                 [org.postgresql/postgresql "42.2.20"]
+                 [org.postgresql/postgresql "42.2.21"]
                  [org.clojure/java.jdbc "0.7.12"]
                  [honeysql "1.0.461"]
                  [clojure.java-time "0.3.2"]
