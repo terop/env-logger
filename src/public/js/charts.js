@@ -323,7 +323,7 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
     };
     const scaleOptions = {
         x: {
-            type: 'timeseries',
+            type: 'time',
             time: {
                 unit: 'hour',
                 tooltipFormat: 'd.L.yyyy HH:mm:ss',
