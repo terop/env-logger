@@ -37,6 +37,9 @@ def get_env_data(env_settings):
 
     arduino_data = resp.json()
 
+    if env_settings['skip_terminal_reading']:
+        return arduino_data
+
     # Read Wio Terminal
     try:
         with serial.Serial(env_settings['terminal_serial'], 115200, timeout=10) as ser:
