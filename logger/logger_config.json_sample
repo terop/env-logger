@@ -14,7 +14,7 @@
         "url": "https://example.com/env-logger/rt-observations",
         "tags": [
             {
-                "tag_mac": "F3:19:DD:06:E0:7A",
+                "mac": "F3:19:DD:06:E0:7A",
                 "location": "indoor"
             }
         ]

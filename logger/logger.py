@@ -62,10 +62,10 @@ def get_env_data(env_settings):
 def scan_ruuvitags(config, device):
     """Scan RuuviTag(s) and upload data."""
 
-    def _get_tag_location(config, tag_mac):
+    def _get_tag_location(config, mac):
         """Get RuuviTag location based on tag MAC address."""
         for tag in config['ruuvitag']['tags']:
-            if tag_mac == tag['tag_mac'].lower():
+            if mac == tag['mac'].lower():
                 return tag['location']
 
         return None
@@ -129,15 +129,15 @@ def scan_ruuvitags(config, device):
         logging.error('Could not find the bluewalker binary')
         sys.exit(1)
 
-    mac_addrs = ';'.join([f'{tag["tag_mac"]},random' for tag
+    mac_addrs = ';'.join([f'{tag["mac"]},random' for tag
                           in config['ruuvitag']['tags']])
 
     scanned_tags = _run_bluewalker(mac_addrs)
     rescan_addrs = []
 
     for tag in config['ruuvitag']['tags']:
-        if tag['tag_mac'].lower() not in scanned_tags:
-            rescan_addrs.append(f'{tag["tag_mac"]},random')
+        if tag['mac'].lower() not in scanned_tags:
+            rescan_addrs.append(f'{tag["mac"]},random')
 
     if len(rescan_addrs) > 0:
         # Do a second scan for the missing tags
