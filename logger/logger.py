@@ -176,7 +176,7 @@ def get_ble_beacons(config, device):
             addresses[address] = [int(rssi)]
 
     beacons = []
-    for address in addresses:
+    for address in addresses.items():
         if address in config['beacon_mac']:
             beacons.append(OrderedDict(sorted({'mac': address,
                                                'rssi': round(mean(addresses[address]))}.items())))
