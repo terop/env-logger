@@ -125,7 +125,7 @@
                                (get-conf-value :jwt-token-timeout))
                             getEpochSecond)}
             token (jwt/encrypt claims jwe-secret {:alg :a256kw :enc :a128gcm})]
-        (generate-string token))
+        token)
       response-unauthorized)))
 
 (defn get-last-obs-data
