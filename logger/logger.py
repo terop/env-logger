@@ -164,23 +164,20 @@ def get_ble_beacons(config, device):
         return []
     output = stdout_data.decode('utf-8').strip()
 
-    addresses = {}
+    rssis = []
     split_output = output.split('\n')
     for line in split_output:
         if len(line) < 15:
             continue
         address, rssi = line.split(' ')
-        if address in addresses:
-            addresses[address].append(int(rssi))
-        else:
-            addresses[address] = [int(rssi)]
+        if address == config['beacon_mac']:
+            rssis.append(int(rssi))
 
-    beacons = []
-    for address in addresses.items():
-        if address in config['beacon_mac']:
-            beacons.append(OrderedDict(sorted({'mac': address,
-                                               'rssi': round(mean(addresses[address]))}.items())))
-    return beacons
+    if len(rssis) > 0:
+        return [{'mac': config['beacon_mac'],
+                 'rssi': round(mean(rssis))}]
+
+    return []
 
 
 def store_to_db(timezone, config, data, auth_code):

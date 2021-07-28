@@ -6,7 +6,7 @@
         "terminal_serial": "/dev/ttyACM0",
         "skip_terminal_reading": false,
         "upload_url": "https://example.com/env-logger/observations",
-        "beacon_mac": ["20:91:48:26:51:F1"],
+        "beacon_mac": "20:91:48:26:51:F1",
         "beacon_scan_time": 10,
         "beacon_scan_path": "/home/user/env-logger/logger"
     },
