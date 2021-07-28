@@ -128,21 +128,36 @@
         token)
       response-unauthorized)))
 
+(defn convert-epoch-ms-to-tring
+  "Converts an Unix epoch timestamp to a 'human readable' value."
+  [epoch-ts]
+  (t/format "d.L.Y HH:mm:ss"
+            (t/plus (t/zoned-date-time
+                     (str (Instant/ofEpochMilli epoch-ts)))
+                    (t/hours (db/get-tz-offset
+                              (get-conf-value :store-timezone))))))
+
 (defn get-last-obs-data
   "Get data for observation with a non-null FMI temperature value."
   [request]
   (if-not (authenticated? request)
     response-unauthorized
-    {:status 200
-     :body {:data (first (filter #(not (nil? (:fmi_temperature %)))
-                                 (reverse (db/get-obs-days db/postgres 1))))
-            :rt-data (take (count (get-conf-value :ruuvitag-locations))
-                           (reverse (db/get-ruuvitag-obs
-                                     db/postgres
-                                     (t/minus (t/local-date-time)
-                                              (t/minutes 45))
-                                     (t/local-date-time)
-                                     (get-conf-value :ruuvitag-locations))))}}))
+    (let [data (first (filter #(not (nil? (:fmi_temperature %)))
+                              (reverse (db/get-obs-days db/postgres 1))))
+          rt-data (take (count (get-conf-value :ruuvitag-locations))
+                        (reverse (db/get-ruuvitag-obs
+                                  db/postgres
+                                  (t/minus (t/local-date-time)
+                                           (t/minutes 45))
+                                  (t/local-date-time)
+                                  (get-conf-value :ruuvitag-locations))))]
+      {:status 200
+       :body {:data (assoc data :recorded
+                           (convert-epoch-ms-to-tring (:recorded data)))
+              :rt-data (for [item rt-data]
+                         (assoc item :recorded
+                                (convert-epoch-ms-to-tring
+                                 (:recorded item))))}})))
 
 (defn yc-image-validity-check
   "Checks whether the yardcam image has the right format and is not too old.
