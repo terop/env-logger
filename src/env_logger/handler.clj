@@ -144,13 +144,15 @@
     response-unauthorized
     (let [data (first (filter #(not (nil? (:fmi_temperature %)))
                               (reverse (db/get-obs-days db/postgres 1))))
-          rt-data (take (count (get-conf-value :ruuvitag-locations))
-                        (reverse (db/get-ruuvitag-obs
-                                  db/postgres
-                                  (t/minus (t/local-date-time)
-                                           (t/minutes 45))
-                                  (t/local-date-time)
-                                  (get-conf-value :ruuvitag-locations))))]
+          rt-data (sort-by :location
+                           (take (count (get-conf-value :ruuvitag-locations))
+                                 (reverse (db/get-ruuvitag-obs
+                                           db/postgres
+                                           (t/minus (t/local-date-time)
+                                                    (t/minutes 45))
+                                           (t/local-date-time)
+                                           (get-conf-value
+                                            :ruuvitag-locations)))))]
       {:status 200
        :body {:data (assoc data :recorded
                            (convert-epoch-ms-to-string (:recorded data)))
