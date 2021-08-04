@@ -2,6 +2,7 @@
   (:require [clojure.test :refer :all]
             [java-time :as t]
             [env-logger.config :refer [get-conf-value]]
+            [env-logger.db :as db]
             [env-logger.handler :as h]
             [env-logger.db-test :refer [get-yc-image-name]]))
 
@@ -22,3 +23,9 @@
     (is (false? (h/yc-image-validity-check
                  (get-yc-image-name (t/minutes (inc (get-conf-value
                                                      :yc-max-time-diff)))))))))
+
+(deftest convert-epoch-ms-to-string-test
+  (testing "Unix millisecond timestamp to string conversion"
+    (with-redefs [db/get-tz-offset (fn [_] 3)]
+      (is (= "4.8.2021 16:51:32"
+             (h/convert-epoch-ms-to-string 1628085092000))))))

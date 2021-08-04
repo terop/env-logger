@@ -11,7 +11,7 @@
                  [org.clojure/java.jdbc "0.7.12"]
                  [honeysql "1.0.461"]
                  [clojure.java-time "0.3.2"]
-                 [org.threeten/threeten-extra "1.6.0"]
+                 [org.threeten/threeten-extra "1.7.0"]
                  [cheshire "5.10.1"]
                  [selmer "1.12.44"]
                  [clj-http "3.12.3"]

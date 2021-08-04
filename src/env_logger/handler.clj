@@ -128,7 +128,7 @@
         token)
       response-unauthorized)))
 
-(defn convert-epoch-ms-to-tring
+(defn convert-epoch-ms-to-string
   "Converts an Unix epoch timestamp to a 'human readable' value."
   [epoch-ts]
   (t/format "d.L.Y HH:mm:ss"
@@ -153,10 +153,10 @@
                                   (get-conf-value :ruuvitag-locations))))]
       {:status 200
        :body {:data (assoc data :recorded
-                           (convert-epoch-ms-to-tring (:recorded data)))
+                           (convert-epoch-ms-to-string (:recorded data)))
               :rt-data (for [item rt-data]
                          (assoc item :recorded
-                                (convert-epoch-ms-to-tring
+                                (convert-epoch-ms-to-string
                                  (:recorded item))))}})))
 
 (defn yc-image-validity-check
