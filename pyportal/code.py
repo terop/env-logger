@@ -57,6 +57,14 @@ def fetch_token():
     return resp.text
 
 
+def clear_display(display):
+    """Clears, i.e. removes all rows, from the given display."""
+    max_row = 15
+
+    for i in range(max_row):
+        display[i].text = ''
+
+
 def main():
     """Module main function."""
     connect_to_wlan()
@@ -89,27 +97,32 @@ def main():
         else:
             rt_recorded = w_recorded
 
+        clear_display(display)
+
         display[0].text = w_recorded
-        display[2].text = f'Weather: temperature {data["data"]["fmi_temperature"]}, ' \
+        display[1].text = f'Weather: temperature {data["data"]["fmi_temperature"]}, ' \
             f'cloudiness {data["data"]["cloudiness"]}'
-        display[4].text = rt_recorded
-        display[6].text = f'Inside temperature {data["data"]["temperature"]}, '
-        display[8].text = f'Outside temperature {data["data"]["o_temperature"]}, ' \
+        display[2].text = ''
+
+        display[3].text = rt_recorded
+        display[4].text = f'Inside temperature {data["data"]["temperature"]}, '
+        display[5].text = f'Outside temperature {data["data"]["o_temperature"]}, ' \
             f'brightness {data["data"]["brightness"]}'
         if data['data']['rssi']:
-            display[10].text = f'Beacon "{data["data"]["name"]}" RSSI {data["data"]["rssi"]}'
-            row = 12
+            display[6].text = f'Beacon "{data["data"]["name"]}" RSSI {data["data"]["rssi"]}'
+            row = 7
         else:
-            row = 10
+            row = 6
 
         if data['rt-data']:
             rt_data = data['rt-data']
 
             display[row].text = ''
-            row += 2
+            row += 1
             for tag in rt_data:
                 display[row].text = f'RuuviTag \"{tag["location"]}\": temperature ' \
-                    f'{tag["temperature"]}'
+                    f'{tag["temperature"]},'
+                display[row + 1].text = f'humidity {tag["humidity"]}'
                 row += 2
 
         display.show()

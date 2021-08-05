@@ -13,9 +13,22 @@ The following files must be copied to the PyPortal Titano device for the display
 `secrets_template.py`. Copy the template and adjust necessary settings.
 * A suitable bitmap font. See PyPortal documentation on how to convert the font file.
 The font file name is set at the top of `code.py`.
-* Necessary library files in PyPortal `<root>/lib` directory. See top of `code.py`
-which libraries are required and PyPortal documentation on how to acquire and copy
-them.
+* Necessary library files in PyPortal `<root>/lib` directory. The code is tested to work with the libraries below, however some of them may
+not be needed.
+
+    * `adafruit_bitmap_font/`
+    * `adafruit_bus_device/`
+    * `adafruit_display_text/`
+    * `adafruit_esp32spi/`
+    * `adafruit_io/`
+    * `adafruit_portalbase/`
+    * `adafruit_pyportal/`
+    * `adafruit_requests.mpy`
+    * `adafruit_simple_text_display.mpy`
+    * `neopixel.mpy`
+    * `simpleio.mpy`
+
+    See the PyPortal documentation on how to acquire and copy them to the device.
 
 See the [PyPortal Titano documentation](https://learn.adafruit.com/adafruit-pyportal-titano)
 on how to do the initial setup and update of your PyPortal device.
