@@ -207,9 +207,9 @@ var transformData = function (jsonData) {
 if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
     document.getElementById('noDataError').style.display = 'block';
     document.getElementById('weatherDiv').style.display = 'none';
-    document.getElementById('weatherCheckboxDiv').style.display = 'none';
     document.getElementById('imageButtonDiv').style.display = 'none';
     if (mode === 'all') {
+        document.getElementById('weatherCheckboxDiv').style.display = 'none';
         document.getElementById('otherDiv').style.display = 'none';
         document.getElementById('otherCheckboxDiv').style.display = 'none';
     }
