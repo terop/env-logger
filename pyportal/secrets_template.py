@@ -10,5 +10,11 @@ secrets = {
         'username': 'data-reader',
         'password': 'MyPassword123'
     },
-    'backend-url': 'https://mydomain.com/env-logger'
+    'backend-url': 'https://mydomain.com/env-logger',
+    # OpenWeatherMap settings
+    'owm_api_key': 'myapikey',
+    # Latitude of the location
+    'location_lat': '12.3456',
+    # Longitude of the location
+    'location_lon': '12.3456'
 }
