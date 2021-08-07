@@ -127,12 +127,19 @@ def update_screen(display, logger_data, weather_data):
 
     if logger_data['rt-data']:
         rt_data = logger_data['rt-data']
+        seen_locations = []
 
         for tag in rt_data:
-            display[row].text = f'RuuviTag \"{tag["location"]}\": temperature ' \
+            location = tag['location']
+
+            if location in seen_locations:
+                continue
+
+            display[row].text = f'RuuviTag \"{location}\": temperature ' \
                 f'{tag["temperature"]},'
             display[row + 1].text = f'humidity {tag["humidity"]}'
             row += 2
+            seen_locations.append(location)
 
     display.show()
 
