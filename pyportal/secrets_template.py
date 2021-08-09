@@ -5,6 +5,8 @@ secrets = {
     # WLAN settings
     'ssid': 'MyWifi',
     'password': 'MyPassword',
+    # Timezone
+    'timezone': 'Etc/UTC',
     # env-logger settings
     'data-read-user': {
         'username': 'data-reader',

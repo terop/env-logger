@@ -1,14 +1,17 @@
+"""Code for showing various data on a PyPortal Titano display."""
+
 import time
+from secrets import secrets
 
 import adafruit_esp32spi.adafruit_esp32spi_socket as socket
 import adafruit_requests as requests
 import board
 import busio
+import rtc
 from adafruit_bitmap_font import bitmap_font
 from adafruit_esp32spi import adafruit_esp32spi
 from adafruit_simple_text_display import SimpleTextDisplay
 from digitalio import DigitalInOut
-from secrets import secrets
 
 # URL for the backend
 BACKEND_URL = secrets['backend-url']
@@ -17,7 +20,18 @@ FONT = bitmap_font.load_font("fonts/DejaVuSansMono-17.pcf")
 # Sleep time, in seconds, between data refreshes
 SLEEP_TIME = 90
 # Interval, in seconds, after which the next weather data update is done
-WEATHER_UPDATE_INTERVAL = 540
+WEATHER_UPDATE_INTERVAL = 500
+
+# Default backlight value
+BACKLIGHT_DEFAULT_VALUE = 0.7
+# Enable or disable backlight dimming
+BACKLIGHT_DIMMING_ENABLED = True
+# Start time (hour) of backlight dimming
+BACKLIGHT_DIMMING_START = 22
+# End time (hour) of backlight dimming
+BACKLIGHT_DIMMING_END = 7
+# Backlight value during dimming
+BACKLIGHT_DIMMING_VALUE = 0.5
 
 
 def connect_to_wlan():
@@ -85,6 +99,30 @@ def get_weather_data(api_key, latitude, longitude):
     return (data['current']['weather'][0], data['hourly'][1])
 
 
+def set_time(timezone):
+    """Get and set local time for the board."""
+    while True:
+        try:
+            with requests.get('https://worldtimeapi.org/api/timezone/' + timezone) as resp:
+                time_info = resp.json()
+                rtc.RTC().datetime = time.localtime(time_info['unixtime'] + time_info['raw_offset']
+                                                    + time_info['dst_offset'])
+                return
+        except RuntimeError as ex:
+            print(f'Error: an exception occurred in set_time: {ex}')
+            time.sleep(5)
+
+
+def adjust_backlight(display):
+    """Adjust backlight value based on the current time."""
+    current_time = time.localtime()
+    if current_time.tm_hour >= BACKLIGHT_DIMMING_START or \
+       current_time.tm_hour < BACKLIGHT_DIMMING_END:
+        display.brightness = BACKLIGHT_DIMMING_VALUE
+    else:
+        display.brightness = BACKLIGHT_DEFAULT_VALUE
+
+
 def update_screen(display, logger_data, weather_data):
     """Update screen contents."""
     w_recorded = logger_data['data']['recorded']
@@ -148,10 +186,17 @@ def main():
     """Module main function."""
     connect_to_wlan()
 
+    print('Getting current time from worldtimeapi.org')
+    set_time(secrets['timezone'])
+
     display = SimpleTextDisplay(title=' ', colors=[SimpleTextDisplay.WHITE], font=FONT)
     token = None
     weather_data = None
     last_weather_update = 0
+
+    # Dim the backlight because the default backlight is very bright
+    board.DISPLAY.auto_brightness = False
+    board.DISPLAY.brightness = BACKLIGHT_DEFAULT_VALUE
 
     while True:
         if not token:
@@ -159,6 +204,9 @@ def main():
             if not token:
                 time.sleep(5)
                 continue
+
+        if BACKLIGHT_DIMMING_ENABLED:
+            adjust_backlight(board.DISPLAY)
 
         resp = requests.get(f'{BACKEND_URL}/get-last-obs',
                             headers={'Authorization': f'Token {token}'})
