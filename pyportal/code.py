@@ -94,16 +94,16 @@ def get_weather_data(api_key, latitude, longitude):
         return ()
 
     data = resp.json()
-    # First element in the 'hourly' array is for the current hour,
+    # First element in the tuple is the data for the current hour,
     # second is for the next starting hour
-    return (data['current']['weather'][0], data['hourly'][1])
+    return (data['current'], data['hourly'][1])
 
 
 def set_time(timezone):
     """Get and set local time for the board."""
     while True:
         try:
-            with requests.get('https://worldtimeapi.org/api/timezone/' + timezone) as resp:
+            with requests.get('http://worldtimeapi.org/api/timezone/' + timezone) as resp:
                 time_info = resp.json()
                 rtc.RTC().datetime = time.localtime(time_info['unixtime'] + time_info['raw_offset']
                                                     + time_info['dst_offset'])
@@ -138,12 +138,16 @@ def update_screen(display, logger_data, weather_data):
     display[1].text = f'Weather: temperature {logger_data["data"]["fmi_temperature"]}, ' \
         f'cloudiness {logger_data["data"]["cloudiness"]}'
     if weather_data:
+        current = weather_data[0]
+        forecast = weather_data[1]
+
         display[1].text += ','
-        display[2].text = f'desc \"{weather_data[0]["description"]}\"'
-        display[3].text = f'Forecast: temperature {weather_data[1]["feels_like"]}, ' \
-            f'cloudiness {weather_data[1]["clouds"]} %,'
-        display[4].text = f'wind speed {weather_data[1]["wind_speed"]} m/s, ' \
-            f'desc \"{weather_data[1]["weather"][0]["description"]}\"'
+        display[2].text = f'wind speed {current["wind_speed"]} m/s, desc ' \
+            f'\"{current["weather"][0]["description"]}\"'
+        display[3].text = f'Forecast: temperature {forecast["feels_like"]}, ' \
+            f'cloudiness {forecast["clouds"]} %,'
+        display[4].text = f'wind speed {forecast["wind_speed"]} m/s, ' \
+            f'desc \"{forecast["weather"][0]["description"]}\"'
         row = 5
     else:
         row = 2
