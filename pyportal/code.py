@@ -3,6 +3,7 @@
 import time
 from secrets import secrets
 
+# pylint: disable=import-error
 import adafruit_esp32spi.adafruit_esp32spi_socket as socket
 import adafruit_requests as requests
 import board
@@ -54,8 +55,8 @@ def connect_to_wlan():
     while not esp.is_connected:
         try:
             esp.connect_AP(secrets['ssid'], secrets['password'])
-        except RuntimeError as re:
-            print('Could not connect to AP, retrying:', re)
+        except RuntimeError as rte:
+            print(f'Could not connect to AP, retrying: {rte}')
             continue
         print('Connected to', str(esp.ssid, 'utf-8'), '\tRSSI:', esp.rssi)
         print('My IP address is', esp.pretty_ip(esp.ip_address))
@@ -63,11 +64,16 @@ def connect_to_wlan():
 
 def fetch_token():
     """Fetch token for getting data from env-logger backend."""
-    resp = requests.post(f'{BACKEND_URL}/token-login',
-                         data={'username': secrets['data-read-user']['username'],
-                               'password': secrets['data-read-user']['password']})
-    if resp.status_code != 200:
-        print('Error: token acquisition failed')
+    try:
+        resp = requests.post(f'{BACKEND_URL}/token-login',
+                             data={'username': secrets['data-read-user']['username'],
+                                   'password': secrets['data-read-user']['password']})
+        if resp.status_code != 200:
+            print('Error: token acquisition failed')
+            return ''
+    except RuntimeError as rte:
+        print(f'Error: token fetch failed: "{rte}", reconnecting to WLAN')
+        connect_to_wlan()
         return ''
 
     return resp.text
@@ -83,14 +89,19 @@ def clear_display(display):
 
 def get_weather_data(api_key, latitude, longitude):
     """Get weather data for a location defined by the given latitude and longitude values."""
-    resp = requests.get(f'https://api.openweathermap.org/data/2.5/onecall?lat={latitude}'
-                        f'&lon={longitude}&exclude=minutely,daily,alerts&units=metric'
-                        f'&appid={api_key}')
-    if resp.status_code == 401:
-        print('Error: unauthorised request')
-        return ()
-    if resp.status_code != 200:
-        print(f'Error: got HTTP status code {resp.status_code}')
+    try:
+        resp = requests.get(f'https://api.openweathermap.org/data/2.5/onecall?lat={latitude}'
+                            f'&lon={longitude}&exclude=minutely,daily,alerts&units=metric'
+                            f'&appid={api_key}')
+        if resp.status_code == 401:
+            print('Error: unauthorised request')
+            return ()
+        if resp.status_code != 200:
+            print(f'Error: got HTTP status code {resp.status_code}')
+            return ()
+    except RuntimeError as rte:
+        print(f'Error: weather update failed: "{rte}", reconnecting to WLAN')
+        connect_to_wlan()
         return ()
 
     data = resp.json()
@@ -212,15 +223,19 @@ def main():
         if BACKLIGHT_DIMMING_ENABLED:
             adjust_backlight(board.DISPLAY)
 
-        resp = requests.get(f'{BACKEND_URL}/get-last-obs',
-                            headers={'Authorization': f'Token {token}'})
-        if resp.status_code != 200:
-            if resp.status_code == 401:
-                print('Error: request was unauthorized, getting new token')
-                token = fetch_token()
-            else:
-                print('Error: failed to get latest observation')
-            continue
+        try:
+            resp = requests.get(f'{BACKEND_URL}/get-last-obs',
+                                headers={'Authorization': f'Token {token}'})
+            if resp.status_code != 200:
+                if resp.status_code == 401:
+                    print('Error: request was unauthorized, getting new token')
+                    token = fetch_token()
+                else:
+                    print('Error: failed to get latest observation')
+                continue
+        except RuntimeError as rte:
+            print(f'Error: observation update failed: "{rte}", reconnecting to WLAN')
+            connect_to_wlan()
 
         data = resp.json()
 
