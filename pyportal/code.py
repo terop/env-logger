@@ -17,7 +17,7 @@ from digitalio import DigitalInOut
 
 # URL for the backend
 BACKEND_URL = secrets['backend-url']
-# Path to the bitmap font to use
+# Path to the bitmap font to use, must include the degree symbol (U+00B0)
 FONT = bitmap_font.load_font("fonts/DejaVuSansMono-17.pcf")
 # Sleep time, in seconds, between data refreshes
 SLEEP_TIME = 80
@@ -74,6 +74,7 @@ def fetch_token():
             return ''
     except RuntimeError as rte:
         print(f'Error: token fetch failed: "{rte}", reloading board')
+        time.sleep(5)
         supervisor.reload()
 
     return resp.text
@@ -101,6 +102,7 @@ def get_weather_data(api_key, latitude, longitude):
             return ()
     except RuntimeError as rte:
         print(f'Error: weather update failed: "{rte}", reloading board')
+        time.sleep(5)
         supervisor.reload()
 
     data = resp.json()
@@ -145,7 +147,7 @@ def update_screen(display, logger_data, weather_data):
     clear_display(display)
 
     display[0].text = w_recorded
-    display[1].text = f'Weather: temperature {logger_data["data"]["fmi_temperature"]}, ' \
+    display[1].text = f'Weather: temperature {logger_data["data"]["fmi_temperature"]} \u00b0C, ' \
         f'cloudiness {logger_data["data"]["cloudiness"]}'
     if weather_data:
         current = weather_data[0]
@@ -154,7 +156,7 @@ def update_screen(display, logger_data, weather_data):
         display[1].text += ','
         display[2].text = f'wind speed {current["wind_speed"]} m/s, desc ' \
             f'\"{current["weather"][0]["description"]}\"'
-        display[3].text = f'Forecast: temperature {forecast["feels_like"]}, ' \
+        display[3].text = f'Forecast: temperature {forecast["feels_like"]} \u00b0C, ' \
             f'cloudiness {forecast["clouds"]} %,'
         display[4].text = f'wind speed {forecast["wind_speed"]} m/s, ' \
             f'desc \"{forecast["weather"][0]["description"]}\"'
@@ -167,10 +169,10 @@ def update_screen(display, logger_data, weather_data):
 
     display[row].text = rt_recorded
     row += 1
-    display[row].text = f'Inside temperature {logger_data["data"]["temperature"]}, ' \
+    display[row].text = f'Inside temperature {logger_data["data"]["temperature"]} \u00b0C, ' \
         f'brightness {logger_data["data"]["brightness"]},'
     row += 1
-    display[row].text = f'outside temperature {logger_data["data"]["o_temperature"]}'
+    display[row].text = f'outside temperature {logger_data["data"]["o_temperature"]} \u00b0C'
     row += 1
     if logger_data['data']['rssi']:
         display[row].text = f'Beacon "{logger_data["data"]["name"]}" ' \
@@ -188,8 +190,8 @@ def update_screen(display, logger_data, weather_data):
                 continue
 
             display[row].text = f'RuuviTag \"{location}\": temperature ' \
-                f'{tag["temperature"]},'
-            display[row + 1].text = f'humidity {tag["humidity"]}'
+                f'{tag["temperature"]} \u00b0C,'
+            display[row + 1].text = f'humidity {tag["humidity"]} %H'
             row += 2
             seen_locations.append(location)
 
@@ -234,6 +236,7 @@ def main():
                 continue
         except RuntimeError as rte:
             print(f'Error: observation update failed: "{rte}", reloading board')
+            time.sleep(5)
             supervisor.reload()
 
         data = resp.json()
