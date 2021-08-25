@@ -9,6 +9,7 @@ import adafruit_requests as requests
 import board
 import busio
 import rtc
+import supervisor
 from adafruit_bitmap_font import bitmap_font
 from adafruit_esp32spi import adafruit_esp32spi
 from adafruit_simple_text_display import SimpleTextDisplay
@@ -19,7 +20,7 @@ BACKEND_URL = secrets['backend-url']
 # Path to the bitmap font to use
 FONT = bitmap_font.load_font("fonts/DejaVuSansMono-17.pcf")
 # Sleep time, in seconds, between data refreshes
-SLEEP_TIME = 90
+SLEEP_TIME = 80
 # Interval, in seconds, after which the next weather data update is done
 WEATHER_UPDATE_INTERVAL = 500
 
@@ -72,9 +73,8 @@ def fetch_token():
             print('Error: token acquisition failed')
             return ''
     except RuntimeError as rte:
-        print(f'Error: token fetch failed: "{rte}", reconnecting to WLAN')
-        connect_to_wlan()
-        return ''
+        print(f'Error: token fetch failed: "{rte}", reloading board')
+        supervisor.reload()
 
     return resp.text
 
@@ -100,9 +100,8 @@ def get_weather_data(api_key, latitude, longitude):
             print(f'Error: got HTTP status code {resp.status_code}')
             return ()
     except RuntimeError as rte:
-        print(f'Error: weather update failed: "{rte}", reconnecting to WLAN')
-        connect_to_wlan()
-        return ()
+        print(f'Error: weather update failed: "{rte}", reloading board')
+        supervisor.reload()
 
     data = resp.json()
     # First element in the tuple is the data for the current hour,
@@ -234,8 +233,8 @@ def main():
                     print('Error: failed to get latest observation')
                 continue
         except RuntimeError as rte:
-            print(f'Error: observation update failed: "{rte}", reconnecting to WLAN')
-            connect_to_wlan()
+            print(f'Error: observation update failed: "{rte}", reloading board')
+            supervisor.reload()
 
         data = resp.json()
 
