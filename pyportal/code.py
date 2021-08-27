@@ -148,14 +148,13 @@ def update_screen(display, logger_data, weather_data):
 
     display[0].text = w_recorded
     display[1].text = f'Weather: temperature {logger_data["data"]["fmi_temperature"]} \u00b0C, ' \
-        f'cloudiness {logger_data["data"]["cloudiness"]}'
+        f'cloudiness {logger_data["data"]["cloudiness"]}, '
+    display[2].text = f'wind speed {logger_data["data"]["wind_speed"]} m/s'
     if weather_data:
         current = weather_data[0]
         forecast = weather_data[1]
 
-        display[1].text += ','
-        display[2].text = f'wind speed {current["wind_speed"]} m/s, desc ' \
-            f'\"{current["weather"][0]["description"]}\"'
+        display[2].text += f', desc \"{current["weather"][0]["description"]}\"'
         display[3].text = f'Forecast: temperature {forecast["feels_like"]} \u00b0C, ' \
             f'cloudiness {forecast["clouds"]} %,'
         display[4].text = f'wind speed {forecast["wind_speed"]} m/s, ' \
