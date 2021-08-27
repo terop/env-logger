@@ -75,7 +75,8 @@
                                   :mac "7C:EC:79:3F:BE:97"}]}
           weather-data {:date (str current-dt)
                         :temperature 20
-                        :cloudiness 2}]
+                        :cloudiness 2
+                        :wind-speed 5.0}]
       (is (true? (insert-observation test-postgres
                                      (merge observation
                                             {:outsideTemperature 5
@@ -111,6 +112,7 @@
     (is (= {:brightness 0
             :temperature 20.0
             :cloudiness 2
+            :wind_speed 5.0
             :fmi_temperature 20.0
             :o_temperature 5.0
             :name "7C:EC:79:3F:BE:97"
@@ -235,6 +237,7 @@
 (deftest weather-days-observations
   (testing "Selecting weather observations from N days"
     (is (= {:cloudiness 2
+            :wind_speed 5.0
             :fmi_temperature 20.0
             :o_temperature 5.0
             :tb_image_name nil
@@ -303,7 +306,8 @@
                                  {:row-fn #(:id %)}))
           weather-data {:date (t/local-date-time)
                         :temperature 20
-                        :cloudiness 2}]
+                        :cloudiness 2
+                        :wind-speed 5.0}]
       (is (pos? (insert-wd test-postgres
                            obs-id
                            weather-data))))))

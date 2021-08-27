@@ -25,7 +25,8 @@ CREATE TABLE weather_data (
        obs_id INTEGER NOT NULL REFERENCES observations (id) ON DELETE CASCADE,
        time TIMESTAMP WITH TIME ZONE NOT NULL,
        temperature REAL NOT NULL,
-       cloudiness SMALLINT NOT NULL
+       cloudiness SMALLINT NOT NULL,
+       wind_speed REAL NOT NULL
 );
 
 -- RuuviTag beacon observation data

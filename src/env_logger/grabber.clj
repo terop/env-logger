@@ -35,8 +35,9 @@
                                        :BsWfs:ParameterValue}
                                      (:tag %))))))]
       {:date (new Timestamp (.toEpochMilli (t/instant (nth (first data) 0))))
+       :temperature (Float/parseFloat (nth (first data) 2))
        :cloudiness (int (Float/parseFloat (nth (nth data 1) 2)))
-       :temperature (Float/parseFloat (nth (first data) 2))})))
+       :wind-speed (Float/parseFloat (nth (nth data 2) 2))})))
 
 (defn calculate-start-time
   "Calculates the start time for the data request and returns it as a
@@ -59,7 +60,7 @@
   (let [url (format (str "https://opendata.fmi.fi/wfs?service=WFS&version=2.0.0"
                          "&request=getFeature&storedquery_id="
                          "fmi::observations::weather::simple&fmisid=%d&"
-                         "parameters=t2m,n_man,p_sea&starttime=%s")
+                         "parameters=t2m,n_man,ws_10min&starttime=%s")
                     station-id
                     (str (first (s/split
                                  (str (t/instant (t/with-zone
@@ -97,14 +98,16 @@
                                       (str e)))))]
     (when (and json-resp
                (not (or (zero? (count (get json-resp "t2m")))
-                        (zero? (count (get json-resp "TotalCloudCover"))))))
+                        (zero? (count (get json-resp "TotalCloudCover")))
+                        (zero? (count (get json-resp "WindSpeedMS"))))))
       {:date (t/sql-timestamp (t/zoned-date-time
                                (str (.toInstant
                                      (new Date
                                           (get json-resp
                                                "latestObservationTime"))))))
        :temperature ((last (get json-resp "t2m")) 1)
-       :cloudiness (int ((last (get json-resp "TotalCloudCover")) 1))})))
+       :cloudiness (int ((last (get json-resp "TotalCloudCover")) 1))
+       :wind-speed ((last (get json-resp "WindSpeedMS")) 1)})))
 
 (defn get-fmi-weather-data
   "Fetches the latest FMI weather data either using

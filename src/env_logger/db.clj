@@ -141,7 +141,8 @@
                                                     (get-conf-value
                                                      :store-timezone)))))
                           :temperature (:temperature weather-data)
-                          :cloudiness (:cloudiness weather-data)}))))
+                          :cloudiness (:cloudiness weather-data)
+                          :wind_speed (:wind-speed weather-data)}))))
 
 (defn insert-ruuvitag-observation
   "Insert a RuuviTag weather observation into the database."
@@ -255,6 +256,7 @@
                              :o.recorded
                              [:w.temperature "fmi_temperature"]
                              :w.cloudiness
+                             :w.wind_speed
                              :o.yc_image_name
                              [:o.outside_temperature "o_temperature"]
                              :b.mac_address
@@ -325,6 +327,7 @@
              (sql/format (sql/build :select [:w.time
                                              [:w.temperature "fmi_temperature"]
                                              :w.cloudiness
+                                             :w.wind_speed
                                              [:o.outside_temperature
                                               "o_temperature"]
                                              :o.tb_image_name]

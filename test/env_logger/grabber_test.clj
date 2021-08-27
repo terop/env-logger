@@ -24,7 +24,8 @@
   (testing "Data extraction function tests"
     (is (= {:date #inst "2017-11-13T19:10:00.000000000-00:00"
             :temperature 2.0
-            :cloudiness 8}
+            :cloudiness 8
+            :wind-speed 5.0}
            (extract-data
             [{:tag :wfs:member,
               :attrs nil,
@@ -89,9 +90,9 @@
                       :content ["60.17802 24.78732 "]}]}]}
                  {:tag :BsWfs:Time, :attrs nil,
                   :content ["2017-11-13T19:10:00Z"]}
-                 {:tag :BsWfs:ParameterName, :attrs nil, :content ["p_sea"]}
+                 {:tag :BsWfs:ParameterName, :attrs nil, :content ["ws_10min"]}
                  {:tag :BsWfs:ParameterValue, :attrs nil,
-                  :content ["1006.5"]}]}]}])))
+                  :content ["5.0"]}]}]}])))
     (is (nil? (extract-data
                [{:tag :wfs:member,
                  :attrs nil,
@@ -190,14 +191,15 @@
         </gml:Point>
       </BsWfs:Location>
       <BsWfs:Time>2017-11-13T19:10:00Z</BsWfs:Time>
-      <BsWfs:ParameterName>p_sea</BsWfs:ParameterName>
-      <BsWfs:ParameterValue>1006.5</BsWfs:ParameterValue>
+      <BsWfs:ParameterName>ws_10min</BsWfs:ParameterName>
+      <BsWfs:ParameterValue>5.0</BsWfs:ParameterValue>
     </BsWfs:BsWfsElement>
   </wfs:member>
 </wfs:FeatureCollection>"})}
       (is (= {:date #inst "2017-11-13T19:10:00.000000000-00:00"
               :temperature 2.0
-              :cloudiness 8}
+              :cloudiness 8
+              :wind-speed 5.0}
              (-get-fmi-weather-data-wfs 87874))))
     (with-fake-routes {
                        #"https://opendata.fmi.fi/wfs\?.+"
@@ -240,12 +242,15 @@
                                   "t2m" [[1539208800000 9.0]
                                          [1539212400000 11.0]]
                                   "TotalCloudCover" [[1539208800000 0]
-                                                     [1539212400000 2]]})})}
+                                                     [1539212400000 2]]
+                                  "WindSpeedMS" [[1539208800000 5]
+                                                 [1539212400000 6]]})})}
       (is (= {:date (t/sql-timestamp (t/zoned-date-time
                                       (str (.toInstant (new Date
                                                             1539719400000)))))
               :temperature 11.0
-              :cloudiness 2}
+              :cloudiness 2
+              :wind-speed 6}
              (-get-fmi-weather-data-json 87874))))))
 
 (deftest test-weather-data-extraction
@@ -261,12 +266,15 @@
                                   "t2m" [[1539208800000 9.0]
                                          [1539212400000 11.0]]
                                   "TotalCloudCover" [[1539208800000 0]
-                                                     [1539212400000 2]]})})}
+                                                     [1539212400000 2]]
+                                  "WindSpeedMS" [[1539208800000 5]
+                                                 [1539212400000 6]]})})}
       (is (= {:date (t/sql-timestamp (t/zoned-date-time
                                       (str (.toInstant (new Date
                                                             1539719400000)))))
               :temperature 11.0
-              :cloudiness 2}
+              :cloudiness 2
+              :wind-speed 6}
              (get-fmi-weather-data 87874)))
       (with-fake-routes {
                          #"https:\/\/ilmatieteenlaitos.fi\/observation-data(.+)"
@@ -322,14 +330,15 @@
         </gml:Point>
       </BsWfs:Location>
       <BsWfs:Time>2017-11-13T19:10:00Z</BsWfs:Time>
-      <BsWfs:ParameterName>p_sea</BsWfs:ParameterName>
-      <BsWfs:ParameterValue>1006.5</BsWfs:ParameterValue>
+      <BsWfs:ParameterName>ws_10min</BsWfs:ParameterName>
+      <BsWfs:ParameterValue>5.0</BsWfs:ParameterValue>
     </BsWfs:BsWfsElement>
   </wfs:member>
 </wfs:FeatureCollection>"})}
         (is (= {:date #inst "2017-11-13T19:10:00.000000000-00:00"
                 :temperature 2.0
-                :cloudiness 8}
+                :cloudiness 8
+                :wind-speed 5.0}
                (get-fmi-weather-data 87874))))
       (with-fake-routes {
                          #"https:\/\/ilmatieteenlaitos.fi\/observation-data(.+)"
