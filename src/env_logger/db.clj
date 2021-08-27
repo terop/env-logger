@@ -328,8 +328,6 @@
                                              [:w.temperature "fmi_temperature"]
                                              :w.cloudiness
                                              :w.wind_speed
-                                             [:o.outside_temperature
-                                              "o_temperature"]
                                              :o.tb_image_name]
                                     :from [[:weather-data :w]]
                                     :join [[:observations :o]
@@ -337,14 +335,8 @@
                                     :where where
                                     :order-by [[:w.id :asc]]))
              {:row-fn #(merge %
-                              {:time (convert-to-epoch-ms tz-offset (:time %))
-                               :temp_delta (when (and (:fmi_temperature %)
-                                                      (:o_temperature %))
-                                             (Float/parseFloat
-                                              (format "%.2f"
-                                                      (- (:o_temperature %)
-                                                         (:fmi_temperature
-                                                          %)))))})})))
+                              {:time (convert-to-epoch-ms tz-offset
+                                                          (:time %))})})))
 
 (defn get-weather-obs-days
   "Fetches the weather observations from the last N days."

@@ -239,9 +239,7 @@
     (is (= {:cloudiness 2
             :wind_speed 5.0
             :fmi_temperature 20.0
-            :o_temperature 5.0
-            :tb_image_name nil
-            :temp_delta -15.0}
+            :tb_image_name nil}
            (dissoc (first (get-weather-obs-days test-postgres 1))
                    :time)))))
 
