@@ -4,6 +4,7 @@ build: update # build container
 
 clean:
 	lein clean
+	rm -rf target/
 
 update: # update runtime base image
 	podman pull gcr.io/distroless/java-debian10:11

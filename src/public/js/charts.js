@@ -15,9 +15,9 @@ var labelValues = {'weather': {},
     beaconName = '',
     observationCount = 0;
 
-// Formats the given date as 'dd.mm.yyyy hh:MM:ss'
+// Formats the given date as 'dd.mm.yyyy hh:MM'
 var formatDate = function (date) {
-    return luxon.DateTime.fromJSDate(date).toFormat('dd.MM.yyyy HH:mm:ss');
+    return luxon.DateTime.fromJSDate(date).toFormat('dd.MM.yyyy HH:mm');
 };
 
 // Persist state of chart data sets
@@ -219,7 +219,7 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
     // Show last observation with FMI data for quick viewing
     var showLastObservation = function () {
         var lastObservationIndex = observationCount - 1,
-            observationText = 'Date: ' + formatDate(dataLabels[lastObservationIndex]) + ', ',
+            observationText = `Date: ${formatDate(dataLabels[lastObservationIndex])}<br>`,
             itemsAdded = 0;
 
         for (var i = lastObservationIndex; i > 0; i--) {
@@ -229,22 +229,46 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
             }
         }
 
-        for (const key in labelValues['weather']) {
-            observationText += labelValues['weather'][key] + ': ' +
-                dataSets['weather'][key][lastObservationIndex] + ', ';
-            itemsAdded++;
-        }
-        if (mode === 'all') {
-            for (const key in labelValues['other']) {
-                if ((itemsAdded % 5) === 0)
-                    observationText += '<br>';
-                observationText += labelValues['other'][key] + ': ' +
-                    dataSets['other'][key][lastObservationIndex] + ', ';
-                itemsAdded++;
-            }
+        if (mode === 'all')
+            var owmData = JSON.parse(document.getElementById('owmData').textContent);
+
+        for (const key of ['fmi_temperature', 'o_temperature', 'cloudiness'])
+            observationText += `${labelValues['weather'][key]}: ${dataSets['weather'][key][lastObservationIndex]} ` +
+            `${key.indexOf('temperature') >= 0 ? '\u2103' : ''}, `;
+        if (mode === 'weather') {
+            observationText = observationText.slice(0, -2);
+        } else {
+            observationText = observationText.slice(0, -3);
+            observationText += `, Wind speed: ${owmData['current']['wind_speed']} m/s, ` +
+                `Description: ${owmData['current']['weather'][0]['description']}`;
         }
 
-        document.getElementById('lastObservation').innerHTML = observationText.slice(0, -2);
+        if (mode === 'all') {
+            var firstRTLabelSeen = false;
+            for (const key in labelValues['other']) {
+                if ((!firstRTLabelSeen && (itemsAdded % 5) === 0) ||
+                    (firstRTLabelSeen && (itemsAdded % 4) === 0))
+                    observationText += '<br>';
+                if (!firstRTLabelSeen && key.indexOf('rt') >= 0) {
+                    firstRTLabelSeen = true;
+                    observationText += '<br>';
+                    itemsAdded = 0;
+                }
+                observationText += `${labelValues['other'][key]}: ${dataSets['other'][key][lastObservationIndex]}` +
+                    `${key.indexOf('temperature') >= 0 ? ' \u2103' : ''}${key.indexOf('humidity') >= 0 ? ' %H' : ''}, `;
+                itemsAdded++;
+            }
+            observationText = observationText.slice(0, -2);
+
+            const forecast = owmData['forecast'];
+            observationText += '<br><br>Forecast for ' +
+                luxon.DateTime.fromSeconds(forecast['dt']).toFormat('dd.MM.yyyy HH:mm') +
+                `: temperature: ${forecast['temp']} \u2103, cloudiness: ${forecast['clouds']} `+
+                ` %, wind speed: ${forecast['wind_speed']} m/s, description: ` +
+                forecast['weather'][0]['description'];
+        }
+
+        document.getElementById('lastObservation').innerHTML = observationText;
         document.getElementById('lastObservation').classList.remove('display-none');
     };
     showLastObservation();

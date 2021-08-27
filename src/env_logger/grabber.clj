@@ -59,7 +59,8 @@
   (let [url (format (str "https://opendata.fmi.fi/wfs?service=WFS&version=2.0.0"
                          "&request=getFeature&storedquery_id="
                          "fmi::observations::weather::simple&fmisid=%d&"
-                         "parameters=t2m,n_man,p_sea&starttime=%s") station-id
+                         "parameters=t2m,n_man,p_sea&starttime=%s")
+                    station-id
                     (str (first (s/split
                                  (str (t/instant (t/with-zone
                                                    (calculate-start-time)

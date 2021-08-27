@@ -1,7 +1,10 @@
 (ns env-logger.handler
   "The main namespace of the application"
   (:gen-class)
-  (:require [buddy
+  (:require [clojure set
+             [string :as s]]
+            [clojure.tools.logging :as log]
+            [buddy
              [auth :refer [authenticated?]]
              [hashers :as h]]
             [buddy.auth.backends.session :refer [session-backend]]
@@ -12,9 +15,6 @@
             [buddy.sign.jwt :as jwt]
             [cheshire.core :refer [generate-string parse-string]]
             [java-time :as t]
-            [clojure set
-             [string :as s]]
-            [clojure.tools.logging :as log]
             [compojure
              [core :refer [defroutes DELETE GET POST]]
              [route :as route]]
@@ -24,6 +24,7 @@
              [grabber :refer [calculate-start-time
                               get-fmi-weather-data
                               weather-query-ok?]]
+             [owm :refer [get-owm-data]]
              [user :as u]]
             [ring.adapter.jetty :refer [run-jetty]]
             [ring.middleware.defaults :refer :all]
@@ -234,7 +235,9 @@
                                                             :iso-local-date)
                                                            (:end obs-dates))
                                              (t/days initial-days)))
-              :end-date (:end obs-dates)}))))
+              :end-date (:end obs-dates)})
+           (when logged-in?
+             {:owm-data (generate-string (get-owm-data))}))))
 
 (defn handle-observation-insert
   "Handles the insertion of an observation to the database."
