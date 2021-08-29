@@ -3,23 +3,24 @@
   (:require [clj-ldap.client :as ldap]
             [clojure.java.jdbc :as j]
             [clojure.tools.logging :as log]
-            [env-logger.config :refer [ldap-conf]]
-            [honeysql.core :as sql])
+            [env-logger.config :refer [ldap-conf]])
   (:import java.sql.BatchUpdateException
            org.postgresql.util.PSQLException))
+(refer-clojure :exclude '[filter for group-by into partition-by set update])
+(require '[honey.sql :as sql])
 
 (defn get-yubikey-id
   "Returns the Yubikey ID(s) of a user in a set. Returns an empty set
   if the ID is not found."
   [db-con username]
   (set (j/query db-con
-                (sql/format (sql/build :select [:yubikey_id]
-                                       :from [[:users :u]]
-                                       :join [:yubikeys
-                                              [:= :u.user_id
-                                               :yubikeys.user_id]]
-                                       :where [:= :u.username
-                                               username]))
+                (sql/format {:select [:yubikey_id]
+                             :from [[:users :u]]
+                             :join [:yubikeys
+                                    [:= :u.user_id
+                                     :yubikeys.user_id]]
+                             :where [:= :u.username
+                                     username]})
                 {:row-fn #(:yubikey_id %)})))
 
 (defn get-user-data
@@ -28,10 +29,10 @@
   [db-con username]
   (try
     (let [result (j/query db-con
-                          (sql/format (sql/build :select [:pw_hash]
-                                                 :from :users
-                                                 :where [:= :username
-                                                         username]))
+                          (sql/format {:select [:pw_hash]
+                                       :from [:users]
+                                       :where [:= :username
+                                               username]})
                           {:row-fn #(:pw_hash %)})
           key-ids (get-yubikey-id db-con username)]
       (when (pos? (count result))
@@ -61,8 +62,8 @@
   found, nil is returned."
   [db-con username]
   (first (j/query db-con
-                  (sql/format (sql/build :select [:user_id]
-                                         :from :users
-                                         :where [:= :username
-                                                 username]))
+                  (sql/format {:select [:user_id]
+                               :from [:users]
+                               :where [:= :username
+                                       username]})
                   {:row-fn #(:user_id %)})))

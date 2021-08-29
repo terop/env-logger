@@ -10,7 +10,7 @@
                  [compojure "1.6.2"]
                  [org.postgresql/postgresql "42.2.23"]
                  [org.clojure/java.jdbc "0.7.12"]
-                 [honeysql "1.0.461"]
+                 [com.github.seancorfield/honeysql "2.0.783"]
                  [clojure.java-time "0.3.2"]
                  [org.threeten/threeten-extra "1.7.0"]
                  [cheshire "5.10.1"]

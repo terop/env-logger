@@ -3,17 +3,16 @@
   (:require [clojure.java.jdbc :as j]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
-            [env-logger.config :refer :all]
-            [honeysql
-             [core :as sql]
-             [helpers :refer :all]]
-            [java-time :as t])
+            [java-time :as t]
+            [env-logger.config :refer :all])
   (:import java.text.NumberFormat
            (java.time DateTimeException
                       ZoneOffset)
            (java.util Date
                       TimeZone)
            org.postgresql.util.PSQLException))
+(refer-clojure :exclude '[filter for group-by into partition-by set update])
+(require '[honey.sql :as sql])
 
 (let [db-host (get (System/getenv)
                    "POSTGRESQL_DB_HOST"
@@ -74,9 +73,8 @@
   [db-con]
   (let [image-name (:image_name (first (j/query db-con
                                                 (sql/format
-                                                 (sql/build
-                                                  :select [:image_name]
-                                                  :from [:yardcam_image])))))]
+                                                 {:select [:image_name]
+                                                  :from [:yardcam_image]}))))]
     (when (and image-name
                (re-matches yc-image-pattern image-name)
                (yc-image-age-check image-name
@@ -268,12 +266,12 @@
                                 [:beacons :b]
                                 [:= :o.id :b.obs_id]]}
         where-query (if where
-                      (sql/build base-query :where where)
+                      (assoc base-query :where where)
                       base-query)
         limit-query (if limit
-                      (sql/build where-query :limit limit
-                                 :order-by [[:o.id :desc]])
-                      (sql/build where-query :order-by [[:o.id :asc]]))
+                      (merge where-query {:limit limit
+                                          :order-by [[:o.id :desc]]})
+                      (assoc where-query :order-by [[:o.id :asc]]))
         beacon-names (get-conf-value :beacon-name)
         tz-offset (get-tz-offset (get-conf-value :display-timezone))]
     (j/query db-con
@@ -324,16 +322,16 @@
   [db-con & {:keys [where]}]
   (let [tz-offset (get-tz-offset (get-conf-value :display-timezone))]
     (j/query db-con
-             (sql/format (sql/build :select [:w.time
-                                             [:w.temperature "fmi_temperature"]
-                                             :w.cloudiness
-                                             :w.wind_speed
-                                             :o.tb_image_name]
-                                    :from [[:weather-data :w]]
-                                    :join [[:observations :o]
-                                           [:= :w.obs_id :o.id]]
-                                    :where where
-                                    :order-by [[:w.id :asc]]))
+             (sql/format {:select [:w.time
+                                   [:w.temperature "fmi_temperature"]
+                                   :w.cloudiness
+                                   :w.wind_speed
+                                   :o.tb_image_name]
+                          :from [[:weather-data :w]]
+                          :join [[:observations :o]
+                                 [:= :w.obs_id :o.id]]
+                          :where where
+                          :order-by [[:w.id :asc]]})
              {:row-fn #(merge %
                               {:time (convert-to-epoch-ms tz-offset
                                                           (:time %))})})))
@@ -359,10 +357,9 @@
   [db-con]
   (try
     (let [result (j/query db-con
-                          (sql/format
-                           (sql/build :select [[:%min.recorded "start"]
-                                               [:%max.recorded "end"]]
-                                      :from :observations)))]
+                          (sql/format {:select [[:%min.recorded "start"]
+                                                [:%max.recorded "end"]]
+                                       :from :observations}))]
       (if (= 1 (count result))
         {:start (t/format (t/formatter :iso-local-date)
                           (t/local-date-time (:start (first result))))
@@ -381,16 +378,16 @@
   [db-con start end locations]
   (try
     (let [nf (NumberFormat/getInstance)
-          query (sql/format (sql/build :select [:recorded
-                                                :location
-                                                :temperature
-                                                :humidity]
-                                       :from :ruuvitag_observations
-                                       :where [:and
-                                               [:in :location locations]
-                                               [:>= :recorded start]
-                                               [:<= :recorded end]]
-                                       :order-by [[:id :asc]]))
+          query (sql/format {:select [:recorded
+                                      :location
+                                      :temperature
+                                      :humidity]
+                             :from :ruuvitag_observations
+                             :where [:and
+                                     [:in :location locations]
+                                     [:>= :recorded start]
+                                     [:<= :recorded end]]
+                             :order-by [[:id :asc]]})
           tz-offset (get-tz-offset (get-conf-value :display-timezone))]
       (.applyPattern nf "0.0#")
       (j/query db-con query
@@ -413,8 +410,8 @@
   false otherwise."
   [db-con image-name]
   (let [result (j/query db-con
-                        (sql/format (sql/build :select [:image_id]
-                                               :from :yardcam_image)))]
+                        (sql/format {:select [:image_id]
+                                     :from :yardcam_image}))]
     (try
       (when (pos? (count result))
         (j/execute! db-con "DELETE FROM yardcam_image"))
@@ -430,8 +427,8 @@
   "Returns the ID of the last observation."
   [db-con]
   (first (j/query db-con
-                  (sql/format (sql/build :select [[:%max.id "id"]]
-                                         :from :observations))
+                  (sql/format {:select [[:%max.id "id"]]
+                               :from :observations})
                   {:row-fn #(:id %)})))
 
 (defn insert-tb-image-name
