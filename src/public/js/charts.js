@@ -217,6 +217,13 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
 } else {
     labelValues = transformData(document.getElementById('chartData').innerText);
 
+    // Add unit suffix
+    var addUnitSuffix = function(keyName) {
+        return `${keyName.indexOf('temperature') >= 0 ? ' \u2103' : ''}` +
+            `${keyName.indexOf('wind') >= 0 ? ' m/s' : ''}` +
+            `${keyName.indexOf('humidity') >= 0 ? ' %H' : ''}`;
+    };
+
     // Show last observation with FMI data for quick viewing
     var showLastObservation = function () {
         var lastObservationIndex = observationCount - 1,
@@ -238,7 +245,7 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
 
         for (const key of weatherKeys)
             observationText += `${labelValues['weather'][key]}: ${dataSets['weather'][key][lastObservationIndex]}` +
-            `${key.indexOf('temperature') >= 0 ? ' \u2103' : ''}${key.indexOf('wind') >= 0 ? ' m/s' : ''}, `;
+            `${addUnitSuffix(key)}, `;
         observationText = observationText.slice(0, -2);
         if (mode === 'all')
             observationText += `, Description: ${owmData['current']['weather'][0]['description']}`;
@@ -255,8 +262,7 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
                     itemsAdded = 0;
                 }
                 observationText += `${labelValues['other'][key]}: ${dataSets['other'][key][lastObservationIndex]}` +
-                    `${key.indexOf('temperature') >= 0 ? ' \u2103' : ''}${key.indexOf('humidity') >= 0 ? ' %H' : ''}` +
-                    `${key.indexOf('wind') >= 0 ? ' m/s' : ''}, `;
+                    `${addUnitSuffix(key)}, `;
                 itemsAdded++;
             }
             observationText = observationText.slice(0, -2);
