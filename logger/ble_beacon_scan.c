@@ -1,11 +1,11 @@
-//
-//  Intel Edison Playground
-//  Copyright (c) 2015 Damian Kołakowski. All rights reserved.
-//  Copyright (c) 2017 Tero Paloheimo
-//
+/*
+ * Intel Edison Playground
+ *  Copyright (c) 2015 Damian Kołakowski. All rights reserved.
+ *  Copyright (c) 2017 Tero Paloheimo
+ */
 
 /* Known issue:
- * - If there are no beacons within range, the program will not terminate even
+ * If there are no beacons within range, the program will not terminate even
  * if the -t option is specified.
  */
 
@@ -45,7 +45,7 @@ int le_scan_enable(int device, uint8_t enable)
     le_set_scan_enable_cp scan_cp;
     memset(&scan_cp, 0, sizeof(scan_cp));
     scan_cp.enable = enable;
-    scan_cp.filter_dup = 0x00; // Filtering disabled
+    scan_cp.filter_dup = 0x00; /* Filtering disabled */
     uint8_t status;
     int ret;
 
@@ -74,8 +74,8 @@ int le_set_scan_parameters(int device)
     scan_params_cp.type = 0x00;
     scan_params_cp.interval = htobs(0x0010);
     scan_params_cp.window = htobs(0x0010);
-    scan_params_cp.own_bdaddr_type = 0x00; // Public device address (default)
-    scan_params_cp.filter = 0x00; // Accept all
+    scan_params_cp.own_bdaddr_type = 0x00; /* Public device address (default) */
+    scan_params_cp.filter = 0x00; /* Accept all */
 
     struct hci_request scan_params_rq = ble_hci_request(OCF_LE_SET_SCAN_PARAMETERS, LE_SET_SCAN_PARAMETERS_CP_SIZE, &status, &scan_params_cp);
 
@@ -156,7 +156,7 @@ int main(int argc, char* argv[])
             strcpy(device_name, optarg);
             break;
         case 'f':
-            // Ignoring malloc errors on purpose
+            /* Ignoring malloc errors on purpose */
             outfile_name = malloc(strlen(optarg) + 1);
             strncpy(outfile_name, optarg, strlen(optarg) + 1);
             stdout_print = 0;
@@ -173,7 +173,7 @@ int main(int argc, char* argv[])
         }
     }
 
-    // Initialize starting and ending time
+    /* Initialize starting and ending time */
     time_t end_time = 0;
     if (running_time) {
         if ((end_time = time(NULL)) == -1) {
@@ -183,7 +183,7 @@ int main(int argc, char* argv[])
         end_time += running_time;
     }
 
-    // Get HCI device
+    /* Get HCI device */
     const int device = hci_open_dev(strcmp(device_name, "") ? hci_devid(device_name) : hci_get_route(NULL));
     if (device < 0) {
         perror("Failed to open HCI device");
@@ -194,17 +194,16 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    // Set BLE events report mask
+    /* Set BLE events report mask */
     if (le_set_reports_mask(device)) {
         return -1;
     }
 
-    // Enable scanning
     if (le_scan_enable(device, 0x001)) {
         return -1;
     }
 
-    // Get results
+    /* Get results */
     struct hci_filter nf;
     hci_filter_clear(&nf);
     hci_filter_set_ptype(HCI_EVENT_PKT, &nf);
@@ -272,7 +271,7 @@ int main(int argc, char* argv[])
     }
 
  done:
-    // Disable scanning
+    /* Disable scanning */
     if (le_scan_enable(device, 0x00)) {
         return -1;
     }
