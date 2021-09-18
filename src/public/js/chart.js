@@ -224,23 +224,31 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
             `${keyName.indexOf('humidity') >= 0 ? ' %H' : ''}`;
     };
 
-    // Show last observation with FMI data for quick viewing
+    // Format a given Unix second timestamp in hour:minute format
+    var formatUnixSecondTs = function (unixTs) {
+        return luxon.DateTime.fromSeconds(unixTs).toFormat('HH:mm');
+    };
+
+    // Show last observation and some other data for quick viewing
     var showLastObservation = function () {
         var lastObservationIndex = observationCount - 1,
             observationText = `Date: ${formatDate(dataLabels[lastObservationIndex])}<br>`,
             itemsAdded = 0,
             weatherKeys = ['fmi_temperature', 'cloudiness', 'wind_speed'];
 
+        if (mode === 'all') {
+            var owmData = JSON.parse(document.getElementById('owmData').textContent);
+            weatherKeys.unshift('o_temperature');
+
+            observationText += `Sun: Sunrise ${formatUnixSecondTs(owmData['current'].sunrise)},` +
+                ` Sunset ${formatUnixSecondTs(owmData['current'].sunset)}<br>`;
+        }
+
         for (var i = lastObservationIndex; i > 0; i--) {
             if (dataSets['weather']['fmi_temperature'][i] !== null) {
                 lastObservationIndex = i;
                 break;
             }
-        }
-
-        if (mode === 'all') {
-            var owmData = JSON.parse(document.getElementById('owmData').textContent);
-            weatherKeys.unshift('o_temperature');
         }
 
         for (const key of weatherKeys)

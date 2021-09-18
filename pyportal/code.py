@@ -112,14 +112,15 @@ def get_weather_data(api_key, latitude, longitude):
 
 
 def set_time(timezone):
-    """Get and set local time for the board."""
+    """Get and set local time for the board. Returns the offset to UTC in hours."""
     while True:
         try:
             with requests.get('http://worldtimeapi.org/api/timezone/' + timezone) as resp:
                 time_info = resp.json()
                 rtc.RTC().datetime = time.localtime(time_info['unixtime'] + time_info['raw_offset']
                                                     + time_info['dst_offset'])
-                return
+                utc_offset_hour = int((time_info['raw_offset'] + time_info['dst_offset']) / 3600)
+                return utc_offset_hour
         except RuntimeError as ex:
             print(f'Error: an exception occurred in set_time: {ex}')
             time.sleep(5)
@@ -135,7 +136,7 @@ def adjust_backlight(display):
         display.brightness = BACKLIGHT_DEFAULT_VALUE
 
 
-def update_screen(display, logger_data, weather_data):
+def update_screen(display, logger_data, weather_data, utc_offset_hour):
     """Update screen contents."""
     w_recorded = logger_data['data']['recorded']
 
@@ -147,6 +148,12 @@ def update_screen(display, logger_data, weather_data):
     clear_display(display)
 
     display[0].text = w_recorded
+    if weather_data:
+        sunrise = time.localtime(weather_data[0]['sunrise'])
+        sunrise = f'{sunrise.tm_hour + utc_offset_hour:02}:{sunrise.tm_min:02}'
+        sunset = time.localtime(weather_data[0]['sunset'])
+        sunset = f'{sunset.tm_hour + utc_offset_hour:02}:{sunset.tm_min:02}'
+        display[0].text += f'           sr {sunrise} ss {sunset}'
     display[1].text = f'Weather: temperature {logger_data["data"]["fmi_temperature"]} \u00b0C, ' \
         f'cloudiness {logger_data["data"]["cloudiness"]}, '
     display[2].text = f'wind speed {logger_data["data"]["wind_speed"]} m/s'
@@ -202,7 +209,7 @@ def main():
     connect_to_wlan()
 
     print('Getting current time from worldtimeapi.org')
-    set_time(secrets['timezone'])
+    utc_offset_hour = set_time(secrets['timezone'])
 
     display = SimpleTextDisplay(title=' ', colors=[SimpleTextDisplay.WHITE], font=FONT)
     token = None
@@ -245,7 +252,7 @@ def main():
                                             secrets['location_lon'])
             last_weather_update = 0
 
-        update_screen(display, data, weather_data)
+        update_screen(display, data, weather_data, utc_offset_hour)
 
         last_weather_update += SLEEP_TIME
         time.sleep(SLEEP_TIME)
