@@ -261,7 +261,7 @@
        (if-not (db/test-db-connection db/postgres)
          (render-file "templates/error.html"
                       {})
-         (render-file "templates/plots.html"
+         (render-file "templates/chart.html"
                       (get-plot-page-data request))))
   (GET "/login" [] (render-file "templates/login.html" {}))
   (POST "/login" [] login-authenticate)
