@@ -44,13 +44,12 @@
   DateTime object. The time is the closest even ten minutes in the past,
   example: for 08:27 it would be 08:20."
   []
-  (let [curr-minute (t/as (t/zoned-date-time) :minute-of-hour)
+  (let [curr-minute (.getMinute (t/zoned-date-time))
         start-time (t/minus (t/zoned-date-time)
                             (t/minutes (- curr-minute
                                           (- curr-minute
                                              (mod curr-minute 10))))
-                            (t/seconds (t/as (t/zoned-date-time)
-                                             :second-of-minute)))]
+                            (t/seconds (.getSecond (t/zoned-date-time))))]
     start-time))
 
 (defn -get-fmi-weather-data-wfs
