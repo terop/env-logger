@@ -29,7 +29,7 @@ BACKLIGHT_DEFAULT_VALUE = 0.7
 # Enable or disable backlight dimming
 BACKLIGHT_DIMMING_ENABLED = True
 # Start time (hour) of backlight dimming
-BACKLIGHT_DIMMING_START = 21
+BACKLIGHT_DIMMING_START = 20
 # End time (hour) of backlight dimming
 BACKLIGHT_DIMMING_END = 7
 # Backlight value during dimming
