@@ -9,7 +9,7 @@ jobs:
           password: $DOCKERHUB_PASSWORD
         environment:
           TEST_DATABASE_URL: postgresql://postgres@localhost/env_logger_test
-      - image: circleci/postgres:13.3-ram
+      - image: circleci/postgres:13-bullseye-ram
         auth:
           username: mydockerhub-user
           password: $DOCKERHUB_PASSWORD
