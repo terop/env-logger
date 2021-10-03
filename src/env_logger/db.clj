@@ -29,10 +29,9 @@
       db-password (get (System/getenv)
                        "POSTGRESQL_DB_PASSWORD"
                        (db-conf :password))]
-  (def postgres {:classname "org.postgresql.Driver"
-                 :subprotocol "postgresql"
-                 :subname (format "//%s:%s/%s"
-                                  db-host db-port db-name)
+  (def postgres {:dbtype "postgresql"
+                 :dbname db-name
+                 :host db-host
                  :user db-user
                  :password db-password}))
 
