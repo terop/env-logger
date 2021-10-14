@@ -34,6 +34,8 @@ BACKLIGHT_DIMMING_START = 20
 BACKLIGHT_DIMMING_END = 7
 # Backlight value during dimming
 BACKLIGHT_DIMMING_VALUE = 0.5
+# Network failure threshold after which the board is rebooted
+NW_FAILURE_THRESHOLD = 5
 
 
 def connect_to_wlan():
@@ -65,17 +67,27 @@ def connect_to_wlan():
 
 def fetch_token():
     """Fetch token for getting data from env-logger backend."""
-    try:
-        resp = requests.post(f'{BACKEND_URL}/token-login',
-                             data={'username': secrets['data-read-user']['username'],
-                                   'password': secrets['data-read-user']['password']})
-        if resp.status_code != 200:
-            print('Error: token acquisition failed')
-            return ''
-    except RuntimeError as rte:
-        print(f'Error: token fetch failed: "{rte}", reloading board')
-        time.sleep(5)
-        supervisor.reload()
+    fail_count = 0
+
+    while True:
+        try:
+            resp = requests.post(f'{BACKEND_URL}/token-login',
+                                 data={'username': secrets['data-read-user']['username'],
+                                       'password': secrets['data-read-user']['password']})
+            if resp.status_code != 200:
+                print('Error: token acquisition failed')
+                return ''
+
+            break
+        except RuntimeError as rte:
+            fail_count += 1
+            print(f'Error: token fetch failed: "{rte}", failure count {fail_count}')
+            time.sleep(5)
+
+            if fail_count > NW_FAILURE_THRESHOLD:
+                print(f'Error: token fetch failed {fail_count} times, reloading board')
+                time.sleep(5)
+                supervisor.reload()
 
     return resp.text
 
@@ -90,20 +102,30 @@ def clear_display(display):
 
 def get_weather_data(api_key, latitude, longitude):
     """Get weather data for a location defined by the given latitude and longitude values."""
-    try:
-        resp = requests.get(f'https://api.openweathermap.org/data/2.5/onecall?lat={latitude}'
-                            f'&lon={longitude}&exclude=minutely,daily,alerts&units=metric'
-                            f'&appid={api_key}')
-        if resp.status_code == 401:
-            print('Error: unauthorised request')
-            return ()
-        if resp.status_code != 200:
-            print(f'Error: got HTTP status code {resp.status_code}')
-            return ()
-    except RuntimeError as rte:
-        print(f'Error: weather update failed: "{rte}", reloading board')
-        time.sleep(5)
-        supervisor.reload()
+    fail_count = 0
+
+    while True:
+        try:
+            resp = requests.get(f'https://api.openweathermap.org/data/2.5/onecall?lat={latitude}'
+                                f'&lon={longitude}&exclude=minutely,daily,alerts&units=metric'
+                                f'&appid={api_key}')
+            if resp.status_code == 401:
+                print('Error: unauthorised request')
+                return ()
+            if resp.status_code != 200:
+                print(f'Error: got HTTP status code {resp.status_code}')
+                return ()
+
+            break
+        except RuntimeError as rte:
+            fail_count += 1
+            print(f'Error: weather update failed: "{rte}", failure count {fail_count}')
+            time.sleep(5)
+
+            if fail_count > NW_FAILURE_THRESHOLD:
+                print(f'Error: weather update failed {fail_count} times, reloading board')
+                time.sleep(5)
+                supervisor.reload()
 
     data = resp.json()
     # First element in the tuple is the data for the current hour,
@@ -215,6 +237,7 @@ def main():
     token = None
     weather_data = None
     last_weather_update = 0
+    fail_count = 0
 
     # Dim the backlight because the default backlight is very bright
     board.DISPLAY.auto_brightness = False
@@ -241,10 +264,18 @@ def main():
                     print('Error: failed to get latest observation')
                 continue
         except RuntimeError as rte:
-            print(f'Error: observation update failed: "{rte}", reloading board')
+            fail_count += 1
+            print(f'Error: observation update failed: "{rte}", failure count {fail_count}')
             time.sleep(5)
-            supervisor.reload()
 
+            if fail_count > NW_FAILURE_THRESHOLD:
+                print(f'Error: observation update failed {fail_count} times, reloading board')
+                time.sleep(5)
+                supervisor.reload()
+
+            continue
+
+        fail_count = 0
         data = resp.json()
 
         if last_weather_update >= WEATHER_UPDATE_INTERVAL or not weather_data:
