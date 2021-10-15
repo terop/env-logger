@@ -20,9 +20,6 @@
  ;; Timezone offset to use in observation display
  ;; Set to UTC if no offset is needed
  :display-timezone "UTC"
- ;; Temperature correction offset in degree Celsius
- :correction {:enabled false
-              :offset 0}
  ;; How many days to initially show in the plot
  :initial-show-days 2
  ;; Yubico OTP parameters

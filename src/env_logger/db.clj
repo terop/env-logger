@@ -111,9 +111,7 @@
                                         (t/hours (get-tz-offset
                                                   (get-conf-value
                                                    :store-timezone)))))
-                    :temperature (- (:insideTemperature
-                                     observation)
-                                    (:offset observation))
+                    :temperature (:insideTemperature observation)
                     :brightness (:insideLight observation)
                     :yc_image_name (:image-name observation)
                     :outside_temperature (:outsideTemperature
@@ -177,18 +175,14 @@
       -1)))
 
 (defn insert-observation
-  "Inserts a observation to the database. Optionally corrects the temperature
-  with an offset."
+  "Inserts a observation to the database."
   [db-con observation]
   (if (= 6 (count observation))
     (jdbc/with-transaction [t-con db-con]
       (try
-        (let [offset (if (get-conf-value :correction :k :enabled)
-                       (get-conf-value :correction :k :offset) 0)
-              obs-id (insert-plain-observation t-con
+        (let [obs-id (insert-plain-observation t-con
                                                (merge observation
-                                                      {:offset offset
-                                                       :image-name
+                                                      {:image-name
                                                        (get-yc-image t-con)}))]
           (if (pos? obs-id)
             (if (every? pos?

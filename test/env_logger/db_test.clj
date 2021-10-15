@@ -179,7 +179,7 @@
 
 (deftest get-observations-tests
   (testing "Observation querying with arbitrary WHERE clause and LIMIT"
-    (is (= 1 (count (get-observations test-ds
+    (is (= 2 (count (get-observations test-ds
                                       :where [:= :o.temperature 20]))))
     (is (= 1 (count (get-observations test-ds
                                       :limit 1))))
@@ -360,7 +360,6 @@
                                          :insideLight 0
                                          :insideTemperature 20
                                          :outsideTemperature 5
-                                         :offset 6
                                          :image-name (get-yc-image-name)})))))
 
 (deftest db-connection-test
