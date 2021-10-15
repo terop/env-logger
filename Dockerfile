@@ -4,7 +4,7 @@ WORKDIR /usr/home/app
 ADD . /usr/home/app
 RUN lein uberjar
 
-FROM gcr.io/distroless/java-debian10:11
+FROM gcr.io/distroless/java-debian11:latest
 COPY --from=builder /usr/home/app/target/uberjar/env-logger*-standalone.jar logger.jar
 EXPOSE 8080
 CMD ["logger.jar"]

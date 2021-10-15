@@ -7,4 +7,4 @@ clean:
 	rm -rf target/
 
 update: # update runtime base image
-	podman pull gcr.io/distroless/java-debian10:11
+	podman pull gcr.io/distroless/java-debian11:latest
