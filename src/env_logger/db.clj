@@ -42,6 +42,8 @@
 
 (def yc-image-pattern
   #"yc-(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:?\+\d{2}(:?:\d{2})?|Z)).+")
+(def tb-image-pattern
+  #"testbed-(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:?\+\d{2}(:?:\d{2})?|Z)).+")
 
 (defn test-db-connection
   "Tests the connection to the DB."
@@ -53,18 +55,20 @@
                  (.getMessage pe))
       false)))
 
-(defn yc-image-age-check
+(defn image-age-check
   "Returns true when the following condition is true:
-  (yardcam datetime - reference datetime) <= diff-minutes
+  (image datetime - reference datetime) <= diff-minutes
   and false otherwise. Also return true if
-  (yardcam datetime - reference datetime) < 0."
-  [yc-image ref-dt diff-minutes]
-  (let [match (re-find yc-image-pattern
-                       yc-image)
-        yc-dt (t/zoned-date-time (t/formatter :iso-offset-date-time)
-                                 (nth match 1))]
+  (image datetime - reference datetime) < 0.
+  Allowed values for image-type are yardcam and testbed."
+  [image-type image-name ref-dt diff-minutes]
+  (let [match (re-find (if (= image-type "yardcam")
+                         yc-image-pattern tb-image-pattern)
+                       image-name)
+        image-dt (t/zoned-date-time (t/formatter :iso-offset-date-time)
+                                    (nth match 1))]
     (try
-      (<= (t/as (t/interval yc-dt ref-dt) :minutes)
+      (<= (t/as (t/interval image-dt ref-dt) :minutes)
           diff-minutes)
       (catch DateTimeException dte
         ;; ref-dt < yc-dt results in DateTimeException
@@ -79,11 +83,32 @@
                                                      :from [:yardcam_image]})
                                                    rs-opts))]
     (when (and image-name
-               (re-matches yc-image-pattern image-name)
-               (yc-image-age-check image-name
-                                   (t/zoned-date-time)
-                                   (get-conf-value :yc-max-time-diff)))
+               (image-age-check "yardcam"
+                                image-name
+                                (t/zoned-date-time)
+                                (get-conf-value :image-max-time-diff)))
       image-name)))
+
+(defn get-tb-image
+  "Returns the name of the latest FMI Testbed image."
+  [db-con]
+  (let [tb-image-name (:tb_image_name
+                       (jdbc/execute-one! db-con
+                                          (sql/format
+                                           {:select [:tb_image_name]
+                                            :from [:observations]
+                                            :where [[:raw
+                                                     (str "tb_image_name IS "
+                                                          "NOT NULL")]]
+                                            :order-by [[:id :desc]]
+                                            :limit [1]})
+                                          rs-opts))]
+    (when (and tb-image-name
+               (image-age-check "testbed"
+                                tb-image-name
+                                (t/zoned-date-time)
+                                (get-conf-value :image-max-time-diff)))
+      tb-image-name)))
 
 (defn get-tz-offset
   "Returns the offset in hours to UTC for the given timezone."
@@ -114,8 +139,8 @@
                     :temperature (:insideTemperature observation)
                     :brightness (:insideLight observation)
                     :yc_image_name (:image-name observation)
-                    :outside_temperature (:outsideTemperature
-                                          observation)}
+                    :outside_temperature (:outsideTemperature observation)
+                    :tb_image_name (get-tb-image db-con)}
                    rs-opts)))
 
 (defn insert-beacons
@@ -294,11 +319,12 @@
                                                 (:fmi_temperature
                                                  row)))))
                       :yc_image_name (if (:yc_image_name row)
-                                       (if (yc-image-age-check
+                                       (if (image-age-check
+                                            "yardcam"
                                             (:yc_image_name row)
                                             (:recorded row)
                                             (get-conf-value
-                                             :yc-max-time-diff))
+                                             :image-max-time-diff))
                                          (:yc_image_name row)
                                          nil)
                                        nil)})

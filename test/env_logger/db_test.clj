@@ -59,18 +59,20 @@
 ;; Fixture run at the start and end of tests
 (use-fixtures :once clean-test-database)
 
-(defn get-yc-image-name
-  "Returns a valid yardcam image name using the current datetime or the current
-  datetime minus an optional time unit."
-  ([]
-   (str "yc-" (s/replace (t/format (t/formatter "Y-MM-dd HH:mmxxx")
-                                   (t/offset-date-time))
-                         " " "T") ".jpg"))
-  ([minus-time]
-   (str "yc-" (s/replace (t/format (t/formatter "Y-MM-dd HH:mmxxx")
-                                   (t/minus (t/offset-date-time)
-                                            minus-time))
-                         " " "T") ".jpg")))
+(defn get-image-name
+  "Returns a valid yardcam or Testbed image name using the current datetime
+  or the current datetime minus an optional time unit."
+  ([image-type]
+   (get-image-name image-type nil))
+  ([image-type minus-time]
+   (str (if (= image-type "yardcam") "yc-" "testbed-")
+        (s/replace (if minus-time
+                     (t/format (t/formatter "Y-MM-dd HH:mmxxx")
+                               (t/minus (t/offset-date-time)
+                                        minus-time))
+                     (t/format (t/formatter "Y-MM-dd HH:mmxxx")
+                               (t/offset-date-time)))
+                   " " "T") ".jpg")))
 
 (deftest insert-observations
   (testing "Full observation insert"
@@ -129,7 +131,7 @@
             :rssi -68
             :tb_image_name nil
             :temp_delta -15.0
-            :yc_image_name (get-yc-image-name)}
+            :yc_image_name (get-image-name "yardcam")}
            (dissoc (nth (get-obs-days test-ds 3) 1) :recorded)))))
 
 (deftest obs-interval-select
@@ -264,16 +266,16 @@
     (jdbc/execute! test-ds (sql/format {:delete-from :yardcam_image}))
     (js/insert! test-ds
                 :yardcam_image
-                {:image_name (get-yc-image-name)})
+                {:image_name (get-image-name "yardcam")})
     (js/insert! test-ds
                 :yardcam_image
-                {:image_name (get-yc-image-name (t/minutes 5))})
+                {:image_name (get-image-name "yardcam" (t/minutes 5))})
     (is (= 2
            (:count (jdbc/execute-one! test-ds
                                       (sql/format {:select [:%count.image_id]
                                                    :from :yardcam_image})))))
     (is (true? (insert-yc-image-name test-ds
-                                     (get-yc-image-name))))
+                                     (get-image-name "yardcam"))))
     (is (= 1
            (:count (jdbc/execute-one! test-ds
                                       (sql/format {:select [:%count.image_id]
@@ -285,14 +287,9 @@
     (is (nil? (get-yc-image test-ds)))
     (js/insert! test-ds
                 :yardcam_image
-                {:image_name "testbed.jpg"})
+                {:image_name (get-image-name "yardcam" (t/hours 4))})
     (is (nil? (get-yc-image test-ds)))
-    (jdbc/execute! test-ds (sql/format {:delete-from :yardcam_image}))
-    (js/insert! test-ds
-                :yardcam_image
-                {:image_name (get-yc-image-name (t/hours 4))})
-    (is (nil? (get-yc-image test-ds)))
-    (let [valid-name (get-yc-image-name)]
+    (let [valid-name (get-image-name "yardcam")]
       (jdbc/execute! test-ds (sql/format {:delete-from :yardcam_image}))
       (js/insert! test-ds
                   :yardcam_image
@@ -360,7 +357,8 @@
                                          :insideLight 0
                                          :insideTemperature 20
                                          :outsideTemperature 5
-                                         :image-name (get-yc-image-name)})))))
+                                         :image-name (get-image-name
+                                                      "yardcam")})))))
 
 (deftest db-connection-test
   (testing "Connection to the DB"
@@ -374,19 +372,43 @@
 
 (deftest yc-image-age-check-test
   (testing "Yardcam image date checking"
-    (is (false? (yc-image-age-check (get-yc-image-name (t/minutes 10))
-                                    (t/zoned-date-time)
-                                    9)))
-    (is (true? (yc-image-age-check (get-yc-image-name)
-                                   (t/zoned-date-time)
-                                   1)))
-    (is (true? (yc-image-age-check (get-yc-image-name)
-                                   (t/zoned-date-time)
-                                   5)))
-    (is (true? (yc-image-age-check (get-yc-image-name)
-                                   (t/minus (t/zoned-date-time)
-                                            (t/minutes 10))
-                                   9)))))
+    (is (false? (image-age-check "yardcam"
+                                 (get-image-name "yardcam" (t/minutes 10))
+                                 (t/zoned-date-time)
+                                 9)))
+    (is (true? (image-age-check "yardcam"
+                                (get-image-name "yardcam")
+                                (t/zoned-date-time)
+                                1)))
+    (is (true? (image-age-check "yardcam"
+                                (get-image-name "yardcam")
+                                (t/zoned-date-time)
+                                5)))
+    (is (true? (image-age-check "yardcam"
+                                (get-image-name "yardcam")
+                                (t/minus (t/zoned-date-time)
+                                         (t/minutes 10))
+                                9)))))
+
+(deftest testbed-image-age-check-test
+  (testing "Testbed image date checking"
+    (is (false? (image-age-check "testbed"
+                                 (get-image-name "testbed" (t/minutes 10))
+                                 (t/zoned-date-time)
+                                 9)))
+    (is (true? (image-age-check "testbed"
+                                (get-image-name "testbed")
+                                (t/zoned-date-time)
+                                1)))
+    (is (true? (image-age-check "testbed"
+                                (get-image-name "testbed")
+                                (t/zoned-date-time)
+                                5)))
+    (is (true? (image-age-check "testbed"
+                                (get-image-name "testbed")
+                                (t/minus (t/zoned-date-time)
+                                         (t/minutes 10))
+                                9)))))
 
 (deftest get-ruuvitag-obs-test
   (testing "RuuviTag observation fetching"

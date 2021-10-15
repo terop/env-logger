@@ -177,7 +177,7 @@
                                             1))
                                       (t/zoned-date-time))
                           :minutes)
-                    (get-conf-value :yc-max-time-diff)))))
+                    (get-conf-value :image-max-time-diff)))))
 
 (defn get-plot-page-data
   "Returns data needed for rendering the plot page."
