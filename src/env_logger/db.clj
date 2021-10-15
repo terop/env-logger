@@ -1,8 +1,11 @@
 (ns env-logger.db
   "Namespace containing the application's database function"
-  (:require [clojure.java.jdbc :as j]
-            [clojure.string :as s]
+  (:require [clojure.string :as s]
             [clojure.tools.logging :as log]
+            [next.jdbc :as jdbc]
+            [next.jdbc
+             [result-set :as rs]
+             [sql :as js]]
             [java-time :as t]
             [env-logger.config :refer :all])
   (:import java.text.NumberFormat
@@ -34,6 +37,8 @@
                  :host db-host
                  :user db-user
                  :password db-password}))
+(def postgres-ds (jdbc/get-datasource postgres))
+(def rs-opts {:builder-fn rs/as-unqualified-lower-maps})
 
 (def yc-image-pattern
   #"yc-(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:?\+\d{2}(:?:\d{2})?|Z)).+")
@@ -42,9 +47,7 @@
   "Tests the connection to the DB."
   [db-con]
   (try
-    (j/query db-con
-             "SELECT 1")
-    true
+    (= 1 (:?column? (jdbc/execute-one! db-con ["SELECT 1"])))
     (catch PSQLException pe
       (log/error "DB connection establishment failed:"
                  (.getMessage pe))
@@ -70,10 +73,11 @@
 (defn get-yc-image
   "Returns the name of the latest yardcam image."
   [db-con]
-  (let [image-name (:image_name (first (j/query db-con
-                                                (sql/format
-                                                 {:select [:image_name]
-                                                  :from [:yardcam_image]}))))]
+  (let [image-name (:image_name (jdbc/execute-one! db-con
+                                                   (sql/format
+                                                    {:select [:image_name]
+                                                     :from [:yardcam_image]})
+                                                   rs-opts))]
     (when (and image-name
                (re-matches yc-image-pattern image-name)
                (yc-image-age-check image-name
@@ -99,47 +103,50 @@
 (defn insert-plain-observation
   "Insert a row into observations table."
   [db-con observation]
-  (:id (first (j/insert! db-con
-                         :observations
-                         {:recorded (t/sql-timestamp
-                                     (t/minus (t/zoned-date-time
-                                               (:timestamp observation))
-                                              (t/hours (get-tz-offset
-                                                        (get-conf-value
-                                                         :store-timezone)))))
-                          :temperature (- (:insideTemperature
-                                           observation)
-                                          (:offset observation))
-                          :brightness (:insideLight observation)
-                          :yc_image_name (:image-name observation)
-                          :outside_temperature (:outsideTemperature
-                                                observation)}))))
+  (:id (js/insert! db-con
+                   :observations
+                   {:recorded (t/sql-timestamp
+                               (t/minus (t/zoned-date-time
+                                         (:timestamp observation))
+                                        (t/hours (get-tz-offset
+                                                  (get-conf-value
+                                                   :store-timezone)))))
+                    :temperature (- (:insideTemperature
+                                     observation)
+                                    (:offset observation))
+                    :brightness (:insideLight observation)
+                    :yc_image_name (:image-name observation)
+                    :outside_temperature (:outsideTemperature
+                                          observation)}
+                   rs-opts)))
 
 (defn insert-beacons
   "Insert one or more beacons into the beacons table."
   [db-con obs-id observation]
   (for [beacon (:beacons observation)]
-    (:id (first (j/insert! db-con
-                           :beacons
-                           {:obs_id obs-id
-                            :mac_address (:mac beacon)
-                            :rssi (:rssi beacon)})))))
+    (:id (js/insert! db-con
+                     :beacons
+                     {:obs_id obs-id
+                      :mac_address (:mac beacon)
+                      :rssi (:rssi beacon)}
+                     rs-opts))))
 
 (defn insert-wd
   "Insert a FMI weather observation into the database."
   [db-con obs-id weather-data]
-  (:id (first (j/insert! db-con
-                         :weather_data
-                         {:obs_id obs-id
-                          :time (t/sql-timestamp
-                                 (t/minus (t/local-date-time
-                                           (:date weather-data))
-                                          (t/hours (get-tz-offset
-                                                    (get-conf-value
-                                                     :store-timezone)))))
-                          :temperature (:temperature weather-data)
-                          :cloudiness (:cloudiness weather-data)
-                          :wind_speed (:wind-speed weather-data)}))))
+  (:id (js/insert! db-con
+                   :weather_data
+                   {:obs_id obs-id
+                    :time (t/sql-timestamp
+                           (t/minus (t/local-date-time
+                                     (:date weather-data))
+                                    (t/hours (get-tz-offset
+                                              (get-conf-value
+                                               :store-timezone)))))
+                    :temperature (:temperature weather-data)
+                    :cloudiness (:cloudiness weather-data)
+                    :wind_speed (:wind-speed weather-data)}
+                   rs-opts)))
 
 (defn insert-ruuvitag-observation
   "Insert a RuuviTag weather observation into the database."
@@ -150,19 +157,20 @@
                   :pressure (:pressure observation)
                   :humidity (:humidity observation)
                   :battery_voltage (:battery_voltage observation)}]
-      (:id (first (j/insert! db-con
-                             :ruuvitag_observations
-                             (if (:timestamp observation)
-                               (assoc values
-                                      :recorded
-                                      (t/sql-timestamp
-                                       (t/minus (t/zoned-date-time
-                                                 (:timestamp
-                                                  observation))
-                                                (t/hours (get-tz-offset
-                                                          (get-conf-value
-                                                           :store-timezone))))))
-                               values)))))
+      (:id (js/insert! db-con
+                       :ruuvitag_observations
+                       (if (:timestamp observation)
+                         (assoc values
+                                :recorded
+                                (t/sql-timestamp
+                                 (t/minus (t/zoned-date-time
+                                           (:timestamp
+                                            observation))
+                                          (t/hours (get-tz-offset
+                                                    (get-conf-value
+                                                     :store-timezone))))))
+                         values)
+                       rs-opts)))
     (catch PSQLException pe
       (log/error "RuuviTag observation insert failed:"
                  (.getMessage pe))
@@ -173,7 +181,7 @@
   with an offset."
   [db-con observation]
   (if (= 6 (count observation))
-    (j/with-db-transaction [t-con db-con]
+    (jdbc/with-transaction [t-con db-con]
       (try
         (let [offset (if (get-conf-value :correction :k :enabled)
                        (get-conf-value :correction :k :offset) 0)
@@ -193,19 +201,21 @@
                     (do
                       (log/info (str "Database insert: rolling back "
                                      "transaction after weather data insert"))
-                      (j/db-set-rollback-only! t-con)
+                      (.rollback t-con)
                       false))))
               (do
                 (log/info (str "Database insert: rolling back "
                                "transaction after beacon scan insert"))
-                (j/db-set-rollback-only! t-con)
+                (.rollback t-con)
                 false))))
         (catch PSQLException pe
           (log/error "Database insert failed:"
                      (.getMessage pe))
-          (j/db-set-rollback-only! t-con)
+          (.rollback t-con)
           false)))
-    false))
+    (do
+      (log/error "Wrong number of parameters provided to insert-observation")
+      false)))
 
 (defn validate-date
   "Checks if the given date is nil or if non-nil, it is in the yyyy-mm-dd
@@ -273,32 +283,32 @@
                       (assoc where-query :order-by [[:o.id :asc]]))
         beacon-names (get-conf-value :beacon-name)
         tz-offset (get-tz-offset (get-conf-value :display-timezone))]
-    (j/query db-con
-             (sql/format limit-query)
-             {:row-fn #(dissoc
-                        (merge %
-                               {:recorded (convert-to-epoch-ms tz-offset
-                                                               (:recorded %))
-                                :name (get beacon-names
-                                           (:mac_address %)
-                                           (:mac_address %))
-                                :temp_delta (when (and (:fmi_temperature %)
-                                                       (:o_temperature %))
-                                              (Float/parseFloat
-                                               (format "%.2f"
-                                                       (- (:o_temperature %)
-                                                          (:fmi_temperature
-                                                           %)))))
-                                :yc_image_name (if (:yc_image_name %)
-                                                 (if (yc-image-age-check
-                                                      (:yc_image_name %)
-                                                      (:recorded %)
-                                                      (get-conf-value
-                                                       :yc-max-time-diff))
-                                                   (:yc_image_name %)
-                                                   nil)
-                                                 nil)})
-                        :mac_address)})))
+    (for [row (jdbc/execute! db-con
+                             (sql/format limit-query)
+                             {:builder-fn rs/as-unqualified-lower-maps})]
+      (dissoc (merge row
+                     {:recorded (convert-to-epoch-ms tz-offset
+                                                     (:recorded row))
+                      :name (get beacon-names
+                                 (:mac_address row)
+                                 (:mac_address row))
+                      :temp_delta (when (and (:fmi_temperature row)
+                                             (:o_temperature row))
+                                    (Float/parseFloat
+                                     (format "%.2f"
+                                             (- (:o_temperature row)
+                                                (:fmi_temperature
+                                                 row)))))
+                      :yc_image_name (if (:yc_image_name row)
+                                       (if (yc-image-age-check
+                                            (:yc_image_name row)
+                                            (:recorded row)
+                                            (get-conf-value
+                                             :yc-max-time-diff))
+                                         (:yc_image_name row)
+                                         nil)
+                                       nil)})
+              :mac_address))))
 
 (defn get-obs-days
   "Fetches the observations from the last N days."
@@ -320,20 +330,22 @@
   "Fetches weather observations filtered by the provided SQL WHERE clause."
   [db-con & {:keys [where]}]
   (let [tz-offset (get-tz-offset (get-conf-value :display-timezone))]
-    (j/query db-con
-             (sql/format {:select [:w.time
-                                   [:w.temperature "fmi_temperature"]
-                                   :w.cloudiness
-                                   :w.wind_speed
-                                   :o.tb_image_name]
-                          :from [[:weather-data :w]]
-                          :join [[:observations :o]
-                                 [:= :w.obs_id :o.id]]
-                          :where where
-                          :order-by [[:w.id :asc]]})
-             {:row-fn #(merge %
-                              {:time (convert-to-epoch-ms tz-offset
-                                                          (:time %))})})))
+    (for [row (jdbc/execute! db-con
+                             (sql/format {:select [:w.time
+                                                   [:w.temperature
+                                                    "fmi_temperature"]
+                                                   :w.cloudiness
+                                                   :w.wind_speed
+                                                   :o.tb_image_name]
+                                          :from [[:weather-data :w]]
+                                          :join [[:observations :o]
+                                                 [:= :w.obs_id :o.id]]
+                                          :where where
+                                          :order-by [[:w.id :asc]]})
+                             rs-opts)]
+      (merge row
+             {:time (convert-to-epoch-ms tz-offset
+                                         (:time row))}))))
 
 (defn get-weather-obs-days
   "Fetches the weather observations from the last N days."
@@ -355,15 +367,16 @@
   "Fetches the interval (start and end) of all observations."
   [db-con]
   (try
-    (let [result (j/query db-con
-                          (sql/format {:select [[:%min.recorded "start"]
-                                                [:%max.recorded "end"]]
-                                       :from :observations}))]
-      (if (= 1 (count result))
+    (let [result (jdbc/execute-one! db-con
+                                    (sql/format
+                                     {:select [[:%min.recorded "start"]
+                                               [:%max.recorded "end"]]
+                                      :from :observations}))]
+      (if result
         {:start (t/format (t/formatter :iso-local-date)
-                          (t/local-date-time (:start (first result))))
+                          (t/local-date-time (:start result)))
          :end (t/format (t/formatter :iso-local-date)
-                        (t/local-date-time (:end (first result))))}
+                        (t/local-date-time (:end result)))}
         {:start ""
          :end ""}))
     (catch PSQLException pe
@@ -389,15 +402,14 @@
                              :order-by [[:id :asc]]})
           tz-offset (get-tz-offset (get-conf-value :display-timezone))]
       (.applyPattern nf "0.0#")
-      (j/query db-con query
-               {:row-fn (fn [obs]
-                          {:location (:location obs)
-                           :recorded (convert-to-epoch-ms tz-offset
-                                                          (:recorded obs))
-                           :temperature (Float/parseFloat
-                                         (. nf format (:temperature obs)))
-                           :humidity (Float/parseFloat
-                                      (. nf format (:humidity obs)))})}))
+      (for [row (jdbc/execute! db-con query rs-opts)]
+        (merge row
+               {:recorded (convert-to-epoch-ms tz-offset
+                                               (:recorded row))
+                :temperature (Float/parseFloat
+                              (. nf format (:temperature row)))
+                :humidity (Float/parseFloat
+                           (. nf format (:humidity row)))})))
     (catch PSQLException pe
       (log/error "RuuviTag observation fetching failed:"
                  (.getMessage pe))
@@ -408,33 +420,38 @@
   deleted before a new row is inserted. Returns true on success and
   false otherwise."
   [db-con image-name]
-  (let [result (j/query db-con
-                        (sql/format {:select [:image_id]
-                                     :from :yardcam_image}))]
-    (try
-      (when (pos? (count result))
-        (j/execute! db-con "DELETE FROM yardcam_image"))
-      (= 1 (count (j/insert! db-con
-                             :yardcam_image
-                             {:image_name image-name})))
-      (catch PSQLException pe
-        (log/error "Yardcam image name insert failed:"
-                   (.getMessage pe))
-        false))))
+  (try
+    (when (pos? (:count (jdbc/execute-one! db-con
+                                           (sql/format
+                                            {:select [:%count.image_id]
+                                             :from :yardcam_image})
+                                           rs-opts)))
+      (jdbc/execute! db-con
+                     (sql/format {:delete-from :yardcam_image})
+                     rs-opts))
+    (pos? (:image_id (js/insert! db-con
+                                 :yardcam_image
+                                 {:image_name image-name}
+                                 rs-opts)))
+    (catch PSQLException pe
+      (log/error "Yardcam image name insert failed:"
+                 (.getMessage pe))
+      false)))
 
 (defn get-last-obs-id
   "Returns the ID of the last observation."
   [db-con]
-  (first (j/query db-con
-                  (sql/format {:select [[:%max.id "id"]]
-                               :from :observations})
-                  {:row-fn #(:id %)})))
+  (:id (jdbc/execute-one! db-con
+                          (sql/format {:select [[:%max.id "id"]]
+                                       :from :observations})
+                          rs-opts)))
 
 (defn insert-tb-image-name
   "Saves a Testbed image name and associates it with given observation ID.
   Returns true on success and false otherwise."
   [db-con obs-id image-name]
-  (= 1 (first (j/update! db-con
-                         :observations
-                         {:tb_image_name image-name}
-                         ["id = ?" obs-id]))))
+  (= 1 (:next.jdbc/update-count (js/update! db-con
+                                            :observations
+                                            {:tb_image_name image-name}
+                                            ["id = ?" obs-id]
+                                            rs-opts))))

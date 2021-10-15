@@ -1,10 +1,10 @@
 (ns env-logger.grabber-test
   (:require [clojure.test :refer :all]
-            [clojure.java.jdbc :as j]
             [clojure.string :as s]
             [clj-http.fake :refer [with-fake-routes]]
-            [java-time :as t]
             [cheshire.core :refer [generate-string]]
+            [java-time :as t]
+            [next.jdbc :as jdbc]
             [env-logger.grabber :refer :all])
   (:import java.time.ZonedDateTime
            java.util.Date))
@@ -349,17 +349,17 @@
 
 (deftest weather-query-ok
   (testing "Test when it is OK to query for FMI weather data"
-    (with-redefs [j/query (fn [db query] '())]
+    (with-redefs [jdbc/execute-one! (fn [con query opts] '())]
       (is (true? (weather-query-ok? {} 5))))
-    (with-redefs [j/query (fn [db query]
-                            (list {:recorded (t/minus (t/offset-date-time)
-                                                      (t/minutes 3))}))]
+    (with-redefs [jdbc/execute-one! (fn [con query opts]
+                                      {:recorded (t/minus (t/offset-date-time)
+                                                          (t/minutes 3))})]
       (is (false? (weather-query-ok? {} 5))))
-    (with-redefs [j/query (fn [db query]
-                            (list {:recorded (t/minus (t/offset-date-time)
-                                                      (t/minutes 3))}))]
+    (with-redefs [jdbc/execute-one! (fn [con query opts]
+                                      {:recorded (t/minus (t/offset-date-time)
+                                                          (t/minutes 3))})]
       (is (true? (weather-query-ok? {} 3))))
-    (with-redefs [j/query (fn [db query]
-                            (list {:recorded (t/minus (t/offset-date-time)
-                                                      (t/minutes 6))}))]
+    (with-redefs [jdbc/execute-one! (fn [con query opts]
+                                      {:recorded (t/minus (t/offset-date-time)
+                                                          (t/minutes 6))})]
       (is (true? (weather-query-ok? {} 5))))))

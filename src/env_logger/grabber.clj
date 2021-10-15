@@ -1,12 +1,13 @@
 (ns env-logger.grabber
   "Namespace for data grabbing functions"
-  (:require [cheshire.core :refer [parse-string]]
-            [clj-http.client :as client]
-            [clojure.java.jdbc :as j]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [clojure.string :as s]
             [clojure.xml :as xml]
-            [java-time :as t])
+            [cheshire.core :refer [parse-string]]
+            [clj-http.client :as client]
+            [next.jdbc :as jdbc]
+            [java-time :as t]
+            [env-logger.db :refer [rs-opts]])
   (:import java.util.Date
            java.sql.Timestamp))
 
@@ -124,12 +125,13 @@
   within the [now-waittime,now] interval. Wait time must be provided in
   minutes."
   [db-con wait-time]
-  (let [obs-recorded (:recorded (first
-                                 (j/query db-con
-                                          "SELECT recorded FROM observations
+  (let [obs-recorded (:recorded
+                      (jdbc/execute-one! db-con
+                                         ["SELECT recorded FROM observations
                                           WHERE id = (SELECT obs_id FROM
                                           weather_data ORDER BY id DESC
-                                          LIMIT 1)")))]
+                                          LIMIT 1)"]
+                                         rs-opts))]
     (if-not (nil? obs-recorded)
       (not (t/contains? (t/interval (t/minus (t/offset-date-time)
                                              (t/minutes wait-time))

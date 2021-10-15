@@ -1,14 +1,19 @@
 (ns env-logger.db-test
   (:require [clojure.test :refer :all]
-            [clojure.java.jdbc :as j]
             [clojure.string :as s]
             [java-time :as t]
+            [next.jdbc :as jdbc]
+            [next.jdbc
+             [result-set :as rs]
+             [sql :as js]]
             [env-logger.config :refer [db-conf get-conf-value]]
             [env-logger.db :refer :all])
   (:import (org.postgresql.util PSQLException
                                 PSQLState)
            (java.util Date
                       TimeZone)))
+(refer-clojure :exclude '[filter for group-by into partition-by set update])
+(require '[honey.sql :as sql])
 
 (let [db-host (get (System/getenv)
                    "POSTGRESQL_DB_HOST"
@@ -27,7 +32,9 @@
                       :dbname db-name
                       :host db-host
                       :user db-user
-                      :password db-password}))
+                      :password db-password})
+  (def test-ds (jdbc/with-options (jdbc/get-datasource test-postgres)
+                 {:builder-fn rs/as-unqualified-lower-maps})))
 
 ;; Current datetime used in tests
 (def current-dt (t/local-date-time))
@@ -39,15 +46,15 @@
   "Cleans the test database before and after running tests. Also inserts one
   observation before running tests."
   [test-fn]
-  (j/execute! test-postgres "DELETE FROM observations")
-  (j/insert! test-postgres
-             :observations
-             {:recorded (t/minus current-dt (t/days 4))
-              :brightness 5
-              :temperature 20})
+  (jdbc/execute! test-ds (sql/format {:delete-from :observations}))
+  (js/insert! test-ds
+              :observations
+              {:recorded (t/minus current-dt (t/days 4))
+               :brightness 5
+               :temperature 20})
   (test-fn)
-  (j/execute! test-postgres "DELETE FROM observations")
-  (j/execute! test-postgres "DELETE FROM yardcam_image"))
+  (jdbc/execute! test-ds (sql/format {:delete-from :observations}))
+  (jdbc/execute! test-ds (sql/format {:delete-from :yardcam_image})))
 
 ;; Fixture run at the start and end of tests
 (use-fixtures :once clean-test-database)
@@ -76,35 +83,39 @@
                         :temperature 20
                         :cloudiness 2
                         :wind-speed 5.0}]
-      (is (true? (insert-observation test-postgres
+      (is (true? (insert-observation test-ds
                                      (merge observation
                                             {:outsideTemperature 5
                                              :weather-data weather-data}))))
-      (is (true? (insert-observation test-postgres
+      (is (true? (insert-observation test-ds
                                      (merge observation
                                             {:outsideTemperature nil
                                              :weather-data nil}))))
-      (is (false? (insert-observation test-postgres {})))
+      (is (false? (insert-observation test-ds {})))
       (with-redefs [insert-wd (fn [_ _ _] -1)]
-        (let [obs-count (first (j/query test-postgres
-                                        "SELECT COUNT(id) FROM observations"))]
-          (is (false? (insert-observation test-postgres
+        (let [obs-count (:count (jdbc/execute-one! test-ds
+                                                   (sql/format
+                                                    {:select [:%count.id]
+                                                     :from :observations})))]
+          (is (false? (insert-observation test-ds
                                           (merge observation
                                                  {:outsideTemperature 5
                                                   :weather-data
                                                   weather-data}))))
           (is (= obs-count
-                 (first (j/query test-postgres
-                                 "SELECT COUNT(id) FROM observations"))))))
+                 (:count (jdbc/execute-one! test-ds
+                                            (sql/format
+                                             {:select [:%count.id]
+                                              :from :observations})))))))
       (with-redefs [insert-beacons (fn [_ _ _] '(-1))]
-        (is (false? (insert-observation test-postgres
+        (is (false? (insert-observation test-ds
                                         (merge observation
                                                {:outsideTemperature nil
                                                 :weather-data nil})))))
       (with-redefs [insert-plain-observation
                     (fn [_ _ _ _] (throw (PSQLException.
                                           "Test exception")))]
-        (is (false? (insert-observation test-postgres observation)))))))
+        (is (false? (insert-observation test-ds observation)))))))
 
 (deftest n-days-observations
   (testing "Selecting observations from N days"
@@ -119,34 +130,34 @@
             :tb_image_name nil
             :temp_delta -15.0
             :yc_image_name (get-yc-image-name)}
-           (dissoc (nth (get-obs-days test-postgres 3) 1) :recorded)))))
+           (dissoc (nth (get-obs-days test-ds 3) 1) :recorded)))))
 
 (deftest obs-interval-select
   (testing "Select observations between one or two dates"
     (is (= 4 (count (get-obs-interval
-                     test-postgres
+                     test-ds
                      {:start nil
                       :end nil}))))
     (is (= 3 (count (get-obs-interval
-                     test-postgres
+                     test-ds
                      {:start (t/format date-fmt
                                        (t/minus (t/local-date)
                                                 (t/days 2)))
                       :end nil}))))
     (is (= 1 (count (get-obs-interval
-                     test-postgres
+                     test-ds
                      {:start nil
                       :end (t/format date-fmt
                                      (t/minus (t/local-date)
                                               (t/days 2)))}))))
     (is (= 4 (count (get-obs-interval
-                     test-postgres
+                     test-ds
                      {:start (t/format date-fmt
                                        (t/minus (t/local-date)
                                                 (t/days 6)))
                       :end (t/format date-fmt (t/local-date-time))}))))
     (is (zero? (count (get-obs-interval
-                       test-postgres
+                       test-ds
                        {:start (t/format date-fmt
                                          (t/minus (t/local-date)
                                                   (t/days 11)))
@@ -154,25 +165,25 @@
                                        (t/minus (t/local-date)
                                                 (t/days 10)))}))))
     (is (zero? (count (get-obs-interval
-                       test-postgres
+                       test-ds
                        {:start "foobar"
                         :end nil}))))
     (is (zero? (count (get-obs-interval
-                       test-postgres
+                       test-ds
                        {:start nil
                         :end "foobar"}))))
     (is (zero? (count (get-obs-interval
-                       test-postgres
+                       test-ds
                        {:start "bar"
                         :end "foo"}))))))
 
 (deftest get-observations-tests
   (testing "Observation querying with arbitrary WHERE clause and LIMIT"
-    (is (= 1 (count (get-observations test-postgres
+    (is (= 1 (count (get-observations test-ds
                                       :where [:= :o.temperature 20]))))
-    (is (= 1 (count (get-observations test-postgres
+    (is (= 1 (count (get-observations test-ds
                                       :limit 1))))
-    (is (zero? (count (get-observations test-postgres
+    (is (zero? (count (get-observations test-ds
                                         :limit 0))))))
 
 (deftest start-and-end-date-query
@@ -180,17 +191,18 @@
     (is (= {:start (t/format date-fmt (t/minus current-dt
                                                (t/days 4)))
             :end (t/format date-fmt current-dt)}
-           (get-obs-date-interval test-postgres)))
-    (with-redefs [j/query (fn [db query] '())]
+           (get-obs-date-interval test-ds)))
+    (with-redefs [jdbc/execute-one! (fn [con query] nil)]
       (is (= {:start ""
               :end ""}
-             (get-obs-date-interval test-postgres))))
-    (with-redefs [j/query (fn [db query]
-                            (throw (PSQLException.
-                                    "Test exception"
-                                    (PSQLState/COMMUNICATION_ERROR))))]
+             (get-obs-date-interval test-ds))))
+    (with-redefs [jdbc/execute-one!
+                  (fn [con query]
+                    (throw (PSQLException.
+                            "Test exception"
+                            (PSQLState/COMMUNICATION_ERROR))))]
       (is (= {:error :db-error}
-             (get-obs-date-interval test-postgres))))))
+             (get-obs-date-interval test-ds))))))
 
 (deftest date-validation
   (testing "Tests for date validation"
@@ -209,23 +221,23 @@
 
 (deftest weather-obs-interval-select
   (testing "Select weather observations between one or two dates"
-    (is (= 1 (count (get-weather-obs-interval test-postgres
+    (is (= 1 (count (get-weather-obs-interval test-ds
                                               {:start nil
                                                :end nil}))))
     (is (= 1 (count (get-weather-obs-interval
-                     test-postgres
+                     test-ds
                      {:start (t/format date-fmt
                                        (t/minus current-dt
                                                 (t/days 1)))
                       :end nil}))))
     (is (zero? (count (get-weather-obs-interval
-                       test-postgres
+                       test-ds
                        {:start nil
                         :end (t/format date-fmt
                                        (t/minus current-dt
                                                 (t/days 2)))}))))
     (is (zero? (count (get-weather-obs-interval
-                       test-postgres
+                       test-ds
                        {:start (t/format date-fmt
                                          (t/minus current-dt
                                                   (t/days 5)))
@@ -239,73 +251,77 @@
             :wind_speed 5.0
             :fmi_temperature 20.0
             :tb_image_name nil}
-           (dissoc (first (get-weather-obs-days test-postgres 1))
+           (dissoc (first (get-weather-obs-days test-ds 1))
                    :time)))))
 
 (deftest weather-observation-select
   (testing "Selecting weather observations with an arbitrary WHERE clause"
-    (is (zero? (count (get-weather-observations test-postgres
+    (is (zero? (count (get-weather-observations test-ds
                                                 :where [:= 1 0]))))))
 
 (deftest yc-image-name-storage
   (testing "Storing of the latest Yardcam image name"
-    (j/execute! test-postgres "DELETE FROM yardcam_image")
-    (j/insert! test-postgres
-               :yardcam_image
-               {:image_name (get-yc-image-name)})
-    (j/insert! test-postgres
-               :yardcam_image
-               {:image_name (get-yc-image-name (t/minutes 5))})
-    (is (= 2 (count (j/query test-postgres
-                             "SELECT image_id FROM yardcam_image"))))
-    (is (true? (insert-yc-image-name test-postgres
+    (jdbc/execute! test-ds (sql/format {:delete-from :yardcam_image}))
+    (js/insert! test-ds
+                :yardcam_image
+                {:image_name (get-yc-image-name)})
+    (js/insert! test-ds
+                :yardcam_image
+                {:image_name (get-yc-image-name (t/minutes 5))})
+    (is (= 2
+           (:count (jdbc/execute-one! test-ds
+                                      (sql/format {:select [:%count.image_id]
+                                                   :from :yardcam_image})))))
+    (is (true? (insert-yc-image-name test-ds
                                      (get-yc-image-name))))
-    (is (= 1 (count (j/query test-postgres
-                             "SELECT image_id FROM yardcam_image"))))))
+    (is (= 1
+           (:count (jdbc/execute-one! test-ds
+                                      (sql/format {:select [:%count.image_id]
+                                                   :from :yardcam_image})))))))
 
 (deftest yc-image-name-query
   (testing "Querying of the yardcam image name"
-    (j/execute! test-postgres "DELETE FROM yardcam_image")
-    (is (nil? (get-yc-image test-postgres)))
-    (j/insert! test-postgres
-               :yardcam_image
-               {:image_name "testbed.jpg"})
-    (is (nil? (get-yc-image test-postgres)))
-    (j/execute! test-postgres "DELETE FROM yardcam_image")
-    (j/insert! test-postgres
-               :yardcam_image
-               {:image_name (get-yc-image-name (t/hours 4))})
-    (is (nil? (get-yc-image test-postgres)))
+    (jdbc/execute! test-ds (sql/format {:delete-from :yardcam_image}))
+    (is (nil? (get-yc-image test-ds)))
+    (js/insert! test-ds
+                :yardcam_image
+                {:image_name "testbed.jpg"})
+    (is (nil? (get-yc-image test-ds)))
+    (jdbc/execute! test-ds (sql/format {:delete-from :yardcam_image}))
+    (js/insert! test-ds
+                :yardcam_image
+                {:image_name (get-yc-image-name (t/hours 4))})
+    (is (nil? (get-yc-image test-ds)))
     (let [valid-name (get-yc-image-name)]
-      (j/execute! test-postgres "DELETE FROM yardcam_image")
-      (j/insert! test-postgres
-                 :yardcam_image
-                 {:image_name valid-name})
-      (is (= valid-name (get-yc-image test-postgres))))))
+      (jdbc/execute! test-ds (sql/format {:delete-from :yardcam_image}))
+      (js/insert! test-ds
+                  :yardcam_image
+                  {:image_name valid-name})
+      (is (= valid-name (get-yc-image test-ds))))))
 
 (deftest last-observation-id
   (testing "Query of last observation's ID"
-    (let [last-id (first (j/query test-postgres
-                                  "SELECT MAX(id) AS id FROM observations"
-                                  {:row-fn #(:id %)}))]
-      (is (= last-id (get-last-obs-id test-postgres))))))
+    (let [last-id (:max (jdbc/execute-one! test-ds
+                                           (sql/format {:select [:%max.id]
+                                                        :from :observations})))]
+      (is (= last-id (get-last-obs-id test-ds))))))
 
 (deftest testbed-image-storage
   (testing "Storage of a Testbed image"
-    (is (true? (insert-tb-image-name test-postgres
-                                     (get-last-obs-id test-postgres)
+    (is (true? (insert-tb-image-name test-ds
+                                     (get-last-obs-id test-ds)
                                      "testbed-2017-04-21T19:16+0300.png")))))
 
 (deftest wd-insert
   (testing "Insert of FMI weather data"
-    (let [obs-id (first (j/query test-postgres
-                                 "SELECT MIN(id) AS id FROM observations"
-                                 {:row-fn #(:id %)}))
+    (let [obs-id (:min (jdbc/execute-one! test-ds
+                                          (sql/format {:select [:%min.id]
+                                                       :from :observations})))
           weather-data {:date (t/local-date-time)
                         :temperature 20
                         :cloudiness 2
                         :wind-speed 5.0}]
-      (is (pos? (insert-wd test-postgres
+      (is (pos? (insert-wd test-ds
                            obs-id
                            weather-data))))))
 
@@ -316,30 +332,30 @@
                         :pressure 1100
                         :humidity 25
                         :battery_voltage 2.921}]
-      (is (pos? (insert-ruuvitag-observation test-postgres
+      (is (pos? (insert-ruuvitag-observation test-ds
                                              ruuvitag-obs)))
       (is (pos? (insert-ruuvitag-observation
-                 test-postgres
+                 test-ds
                  (assoc ruuvitag-obs
                         :recorded
                         (t/zoned-date-time "2019-01-25T20:45:18+02:00")))))
-      (= -1 (insert-ruuvitag-observation test-postgres
+      (= -1 (insert-ruuvitag-observation test-ds
                                          (dissoc ruuvitag-obs :temperature))))))
 
 (deftest beacon-insert
   (testing "Insert of beacon(s)"
-    (let [obs-id (first (j/query test-postgres
-                                 "SELECT MIN(id) AS id FROM observations"
-                                 {:row-fn #(:id %)}))
+    (let [obs-id (:min (jdbc/execute-one! test-ds
+                                          (sql/format {:select [:%min.id]
+                                                       :from :observations})))
           beacon {:rssi -68
                   :mac "7C:EC:79:3F:BE:97"}]
-      (is (pos? (first (insert-beacons test-postgres
+      (is (pos? (first (insert-beacons test-ds
                                        obs-id
                                        {:beacons [beacon]})))))))
 
 (deftest plain-observation-insert
   (testing "Insert of a row into the observations table"
-    (is (pos? (insert-plain-observation test-postgres
+    (is (pos? (insert-plain-observation test-ds
                                         {:timestamp current-dt-zoned
                                          :insideLight 0
                                          :insideTemperature 20
@@ -349,12 +365,13 @@
 
 (deftest db-connection-test
   (testing "Connection to the DB"
-    (is (true? (test-db-connection test-postgres)))
-    (with-redefs [j/query (fn [db query]
-                            (throw (PSQLException.
-                                    "Test exception"
-                                    (PSQLState/COMMUNICATION_ERROR))))]
-      (is (false? (test-db-connection test-postgres))))))
+    (is (true? (test-db-connection test-ds)))
+    (with-redefs [jdbc/execute-one!
+                  (fn [con query]
+                    (throw (PSQLException.
+                            "Test exception"
+                            (PSQLState/COMMUNICATION_ERROR))))]
+      (is (false? (test-db-connection test-ds))))))
 
 (deftest yc-image-age-check-test
   (testing "Yardcam image date checking"
@@ -374,38 +391,38 @@
 
 (deftest get-ruuvitag-obs-test
   (testing "RuuviTag observation fetching"
-    (j/execute! test-postgres "DELETE FROM ruuvitag_observations")
-    (j/insert! test-postgres
-               :ruuvitag_observations
-               {:location "indoor"
-                :temperature 22.0
-                :pressure 1024.0
-                :humidity 45.0
-                :battery_voltage 2.910})
-    (j/insert! test-postgres
-               :ruuvitag_observations
-               {:location "indoor"
-                :temperature 21.0
-                :pressure 1023.0
-                :humidity 45.0
-                :battery_voltage 2.890})
-    (j/insert! test-postgres
-               :ruuvitag_observations
-               {:location "balcony"
-                :temperature 15.0
-                :pressure 1024.0
-                :humidity 30.0
-                :battery_voltage 2.805})
+    (jdbc/execute! test-ds (sql/format {:delete-from :ruuvitag_observations}))
+    (js/insert! test-ds
+                :ruuvitag_observations
+                {:location "indoor"
+                 :temperature 22.0
+                 :pressure 1024.0
+                 :humidity 45.0
+                 :battery_voltage 2.910})
+    (js/insert! test-ds
+                :ruuvitag_observations
+                {:location "indoor"
+                 :temperature 21.0
+                 :pressure 1023.0
+                 :humidity 45.0
+                 :battery_voltage 2.890})
+    (js/insert! test-ds
+                :ruuvitag_observations
+                {:location "balcony"
+                 :temperature 15.0
+                 :pressure 1024.0
+                 :humidity 30.0
+                 :battery_voltage 2.805})
     (is (= '{:location "balcony"
              :temperature 15.0
              :humidity 30.0}
-           (dissoc (first (get-ruuvitag-obs test-postgres
+           (dissoc (first (get-ruuvitag-obs test-ds
                                             (t/minus (t/local-date-time)
                                                      (t/minutes 5))
                                             (t/local-date-time)
                                             ["balcony"]))
                    :recorded)))
-    (is (= 2 (count (get-ruuvitag-obs test-postgres
+    (is (= 2 (count (get-ruuvitag-obs test-ds
                                       (t/minus (t/local-date-time)
                                                (t/minutes 5))
                                       (t/local-date-time)
