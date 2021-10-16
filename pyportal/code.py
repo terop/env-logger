@@ -176,9 +176,9 @@ def update_screen(display, logger_data, weather_data, utc_offset_hour):
         sunset = time.localtime(weather_data[0]['sunset'])
         sunset = f'{sunset.tm_hour + utc_offset_hour:02}:{sunset.tm_min:02}'
         display[0].text += f'           sr {sunrise} ss {sunset}'
-    display[1].text = f'Weather: temperature {logger_data["data"]["fmi_temperature"]} \u00b0C, ' \
+    display[1].text = f'Weather: temperature {logger_data["data"]["fmi-temperature"]} \u00b0C, ' \
         f'cloudiness {logger_data["data"]["cloudiness"]}, '
-    display[2].text = f'wind speed {logger_data["data"]["wind_speed"]} m/s'
+    display[2].text = f'wind speed {logger_data["data"]["wind-speed"]} m/s'
     if weather_data:
         current = weather_data[0]
         forecast = weather_data[1]
@@ -200,7 +200,7 @@ def update_screen(display, logger_data, weather_data, utc_offset_hour):
     display[row].text = f'Inside temperature {logger_data["data"]["temperature"]} \u00b0C, ' \
         f'brightness {logger_data["data"]["brightness"]},'
     row += 1
-    display[row].text = f'outside temperature {logger_data["data"]["o_temperature"]} \u00b0C'
+    display[row].text = f'outside temperature {logger_data["data"]["o-temperature"]} \u00b0C'
     row += 1
     if logger_data['data']['rssi']:
         display[row].text = f'Beacon "{logger_data["data"]["name"]}" ' \

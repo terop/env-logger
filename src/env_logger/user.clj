@@ -23,7 +23,7 @@
                                              :where [:= :u.username
                                                      username]})
                                 rs-opts)]
-         (:yubikey_id row))))
+         (:yubikey-id row))))
 
 (defn get-user-data
   "Returns the password hash and Yubikey ID(s) of the user with the given
@@ -38,7 +38,7 @@
                                     rs-opts)
           key-ids (get-yubikey-id db-con username)]
       (when (pos? (count result))
-        {:pw-hash (:pw_hash result)
+        {:pw-hash (:pw-hash result)
          :yubikey-ids key-ids}))
     (catch PSQLException pge
       (log/error "Failed to get user data from DB, message:"
@@ -63,7 +63,7 @@
   "Returns the user ID of the user with the given username. If the user is not
   found, nil is returned."
   [db-con username]
-  (:user_id (jdbc/execute-one! db-con
+  (:user-id (jdbc/execute-one! db-con
                                (sql/format {:select [:user_id]
                                             :from [:users]
                                             :where [:= :username

@@ -124,14 +124,14 @@
     (is (= {:brightness 0
             :temperature 20.0
             :cloudiness 2
-            :wind_speed 5.0
-            :fmi_temperature 20.0
-            :o_temperature 5.0
+            :wind-speed 5.0
+            :fmi-temperature 20.0
+            :o-temperature 5.0
             :name "7C:EC:79:3F:BE:97"
             :rssi -68
-            :tb_image_name nil
-            :temp_delta -15.0
-            :yc_image_name (get-image-name "yardcam")}
+            :tb-image-name nil
+            :temp-delta -15.0
+            :yc-image-name (get-image-name "yardcam")}
            (dissoc (nth (get-obs-days test-ds 3) 1) :recorded)))))
 
 (deftest obs-interval-select
@@ -250,9 +250,9 @@
 (deftest weather-days-observations
   (testing "Selecting weather observations from N days"
     (is (= {:cloudiness 2
-            :wind_speed 5.0
-            :fmi_temperature 20.0
-            :tb_image_name nil}
+            :wind-speed 5.0
+            :fmi-temperature 20.0
+            :tb-image-name nil}
            (dissoc (first (get-weather-obs-days test-ds 1))
                    :time)))))
 

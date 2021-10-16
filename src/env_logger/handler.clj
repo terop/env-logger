@@ -145,7 +145,7 @@
   (if-not (authenticated? request)
     response-unauthorized
     (with-open [con (jdbc/get-connection db/postgres-ds)]
-      (let [data (first (filter #(not (nil? (:fmi_temperature %)))
+      (let [data (first (filter #(not (nil? (:fmi-temperature %)))
                                 (reverse (db/get-obs-days con 1))))
             rt-data (sort-by :location
                              (take (count (get-conf-value :ruuvitag-locations))

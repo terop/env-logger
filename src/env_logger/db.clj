@@ -38,7 +38,7 @@
                  :user db-user
                  :password db-password}))
 (def postgres-ds (jdbc/get-datasource postgres))
-(def rs-opts {:builder-fn rs/as-unqualified-lower-maps})
+(def rs-opts {:builder-fn rs/as-unqualified-kebab-maps})
 
 (def yc-image-pattern
   #"yc-(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:?\+\d{2}(:?:\d{2})?|Z)).+")
@@ -77,7 +77,7 @@
 (defn get-yc-image
   "Returns the name of the latest yardcam image."
   [db-con]
-  (let [image-name (:image_name (jdbc/execute-one! db-con
+  (let [image-name (:image-name (jdbc/execute-one! db-con
                                                    (sql/format
                                                     {:select [:image_name]
                                                      :from [:yardcam_image]})
@@ -92,7 +92,7 @@
 (defn get-tb-image
   "Returns the name of the latest FMI Testbed image."
   [db-con]
-  (let [tb-image-name (:tb_image_name
+  (let [tb-image-name (:tb-mage-name
                        (jdbc/execute-one! db-con
                                           (sql/format
                                            {:select [:tb_image_name]
@@ -304,31 +304,31 @@
         tz-offset (get-tz-offset (get-conf-value :display-timezone))]
     (for [row (jdbc/execute! db-con
                              (sql/format limit-query)
-                             {:builder-fn rs/as-unqualified-lower-maps})]
+                             rs-opts)]
       (dissoc (merge row
                      {:recorded (convert-to-epoch-ms tz-offset
                                                      (:recorded row))
                       :name (get beacon-names
-                                 (:mac_address row)
-                                 (:mac_address row))
-                      :temp_delta (when (and (:fmi_temperature row)
-                                             (:o_temperature row))
+                                 (:mac-address row)
+                                 (:mac-address row))
+                      :temp-delta (when (and (:fmi-temperature row)
+                                             (:o-temperature row))
                                     (Float/parseFloat
                                      (format "%.2f"
-                                             (- (:o_temperature row)
-                                                (:fmi_temperature
+                                             (- (:o-temperature row)
+                                                (:fmi-temperature
                                                  row)))))
-                      :yc_image_name (if (:yc_image_name row)
+                      :yc-image-name (if (:yc-image-name row)
                                        (if (image-age-check
                                             "yardcam"
-                                            (:yc_image_name row)
+                                            (:yc-image-name row)
                                             (:recorded row)
                                             (get-conf-value
                                              :image-max-time-diff))
-                                         (:yc_image_name row)
+                                         (:yc-image-name row)
                                          nil)
                                        nil)})
-              :mac_address))))
+              :mac-address))))
 
 (defn get-obs-days
   "Fetches the observations from the last N days."
@@ -449,7 +449,7 @@
       (jdbc/execute! db-con
                      (sql/format {:delete-from :yardcam_image})
                      rs-opts))
-    (pos? (:image_id (js/insert! db-con
+    (pos? (:image-id (js/insert! db-con
                                  :yardcam_image
                                  {:image_name image-name}
                                  rs-opts)))

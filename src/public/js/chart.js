@@ -113,8 +113,8 @@ var parseRTData = function (rtObservations, rtLabels, observationCount) {
 // Parses an observation.
 // observation - observation as JSON
 var parseData = function (observation) {
-    const weatherFields = ['o_temperature', 'fmi_temperature', 'temp_delta',
-                           'cloudiness', 'wind_speed'],
+    const weatherFields = ['o-temperature', 'fmi-temperature', 'temp-delta',
+                           'cloudiness', 'wind-speed'],
           otherFields = ['temperature', 'brightness', 'rssi'];
 
     // dataMode - string, which mode to process data in, values: weather, other
@@ -144,13 +144,13 @@ var parseData = function (observation) {
             beaconName = observation['name'];
         }
 
-        yardcamImageNames.push(observation['yc_image_name']);
+        yardcamImageNames.push(observation['yc-image-name']);
     } else {
         dataLabels.push(new Date(observation['time']));
 
         processFields('weather', observation, weatherFields);
     }
-    testbedImageNames.push(observation['tb_image_name']);
+    testbedImageNames.push(observation['tb-image-name']);
 };
 
 
@@ -193,11 +193,11 @@ var transformData = function (jsonData) {
             labelValues['other'][key] = rtLabels[key];
         }
     }
-    labelValues['weather'] = {'o_temperature': 'Temperature (outside)',
-                              'fmi_temperature': 'Temperature (FMI)',
-                              'temp_delta': 'Temperature delta',
+    labelValues['weather'] = {'o-temperature': 'Temperature (outside)',
+                              'fmi-temperature': 'Temperature (FMI)',
+                              'temp-delta': 'Temperature delta',
                               'cloudiness': 'Cloudiness',
-                              'wind_speed': 'Wind speed'};
+                              'wind-speed': 'Wind speed'};
 
     if (mode === 'all' && beaconName !== '') {
         var label = `Beacon "${beaconName}" RSSI`;
@@ -234,18 +234,18 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
         var lastObservationIndex = observationCount - 1,
             observationText = `Date: ${formatDate(dataLabels[lastObservationIndex])}<br>`,
             itemsAdded = 0,
-            weatherKeys = ['fmi_temperature', 'cloudiness', 'wind_speed'];
+            weatherKeys = ['fmi-temperature', 'cloudiness', 'wind-speed'];
 
         if (mode === 'all') {
             var owmData = JSON.parse(document.getElementById('owmData').textContent);
-            weatherKeys.unshift('o_temperature');
+            weatherKeys.unshift('o-temperature');
 
             observationText += `Sun: Sunrise ${formatUnixSecondTs(owmData['current'].sunrise)},` +
                 ` Sunset ${formatUnixSecondTs(owmData['current'].sunset)}<br>`;
         }
 
         for (var i = lastObservationIndex; i > 0; i--) {
-            if (dataSets['weather']['fmi_temperature'][i] !== null) {
+            if (dataSets['weather']['fmi-temperature'][i] !== null) {
                 lastObservationIndex = i;
                 break;
             }
@@ -333,12 +333,12 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
             datasets: []
         },
             index = 0,
-            weatherFields = ['fmi_temperature', 'cloudiness', 'wind_speed'],
+            weatherFields = ['fmi-temperature', 'cloudiness', 'wind-speed'],
             otherFields = ['temperature', 'brightness', 'rssi'];
 
         if (mode === 'all' && dataMode === 'weather') {
-            weatherFields.unshift('temp_delta');
-            weatherFields.unshift('o_temperature');
+            weatherFields.unshift('temp-delta');
+            weatherFields.unshift('o-temperature');
         }
         if (dataMode === 'other')
             for (const key in labelValues['other']) {
