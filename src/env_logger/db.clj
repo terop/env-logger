@@ -92,7 +92,7 @@
 (defn get-tb-image
   "Returns the name of the latest FMI Testbed image."
   [db-con]
-  (let [tb-image-name (:tb-mage-name
+  (let [tb-image-name (:tb-image-name
                        (jdbc/execute-one! db-con
                                           (sql/format
                                            {:select [:tb_image_name]
