@@ -58,29 +58,31 @@
   redirect to the value of (:query-params (:next request)).
   On failed authentication, renders the login page."
   [request]
-  (let [username (get-in request [:form-params "username"])
-        password (get-in request [:form-params "password"])
-        otp (get-in request [:form-params "otp"])
-        session (:session request)
-        use-ldap? (get-conf-value :use-ldap)
-        user-data (if use-ldap?
-                    (when-let [password (u/get-password-from-ldap username)]
-                      {:pw-hash password})
-                    (u/get-user-data db/postgres username))]
-    (if (:error user-data)
-      (render-file "templates/error.html"
-                   {})
-      (if (or (and user-data (h/check password (:pw-hash user-data)))
-              (and (seq otp)
-                   (otp-value-valid? otp)
-                   (contains? (u/get-yubikey-id db/postgres-ds username)
-                              (YubicoClient/getPublicId otp))))
-        (let [next-url (get-in request [:query-params :next]
-                               (str (get-conf-value :url-path) "/"))
-              updated-session (assoc session :identity (keyword username))]
-          (assoc (resp/redirect next-url) :session updated-session))
-        (render-file "templates/login.html"
-                     {:error "Error: an invalid credential was provided"})))))
+  (with-open [con (jdbc/get-connection db/postgres-ds)]
+    (let [username (get-in request [:form-params "username"])
+          password (get-in request [:form-params "password"])
+          otp (get-in request [:form-params "otp"])
+          session (:session request)
+          use-ldap? (get-conf-value :use-ldap)
+          user-data (if use-ldap?
+                      (when-let [password (u/get-password-from-ldap username)]
+                        {:pw-hash password})
+                      (u/get-user-data con username))]
+      (if (:error user-data)
+        (render-file "templates/error.html"
+                     {})
+        (if (or (and user-data (h/check password (:pw-hash user-data)))
+                (and (seq otp)
+                     (otp-value-valid? otp)
+                     (contains? (u/get-yubikey-id con username)
+                                (YubicoClient/getPublicId otp))))
+          (let [next-url (get-in request [:query-params :next]
+                                 (str (get-conf-value :url-path) "/"))
+                updated-session (assoc session :identity (keyword username))]
+            (assoc (resp/redirect next-url) :session updated-session))
+          (render-file "templates/login.html"
+                       {:error (str "Error: an invalid credential "
+                                    "was provided")}))))))
 
 (defn unauthorized-handler
   "Handles unauthorized requests."
@@ -286,39 +288,40 @@
   (POST "/rt-observations" request
         (if-not (check-auth-code (:code (:params request)))
           response-unauthorized
-          (if-not (db/test-db-connection db/postgres-ds)
-            response-server-error
-            (if (pos? (db/insert-ruuvitag-observation
-                       db/postgres-ds
-                       (parse-string (:observation (:params request)) true)))
-              "OK" response-server-error))))
+          (with-open [con (jdbc/get-connection db/postgres-ds)]
+            (if-not (db/test-db-connection con)
+              response-server-error
+              (if (pos? (db/insert-ruuvitag-observation
+                         con
+                         (parse-string (:observation (:params request)) true)))
+                "OK" response-server-error)))))
   ;; Testbed image name storage
   (POST "/tb-image" request
         (if-not (check-auth-code (:code (:params request)))
           response-unauthorized
-          (if-not (db/test-db-connection db/postgres-ds)
-            response-server-error
-            (if (re-find #"testbed-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+\d{4}\.png"
-                         (:name (:params request)))
-              (if (db/insert-tb-image-name db/postgres-ds
-                                           (db/get-last-obs-id
-                                            db/postgres-ds)
-                                           (:name (:params
-                                                   request)))
-                "OK" response-server-error)
-              response-invalid-request))))
+          (with-open [con (jdbc/get-connection db/postgres-ds)]
+            (if-not (db/test-db-connection con)
+              response-server-error
+              (if (re-find #"testbed-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+\d{4}\.png"
+                           (:name (:params request)))
+                (if (db/insert-tb-image-name con
+                                             (db/get-last-obs-id con)
+                                             (:name (:params request)))
+                  "OK" response-server-error)
+                response-invalid-request)))))
   ;; Latest yardcam image name storage
   (POST "/yc-image" request
         (if-not (check-auth-code (:code (:params request)))
           response-unauthorized
-          (if-not (db/test-db-connection db/postgres-ds)
-            response-server-error
-            (let [image-name (:image-name (:params request))]
-              (if (yc-image-validity-check image-name)
-                (if (db/insert-yc-image-name db/postgres-ds
-                                             image-name)
-                  "OK" response-server-error)
-                response-invalid-request)))))
+          (with-open [con (jdbc/get-connection db/postgres-ds)]
+            (if-not (db/test-db-connection con)
+              response-server-error
+              (let [image-name (:image-name (:params request))]
+                (if (yc-image-validity-check image-name)
+                  (if (db/insert-yc-image-name con
+                                               image-name)
+                    "OK" response-server-error)
+                  response-invalid-request))))))
   ;; Serve static files
   (route/files "/")
   (route/not-found "404 Not Found"))
