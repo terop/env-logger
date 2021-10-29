@@ -1,9 +1,7 @@
 (ns env-logger.user
   "Namespace for user functionality"
   (:require [clojure.tools.logging :as log]
-            [clj-ldap.client :as ldap]
             [next.jdbc :as jdbc]
-            [env-logger.config :refer [ldap-conf]]
             [env-logger.db :refer [rs-opts]])
   (:import java.sql.BatchUpdateException
            org.postgresql.util.PSQLException))
@@ -44,20 +42,6 @@
       (log/error "Failed to get user data from DB, message:"
                  (.getMessage pge))
       {:error :db-error})))
-
-(defn get-password-from-ldap
-  "Fetches a user's password hash from LDAP. Returns nil if the user is
-  not found."
-  [username]
-  (:userPassword (ldap/get (ldap/connect {:host (format "%s:%s"
-                                                        (ldap-conf :host)
-                                                        (ldap-conf :port))
-                                          :bind-dn (ldap-conf :bind-dn)
-                                          :password (ldap-conf :password)})
-                           (format "cn=%s,ou=users,%s"
-                                   username
-                                   (ldap-conf :base-dn))
-                           [:userPassword])))
 
 (defn get-user-id
   "Returns the user ID of the user with the given username. If the user is not

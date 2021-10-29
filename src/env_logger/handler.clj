@@ -63,11 +63,7 @@
           password (get-in request [:form-params "password"])
           otp (get-in request [:form-params "otp"])
           session (:session request)
-          use-ldap? (get-conf-value :use-ldap)
-          user-data (if use-ldap?
-                      (when-let [password (u/get-password-from-ldap username)]
-                        {:pw-hash password})
-                      (u/get-user-data con username))]
+          user-data (u/get-user-data con username)]
       (if (:error user-data)
         (render-file "templates/error.html"
                      {})

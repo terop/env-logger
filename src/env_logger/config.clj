@@ -25,8 +25,3 @@
   "Returns the value of the requested database configuration key"
   [k & [use-sample]]
   (get-conf-value :database :k k :use-sample use-sample))
-
-(defn ldap-conf
-  "Returns the value of the requested LDAP configuration key"
-  [k & [use-sample]]
-  (get-conf-value :ldap :k k :use-sample use-sample))

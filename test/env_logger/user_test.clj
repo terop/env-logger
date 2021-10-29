@@ -1,6 +1,5 @@
 (ns env-logger.user-test
   (:require [clojure.test :refer :all]
-            [clj-ldap.client :as ldap]
             [next.jdbc :as jdbc]
             [next.jdbc.sql :as js]
             [env-logger.user :refer :all]
@@ -43,15 +42,6 @@
                             (PSQLState/COMMUNICATION_ERROR))))]
       (is (= {:error :db-error}
              (get-user-data test-ds "test-user"))))))
-
-(deftest password-from-ldap-query
-  (testing "Searching for a user's password from LDAP"
-    (with-redefs [ldap/connect (fn [options] nil)
-                  ldap/get (fn [con dn fields] nil)]
-      (is (nil? (get-password-from-ldap "notfound"))))
-    (with-redefs [ldap/connect (fn [options] nil)
-                  ldap/get (fn [con dn fields] {:userPassword "foobar"})]
-      (is (= "foobar" (get-password-from-ldap "test-user"))))))
 
 (deftest user-id-query
   (testing "Querying of user ID"
