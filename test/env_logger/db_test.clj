@@ -336,6 +336,11 @@
                  (assoc ruuvitag-obs
                         :recorded
                         (t/zoned-date-time "2019-01-25T20:45:18+02:00")))))
+      (is (pos? (insert-ruuvitag-observation
+                 test-ds
+                 (assoc ruuvitag-obs
+                        :pressure
+                        nil))))
       (= -1 (insert-ruuvitag-observation test-ds
                                          (dissoc ruuvitag-obs :temperature))))))
 
