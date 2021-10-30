@@ -214,7 +214,8 @@ def update_screen(display, logger_data, weather_data, utc_offset_hour):
         for tag in rt_data:
             location = tag['location']
 
-            if location in seen_locations:
+            if (location in seen_locations) or \
+               (location in secrets['hidden_ruuvitag_locations']):
                 continue
 
             display[row].text = f'RuuviTag \"{location}\": temperature ' \
