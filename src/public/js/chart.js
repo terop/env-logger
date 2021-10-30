@@ -429,7 +429,8 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
             plugins: plugins,
             onClick: onClickFunction,
             spanGaps: true,
-            normalized: true
+            normalized: true,
+            tension: 0.1
         }
     });
 
@@ -444,8 +445,8 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
                 plugins: plugins,
                 onClick: onClickFunction,
                 spanGaps: true,
-                showLine: false,
-                normalized: true
+                normalized: true,
+                tension: 0.1
             }
         });
         document.getElementById('otherResetZoom').addEventListener(
