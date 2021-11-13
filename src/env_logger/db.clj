@@ -1,13 +1,12 @@
 (ns env-logger.db
   "Namespace containing the application's database function"
-  (:require [clojure.string :as s]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [next.jdbc :as jdbc]
             [next.jdbc
              [result-set :as rs]
              [sql :as js]]
             [java-time :as t]
-            [env-logger.config :refer :all])
+            [env-logger.config :refer [db-conf get-conf-value]])
   (:import java.text.NumberFormat
            (java.time DateTimeException
                       ZoneOffset)
@@ -35,6 +34,7 @@
   (def postgres {:dbtype "postgresql"
                  :dbname db-name
                  :host db-host
+                 :port db-port
                  :user db-user
                  :password db-password}))
 (def postgres-ds (jdbc/get-datasource postgres))
@@ -70,7 +70,7 @@
     (try
       (<= (t/as (t/interval image-dt ref-dt) :minutes)
           diff-minutes)
-      (catch DateTimeException dte
+      (catch DateTimeException _
         ;; ref-dt < yc-dt results in DateTimeException
         true))))
 
@@ -209,7 +209,7 @@
                                                (merge observation
                                                       {:image-name
                                                        (get-yc-image t-con)}))]
-          (if (pos? obs-id)
+          (when (pos? obs-id)
             (if (every? pos?
                         (insert-beacons t-con obs-id observation))
               (let [weather-data (:weather-data observation)]

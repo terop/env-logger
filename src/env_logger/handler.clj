@@ -1,9 +1,7 @@
 (ns env-logger.handler
   "The main namespace of the application"
   (:gen-class)
-  (:require [clojure set
-             [string :as s]]
-            [clojure.tools.logging :as log]
+  (:require [clojure set]
             [buddy
              [auth :refer [authenticated?]]
              [hashers :as h]]
@@ -16,11 +14,13 @@
             [cheshire.core :refer [generate-string parse-string]]
             [java-time :as t]
             [compojure
-             [core :refer [defroutes DELETE GET POST]]
+             [core :refer [defroutes GET POST]]
              [route :as route]]
             [next.jdbc :as jdbc]
             [ring.adapter.jetty :refer [run-jetty]]
-            [ring.middleware.defaults :refer :all]
+            [ring.middleware.defaults :refer [wrap-defaults
+                                              site-defaults
+                                              secure-site-defaults]]
             [ring.middleware.reload :refer [wrap-reload]]
             [ring.middleware.json :refer [wrap-json-params wrap-json-response]]
             [ring.util.response :as resp]
@@ -82,7 +82,7 @@
 
 (defn unauthorized-handler
   "Handles unauthorized requests."
-  [request metadata]
+  [request _]
   (if (authenticated? request)
     ;; If request is authenticated, raise 403 instead of 401 as the user
     ;; is authenticated but permission denied is raised.
@@ -267,7 +267,7 @@
                       (get-plot-page-data request))))
   (GET "/login" [] (render-file "templates/login.html" {}))
   (POST "/login" [] login-authenticate)
-  (GET "/logout" request
+  (GET "/logout" _
        (assoc (resp/redirect (str (get-conf-value :url-path) "/"))
               :session {}))
   (POST "/token-login" [] token-login)

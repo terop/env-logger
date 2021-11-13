@@ -3,8 +3,7 @@
   (:require [clojure.tools.logging :as log]
             [next.jdbc :as jdbc]
             [env-logger.db :refer [rs-opts]])
-  (:import java.sql.BatchUpdateException
-           org.postgresql.util.PSQLException))
+  (:import org.postgresql.util.PSQLException))
 (refer-clojure :exclude '[filter for group-by into partition-by set update])
 (require '[honey.sql :as sql])
 

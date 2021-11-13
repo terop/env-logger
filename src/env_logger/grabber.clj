@@ -75,7 +75,7 @@
     (when-not (nil? response)
       (try
         (extract-data (:content (parse-xml (:body response))))
-        (catch org.xml.sax.SAXParseException e
+        (catch org.xml.sax.SAXParseException _
           (log/error "FMI weather data XML parsing failed")
           nil)))))
 
