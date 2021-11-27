@@ -1,7 +1,6 @@
 target/
+.clj-kondo/
 .lein-*
-GPATH
-GRTAGS
-GTAGS
+.eastwood
 venv/
 resources/config.edn
