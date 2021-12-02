@@ -2,7 +2,9 @@
   "Namespace for data grabbing functions"
   (:require [clojure.tools.logging :as log]
             [clojure.string :as s]
-            [clojure.xml :as xml]
+            [clojure.xml :refer [parse]]
+            [clojure.zip :refer [xml-zip]]
+            [clojure.data.zip.xml :as zx]
             [cheshire.core :refer [parse-string]]
             [clj-http.client :as client]
             [next.jdbc :as jdbc]
@@ -11,34 +13,25 @@
   (:import java.util.Date
            java.sql.Timestamp))
 
-(defn parse-xml
-  "Parse the provided string as XML."
-  [^String s]
-  (xml/parse
-   (java.io.ByteArrayInputStream. (.getBytes s))))
-
 (defn extract-data
   "Parses and returns temperature and cloud cover information from the XML
   document body. It is assumed that there only one set of data in the body."
-  [xml-body]
-  (when-not (not= (count xml-body) 3)
-    (let [data (for [elem xml-body]
-                 (map #(->> %
-                            :content
-                            first)
-                      (->> elem
-                           :content
-                           first
-                           :content
-                           (filter #(contains?
-                                     #{:BsWfs:Time
-                                       :BsWfs:ParameterName
-                                       :BsWfs:ParameterValue}
-                                     (:tag %))))))]
-      {:date (new Timestamp (.toEpochMilli (t/instant (nth (first data) 0))))
-       :temperature (Float/parseFloat (nth (first data) 2))
-       :cloudiness (int (Float/parseFloat (nth (nth data 1) 2)))
-       :wind-speed (Float/parseFloat (nth (nth data 2) 2))})))
+  [parsed-xml]
+  (when (>= (count (:content parsed-xml)) 3)
+    (let [root (xml-zip parsed-xml)
+          values (for [m (zx/xml-> root
+                                   :wfs:member
+                                   :BsWfs:BsWfsElement
+                                   :BsWfs:ParameterValue)]
+                   (zx/text m))
+          date-text (zx/text (zx/xml1-> root
+                                        :wfs:member
+                                        :BsWfs:BsWfsElement
+                                        :BsWfs:Time))]
+      {:date (new Timestamp (.toEpochMilli (t/instant date-text)))
+       :temperature (Float/parseFloat (nth values 0))
+       :cloudiness (int (Float/parseFloat (nth values 1)))
+       :wind-speed (Float/parseFloat (nth values 2))})))
 
 (defn calculate-start-time
   "Calculates the start time for the data request and returns it as a
@@ -66,18 +59,16 @@
                                  (str (t/instant (t/with-zone
                                                    (calculate-start-time)
                                                    "Europe/Helsinki")))
-                                 #"\.\d+")) "Z"))
-        response (try
-                   (client/get url)
-                   (catch Exception e
-                     (log/error (str "FMI weather data fetch failed, status: "
-                                     (str e)))))]
-    (when-not (nil? response)
-      (try
-        (extract-data (:content (parse-xml (:body response))))
-        (catch org.xml.sax.SAXParseException _
-          (log/error "FMI weather data XML parsing failed")
-          nil)))))
+                                 #"\.\d+")) "Z"))]
+    (try
+      (extract-data (parse url))
+      (catch org.xml.sax.SAXParseException _
+        (log/error "FMI weather data XML parsing failed")
+        nil)
+      (catch Exception e
+        (log/error (str "FMI weather data fetch failed, status: "
+                        (str e)))
+        nil))))
 
 (defn -get-fmi-weather-data-json
   "Fetches the latest FMI weather data from the observation data in JSON for the
