@@ -1,0 +1,214 @@
+{:tag :wfs:FeatureCollection,
+ :attrs
+ {:numberReturned "1",
+  :xmlns:gco "http://www.isotc211.org/2005/gco",
+  :xmlns:ompr "http://inspire.ec.europa.eu/schemas/ompr/3.0",
+  :xmlns:xsi "http://www.w3.org/2001/XMLSchema-instance",
+  :xmlns:omso "http://inspire.ec.europa.eu/schemas/omso/3.0",
+  :xmlns:gmd "http://www.isotc211.org/2005/gmd",
+  :timeStamp "2021-12-09T17:18:27Z",
+  :xmlns:om "http://www.opengis.net/om/2.0",
+  :xmlns:wfs "http://www.opengis.net/wfs/2.0",
+  :xsi:schemaLocation
+  "http://www.opengis.net/wfs/2.0 http://schemas.opengis.net/wfs/2.0/wfs.xsd     http://www.opengis.net/gmlcov/1.0 http://schemas.opengis.net/gmlcov/1.0/gmlcovAll.xsd     http://www.opengis.net/sampling/2.0 http://schemas.opengis.net/sampling/2.0/samplingFeature.xsd     http://www.opengis.net/samplingSpatial/2.0 http://schemas.opengis.net/samplingSpatial/2.0/spatialSamplingFeature.xsd     http://www.opengis.net/swe/2.0 http://schemas.opengis.net/sweCommon/2.0/swe.xsd     http://inspire.ec.europa.eu/schemas/omso/3.0 https://inspire.ec.europa.eu/schemas/omso/3.0/SpecialisedObservations.xsd     http://inspire.ec.europa.eu/schemas/ompr/3.0 https://inspire.ec.europa.eu/schemas/ompr/3.0/Processes.xsd     http://xml.fmi.fi/namespace/om/atmosphericfeatures/1.1 https://xml.fmi.fi/schema/om/atmosphericfeatures/1.1/atmosphericfeatures.xsd",
+  :xmlns:gml "http://www.opengis.net/gml/3.2",
+  :xmlns:xlink "http://www.w3.org/1999/xlink",
+  :xmlns:target
+  "http://xml.fmi.fi/namespace/om/atmosphericfeatures/1.1",
+  :xmlns:gmlcov "http://www.opengis.net/gmlcov/1.0",
+  :xmlns:swe "http://www.opengis.net/swe/2.0",
+  :xmlns:sams "http://www.opengis.net/samplingSpatial/2.0",
+  :xmlns:sam "http://www.opengis.net/sampling/2.0",
+  :numberMatched "1"},
+ :content
+ [{:tag :wfs:member,
+   :attrs nil,
+   :content
+   [{:tag :omso:GridSeriesObservation,
+     :attrs
+     {:gml:id
+      "WFS-YocDqMPRf5K6RDzfAGc3kNztFS6JTowuYWbbpdOs2_llx4efR060aeWzDtdOufXlmw48rp1w36d3R0629dnTTw36d3THv7ZeWHPlhaWLLn07qmnbltS_wrFLRX5CY2PlzrUi0Kcd06aMmrhnZd2Spp25bUv8KxWx65HBm07sk7Lh5ZefSth2ackhnZtunnpyc5L69ujMz5d.nJzrOWuG7Rw2ZujXl899_LJf39svLvy09MOLZliaWzL2y7KnnhlqZmzfjw7MtambTfjSV3XpmcNbbh8RNPPph3Y8tK1dCA1tunnz07s9TL46VjTsM5lbd.TLsrM0aeWzDtZXDDyw7a1qmXbwy8sPTryy1rV9O7JT4ZcuSbTreqb.mHZD2b.uSHv7ZeTc59N_LLk49cvLzf05K8ws23S6dZt_LLjw8.jp1o08tmHa6dc.vLNhx5XTrhv07ujp1t67Omnhv07umPf2y8sOfK0Omnblp9MvCfkJodNO3La37stY1WpDAA--"},
+     :content
+     [{:tag :om:phenomenonTime,
+       :attrs nil,
+       :content
+       [{:tag :gml:TimePeriod,
+         :attrs {:gml:id "time-interval-1-1"},
+         :content
+         [{:tag :gml:beginPosition,
+           :attrs nil,
+           :content ["2021-12-09T18:00:00Z"]}
+          {:tag :gml:endPosition,
+           :attrs nil,
+           :content ["2021-12-11T05:00:00Z"]}]}]}
+      {:tag :om:resultTime,
+       :attrs nil,
+       :content
+       [{:tag :gml:TimeInstant,
+         :attrs {:gml:id "time-1-1"},
+         :content
+         [{:tag :gml:timePosition,
+           :attrs nil,
+           :content ["2021-12-09T15:05:21Z"]}]}]}
+      {:tag :om:procedure,
+       :attrs {:xlink:href "http://xml.fmi.fi/inspire/process/hirlam"},
+       :content nil}
+      {:tag :om:parameter,
+       :attrs nil,
+       :content
+       [{:tag :om:NamedValue,
+         :attrs nil,
+         :content
+         [{:tag :om:name,
+           :attrs
+           {:xlink:href "http://xml.fmi.fi/inspire/process/hirlam"},
+           :content nil}
+          {:tag :om:value,
+           :attrs nil,
+           :content
+           [{:tag :gml:TimeInstant,
+             :attrs {:gml:id "analysis-time-1-1"},
+             :content
+             [{:tag :gml:timePosition,
+               :attrs nil,
+               :content ["2021-12-09T12:00:00Z"]}]}]}]}]}
+      {:tag :om:observedProperty,
+       :attrs
+       {:xlink:href
+        "https://opendata.fmi.fi/meta?observableProperty=forecast&param=Temperature,WindSpeedMS,TotalCloudCover&language=eng"},
+       :content nil}
+      {:tag :om:featureOfInterest,
+       :attrs nil,
+       :content
+       [{:tag :sams:SF_SpatialSamplingFeature,
+         :attrs {:gml:id "enn-s-1-1-"},
+         :content
+         [{:tag :sam:sampledFeature,
+           :attrs nil,
+           :content
+           [{:tag :target:LocationCollection,
+             :attrs {:gml:id "sampled-target-1-1"},
+             :content
+             [{:tag :target:member,
+               :attrs nil,
+               :content
+               [{:tag :target:Location,
+                 :attrs {:gml:id "forloc-geoid--874863-pos"},
+                 :content
+                 [{:tag :gml:identifier,
+                   :attrs
+                   {:codeSpace
+                    "http://xml.fmi.fi/namespace/stationcode/geoid"},
+                   :content ["-874863"]}
+                  {:tag :gml:name,
+                   :attrs
+                   {:codeSpace
+                    "http://xml.fmi.fi/namespace/locationcode/name"},
+                   :content ["Espoo Tapiola"]}
+                  {:tag :gml:name,
+                   :attrs
+                   {:codeSpace
+                    "http://xml.fmi.fi/namespace/locationcode/geoid"},
+                   :content ["-874863"]}
+                  {:tag :target:representativePoint,
+                   :attrs {:xlink:href "#point--874863"},
+                   :content nil}
+                  {:tag :target:country,
+                   :attrs
+                   {:codeSpace
+                    "http://xml.fmi.fi/namespace/location/country"},
+                   :content ["Finland"]}
+                  {:tag :target:timezone,
+                   :attrs nil,
+                   :content ["Europe/Helsinki"]}
+                  {:tag :target:region,
+                   :attrs
+                   {:codeSpace
+                    "http://xml.fmi.fi/namespace/location/region"},
+                   :content ["Espoo"]}]}]}]}]}
+          {:tag :sams:shape,
+           :attrs nil,
+           :content
+           [{:tag :gml:MultiPoint,
+             :attrs {:gml:id "sf-1-1-"},
+             :content
+             [{:tag :gml:pointMembers,
+               :attrs nil,
+               :content
+               [{:tag :gml:Point,
+                 :attrs
+                 {:srsDimension "2",
+                  :srsName
+                  "http://www.opengis.net/def/crs/EPSG/0/4258",
+                  :gml:id "point--874863"},
+                 :content
+                 [{:tag :gml:name,
+                   :attrs nil,
+                   :content ["Espoo Tapiola"]}
+                  {:tag :gml:pos,
+                   :attrs nil,
+                   :content ["60.17797 24.78743 "]}]}]}]}]}]}]}
+      {:tag :om:result,
+       :attrs nil,
+       :content
+       [{:tag :gmlcov:MultiPointCoverage,
+         :attrs {:gml:id "mpcv-1-1"},
+         :content
+         [{:tag :gml:domainSet,
+           :attrs nil,
+           :content
+           [{:tag :gmlcov:SimpleMultiPoint,
+             :attrs
+             {:srsDimension "3",
+              :srsName
+              "http://xml.fmi.fi/gml/crs/compoundCRS.php?crs=4258&time=unixtime",
+              :gml:id "mp-1-1"},
+             :content
+             [{:tag :gmlcov:positions,
+               :attrs nil,
+               :content
+               ["\n                60.17797 24.78743  1639072800\n                60.17797 24.78743  1639076400\n                60.17797 24.78743  1639080000\n                60.17797 24.78743  1639083600\n                60.17797 24.78743  1639087200\n                60.17797 24.78743  1639090800\n                60.17797 24.78743  1639094400\n                60.17797 24.78743  1639098000\n                60.17797 24.78743  1639101600\n                60.17797 24.78743  1639105200\n                60.17797 24.78743  1639108800\n                60.17797 24.78743  1639112400\n                60.17797 24.78743  1639116000\n                60.17797 24.78743  1639119600\n                60.17797 24.78743  1639123200\n                60.17797 24.78743  1639126800\n                60.17797 24.78743  1639130400\n                60.17797 24.78743  1639134000\n                60.17797 24.78743  1639137600\n                60.17797 24.78743  1639141200\n                60.17797 24.78743  1639144800\n                60.17797 24.78743  1639148400\n                60.17797 24.78743  1639152000\n                60.17797 24.78743  1639155600\n                60.17797 24.78743  1639159200\n                60.17797 24.78743  1639162800\n                60.17797 24.78743  1639166400\n                60.17797 24.78743  1639170000\n                60.17797 24.78743  1639173600\n                60.17797 24.78743  1639177200\n                60.17797 24.78743  1639180800\n                60.17797 24.78743  1639184400\n                60.17797 24.78743  1639188000\n                60.17797 24.78743  1639191600\n                60.17797 24.78743  1639195200\n                60.17797 24.78743  1639198800\n                "]}]}]}
+          {:tag :gml:rangeSet,
+           :attrs nil,
+           :content
+           [{:tag :gml:DataBlock,
+             :attrs nil,
+             :content
+             [{:tag :gml:rangeParameters, :attrs nil, :content nil}
+              {:tag :gml:doubleOrNilReasonTupleList,
+               :attrs nil,
+               :content
+               ["\n                -5.0 7.0 49.52 \n                -5.27 7.8 28.06 \n                -5.02 8.1 1.25 \n                -4.73 8.35 81.98 \n                -4.6 8.25 100.0 \n                -5.06 8.05 100.0 \n                -5.28 7.74 99.98 \n                -4.13 8.49 100.0 \n                -3.22 9.22 100.0 \n                -2.57 9.41 100.0 \n                -2.18 9.77 100.0 \n                -2.22 9.3 100.0 \n                -2.08 9.07 100.0 \n                -1.8 9.57 100.0 \n                -1.67 10.09 100.0 \n                -1.67 9.74 100.0 \n                -1.58 9.88 100.0 \n                -1.49 9.87 100.0 \n                -1.62 10.23 100.0 \n                -1.84 10.34 100.0 \n                -2.1 10.08 100.0 \n                -2.22 9.61 100.0 \n                -2.33 9.55 100.0 \n                -2.29 9.27 100.0 \n                -2.08 9.28 100.0 \n                -1.81 9.14 100.0 \n                -1.51 8.89 100.0 \n                -1.37 8.49 100.0 \n                -1.51 8.11 100.0 \n                -1.39 7.7 100.0 \n                -1.14 7.57 100.0 \n                -0.91 7.34 100.0 \n                -0.61 7.69 100.0 \n                -0.33 7.62 100.0 \n                -0.07 7.16 100.0 \n                0.11 6.65 100.0 \n                "]}]}]}
+          {:tag :gml:coverageFunction,
+           :attrs nil,
+           :content
+           [{:tag :gml:CoverageMappingRule,
+             :attrs nil,
+             :content
+             [{:tag :gml:ruleDefinition,
+               :attrs nil,
+               :content ["Linear"]}]}]}
+          {:tag :gmlcov:rangeType,
+           :attrs nil,
+           :content
+           [{:tag :swe:DataRecord,
+             :attrs nil,
+             :content
+             [{:tag :swe:field,
+               :attrs
+               {:xlink:href
+                "https://opendata.fmi.fi/meta?observableProperty=forecast&param=Temperature&language=eng",
+                :name "Temperature"},
+               :content nil}
+              {:tag :swe:field,
+               :attrs
+               {:xlink:href
+                "https://opendata.fmi.fi/meta?observableProperty=forecast&param=WindSpeedMS&language=eng",
+                :name "WindSpeedMS"},
+               :content nil}
+              {:tag :swe:field,
+               :attrs
+               {:xlink:href
+                "https://opendata.fmi.fi/meta?observableProperty=forecast&param=TotalCloudCover&language=eng",
+                :name "TotalCloudCover"},
+               :content nil}]}]}]}]}]}]}]}

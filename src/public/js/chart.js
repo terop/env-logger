@@ -237,11 +237,11 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
             weatherKeys = ['fmi-temperature', 'cloudiness', 'wind-speed'];
 
         if (mode === 'all') {
-            var owmData = JSON.parse(document.getElementById('owmData').textContent);
+            var weatherData = JSON.parse(document.getElementById('weatherData').textContent);
             weatherKeys.unshift('o-temperature');
 
-            observationText += `Sun: Sunrise ${formatUnixSecondTs(owmData['current'].sunrise)},` +
-                ` Sunset ${formatUnixSecondTs(owmData['current'].sunset)}<br>`;
+            observationText += `Sun: Sunrise ${formatUnixSecondTs(weatherData['owm']['current']['sunrise'])},` +
+                ` Sunset ${formatUnixSecondTs(weatherData['owm']['current']['sunset'])}<br>`;
         }
 
         for (var i = lastObservationIndex; i > 0; i--) {
@@ -256,7 +256,7 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
             `${addUnitSuffix(key)}, `;
         observationText = observationText.slice(0, -2);
         if (mode === 'all')
-            observationText += `, Description: ${owmData['current']['weather'][0]['description']}`;
+            observationText += `, Description: ${weatherData['owm']['current']['weather'][0]['description']}`;
 
         if (mode === 'all') {
             var firstRTLabelSeen = false;
@@ -275,12 +275,12 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
             }
             observationText = observationText.slice(0, -2);
 
-            const forecast = owmData['forecast'];
+            // const forecast = weatherData['forecast'];
             observationText += '<br><br>Forecast for ' +
-                luxon.DateTime.fromSeconds(forecast['dt']).toFormat('dd.MM.yyyy HH:mm') +
-                `: temperature: ${forecast['temp']} \u2103, cloudiness: ${forecast['clouds']} `+
-                ` %, wind speed: ${forecast['wind_speed']} m/s, description: ` +
-                forecast['weather'][0]['description'];
+                luxon.DateTime.fromSeconds(weatherData['owm']['forecast']['dt']).toFormat('dd.MM.yyyy HH:mm') +
+                `: temperature: ${weatherData['fmi']['temperature']} \u2103, cloudiness: ${weatherData['fmi']['cloudiness']} `+
+                ` %, wind speed: ${weatherData['fmi']['wind-speed']} m/s, description: ` +
+                weatherData['owm']['forecast']['weather'][0]['description'];
         }
 
         document.getElementById('lastObservation').innerHTML = observationText;

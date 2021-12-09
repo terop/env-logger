@@ -3,14 +3,14 @@
   :url "https://github.com/terop/env-logger"
   :license {:name "MIT"}
   :dependencies [[org.clojure/clojure "1.10.3"]
-                 [org.clojure/core.cache "1.0.217"]
+                 [org.clojure/core.cache "1.0.225"]
                  [org.clojure/data.zip "1.0.0"]
                  [ring "1.9.4"]
                  [ring/ring-defaults "0.3.3"]
                  [ring/ring-json "0.5.1"]
                  [org.postgresql/postgresql "42.3.1"]
                  [com.github.seancorfield/next.jdbc "1.2.753"]
-                 [com.github.seancorfield/honeysql "2.1.829"]
+                 [com.github.seancorfield/honeysql "2.1.833"]
                  [clojure.java-time "0.3.3"]
                  [org.threeten/threeten-extra "1.7.0"]
                  [compojure "1.6.2"]

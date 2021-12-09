@@ -28,10 +28,10 @@
             [env-logger
              [config :refer [get-conf-value]]
              [db :as db]
-             [grabber :refer [calculate-start-time
+             [weather :refer [calculate-start-time
                               get-fmi-weather-data
-                              weather-query-ok?]]
-             [owm :refer [get-owm-data]]
+                              weather-query-ok?
+                              get-weather-data]]
              [user :as u]])
   (:import java.time.Instant
            com.yubico.client.v2.YubicoClient))
@@ -238,7 +238,7 @@
                                                (t/days initial-days)))
                 :end-date (:end obs-dates)})
              (when logged-in?
-               {:owm-data (generate-string (get-owm-data))})))))
+               {:weather-data (generate-string (get-weather-data))})))))
 
 (defn handle-observation-insert
   "Handles the insertion of an observation to the database."

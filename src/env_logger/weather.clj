@@ -1,6 +1,7 @@
-(ns env-logger.grabber
-  "Namespace for data grabbing functions"
-  (:require [clojure.tools.logging :as log]
+(ns env-logger.weather
+  "Namespace for weather fetching code"
+  (:require [clojure.core.cache.wrapped :as c]
+            [clojure.tools.logging :as log]
             [clojure.string :as s]
             [clojure.xml :refer [parse]]
             [clojure.zip :refer [xml-zip]]
@@ -9,13 +10,19 @@
             [clj-http.client :as client]
             [next.jdbc :as jdbc]
             [java-time :as t]
-            [env-logger.db :refer [rs-opts]])
+            [env-logger
+             [config :refer [get-conf-value]]
+             [db :refer [rs-opts]]])
   (:import java.util.Date
            java.sql.Timestamp))
 
-(defn extract-data
-  "Parses and returns temperature and cloud cover information from the XML
-  document body. It is assumed that there only one set of data in the body."
+(def weather-cache (c/basic-cache-factory {:data nil :recorded nil}))
+
+;; FMI
+
+(defn extract-weather-data
+  "Parses and returns various weather data values from the given XML
+  data. It is assumed that there only one set of values in the XML data."
   [parsed-xml]
   (when (>= (count (:content parsed-xml)) 3)
     (let [root (xml-zip parsed-xml)
@@ -30,8 +37,26 @@
                                         :BsWfs:Time))]
       {:date (new Timestamp (.toEpochMilli (t/instant date-text)))
        :temperature (Float/parseFloat (nth values 0))
-       :cloudiness (int (Float/parseFloat (nth values 1)))
+       :cloudiness (Math/round (Float/parseFloat (nth values 1)))
        :wind-speed (Float/parseFloat (nth values 2))})))
+
+(defn extract-forecast-data
+  "Parses forecast data values from the given XML data."
+  [parsed-xml]
+  (let [root (xml-zip parsed-xml)
+        raw-data (s/trim (zx/text (zx/xml1-> root
+                                             :wfs:member
+                                             :omso:GridSeriesObservation
+                                             :om:result
+                                             :gmlcov:MultiPointCoverage
+                                             :gml:rangeSet
+                                             :gml:DataBlock
+                                             :gml:doubleOrNilReasonTupleList)))
+        split-data (s/split raw-data #" ")]
+    (when (>= (count split-data) 3)
+      {:temperature (Float/parseFloat (nth split-data 0))
+       :wind-speed (Float/parseFloat (nth split-data 1))
+       :cloudiness (Math/round (Float/parseFloat (nth split-data 2)))})))
 
 (defn calculate-start-time
   "Calculates the start time for the data request and returns it as a
@@ -61,7 +86,7 @@
                                                    "Europe/Helsinki")))
                                  #"\.\d+")) "Z"))]
     (try
-      (extract-data (parse url))
+      (extract-weather-data (parse url))
       (catch org.xml.sax.SAXParseException _
         (log/error "FMI weather data XML parsing failed")
         nil)
@@ -129,3 +154,91 @@
                                     (t/offset-date-time))
                         obs-recorded))
       true)))
+
+(defn -get-fmi-weather-forecast
+  "Fetches the latest FMI HIRLAM weather forecasrt from the FMI WFS for the
+  given weather  observation station. If fetching or parsing failed, nil is
+  returned."
+  [station-id]
+  (let [url (format (str "https://opendata.fmi.fi/wfs?service=WFS&version=2.0.0"
+                         "&request=getFeature&storedquery_id=fmi::forecast::"
+                         "hirlam::surface::point::multipointcoverage&fmisid=%d"
+                         "&parameters=Temperature,WindSpeedMS,TotalCloudCover"
+                         "&starttime=%s")
+                    station-id
+                    (str (first (s/split
+                                 (str (t/instant (t/with-zone
+                                                   (calculate-start-time)
+                                                   "Europe/Helsinki")))
+                                 #"\.\d+")) "Z"))]
+    (try
+      (extract-forecast-data (parse url))
+      (catch org.xml.sax.SAXParseException _
+        (log/error "FMI forecast parsing failed")
+        nil)
+      (catch Exception e
+        (log/error (str "FMI forecast fetch failed, status: "
+                        (str e)))
+        nil))))
+
+;; OWM
+
+(defn fetch-owm-data
+  "Fetch weather data from OpenWeatherMap, this data contains both current
+  weather and forecast data. Returns nil map if query failed."
+  [app-id latitude longitude]
+  (let [url (format (str "https://api.openweathermap.org/data/2.5/onecall?"
+                         "lat=%s&lon=%s&exclude=minutely,daily,alerts&"
+                         "units=metric&appid=%s")
+                    (str latitude)
+                    (str longitude)
+                    app-id)
+        resp (try
+               (client/get url)
+               (catch Exception e
+                 (log/error (str "OWM data fetch failed, status: " (str e)))
+                 nil))]
+    (when (= 200 (:status resp))
+      (let [all-data (parse-string (:body resp) true)]
+        {:current (:current all-data)
+         :forecast (nth (:hourly all-data) 1)}))))
+
+;; Cache
+
+(defn -cache-set-value
+  "Set a value for the given item in a given cache."
+  [cache item value]
+  (c/evict cache item)
+  (c/through-cache cache item (constantly value)))
+
+(defn- update-cache-data
+  "Updates the weather data in the cache."
+  []
+  (-cache-set-value weather-cache
+                    :data
+                    {:fmi (-get-fmi-weather-forecast (get-conf-value
+                                                      :station-id))
+                     :owm (fetch-owm-data (get-conf-value :owm-app-id)
+                                          (get-conf-value :forecast-lat)
+                                          (get-conf-value :forecast-lon))})
+  (-cache-set-value weather-cache
+                    :recorded
+                    (str (t/local-date-time))))
+
+;; General
+
+(defn get-weather-data
+  "Get weather (FMI and OpenWeatherMap) weather data from cache if it is
+  recent enough.
+  Otherwise fetch updated data and store it in the cache. Always return
+  the available data."
+  []
+  (if-not (nil? (c/lookup weather-cache :recorded))
+    (when (>= (t/time-between (t/local-date-time
+                               (c/lookup weather-cache :recorded))
+                              (t/local-date-time)
+                              :minutes)
+              (get-conf-value :owm-query-threshold))
+      (update-cache-data))
+    (update-cache-data))
+  (c/lookup weather-cache :data))
