@@ -79,17 +79,14 @@
 
 (deftest test-weather-data-extraction-json
   (testing "Tests FMI weather data (JSON) extraction"
-    (with-fake-routes {
-                       #"https:\/\/ilmatieteenlaitos.fi\/observation-data(.+)"
+    (with-fake-routes {#"https:\/\/ilmatieteenlaitos.fi\/observation-data(.+)"
                        (fn [_] {:status 403})}
       (is (nil? (-get-fmi-weather-data-json 87874))))
-    (with-fake-routes {
-                       #"https:\/\/ilmatieteenlaitos.fi\/observation-data(.+)"
+    (with-fake-routes {#"https:\/\/ilmatieteenlaitos.fi\/observation-data(.+)"
                        (fn [_] {:status 200
                                 :body "Invalid JSON"})}
       (is (nil? (-get-fmi-weather-data-json 87874))))
-    (with-fake-routes {
-                       #"https:\/\/ilmatieteenlaitos.fi\/observation-data(.+)"
+    (with-fake-routes {#"https:\/\/ilmatieteenlaitos.fi\/observation-data(.+)"
                        (fn [_] {:status 200
                                 :body (generate-string
                                        {"generated" 1539719550869,
@@ -97,8 +94,7 @@
                                         "timeZoneId" "Europe/Helsinki",
                                         "TotalCloudCover" []})})}
       (is (nil? (-get-fmi-weather-data-json 87874))))
-    (with-fake-routes {
-                       #"https:\/\/ilmatieteenlaitos.fi\/observation-data(.+)"
+    (with-fake-routes {#"https:\/\/ilmatieteenlaitos.fi\/observation-data(.+)"
                        (fn [_] {:status 200
                                 :body
                                 (generate-string
@@ -121,8 +117,7 @@
 
 (deftest test-weather-data-extraction
   (testing "Tests FMI weather data (JSON and WFS) extraction"
-    (with-fake-routes {
-                       #"https:\/\/ilmatieteenlaitos.fi\/observation-data(.+)"
+    (with-fake-routes {#"https:\/\/ilmatieteenlaitos.fi\/observation-data(.+)"
                        (fn [_] {:status 200
                                 :body
                                 (generate-string
@@ -144,16 +139,14 @@
              (get-fmi-weather-data 87874)))
       (with-redefs [parse (fn [_]
                             (load-file "test/env_logger/wfs_data.txt"))]
-        (with-fake-routes {
-                           #"https:\/\/ilmatieteenlaitos.fi\/observation-data"
+        (with-fake-routes {#"https:\/\/ilmatieteenlaitos.fi\/observation-data"
                            (fn [_] {:status 403})}
           (is (= {:wind-speed 5.0,
                   :cloudiness 3,
                   :temperature -9.0,
                   :date #inst "2021-12-02T18:10:00.000000000-00:00"}
                  (get-fmi-weather-data 87874)))))
-      (with-fake-routes {
-                         #"https:\/\/ilmatieteenlaitos.fi\/observation-data(.+)"
+      (with-fake-routes {#"https:\/\/ilmatieteenlaitos.fi\/observation-data(.+)"
                          (fn [_] {:status 403})
                          #"https:\/\/opendata\.fmi\.fi\/wfs\?(.+)"
                          (fn [_] {:status 404})}

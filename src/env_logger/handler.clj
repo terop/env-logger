@@ -260,68 +260,68 @@
 (defroutes routes
   ;; Index and login
   (GET "/" request
-       (if-not (db/test-db-connection db/postgres-ds)
-         (render-file "templates/error.html"
-                      {})
-         (render-file "templates/chart.html"
-                      (get-plot-page-data request))))
+    (if-not (db/test-db-connection db/postgres-ds)
+      (render-file "templates/error.html"
+                   {})
+      (render-file "templates/chart.html"
+                   (get-plot-page-data request))))
   (GET "/login" [] (render-file "templates/login.html" {}))
   (POST "/login" [] login-authenticate)
   (GET "/logout" _
-       (assoc (resp/redirect (str (get-conf-value :url-path) "/"))
-              :session {}))
+    (assoc (resp/redirect (str (get-conf-value :url-path) "/"))
+           :session {}))
   (POST "/token-login" [] token-login)
   (GET "/get-last-obs" [] get-last-obs-data)
   (GET "/get-weather-data" request
-       (if-not (authenticated? request)
-         response-unauthorized
-         (generate-string (get-weather-data))))
+    (if-not (authenticated? request)
+      response-unauthorized
+      (generate-string (get-weather-data))))
   ;; Observation storing
   (POST "/observations" request
-        (if-not (check-auth-code (:code (:params request)))
-          response-unauthorized
-          (if-not (db/test-db-connection db/postgres-ds)
-            response-server-error
-            (if (handle-observation-insert (:obs-string (:params request)))
-              "OK" response-server-error))))
+    (if-not (check-auth-code (:code (:params request)))
+      response-unauthorized
+      (if-not (db/test-db-connection db/postgres-ds)
+        response-server-error
+        (if (handle-observation-insert (:obs-string (:params request)))
+          "OK" response-server-error))))
   ;; RuuviTag observation storage
   (POST "/rt-observations" request
-        (if-not (check-auth-code (:code (:params request)))
-          response-unauthorized
-          (with-open [con (jdbc/get-connection db/postgres-ds)]
-            (if-not (db/test-db-connection con)
-              response-server-error
-              (if (pos? (db/insert-ruuvitag-observation
-                         con
-                         (parse-string (:observation (:params request)) true)))
-                "OK" response-server-error)))))
+    (if-not (check-auth-code (:code (:params request)))
+      response-unauthorized
+      (with-open [con (jdbc/get-connection db/postgres-ds)]
+        (if-not (db/test-db-connection con)
+          response-server-error
+          (if (pos? (db/insert-ruuvitag-observation
+                     con
+                     (parse-string (:observation (:params request)) true)))
+            "OK" response-server-error)))))
   ;; Testbed image name storage
   (POST "/tb-image" request
-        (if-not (check-auth-code (:code (:params request)))
-          response-unauthorized
-          (with-open [con (jdbc/get-connection db/postgres-ds)]
-            (if-not (db/test-db-connection con)
-              response-server-error
-              (if (re-find #"testbed-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+\d{4}\.png"
-                           (:name (:params request)))
-                (if (db/insert-tb-image-name con
-                                             (db/get-last-obs-id con)
-                                             (:name (:params request)))
-                  "OK" response-server-error)
-                response-invalid-request)))))
+    (if-not (check-auth-code (:code (:params request)))
+      response-unauthorized
+      (with-open [con (jdbc/get-connection db/postgres-ds)]
+        (if-not (db/test-db-connection con)
+          response-server-error
+          (if (re-find #"testbed-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+\d{4}\.png"
+                       (:name (:params request)))
+            (if (db/insert-tb-image-name con
+                                         (db/get-last-obs-id con)
+                                         (:name (:params request)))
+              "OK" response-server-error)
+            response-invalid-request)))))
   ;; Latest yardcam image name storage
   (POST "/yc-image" request
-        (if-not (check-auth-code (:code (:params request)))
-          response-unauthorized
-          (with-open [con (jdbc/get-connection db/postgres-ds)]
-            (if-not (db/test-db-connection con)
-              response-server-error
-              (let [image-name (:image-name (:params request))]
-                (if (yc-image-validity-check image-name)
-                  (if (db/insert-yc-image-name con
-                                               image-name)
-                    "OK" response-server-error)
-                  response-invalid-request))))))
+    (if-not (check-auth-code (:code (:params request)))
+      response-unauthorized
+      (with-open [con (jdbc/get-connection db/postgres-ds)]
+        (if-not (db/test-db-connection con)
+          response-server-error
+          (let [image-name (:image-name (:params request))]
+            (if (yc-image-validity-check image-name)
+              (if (db/insert-yc-image-name con
+                                           image-name)
+                "OK" response-server-error)
+              response-invalid-request))))))
   ;; Serve static files
   (route/files "/")
   (route/not-found "404 Not Found"))
