@@ -272,6 +272,10 @@
               :session {}))
   (POST "/token-login" [] token-login)
   (GET "/get-last-obs" [] get-last-obs-data)
+  (GET "/get-weather-data" request
+       (if-not (authenticated? request)
+         response-unauthorized
+         (generate-string (get-weather-data))))
   ;; Observation storing
   (POST "/observations" request
         (if-not (check-auth-code (:code (:params request)))

@@ -21,8 +21,6 @@ BACKEND_URL = secrets['backend-url']
 FONT = bitmap_font.load_font("fonts/DejaVuSansMono-17.pcf")
 # Sleep time, in seconds, between data refreshes
 SLEEP_TIME = 80
-# Interval, in seconds, after which the next weather data update is done
-WEATHER_UPDATE_INTERVAL = 500
 
 # Default backlight value
 BACKLIGHT_DEFAULT_VALUE = 0.7
@@ -100,37 +98,35 @@ def clear_display(display):
         display[i].text = ''
 
 
-def get_weather_data(api_key, latitude, longitude):
-    """Get weather data for a location defined by the given latitude and longitude values."""
+def get_backend_endpoint_content(endpoint, token):
+    """Fetches the JSON content of the given backend endpoint.
+    Returns a (token, JSON value) tuple."""
     fail_count = 0
 
-    while True:
+    while fail_count < NW_FAILURE_THRESHOLD:
         try:
-            resp = requests.get(f'https://api.openweathermap.org/data/2.5/onecall?lat={latitude}'
-                                f'&lon={longitude}&exclude=minutely,daily,alerts&units=metric'
-                                f'&appid={api_key}')
-            if resp.status_code == 401:
-                print('Error: unauthorised request')
-                return ()
+            resp = requests.get(f'{BACKEND_URL}/{endpoint}',
+                                headers={'Authorization': f'Token {token}'})
             if resp.status_code != 200:
-                print(f'Error: got HTTP status code {resp.status_code}')
-                return ()
-
+                if resp.status_code == 401:
+                    print('Error: request was unauthorized, getting new token')
+                    token = fetch_token()
+                else:
+                    print('Error: failed to fetch content from "{endpoint}"')
+                continue
             break
         except RuntimeError as rte:
             fail_count += 1
-            print(f'Error: weather update failed: "{rte}", failure count {fail_count}')
+            print(f'Error: got exception "{rte}", failure count {fail_count}')
             time.sleep(5)
 
-            if fail_count > NW_FAILURE_THRESHOLD:
-                print(f'Error: weather update failed {fail_count} times, reloading board')
+            if fail_count >= NW_FAILURE_THRESHOLD:
+                print(f'Error: endoint "{endpoint}" fetch failed {fail_count} times, ',
+                      'reloading board')
                 time.sleep(5)
                 supervisor.reload()
 
-    data = resp.json()
-    # First element in the tuple is the data for the current hour,
-    # second is for the next starting hour
-    return (data['current'], data['hourly'][1])
+    return (token, resp.json())
 
 
 def set_time(timezone):
@@ -158,12 +154,12 @@ def adjust_backlight(display):
         display.brightness = BACKLIGHT_DEFAULT_VALUE
 
 
-def update_screen(display, logger_data, weather_data, utc_offset_hour):
+def update_screen(display, observation, weather_data, utc_offset_hour):
     """Update screen contents."""
-    w_recorded = logger_data['data']['recorded']
+    w_recorded = observation['data']['recorded']
 
-    if logger_data['rt-data']:
-        rt_recorded = max([tag['recorded'] for tag in logger_data['rt-data']])
+    if observation['rt-data']:
+        rt_recorded = max([tag['recorded'] for tag in observation['rt-data']])
     else:
         rt_recorded = w_recorded
 
@@ -171,23 +167,23 @@ def update_screen(display, logger_data, weather_data, utc_offset_hour):
 
     display[0].text = w_recorded
     if weather_data:
-        sunrise = time.localtime(weather_data[0]['sunrise'])
+        sunrise = time.localtime(weather_data['owm']['current']['sunrise'])
         sunrise = f'{sunrise.tm_hour + utc_offset_hour:02}:{sunrise.tm_min:02}'
-        sunset = time.localtime(weather_data[0]['sunset'])
+        sunset = time.localtime(weather_data['owm']['current']['sunset'])
         sunset = f'{sunset.tm_hour + utc_offset_hour:02}:{sunset.tm_min:02}'
         display[0].text += f'           sr {sunrise} ss {sunset}'
-    display[1].text = f'Weather: temperature {logger_data["data"]["fmi-temperature"]} \u00b0C, ' \
-        f'cloudiness {logger_data["data"]["cloudiness"]}, '
-    display[2].text = f'wind speed {logger_data["data"]["wind-speed"]} m/s'
+    display[1].text = f'Weather: temperature {observation["data"]["fmi-temperature"]} \u00b0C, ' \
+        f'cloudiness {observation["data"]["cloudiness"]}, '
+    display[2].text = f'wind speed {observation["data"]["wind-speed"]} m/s'
     if weather_data:
-        current = weather_data[0]
-        forecast = weather_data[1]
+        current = weather_data['owm']['current']
+        forecast = weather_data['fmi']
 
         display[2].text += f', desc \"{current["weather"][0]["description"]}\"'
-        display[3].text = f'Forecast: temperature {forecast["feels_like"]} \u00b0C, ' \
-            f'cloudiness {forecast["clouds"]} %,'
-        display[4].text = f'wind speed {forecast["wind_speed"]} m/s, ' \
-            f'desc \"{forecast["weather"][0]["description"]}\"'
+        display[3].text = f'Forecast: temp {forecast["temperature"]} \u00b0C, ' \
+            f'cloudiness {forecast["cloudiness"]} %,'
+        display[4].text = f'wind speed {forecast["wind-speed"]} m/s, ' \
+            f'desc \"{weather_data["owm"]["forecast"]["weather"][0]["description"]}\"'
         row = 5
     else:
         row = 2
@@ -197,18 +193,18 @@ def update_screen(display, logger_data, weather_data, utc_offset_hour):
 
     display[row].text = rt_recorded
     row += 1
-    display[row].text = f'Inside temperature {logger_data["data"]["temperature"]} \u00b0C, ' \
-        f'brightness {logger_data["data"]["brightness"]},'
+    display[row].text = f'Inside temperature {observation["data"]["temperature"]} \u00b0C, ' \
+        f'brightness {observation["data"]["brightness"]},'
     row += 1
-    display[row].text = f'outside temperature {logger_data["data"]["o-temperature"]} \u00b0C'
+    display[row].text = f'outside temperature {observation["data"]["o-temperature"]} \u00b0C'
     row += 1
-    if logger_data['data']['rssi']:
-        display[row].text = f'Beacon "{logger_data["data"]["name"]}" ' \
-            f'RSSI {logger_data["data"]["rssi"]}'
+    if observation['data']['rssi']:
+        display[row].text = f'Beacon "{observation["data"]["name"]}" ' \
+            f'RSSI {observation["data"]["rssi"]}'
         row += 1
 
-    if logger_data['rt-data']:
-        rt_data = logger_data['rt-data']
+    if observation['rt-data']:
+        rt_data = observation['rt-data']
         seen_locations = []
 
         for tag in rt_data:
@@ -233,12 +229,11 @@ def main():
 
     print('Getting current time from worldtimeapi.org')
     utc_offset_hour = set_time(secrets['timezone'])
+    print('Set current time')
 
     display = SimpleTextDisplay(title=' ', colors=[SimpleTextDisplay.WHITE], font=FONT)
     token = None
     weather_data = None
-    last_weather_update = 0
-    fail_count = 0
 
     # Dim the backlight because the default backlight is very bright
     board.DISPLAY.auto_brightness = False
@@ -254,39 +249,11 @@ def main():
         if BACKLIGHT_DIMMING_ENABLED:
             adjust_backlight(board.DISPLAY)
 
-        try:
-            resp = requests.get(f'{BACKEND_URL}/get-last-obs',
-                                headers={'Authorization': f'Token {token}'})
-            if resp.status_code != 200:
-                if resp.status_code == 401:
-                    print('Error: request was unauthorized, getting new token')
-                    token = fetch_token()
-                else:
-                    print('Error: failed to get latest observation')
-                continue
-        except RuntimeError as rte:
-            fail_count += 1
-            print(f'Error: observation update failed: "{rte}", failure count {fail_count}')
-            time.sleep(5)
+        token, observation = get_backend_endpoint_content('get-last-obs', token)
+        token, weather_data = get_backend_endpoint_content('get-weather-data', token)
 
-            if fail_count > NW_FAILURE_THRESHOLD:
-                print(f'Error: observation update failed {fail_count} times, reloading board')
-                time.sleep(5)
-                supervisor.reload()
+        update_screen(display, observation, weather_data, utc_offset_hour)
 
-            continue
-
-        fail_count = 0
-        data = resp.json()
-
-        if last_weather_update >= WEATHER_UPDATE_INTERVAL or not weather_data:
-            weather_data = get_weather_data(secrets['owm_api_key'], secrets['location_lat'],
-                                            secrets['location_lon'])
-            last_weather_update = 0
-
-        update_screen(display, data, weather_data, utc_offset_hour)
-
-        last_weather_update += SLEEP_TIME
         time.sleep(SLEEP_TIME)
 
 
