@@ -54,8 +54,10 @@
                                              :gml:doubleOrNilReasonTupleList)))
         split-data (s/split raw-data #" ")]
     (when (>= (count split-data) 3)
-      {:temperature (Float/parseFloat (nth split-data 0))
-       :wind-speed (Float/parseFloat (nth split-data 1))
+      {:temperature (Float/parseFloat (format "%.1f" (Float/parseFloat
+                                                      (nth split-data 0))))
+       :wind-speed (Float/parseFloat (format "%.1f" (Float/parseFloat
+                                                     (nth split-data 1))))
        :cloudiness (Math/round (Float/parseFloat (nth split-data 2)))})))
 
 (defn calculate-start-time
