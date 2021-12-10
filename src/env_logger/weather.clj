@@ -238,7 +238,7 @@
                                (c/lookup weather-cache :recorded))
                               (t/local-date-time)
                               :minutes)
-              (get-conf-value :owm-query-threshold))
+              (get-conf-value :weather-query-threshold))
       (update-cache-data))
     (update-cache-data))
   (c/lookup weather-cache :data))
