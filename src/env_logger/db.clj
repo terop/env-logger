@@ -203,34 +203,34 @@
   "Inserts a observation to the database."
   [db-con observation]
   (if (= 6 (count observation))
-    (jdbc/with-transaction [t-con db-con]
+    (jdbc/with-transaction [tx db-con]
       (try
-        (let [obs-id (insert-plain-observation t-con
+        (let [obs-id (insert-plain-observation tx
                                                (merge observation
                                                       {:image-name
-                                                       (get-yc-image t-con)}))]
+                                                       (get-yc-image tx)}))]
           (when (pos? obs-id)
             (if (every? pos?
-                        (insert-beacons t-con obs-id observation))
+                        (insert-beacons tx obs-id observation))
               (let [weather-data (:weather-data observation)]
                 (if (nil? weather-data)
                   true
-                  (if (pos? (insert-wd t-con obs-id weather-data))
+                  (if (pos? (insert-wd tx obs-id weather-data))
                     true
                     (do
                       (log/info (str "Database insert: rolling back "
                                      "transaction after weather data insert"))
-                      (.rollback t-con)
+                      (.rollback tx)
                       false))))
               (do
                 (log/info (str "Database insert: rolling back "
                                "transaction after beacon scan insert"))
-                (.rollback t-con)
+                (.rollback tx)
                 false))))
         (catch PSQLException pe
           (log/error "Database insert failed:"
                      (.getMessage pe))
-          (.rollback t-con)
+          (.rollback tx)
           false)))
     (do
       (log/error "Wrong number of parameters provided to insert-observation")
