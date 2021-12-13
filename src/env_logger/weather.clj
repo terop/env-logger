@@ -1,11 +1,11 @@
 (ns env-logger.weather
   "Namespace for weather fetching code"
   (:require [clojure.core.cache.wrapped :as c]
-            [clojure.tools.logging :as log]
             [clojure.string :as s]
             [clojure.xml :refer [parse]]
             [clojure.zip :refer [xml-zip]]
             [clojure.data.zip.xml :as zx]
+            [taoensso.timbre :refer [error]]
             [cheshire.core :refer [parse-string]]
             [clj-http.client :as client]
             [next.jdbc :as jdbc]
@@ -89,12 +89,11 @@
                                  #"\.\d+")) "Z"))]
     (try
       (extract-weather-data (parse url))
-      (catch org.xml.sax.SAXParseException _
-        (log/error "FMI weather data XML parsing failed")
+      (catch org.xml.sax.SAXParseException spe
+        (error spe "FMI weather data XML parsing failed")
         nil)
-      (catch Exception e
-        (log/error (str "FMI weather data fetch failed, status: "
-                        (str e)))
+      (catch Exception ex
+        (error ex "FMI weather data fetch failed")
         nil))))
 
 (defn -get-fmi-weather-data-json
@@ -107,13 +106,13 @@
         resp (try
                (client/get url)
                (catch Exception e
-                 (log/error (str "FMI JSON weather data fetch failed, "
-                                 "status:" (:status (ex-data e))))))
+                 (error (str "FMI JSON weather data fetch failed, "
+                             "status:" (:status (ex-data e))))))
         json-resp (try
                     (parse-string (:body resp))
                     (catch com.fasterxml.jackson.core.JsonParseException e
-                      (log/error (str "FMI JSON weather data parsing failed: "
-                                      (str e)))))]
+                      (error (str "FMI JSON weather data parsing failed: "
+                                  (str e)))))]
     (when (and json-resp
                (not (or (zero? (count (get json-resp "t2m")))
                         (zero? (count (get json-resp "TotalCloudCover")))
@@ -175,12 +174,11 @@
                                  #"\.\d+")) "Z"))]
     (try
       (extract-forecast-data (parse url))
-      (catch org.xml.sax.SAXParseException _
-        (log/error "FMI forecast parsing failed")
+      (catch org.xml.sax.SAXParseException spe
+        (error spe "FMI forecast parsing failed")
         nil)
-      (catch Exception e
-        (log/error (str "FMI forecast fetch failed, status: "
-                        (str e)))
+      (catch Exception ex
+        (error ex "FMI forecast fetch failed")
         nil))))
 
 ;; OWM
@@ -197,8 +195,8 @@
                     app-id)
         resp (try
                (client/get url)
-               (catch Exception e
-                 (log/error (str "OWM data fetch failed, status: " (str e)))
+               (catch Exception ex
+                 (error ex "OWM data fetch failed")
                  nil))]
     (when (= 200 (:status resp))
       (let [all-data (parse-string (:body resp) true)]

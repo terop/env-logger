@@ -1,6 +1,6 @@
 (ns env-logger.user
   "Namespace for user functionality"
-  (:require [clojure.tools.logging :as log]
+  (:require [taoensso.timbre :refer [error]]
             [next.jdbc :as jdbc]
             [env-logger.db :refer [rs-opts]])
   (:import org.postgresql.util.PSQLException))
@@ -38,8 +38,7 @@
         {:pw-hash (:pw-hash result)
          :yubikey-ids key-ids}))
     (catch PSQLException pge
-      (log/error "Failed to get user data from DB, message:"
-                 (.getMessage pge))
+      (error pge "Failed to get user data from DB")
       {:error :db-error})))
 
 (defn get-user-id

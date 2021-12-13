@@ -5,10 +5,10 @@
   :dependencies [[org.clojure/clojure "1.10.3"]
                  [org.clojure/core.cache "1.0.225"]
                  [org.clojure/data.zip "1.0.0"]
-                 [org.clojure/tools.logging "1.2.1"]
                  [ring "1.9.4"]
                  [ring/ring-defaults "0.3.3"]
                  [ring/ring-json "0.5.1"]
+                 [com.taoensso/timbre "5.1.2"]
                  [org.postgresql/postgresql "42.3.1"]
                  [com.github.seancorfield/next.jdbc "1.2.753"]
                  [com.github.seancorfield/honeysql "2.1.833"]
@@ -24,8 +24,7 @@
                  [buddy/buddy-auth "3.0.1"]
                  [buddy/buddy-sign "3.4.1"]]
   :main ^:skip-aot env-logger.handler
-  :aot [env-logger.handler
-        clojure.tools.logging.impl]
+  :aot [env-logger.handler]
   :target-path "target/%s/"
   :profiles
   {:dev {:dependencies [[clj-http-fake "1.0.3"]]

@@ -1,6 +1,6 @@
 (ns env-logger.db
   "Namespace containing the application's database function"
-  (:require [clojure.tools.logging :as log]
+  (:require [taoensso.timbre :refer [error info]]
             [next.jdbc :as jdbc]
             [next.jdbc
              [result-set :as rs]
@@ -51,8 +51,7 @@
   (try
     (= 1 (:?column? (jdbc/execute-one! db-con ["SELECT 1"])))
     (catch PSQLException pe
-      (log/error "DB connection establishment failed:"
-                 (.getMessage pe))
+      (error pe "DB connection establishment failed")
       false)))
 
 (defn image-age-check
@@ -195,8 +194,7 @@
                          values)
                        rs-opts)))
     (catch PSQLException pe
-      (log/error "RuuviTag observation insert failed:"
-                 (.getMessage pe))
+      (error pe "RuuviTag observation insert failed")
       -1)))
 
 (defn insert-observation
@@ -218,22 +216,21 @@
                   (if (pos? (insert-wd tx obs-id weather-data))
                     true
                     (do
-                      (log/info (str "Database insert: rolling back "
-                                     "transaction after weather data insert"))
+                      (info (str "Database insert: rolling back "
+                                 "transaction after weather data insert"))
                       (.rollback tx)
                       false))))
               (do
-                (log/info (str "Database insert: rolling back "
-                               "transaction after beacon scan insert"))
+                (info (str "Database insert: rolling back "
+                           "transaction after beacon scan insert"))
                 (.rollback tx)
                 false))))
         (catch PSQLException pe
-          (log/error "Database insert failed:"
-                     (.getMessage pe))
+          (error pe "Database insert failed")
           (.rollback tx)
           false)))
     (do
-      (log/error "Wrong number of parameters provided to insert-observation")
+      (error "Wrong number of parameters provided to insert-observation")
       false)))
 
 (defn validate-date
@@ -400,8 +397,7 @@
         {:start ""
          :end ""}))
     (catch PSQLException pe
-      (log/error "Observation interval fetch failed:"
-                 (.getMessage pe))
+      (error pe "Observation interval fetch failed")
       {:error :db-error})))
 
 (defn get-ruuvitag-obs
@@ -431,8 +427,7 @@
                 :humidity (Float/parseFloat
                            (. nf format (:humidity row)))})))
     (catch PSQLException pe
-      (log/error "RuuviTag observation fetching failed:"
-                 (.getMessage pe))
+      (error pe "RuuviTag observation fetching failed")
       {})))
 
 (defn insert-yc-image-name
@@ -454,8 +449,7 @@
                                  {:image_name image-name}
                                  rs-opts)))
     (catch PSQLException pe
-      (log/error "Yardcam image name insert failed:"
-                 (.getMessage pe))
+      (error pe "Yardcam image name insert failed")
       false)))
 
 (defn get-last-obs-id
