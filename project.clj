@@ -18,11 +18,12 @@
                  [cheshire "5.10.1"]
                  [selmer "1.12.45"]
                  [clj-http "3.12.3"]
-                 [org.slf4j/slf4j-log4j12 "1.7.32"]
                  [com.yubico/yubico-validation-client2 "3.1.0"]
                  [buddy/buddy-hashers "1.8.1"]
                  [buddy/buddy-auth "3.0.1"]
-                 [buddy/buddy-sign "3.4.1"]]
+                 [buddy/buddy-sign "3.4.1"]
+                 ;; Used by dependencies, not the app itself
+                 [org.slf4j/slf4j-log4j12 "1.7.32"]]
   :main ^:skip-aot env-logger.handler
   :aot [env-logger.handler]
   :target-path "target/%s/"
