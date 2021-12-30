@@ -7,16 +7,21 @@
 # Check configuration file existence
 conf_file='testbed_image_conf.sh'
 if [ ! -e ${conf_file} ]; then
-    echo "Configuration file '${conf_file}' not found, exiting." >&2
+    echo "Configuration file '${conf_file}' not found, exiting" >&2
     exit 1
 fi
 . ./${conf_file}
 
 ssh_con_string="${target_user}@${target_host}"
 
-image_name=$(python3 testbed_image.py)
+if [ -z "$(command -v pipenv)" ]; then
+    echo "pipenv is not in PATH, exiting" >&2
+    exit 1
+fi
+
+image_name=$(pipenv run python3 testbed_image.py)
 if [ -z "${image_name}" ]; then
-    echo "$(date -Iminutes): failed to download Testbed image." >&2
+    echo "$(date -Iminutes): failed to download Testbed image" >&2
     exit 1
 fi
 
@@ -29,7 +34,7 @@ fi
 
 scp ./"${image_name}" "${ssh_con_string}:${day_directory}/${image_name}" 1>/dev/null
 if [ $? -ne 0 ]; then
-    echo "$(date -Iminutes): image upload failed, exiting." >&2
+    echo "$(date -Iminutes): image upload failed, exiting" >&2
     rm "${image_name}"
     exit 1
 fi

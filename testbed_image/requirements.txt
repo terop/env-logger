@@ -1,5 +1,0 @@
-requests
-beautifulsoup4
-# On Debian it is easier to install lxml with apt-get: sudo apt install python3-lxml
-# On other platforms pip might work: pip3 install --user lxml
-pytz

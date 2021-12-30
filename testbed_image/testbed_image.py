@@ -2,14 +2,12 @@
 """A script for downloading the current FMI Testbed image. Prints an empty string on failure
 and a filename where the latest Testbed image is stored on success."""
 
-# See PIP requirements from testbed_image_requirements.txt
-
 import sys
 from datetime import datetime
 
-import requests
-from bs4 import BeautifulSoup
 import pytz
+import requests
+from bs4 import BeautifulSoup  # pylint: disable=import-error
 
 
 def download_image():
@@ -20,7 +18,7 @@ def download_image():
         resp = requests.get('http://testbed.fmi.fi/?imgtype=radar&t=5&n=1')
     # pylint: disable=invalid-name
     except requests.ConnectionError as ce:
-        print('{}: Failed to access Testbed page: {}'.format(timestamp, ce),
+        print(f'{timestamp}: Failed to access Testbed page: {ce}',
               file=sys.stderr)
         return None
 
@@ -42,7 +40,7 @@ def download_image():
         resp = requests.get(img_url)
     # pylint: disable=invalid-name
     except requests.ConnectionError as ce:
-        print('{}: Failed to download Testbed image: {}'.format(timestamp, ce),
+        print(f'{timestamp}: Failed to download Testbed image: {ce}',
               file=sys.stderr)
         return None
 
@@ -57,13 +55,13 @@ def main():
         return 1
 
     helsinki = pytz.timezone('Europe/Helsinki')
-    filename = 'testbed-{}.png'.format(
-        helsinki.localize(datetime.now()).strftime('%Y-%m-%dT%H:%M%z'))
+    filename = f'testbed-{helsinki.localize(datetime.now()).strftime("%Y-%m-%dT%H:%M%z")}.png'
 
     with open(filename, 'wb') as tb_image:
         tb_image.write(image)
 
     print(filename)
     return 0
+
 
 main()
