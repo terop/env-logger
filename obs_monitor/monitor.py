@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from os.path import exists
 
-import psycopg2
+import psycopg
 import requests
 from bs4 import BeautifulSoup  # pylint: disable=import-error
 
@@ -26,10 +26,8 @@ class ObservationMonitor:
 
     def get_obs_time(self):
         """Returns the recording time of the latest observation."""
-        with psycopg2.connect(host=self._config['db']['Host'],
-                              database=self._config['db']['Database'],
-                              user=self._config['db']['User'],
-                              password=self._config['db']['Password']) as conn:
+        # pylint: disable=not-context-manager
+        with psycopg.connect(create_db_conn_string(self._config['db'])) as conn:
             with conn.cursor() as cursor:
                 cursor.execute('SELECT recorded FROM observations ORDER BY id DESC LIMIT 1')
                 result = cursor.fetchone()
@@ -73,10 +71,8 @@ class BeaconMonitor:
 
     def get_beacon_scan_time(self):
         """Returns the recording time of the latest BLE beacon scan."""
-        with psycopg2.connect(host=self._config['db']['Host'],
-                              database=self._config['db']['Database'],
-                              user=self._config['db']['User'],
-                              password=self._config['db']['Password']) as conn:
+        # pylint: disable=not-context-manager
+        with psycopg.connect(create_db_conn_string(self._config['db'])) as conn:
             with conn.cursor() as cursor:
                 cursor.execute('SELECT recorded FROM observations WHERE id = '
                                '(SELECT obs_id FROM beacons ORDER BY id DESC LIMIT 1)')
@@ -122,10 +118,8 @@ class RuuvitagMonitor:
         """Returns recording time of the latest RuuviTag beacon observation."""
         results = {}
 
-        with psycopg2.connect(host=self._config['db']['Host'],
-                              database=self._config['db']['Database'],
-                              user=self._config['db']['User'],
-                              password=self._config['db']['Password']) as conn:
+        # pylint: disable=not-context-manager
+        with psycopg.connect(create_db_conn_string(self._config['db'])) as conn:
             with conn.cursor() as cursor:
                 for location in self._config['ruuvitag']['Location'].split(','):
                     cursor.execute("""SELECT recorded FROM ruuvitag_observations WHERE
@@ -259,6 +253,12 @@ def send_email(config, subject, message):
         return False
 
     return True
+
+
+def create_db_conn_string(db_config):
+    """Create the database connection string."""
+    return f'host={db_config["Host"]} user={db_config["User"]} password={db_config["Password"]} ' \
+        f'dbname={db_config["Database"]}'
 
 
 def main():
