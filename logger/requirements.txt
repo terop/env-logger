@@ -1,4 +1,0 @@
-pyserial
-pytz
-requests
-ruuvitag_sensor
