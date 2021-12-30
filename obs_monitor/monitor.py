@@ -14,7 +14,7 @@ from os.path import exists
 
 import psycopg2
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup  # pylint: disable=import-error
 
 
 class ObservationMonitor:
@@ -43,6 +43,7 @@ class ObservationMonitor:
 
         if int(time_diff.total_seconds() / 60) > int(self._config['observation']['Timeout']):
             if self._state['email_sent'] == 'False':
+                # pylint: disable=consider-using-f-string
                 if send_email(self._config['email'],
                               'env-logger: observation inactivity warning',
                               'No observations have been received in the env-logger '
@@ -91,6 +92,7 @@ class BeaconMonitor:
         # Timeout is in hours
         if int(time_diff.total_seconds()) > int(self._config['blebeacon']['Timeout']) * 60 * 60:
             if self._state['email_sent'] == 'False':
+                # pylint: disable=consider-using-f-string
                 if send_email(self._config['email'],
                               'env-logger: BLE beacon inactivity warning',
                               'No BLE beacon has been scanned in env-logger '
@@ -145,6 +147,7 @@ class RuuvitagMonitor:
             # Timeout is in minutes
             if int(time_diff.total_seconds()) > int(self._config['ruuvitag']['Timeout']) * 60:
                 if self._state[location]['email_sent'] == 'False':
+                    # pylint: disable=consider-using-f-string
                     if send_email(self._config['email'],
                                   f'env-logger: RuuviTag beacon "{location}" inactivity warning',
                                   'No RuuviTag observation for location "{}" has been '
@@ -203,6 +206,7 @@ class YardcamImageMonitor:
 
     def send_yardcam_email(self, image_ts):
         """"Sends an email about a missing Yardcam image."""
+        # pylint: disable=consider-using-f-string
         if send_email(self._config['email'],
                       'env-logger: Yardcam image inactivity warning',
                       'No Yardcam image name has been stored '
@@ -275,7 +279,7 @@ def main():
     config.read(config_file)
 
     try:
-        with open(state_file_name, 'r') as state_file:
+        with open(state_file_name, 'r', encoding='utf-8') as state_file:
             state = json.load(state_file)
     except FileNotFoundError:
         state = {'observation': {'email_sent': 'False'},
@@ -303,7 +307,7 @@ def main():
         yardcam.check_yardcam()
         state['yardcam'] = yardcam.get_state()
 
-    with open(state_file_name, 'w') as state_file:
+    with open(state_file_name, 'w', encoding='utf-8') as state_file:
         json.dump(state, state_file, indent=4)
 
 
