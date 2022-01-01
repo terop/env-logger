@@ -25,11 +25,18 @@
                (load-file
                 "test/env_logger/wfs_extraction_data_invalid.txt"))))))
 
+(deftest test-wd-data-extraction
+  (testing "Wind direction data extraction function tests"
+    (is (= 300.0
+           (extract-weather-data-wd
+            (load-file "test/env_logger/wfs_data_wd.txt"))))))
+
 (deftest test-forecast-data-extraction
   (testing "Forecast data extraction function tests"
-    (is (= {:temperature -5.0
-            :wind-speed 7.0
-            :cloudiness 50}
+    (is (= {:temperature -8.0
+            :wind-speed 5.0
+            :cloudiness 0
+            :wind-direction {:long "north west", :short "NW"}}
            (extract-forecast-data
             (load-file "test/env_logger/wfs_forecast_data.txt"))))))
 
@@ -65,13 +72,21 @@
                           {:content "garbage"})]
       (is (nil? (-get-fmi-weather-data-wfs 87874))))))
 
+(deftest test-weather-data-extraction-wd
+  (testing "Tests FMI weather wind speed data extraction"
+    (with-redefs [parse (fn [_]
+                          (load-file "test/env_logger/wfs_data_wd.txt"))]
+      (is (= 300.0
+             (-get-fmi-weather-data-wd 87874))))))
+
 (deftest test-forecast-data-fetch
   (testing "Tests FMI forecast data fetching"
     (with-redefs [parse (fn [_]
                           (load-file "test/env_logger/wfs_forecast_data.txt"))]
-      (is (= {:temperature -5.0
-              :wind-speed 7.0
-              :cloudiness 50}
+      (is (= {:temperature -8.0
+              :wind-speed 5.0
+              :cloudiness 0
+              :wind-direction {:long "north west", :short "NW"}}
              (-get-fmi-weather-forecast 87874))))
     (with-redefs [parse (fn [_]
                           {:content "garbage"})]
@@ -152,7 +167,7 @@
                          (fn [_] {:status 404})}
         (is (nil? (get-fmi-weather-data 87874)))))))
 
-(deftest weather-query-ok
+(deftest test-weather-query-ok
   (testing "Test when it is OK to query for FMI weather data"
     (with-redefs [jdbc/execute-one! (fn [con query opts] '())]
       (is (true? (weather-query-ok? {} 5))))
@@ -168,6 +183,45 @@
                                       {:recorded (t/minus (t/offset-date-time)
                                                           (t/minutes 6))})]
       (is (true? (weather-query-ok? {} 5))))))
+
+(deftest test-get-wd-str
+  (testing "Test wind direction to string conversion"
+    (is (= {:short "invalid"
+            :long "invalid"}
+           (get-wd-str nil)))
+    (is (= {:short "N"
+            :long "north"}
+           (get-wd-str 0)))
+    (is (= {:short "N"
+            :long "north"}
+           (get-wd-str 21)))
+    (is (= {:short "NE"
+            :long "north east"}
+           (get-wd-str 46)))
+    (is (= {:short "E"
+            :long "east"}
+           (get-wd-str 91)))
+    (is (= {:short "SE"
+            :long "south east"}
+           (get-wd-str 125)))
+    (is (= {:short "S"
+            :long "south"}
+           (get-wd-str 175)))
+    (is (= {:short "SW"
+            :long "south west"}
+           (get-wd-str 225)))
+    (is (= {:short "W"
+            :long "west"}
+           (get-wd-str 275)))
+    (is (= {:short "NW"
+            :long "north west"}
+           (get-wd-str 315)))
+    (is (= {:short "N"
+            :long "north"}
+           (get-wd-str 348)))
+    (is (= {:short "N"
+            :long "north"}
+           (get-wd-str 360)))))
 
 ;; OWM
 

@@ -20,6 +20,42 @@
 
 ;; FMI
 
+(defn get-wd-str
+  "Returns a dict with the long and short form of the given wind direction
+  in degrees."
+  [wind-direction]
+  (if-not wind-direction
+    {:short "invalid"
+     :long "invalid"}
+    (cond
+      (and (>= wind-direction 0)
+           (< wind-direction 25.0)) {:short "N"
+                                     :long "north"}
+      (and (>= wind-direction 25.0)
+           (< wind-direction 65.0)) {:short "NE"
+                                     :long "north east"}
+      (and (>= wind-direction 65.0)
+           (< wind-direction 115.0)) {:short "E"
+                                      :long "east"}
+      (and (>= wind-direction 115.0)
+           (< wind-direction 155.0)) {:short "SE"
+                                      :long "south east"}
+      (and (>= wind-direction 155.0)
+           (< wind-direction 205.0)) {:short "S"
+                                      :long "south"}
+      (and (>= wind-direction 205.0)
+           (< wind-direction 245.0)) {:short "SW"
+                                      :long "south west"}
+      (and (>= wind-direction 245.0)
+           (< wind-direction 295.0)) {:short "W"
+                                      :long "west"}
+      (and (>= wind-direction 295.0)
+           (< wind-direction 335.0)) {:short "NW"
+                                      :long "north west"}
+      (and (>= wind-direction 335.0)
+           (<= wind-direction 360.0)) {:short "N"
+                                       :long "north"})))
+
 (defn extract-weather-data
   "Parses and returns various weather data values from the given XML
   data. It is assumed that there only one set of values in the XML data."
@@ -40,6 +76,19 @@
        :cloudiness (Math/round (Float/parseFloat (nth values 1)))
        :wind-speed (Float/parseFloat (nth values 2))})))
 
+(defn extract-weather-data-wd
+  "Parses and returns various wind direction value from the given XML
+  data. It is assumed that there only one value in the XML data."
+  [parsed-xml]
+  (when (>= (count (:content parsed-xml)) 1)
+    (let [root (xml-zip parsed-xml)
+          value (for [m (zx/xml-> root
+                                  :wfs:member
+                                  :BsWfs:BsWfsElement
+                                  :BsWfs:ParameterValue)]
+                  (zx/text m))]
+      (Float/parseFloat (nth value 0)))))
+
 (defn extract-forecast-data
   "Parses forecast data values from the given XML data."
   [parsed-xml]
@@ -53,12 +102,15 @@
                                              :gml:DataBlock
                                              :gml:doubleOrNilReasonTupleList)))
         split-data (s/split raw-data #" ")]
-    (when (>= (count split-data) 3)
+    (when (>= (count split-data) 4)
       {:temperature (Float/parseFloat (format "%.1f" (Float/parseFloat
                                                       (nth split-data 0))))
        :wind-speed (Float/parseFloat (format "%.1f" (Float/parseFloat
                                                      (nth split-data 1))))
-       :cloudiness (Math/round (Float/parseFloat (nth split-data 2)))})))
+       :cloudiness (Math/round (Float/parseFloat (nth split-data 2)))
+       :wind-direction (get-wd-str (Float/parseFloat
+                                    (format "%.1f" (Float/parseFloat
+                                                    (nth split-data 3)))))})))
 
 (defn calculate-start-time
   "Calculates the start time for the data request and returns it as a
@@ -89,6 +141,29 @@
                                  #"\.\d+")) "Z"))]
     (try
       (extract-weather-data (parse url))
+      (catch org.xml.sax.SAXParseException spe
+        (error spe "FMI weather data XML parsing failed")
+        nil)
+      (catch Exception ex
+        (error ex "FMI weather data fetch failed")
+        nil))))
+
+(defn -get-fmi-weather-data-wd
+  "Fetches the latest FMI wind direction data from the FMI WFS for the given
+  weather observation station. If fetching or parsing failed, nil is returned."
+  [station-id]
+  (let [url (format (str "https://opendata.fmi.fi/wfs?service=WFS&version=2.0.0"
+                         "&request=getFeature&storedquery_id="
+                         "fmi::observations::weather::simple&fmisid=%d&"
+                         "parameters=wd_10min&starttime=%s")
+                    station-id
+                    (str (first (s/split
+                                 (str (t/instant (t/with-zone
+                                                   (calculate-start-time)
+                                                   "Europe/Helsinki")))
+                                 #"\.\d+")) "Z"))]
+    (try
+      (extract-weather-data-wd (parse url))
       (catch org.xml.sax.SAXParseException spe
         (error spe "FMI weather data XML parsing failed")
         nil)
@@ -164,8 +239,8 @@
   (let [url (format (str "https://opendata.fmi.fi/wfs?service=WFS&version=2.0.0"
                          "&request=getFeature&storedquery_id=fmi::forecast::"
                          "hirlam::surface::point::multipointcoverage&fmisid=%d"
-                         "&parameters=Temperature,WindSpeedMS,TotalCloudCover"
-                         "&starttime=%s")
+                         "&parameters=Temperature,WindSpeedMS,TotalCloudCover,"
+                         "WindDirection&starttime=%s")
                     station-id
                     (str (first (s/split
                                  (str (t/instant (t/with-zone
@@ -216,8 +291,12 @@
   []
   (-cache-set-value weather-cache
                     :data
-                    {:fmi (-get-fmi-weather-forecast (get-conf-value
-                                                      :station-id))
+                    {:fmi (conj {:forecast (-get-fmi-weather-forecast
+                                            (get-conf-value :station-id))}
+                                {:current {:wind-direction
+                                           (get-wd-str
+                                            (-get-fmi-weather-data-wd
+                                             (get-conf-value :station-id)))}})
                      :owm (fetch-owm-data (get-conf-value :owm-app-id)
                                           (get-conf-value :forecast-lat)
                                           (get-conf-value :forecast-lon))})
