@@ -195,7 +195,7 @@ def main():
         logging.error('Could not find configuration file: %s', config)
         sys.exit(1)
 
-    with open(config, 'r') as config_file:
+    with open(config, 'r', encoding='utf-8') as config_file:
         try:
             config = json.load(config_file)
         except json.JSONDecodeError as err:
