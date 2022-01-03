@@ -19,7 +19,7 @@ from digitalio import DigitalInOut
 BACKEND_URL = secrets['backend-url']
 # Path to the bitmap font to use, must include the degree symbol (U+00B0)
 FONT = bitmap_font.load_font("fonts/DejaVuSansMono-17.pcf")
-# Sleep time, in seconds, between data refreshes
+# Sleep time (in seconds) between data refreshes
 SLEEP_TIME = 80
 
 # Default backlight value
@@ -173,17 +173,18 @@ def update_screen(display, observation, weather_data, utc_offset_hour):
         sunset = f'{sunset.tm_hour + utc_offset_hour:02}:{sunset.tm_min:02}'
         display[0].text += f'           sr {sunrise} ss {sunset}'
     display[1].text = f'Weather: temperature {observation["data"]["fmi-temperature"]} \u00b0C, ' \
-        f'cloudiness {observation["data"]["cloudiness"]}, '
-    display[2].text = f'wind speed {observation["data"]["wind-speed"]} m/s'
+        f'cloudiness {observation["data"]["cloudiness"]},'
     if weather_data:
         current = weather_data['owm']['current']
-        forecast = weather_data['fmi']
+        forecast = weather_data['fmi']['forecast']
 
-        display[2].text += f', desc \"{current["weather"][0]["description"]}\"'
+        display[2].text = f'wind {weather_data["fmi"]["current"]["wind-direction"]["short"]} ' \
+            f'{observation["data"]["wind-speed"]} m/s, desc ' \
+            f'\"{current["weather"][0]["description"]}\"'
         display[3].text = f'Forecast: temp {forecast["temperature"]} \u00b0C, ' \
             f'cloudiness {forecast["cloudiness"]} %,'
-        display[4].text = f'wind speed {forecast["wind-speed"]} m/s, ' \
-            f'desc \"{weather_data["owm"]["forecast"]["weather"][0]["description"]}\"'
+        display[4].text = f'wind {forecast["wind-direction"]["short"]} {forecast["wind-speed"]} ' \
+            f'm/s, desc \"{weather_data["owm"]["forecast"]["weather"][0]["description"]}\"'
         row = 5
     else:
         row = 2
