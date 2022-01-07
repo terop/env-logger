@@ -7,7 +7,9 @@
             [cheshire.core :refer [generate-string]]
             [java-time :as t]
             [next.jdbc :as jdbc]
-            [env-logger.weather :refer :all])
+            [env-logger
+             [config :refer [get-conf-value]]
+             [weather :refer :all]])
   (:import java.time.ZonedDateTime
            java.util.Date))
 
@@ -122,9 +124,9 @@
                                                      [1539212400000 2]]
                                   "WindSpeedMS" [[1539208800000 5]
                                                  [1539212400000 6]]})})}
-      (is (= {:date (t/sql-timestamp (t/zoned-date-time
-                                      (str (.toInstant (new Date
-                                                            1539719400000)))))
+      (is (= {:date (t/sql-timestamp
+                     (t/local-date-time (t/instant 1539719400000)
+                                        (get-conf-value :store-timezone)))
               :temperature 11.0
               :cloudiness 2
               :wind-speed 6}
@@ -145,9 +147,9 @@
                                                      [1539212400000 2]]
                                   "WindSpeedMS" [[1539208800000 5]
                                                  [1539212400000 6]]})})}
-      (is (= {:date (t/sql-timestamp (t/zoned-date-time
-                                      (str (.toInstant (new Date
-                                                            1539719400000)))))
+      (is (= {:date (t/sql-timestamp
+                     (t/local-date-time (t/instant 1539719400000)
+                                        (get-conf-value :store-timezone)))
               :temperature 11.0
               :cloudiness 2
               :wind-speed 6}

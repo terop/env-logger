@@ -16,7 +16,7 @@
                  [org.threeten/threeten-extra "1.7.0"]
                  [compojure "1.6.2"]
                  [cheshire "5.10.1"]
-                 [selmer "1.12.48"]
+                 [selmer "1.12.49"]
                  [clj-http "3.12.3"]
                  [com.yubico/yubico-validation-client2 "3.1.0"]
                  [buddy/buddy-hashers "1.8.1"]

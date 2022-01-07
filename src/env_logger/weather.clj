@@ -13,8 +13,7 @@
             [env-logger
              [config :refer [get-conf-value]]
              [db :refer [rs-opts]]])
-  (:import java.util.Date
-           java.sql.Timestamp))
+  (:import java.sql.Timestamp))
 
 (def weather-cache (c/basic-cache-factory {:data nil :recorded nil}))
 
@@ -192,11 +191,10 @@
                (not (or (zero? (count (get json-resp "t2m")))
                         (zero? (count (get json-resp "TotalCloudCover")))
                         (zero? (count (get json-resp "WindSpeedMS"))))))
-      {:date (t/sql-timestamp (t/zoned-date-time
-                               (str (.toInstant
-                                     (new Date
-                                          (get json-resp
-                                               "latestObservationTime"))))))
+      {:date (t/sql-timestamp
+              (t/local-date-time (t/instant (get json-resp
+                                                 "latestObservationTime"))
+                                 (get-conf-value :store-timezone)))
        :temperature ((last (get json-resp "t2m")) 1)
        :cloudiness (int ((last (get json-resp "TotalCloudCover")) 1))
        :wind-speed ((last (get json-resp "WindSpeedMS")) 1)})))
