@@ -1,0 +1,38 @@
+{
+    "_meta": {
+        "hash": {
+            "sha256": "064b5ba499c9b5959c4b62a8a02f91bd545df8c73228b4051f92492a0d383605"
+        },
+        "pipfile-spec": 6,
+        "requires": {
+            "python_version": "3.9"
+        },
+        "sources": [
+            {
+                "name": "pypi",
+                "url": "https://pypi.org/simple",
+                "verify_ssl": true
+            }
+        ]
+    },
+    "default": {
+        "psycopg": {
+            "extras": [
+                "c"
+            ],
+            "hashes": [
+                "sha256:54f3bbcb7ece702d0141a1669e4e46e6cd3b0635813fc8ad4887ce085902e354",
+                "sha256:9a0e89937ad08e1e0af6ec97a5030ee02273bd651d4fb682e7d8facd80973fda"
+            ],
+            "index": "pypi",
+            "version": "==3.0.7"
+        },
+        "psycopg-c": {
+            "hashes": [
+                "sha256:ec15e2e0ad6ddf07e4671467f392d0e3925e7de931bf8a355e9a777fb5d6b0a3"
+            ],
+            "version": "==3.0.7"
+        }
+    },
+    "develop": {}
+}

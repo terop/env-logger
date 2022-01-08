@@ -3,7 +3,8 @@
 
 import argparse
 import sys
-import psycopg2
+
+import psycopg
 
 
 def add_user(connection, username, password_hash):
@@ -14,9 +15,9 @@ def add_user(connection, username, password_hash):
             cursor.execute('INSERT INTO users (username, pw_hash) VALUES (%s, %s)',
                            (username, password_hash))
         # pylint: disable=invalid-name
-        except psycopg2.Error as e:
-            print('An error occurred while inserting user {}: {}'.
-                  format(username, e.pgerror), file=sys.stderr)
+        except psycopg.Error as e:
+            print(f'An error occurred while inserting user "{username}": {str(e)}',
+                  file=sys.stderr)
             return False
     return True
 
@@ -30,16 +31,16 @@ def add_yubikey(connection, username, yubikey_id):
                            (username,))
             result = cursor.fetchone()
             if len(result) != 1:
-                print('Could not find user {} during Yubikey insert'.
-                      format(username), file=sys.stderr)
+                print(f'Could not find user "{username}" during Yubikey insert',
+                      file=sys.stderr)
                 return False
 
             cursor.execute('INSERT INTO yubikeys (user_id, yubikey_id) VALUES (%s, %s)',
                            (result[0], yubikey_id))
         # pylint: disable=invalid-name
-        except psycopg2.Error as e:
-            print('An error occurred while inserting Yubikey for user {}: {}'.
-                  format(username, e.pgerror), file=sys.stderr)
+        except psycopg.Error as e:
+            print(f'An error occurred while inserting Yubikey for user "{username}": {str(e)}',
+                  file=sys.stderr)
             return False
     return True
 
@@ -55,14 +56,14 @@ def main():
                         help='Yubikey ID')
     args = parser.parse_args()
 
-    with psycopg2.connect('dbname={}'.format(args.db_name)) as connection:
+    # pylint: disable=not-context-manager
+    with psycopg.connect(f'dbname={args.db_name}') as connection:
         if add_user(connection, args.username, args.password_hash):
             if args.yubikey:
                 if add_yubikey(connection, args.username, args.yubikey):
-                    print('Successfully inserted user {} with Yubikey'.
-                          format(args.username))
+                    print(f'Successfully inserted user "{args.username}" with Yubikey')
             else:
-                print('Successfully inserted user {}'.format(args.username))
+                print('Successfully inserted user "{args.username}"')
 
 
 if __name__ == '__main__':
