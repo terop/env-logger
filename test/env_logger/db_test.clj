@@ -81,7 +81,7 @@
                        :insideTemperature 20
                        :beacons [{:rssi -68
                                   :mac "7C:EC:79:3F:BE:97"}]}
-          weather-data {:date (str current-dt)
+          weather-data {:time (t/sql-timestamp current-dt)
                         :temperature 20
                         :cloudiness 2
                         :wind-speed 5.0}]
@@ -314,7 +314,7 @@
     (let [obs-id (:min (jdbc/execute-one! test-ds
                                           (sql/format {:select [:%min.id]
                                                        :from :observations})))
-          weather-data {:date (t/local-date-time)
+          weather-data {:time (t/local-date-time)
                         :temperature 20
                         :cloudiness 2
                         :wind-speed 5.0}]

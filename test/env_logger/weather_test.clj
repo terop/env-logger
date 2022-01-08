@@ -20,7 +20,7 @@
     (is (= {:wind-speed 5.0,
             :cloudiness 3,
             :temperature -9.0,
-            :date #inst "2021-12-02T18:10:00.000000000-00:00"}
+            :time #inst "2021-12-02T18:10:00.000000000-00:00"}
            (extract-weather-data
             (load-file "test/env_logger/wfs_extraction_data.txt"))))
     (is (nil? (extract-weather-data
@@ -68,7 +68,7 @@
       (is (= {:wind-speed 5.0,
               :cloudiness 3,
               :temperature -9.0,
-              :date #inst "2021-12-02T18:10:00.000000000-00:00"}
+              :time #inst "2021-12-02T18:10:00.000000000-00:00"}
              (-get-fmi-weather-data-wfs 87874))))
     (with-redefs [parse (fn [_]
                           {:content "garbage"})]
@@ -94,80 +94,18 @@
                           {:content "garbage"})]
       (is (nil? (-get-fmi-weather-forecast 87874))))))
 
-(deftest test-weather-data-extraction-json
-  (testing "Tests FMI weather data (JSON) extraction"
-    (with-fake-routes {#"https:\/\/ilmatieteenlaitos.fi\/observation-data(.+)"
-                       (fn [_] {:status 403})}
-      (is (nil? (-get-fmi-weather-data-json 87874))))
-    (with-fake-routes {#"https:\/\/ilmatieteenlaitos.fi\/observation-data(.+)"
-                       (fn [_] {:status 200
-                                :body "Invalid JSON"})}
-      (is (nil? (-get-fmi-weather-data-json 87874))))
-    (with-fake-routes {#"https:\/\/ilmatieteenlaitos.fi\/observation-data(.+)"
-                       (fn [_] {:status 200
-                                :body (generate-string
-                                       {"generated" 1539719550869,
-                                        "latestObservationTime" 1539719400000,
-                                        "timeZoneId" "Europe/Helsinki",
-                                        "TotalCloudCover" []})})}
-      (is (nil? (-get-fmi-weather-data-json 87874))))
-    (with-fake-routes {#"https:\/\/ilmatieteenlaitos.fi\/observation-data(.+)"
-                       (fn [_] {:status 200
-                                :body
-                                (generate-string
-                                 {"generated" 1539719550869
-                                  "latestObservationTime" 1539719400000
-                                  "timeZoneId" "Europe/Helsinki"
-                                  "t2m" [[1539208800000 9.0]
-                                         [1539212400000 11.0]]
-                                  "TotalCloudCover" [[1539208800000 0]
-                                                     [1539212400000 2]]
-                                  "WindSpeedMS" [[1539208800000 5]
-                                                 [1539212400000 6]]})})}
-      (is (= {:date (t/sql-timestamp
-                     (t/local-date-time (t/instant 1539719400000)
-                                        (get-conf-value :store-timezone)))
-              :temperature 11.0
-              :cloudiness 2
-              :wind-speed 6}
-             (-get-fmi-weather-data-json 87874))))))
-
 (deftest test-weather-data-extraction
-  (testing "Tests FMI weather data (JSON and WFS) extraction"
-    (with-fake-routes {#"https:\/\/ilmatieteenlaitos.fi\/observation-data(.+)"
-                       (fn [_] {:status 200
-                                :body
-                                (generate-string
-                                 {"generated" 1539719550869
-                                  "latestObservationTime" 1539719400000
-                                  "timeZoneId" "Europe/Helsinki"
-                                  "t2m" [[1539208800000 9.0]
-                                         [1539212400000 11.0]]
-                                  "TotalCloudCover" [[1539208800000 0]
-                                                     [1539212400000 2]]
-                                  "WindSpeedMS" [[1539208800000 5]
-                                                 [1539212400000 6]]})})}
-      (is (= {:date (t/sql-timestamp
-                     (t/local-date-time (t/instant 1539719400000)
-                                        (get-conf-value :store-timezone)))
-              :temperature 11.0
-              :cloudiness 2
-              :wind-speed 6}
-             (get-fmi-weather-data 87874)))
-      (with-redefs [parse (fn [_]
-                            (load-file "test/env_logger/wfs_data.txt"))]
-        (with-fake-routes {#"https:\/\/ilmatieteenlaitos.fi\/observation-data"
-                           (fn [_] {:status 403})}
-          (is (= {:wind-speed 5.0,
-                  :cloudiness 3,
-                  :temperature -9.0,
-                  :date #inst "2021-12-02T18:10:00.000000000-00:00"}
-                 (get-fmi-weather-data 87874)))))
-      (with-fake-routes {#"https:\/\/ilmatieteenlaitos.fi\/observation-data(.+)"
-                         (fn [_] {:status 403})
-                         #"https:\/\/opendata\.fmi\.fi\/wfs\?(.+)"
-                         (fn [_] {:status 404})}
-        (is (nil? (get-fmi-weather-data 87874)))))))
+  (testing "Tests FMI weather data (WFS) extraction"
+    (with-redefs [parse (fn [_]
+                          (load-file "test/env_logger/wfs_data.txt"))]
+      (is (= {:wind-speed 5.0,
+              :cloudiness 3,
+              :temperature -9.0,
+              :time #inst "2021-12-02T18:10:00.000000000-00:00"}
+             (get-fmi-weather-data 87874))))
+    (with-fake-routes {#"https:\/\/opendata\.fmi\.fi\/wfs\?(.+)"
+                       (fn [_] {:status 404})}
+      (is (nil? (get-fmi-weather-data 87874))))))
 
 (deftest test-weather-query-ok
   (testing "Test when it is OK to query for FMI weather data"

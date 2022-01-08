@@ -159,12 +159,7 @@
   (:id (js/insert! db-con
                    :weather_data
                    {:obs_id obs-id
-                    :time (t/sql-timestamp
-                           (t/minus (t/local-date-time
-                                     (:date weather-data))
-                                    (t/hours (get-tz-offset
-                                              (get-conf-value
-                                               :store-timezone)))))
+                    :time (:time weather-data)
                     :temperature (:temperature weather-data)
                     :cloudiness (:cloudiness weather-data)
                     :wind_speed (:wind-speed weather-data)}

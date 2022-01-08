@@ -12,8 +12,7 @@
             [java-time :as t]
             [env-logger
              [config :refer [get-conf-value]]
-             [db :refer [rs-opts]]])
-  (:import java.sql.Timestamp))
+             [db :refer [rs-opts]]]))
 
 (def weather-cache (c/basic-cache-factory {:data nil :recorded nil}))
 
@@ -70,7 +69,9 @@
                                         :wfs:member
                                         :BsWfs:BsWfsElement
                                         :BsWfs:Time))]
-      {:date (new Timestamp (.toEpochMilli (t/instant date-text)))
+      {:time (t/sql-timestamp
+              (t/local-date-time (t/instant date-text)
+                                 (get-conf-value :store-timezone)))
        :temperature (Float/parseFloat (nth values 0))
        :cloudiness (Math/round (Float/parseFloat (nth values 1)))
        :wind-speed (Float/parseFloat (nth values 2))})))
@@ -170,44 +171,12 @@
         (error ex "FMI weather data fetch failed")
         nil))))
 
-(defn -get-fmi-weather-data-json
-  "Fetches the latest FMI weather data from the observation data in JSON for the
-  given weather observation station. If fetching or parsing failed, nil is
-  returned."
-  [station-id]
-  (let [url (str "https://ilmatieteenlaitos.fi/observation-data?station="
-                 station-id)
-        resp (try
-               (client/get url)
-               (catch Exception e
-                 (error (str "FMI JSON weather data fetch failed, "
-                             "status:" (:status (ex-data e))))))
-        json-resp (try
-                    (parse-string (:body resp))
-                    (catch com.fasterxml.jackson.core.JsonParseException e
-                      (error (str "FMI JSON weather data parsing failed: "
-                                  (str e)))))]
-    (when (and json-resp
-               (not (or (zero? (count (get json-resp "t2m")))
-                        (zero? (count (get json-resp "TotalCloudCover")))
-                        (zero? (count (get json-resp "WindSpeedMS"))))))
-      {:date (t/sql-timestamp
-              (t/local-date-time (t/instant (get json-resp
-                                                 "latestObservationTime"))
-                                 (get-conf-value :store-timezone)))
-       :temperature ((last (get json-resp "t2m")) 1)
-       :cloudiness (int ((last (get json-resp "TotalCloudCover")) 1))
-       :wind-speed ((last (get json-resp "WindSpeedMS")) 1)})))
-
 (defn get-fmi-weather-data
-  "Fetches the latest FMI weather data either using
-  1) HTTTP request in JSON
-  2) WFS
+  "Fetches the latest FMI weather data either using WFS
   for the given weather observation station. If fetching or parsing failed,
   nil is returned."
   [station-id]
-  (or (-get-fmi-weather-data-json station-id)
-      (-get-fmi-weather-data-wfs station-id)))
+  (-get-fmi-weather-data-wfs station-id))
 
 (defn weather-query-ok?
   "Tells whether it is OK to query the FMI API for weather observations.
