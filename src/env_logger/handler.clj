@@ -237,8 +237,10 @@
                                                              (:end obs-dates))
                                                (t/days initial-days)))
                 :end-date (:end obs-dates)})
-             (when logged-in?
-               {:weather-data (generate-string (get-weather-data))})))))
+             {:weather-data (if logged-in?
+                              (generate-string (get-weather-data))
+                              (generate-string
+                               (:current (:fmi (get-weather-data)))))}))))
 
 (defn handle-observation-insert
   "Handles the insertion of an observation to the database."

@@ -236,8 +236,8 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
             itemsAdded = 0,
             weatherKeys = ['fmi-temperature', 'cloudiness', 'wind-speed'];
 
+        var weatherData = JSON.parse(document.getElementById('weatherData').textContent);
         if (mode === 'all') {
-            var weatherData = JSON.parse(document.getElementById('weatherData').textContent);
             weatherKeys.unshift('o-temperature');
 
             observationText += `Sun: Sunrise ${formatUnixSecondTs(weatherData['owm']['current']['sunrise'])},` +
@@ -252,12 +252,16 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
         }
 
         for (const key of weatherKeys) {
-            if (mode === 'all' && key === 'wind-speed')
-                observationText += `Wind: ${weatherData['fmi']['current']['wind-direction']['long']} ` +
-                `${dataSets['weather'][key][lastObservationIndex]} ${addUnitSuffix(key)}, `;
-            else
+            if (key === 'wind-speed') {
+                if (mode === 'all')
+                    observationText += `Wind: ${weatherData['fmi']['current']['wind-direction']['long']} `;
+                else
+                    observationText += `Wind: ${weatherData['wind-direction']['long']} `;
+                observationText += `${dataSets['weather'][key][lastObservationIndex]} ${addUnitSuffix(key)}, `;
+            } else {
                 observationText += `${labelValues['weather'][key]}: ${dataSets['weather'][key][lastObservationIndex]}` +
-                `${addUnitSuffix(key)}, `;
+                    `${addUnitSuffix(key)}, `;
+            }
         }
         if (mode === 'all') {
             observationText += `Description: ${weatherData['owm']['current']['weather'][0]['description']}`;
