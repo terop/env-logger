@@ -252,16 +252,14 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
         }
 
         for (const key of weatherKeys) {
-            if (key === 'wind-speed') {
-                if (mode === 'all')
-                    observationText += `Wind: ${weatherData['fmi']['current']['wind-direction']['long']} `;
-                else
-                    observationText += `Wind: ${weatherData['wind-direction']['long']} `;
-                observationText += `${dataSets['weather'][key][lastObservationIndex]} ${addUnitSuffix(key)}, `;
-            } else {
+            if (key === 'wind-speed')
+                observationText += 'Wind: ' +
+                (mode === 'all' ? `${weatherData['fmi']['current']['wind-direction']['long']} ` :
+                 `${weatherData['wind-direction']['long']} `) +
+                `${dataSets['weather'][key][lastObservationIndex]} ${addUnitSuffix(key)}, `;
+            else
                 observationText += `${labelValues['weather'][key]}: ${dataSets['weather'][key][lastObservationIndex]}` +
                     `${addUnitSuffix(key)}, `;
-            }
         }
         if (mode === 'all') {
             observationText += `Description: ${weatherData['owm']['current']['weather'][0]['description']}`;
