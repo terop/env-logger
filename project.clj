@@ -11,7 +11,7 @@
                  [com.taoensso/timbre "5.1.2"]
                  [org.postgresql/postgresql "42.3.1"]
                  [com.github.seancorfield/next.jdbc "1.2.761"]
-                 [com.github.seancorfield/honeysql "2.2.840"]
+                 [com.github.seancorfield/honeysql "2.2.858"]
                  [clojure.java-time "0.3.3"]
                  [org.threeten/threeten-extra "1.7.0"]
                  [compojure "1.6.2"]

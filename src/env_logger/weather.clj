@@ -71,7 +71,7 @@
                                         :BsWfs:Time))]
       {:time (t/sql-timestamp
               (t/local-date-time (t/instant date-text)
-                                 (get-conf-value :store-timezone)))
+                                 (get-conf-value :weather-timezone)))
        :temperature (Float/parseFloat (nth values 0))
        :cloudiness (Math/round (Float/parseFloat (nth values 1)))
        :wind-speed (Float/parseFloat (nth values 2))})))
@@ -137,7 +137,8 @@
                     (str (first (s/split
                                  (str (t/instant (t/with-zone
                                                    (calculate-start-time)
-                                                   "Europe/Helsinki")))
+                                                   (get-conf-value
+                                                    :weather-timezone))))
                                  #"\.\d+")) "Z"))]
     (try
       (extract-weather-data (parse url))
@@ -160,7 +161,8 @@
                     (str (first (s/split
                                  (str (t/instant (t/with-zone
                                                    (calculate-start-time)
-                                                   "Europe/Helsinki")))
+                                                   (get-conf-value
+                                                    :weather-timezone))))
                                  #"\.\d+")) "Z"))]
     (try
       (extract-weather-data-wd (parse url))
@@ -212,7 +214,8 @@
                     (str (first (s/split
                                  (str (t/instant (t/with-zone
                                                    (calculate-start-time)
-                                                   "Europe/Helsinki")))
+                                                   (get-conf-value
+                                                    :weather-timezone))))
                                  #"\.\d+")) "Z"))]
     (try
       (extract-forecast-data (parse url))

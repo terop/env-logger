@@ -12,6 +12,8 @@
  ;; Timezone offset to use in observation display
  ;; Set to UTC if no offset is needed
  :display-timezone "UTC"
+  ;; Timezone to use in weather data handling
+ :weather-timezone "UTC"
  ;; How many days to initially show in the plot
  :initial-show-days 2
  ;; Yubico OTP parameters
