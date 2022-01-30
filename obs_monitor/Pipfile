@@ -7,7 +7,7 @@ name = "pypi"
 beautifulsoup4 = "*"
 requests = "*"
 lxml = "==4.7.1"
-psycopg = {version = "==3.0.7", extras = ["c"]}
+psycopg = {version = "==3.0.8", extras = ["c"]}
 
 [dev-packages]
 
