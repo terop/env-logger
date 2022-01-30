@@ -22,7 +22,6 @@ jobs:
 
     resource_class: small
     environment:
-      LEIN_ROOT: "true"
       JVM_OPTS: -Xmx3200m
       POSTGRESQL_DB_USERNAME: postgres
       POSTGRESQL_DB_PASSWORD: testpwd

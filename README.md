@@ -1,5 +1,4 @@
-env-logger
-=======
+# env-logger
 
 [![CircleCI](https://circleci.com/gh/terop/env-logger/tree/master.svg?style=svg)](https://circleci.com/gh/terop/env-logger/tree/master)
 
