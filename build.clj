@@ -6,11 +6,11 @@
 (def version "0.2.11-SNAPSHOT")
 (def main 'env-logger.handler)
 
-(defn test "Run the tests." [opts]
-  (bb/run-tests opts))
-
 (defn clean "Do cleanup." [opts]
   (bb/clean opts))
+
+(defn test "Run the tests." [opts]
+  (bb/run-tests opts))
 
 (defn ci "Run the CI pipeline of tests." [opts]
   (-> opts

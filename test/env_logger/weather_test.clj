@@ -7,9 +7,7 @@
             [cheshire.core :refer [generate-string]]
             [java-time :as t]
             [next.jdbc :as jdbc]
-            [env-logger
-             [config :refer [get-conf-value]]
-             [weather :refer :all]])
+            [env-logger.weather :refer :all])
   (:import java.time.ZonedDateTime))
 
 ;; FMI

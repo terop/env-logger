@@ -7,8 +7,10 @@
              [sql :as js]]
             [java-time :as t]
             [env-logger.config :refer [db-conf get-conf-value]])
-  (:import java.text.NumberFormat
+  (:import (java.text NumberFormat
+                      DecimalFormat)
            (java.time DateTimeException
+                      LocalDateTime
                       ZoneOffset)
            (java.util Date
                       TimeZone)
@@ -112,17 +114,17 @@
 (defn get-tz-offset
   "Returns the offset in hours to UTC for the given timezone."
   [tz]
-  (/ (/ (/ (.getOffset (TimeZone/getTimeZone tz)
+  (/ (/ (/ (.getOffset (TimeZone/getTimeZone ^String tz)
                        (.getTime (new Date))) 1000) 60) 60))
 
 (defn convert-to-epoch-ms
   "Converts the given datetime value to Unix epoch time in milliseconds."
   [tz-offset dt]
-  (* (.toEpochSecond
-      (t/minus (t/local-date-time dt)
-               (t/hours tz-offset))
-      (ZoneOffset/UTC))
-     1000))
+  (let [^LocalDateTime subs-dt (t/minus (t/local-date-time dt)
+                                        (t/hours tz-offset))]
+    (* (.toEpochSecond subs-dt
+                       (ZoneOffset/UTC))
+       1000)))
 
 (defn insert-plain-observation
   "Insert a row into observations table."
@@ -412,7 +414,7 @@
                                      [:<= :recorded end]]
                              :order-by [[:id :asc]]})
           tz-offset (get-tz-offset (get-conf-value :display-timezone))]
-      (.applyPattern nf "0.0#")
+      (.applyPattern ^DecimalFormat nf "0.0#")
       (for [row (jdbc/execute! db-con query rs-opts)]
         (merge row
                {:recorded (convert-to-epoch-ms tz-offset
