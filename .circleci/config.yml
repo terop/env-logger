@@ -9,7 +9,7 @@ jobs:
           password: $DOCKERHUB_PASSWORD
         environment:
           TEST_DATABASE_URL: postgresql://postgres@localhost/env_logger_test
-      - image: cimg/postgres:13.5
+      - image: cimg/postgres:14.1
         auth:
           username: mydockerhub-user
           password: $DOCKERHUB_PASSWORD
@@ -32,8 +32,9 @@ jobs:
       - run:
           name: database setup
           command: |
-            sudo apt install -y postgresql-client || true
-            psql -d ${TEST_DATABASE_URL} env_logger_test < db-def.sql
+            sleep 5
+            sudo apt-get install -y postgresql-client || true
+            psql -d ${TEST_DATABASE_URL} < db-def.sql
 
       - run:
           name: setup config
@@ -41,3 +42,5 @@ jobs:
             cp resources/config.edn_sample resources/config.edn
 
       - run: clojure -T:build ci
+
+      - run: clojure -M:eastwood
