@@ -1,23 +1,29 @@
 env-logger
 =======
 
+[![CircleCI](https://circleci.com/gh/terop/env-logger/tree/master.svg?style=svg)](https://circleci.com/gh/terop/env-logger/tree/master)
+
 The env-logger is a simple data logger for collecting various physical
 environment data, such as, temperature and brightness.
 
 ## Prerequisites
 
-To build and run this application locally you will need [Leiningen][] 2.0.0 or
-above installed. Additionally, a PostgreSQL server instance
+To build and run this application locally you will need a recent Clojure version
+installed. Additionally, a PostgreSQL server instance
 is needed. Database definitions can be found in `db-def.sql` and
 a database with the required tables must exist before the application
-can be started. Users and Yubikeys must be added to the `users` and `yubikeys`
-tables respectively before running the application. This can be done
-with the `scripts/add_user.py` script. Dependencies needed by the script can be installed
-with the `pip install -r requirements.txt` command. A user's password can be
-hashed with the `(hashers/derive "<password>")` command in a Clojure REPL where
-the `buddy-hashers` library is installed and imported as `hashers`.
+can be started.
 
-[leiningen]: https://github.com/technomancy/leiningen
+Users and Yubikeys are added to the `users` and `yubikeys`
+tables respectively before running the application. This can be done
+with the `scripts/add_user.py` script. In order the install the necessary
+dependencies you need [pipenv](https://github.com/pypa/pipenv). Install dependencies
+themselves with `pipenv install` command in the `scripts` directory and run the
+script with `pipenv run python3 add_user.py <arguments>`.
+
+A user's password can be hashed with the `(hashers/derive "<password>")` command
+in a Clojure REPL where the `buddy-hashers` library is installed and imported
+as `hashers`.
 
 ## Configuration
 
@@ -37,17 +43,11 @@ _NOTE_! The first variable is not defined in `config.edn`.
 
 ## Running
 ### Locally
-To start a web server for the application, run:
+To start the application locally run `clojure -M:run`.
 
-    lein run
+### Docker / podman
 
-or
-
-    lein trampoline run
-
-### Docker
-
-This application can be also be run in a Docker container. To build the
+This application can be also be run in a Docker or podman container. To build the
 container call `make build` from root directory of the application.
 The container will be called `env-logger`. The .jar file to run in in the
 container can be executed with the `java -jar <name>.jar` command.
@@ -56,4 +56,4 @@ container can be executed with the `java -jar <name>.jar` command.
 
 See the MIT license in the LICENSE file.
 
-Copyright © 2014-2021 Tero Paloheimo
+Copyright © 2014-2022 Tero Paloheimo
