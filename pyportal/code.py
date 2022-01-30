@@ -121,7 +121,7 @@ def get_backend_endpoint_content(endpoint, token):
             time.sleep(5)
 
             if fail_count >= NW_FAILURE_THRESHOLD:
-                print(f'Error: endoint "{endpoint}" fetch failed {fail_count} times, ',
+                print(f'Error: endpoint "{endpoint}" fetch failed {fail_count} times, ',
                       'reloading board')
                 time.sleep(5)
                 supervisor.reload()
