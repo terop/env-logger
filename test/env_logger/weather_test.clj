@@ -10,8 +10,7 @@
             [env-logger
              [config :refer [get-conf-value]]
              [weather :refer :all]])
-  (:import java.time.ZonedDateTime
-           java.util.Date))
+  (:import java.time.ZonedDateTime))
 
 ;; FMI
 
