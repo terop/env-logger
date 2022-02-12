@@ -1,6 +1,6 @@
 (ns env-logger.config-test
-  (:require [clojure.test :refer :all]
-            [env-logger.config :refer :all]))
+  (:require [clojure.test :refer [deftest is testing]]
+            [env-logger.config :refer [db-conf get-conf-value]]))
 
 (deftest read-configuration-value
   (testing "Basic configuration value reading"

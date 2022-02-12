@@ -1,9 +1,9 @@
 (ns env-logger.user-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [next.jdbc :as jdbc]
             [next.jdbc.sql :as js]
             [env-logger
-             [user :refer :all]
+             [user :refer [get-user-data get-user-id get-yubikey-id]]
              [db-test :refer [test-ds]]])
   (:import (org.postgresql.util PSQLException
                                 PSQLState)))
@@ -37,7 +37,7 @@
             :yubikey-ids (set ["mykeyid"])}
            (get-user-data test-ds "test-user")))
     (with-redefs [jdbc/execute-one!
-                  (fn [con query opts]
+                  (fn [_ _ _]
                     (throw (PSQLException.
                             "Test exception"
                             (PSQLState/COMMUNICATION_ERROR))))]

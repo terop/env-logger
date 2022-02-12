@@ -1,13 +1,25 @@
 (ns env-logger.weather-test
-  (:require [clojure.core.cache.wrapped :as c]
-            [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is testing]]
+            [clojure.core.cache.wrapped :as c]
             [clojure.string :as s]
             [clojure.xml :refer [parse]]
             [clj-http.fake :refer [with-fake-routes]]
             [cheshire.core :refer [generate-string]]
             [java-time :as t]
             [next.jdbc :as jdbc]
-            [env-logger.weather :refer :all])
+            [env-logger.weather :refer [-cache-set-value
+                                        -get-fmi-weather-data-wd
+                                        -get-fmi-weather-data-wfs
+                                        -get-fmi-weather-forecast
+                                        calculate-start-time
+                                        extract-forecast-data
+                                        extract-weather-data
+                                        extract-weather-data-wd
+                                        fetch-owm-data
+                                        get-fmi-weather-data
+                                        get-wd-str
+                                        get-weather-data
+                                        weather-query-ok?]])
   (:import java.time.ZonedDateTime))
 
 ;; FMI
@@ -106,17 +118,17 @@
 
 (deftest test-weather-query-ok
   (testing "Test when it is OK to query for FMI weather data"
-    (with-redefs [jdbc/execute-one! (fn [con query opts] '())]
+    (with-redefs [jdbc/execute-one! (fn [_ _ _] '())]
       (is (true? (weather-query-ok? {} 5))))
-    (with-redefs [jdbc/execute-one! (fn [con query opts]
+    (with-redefs [jdbc/execute-one! (fn [_ _ _]
                                       {:recorded (t/minus (t/offset-date-time)
                                                           (t/minutes 3))})]
       (is (false? (weather-query-ok? {} 5))))
-    (with-redefs [jdbc/execute-one! (fn [con query opts]
+    (with-redefs [jdbc/execute-one! (fn [_ _ _]
                                       {:recorded (t/minus (t/offset-date-time)
                                                           (t/minutes 3))})]
       (is (true? (weather-query-ok? {} 3))))
-    (with-redefs [jdbc/execute-one! (fn [con query opts]
+    (with-redefs [jdbc/execute-one! (fn [_ _ _]
                                       {:recorded (t/minus (t/offset-date-time)
                                                           (t/minutes 6))})]
       (is (true? (weather-query-ok? {} 5))))))

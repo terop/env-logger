@@ -1,5 +1,5 @@
 (ns env-logger.handler-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is testing]]
             [java-time :as t]
             [env-logger.config :refer [get-conf-value]]
             [env-logger.db :as db]

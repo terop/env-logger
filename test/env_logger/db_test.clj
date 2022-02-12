@@ -7,7 +7,29 @@
              [result-set :as rs]
              [sql :as js]]
             [env-logger.config :refer [db-conf get-conf-value]]
-            [env-logger.db :refer :all])
+            [env-logger.db :refer [convert-to-epoch-ms
+                                   get-last-obs-id
+                                   get-obs-date-interval
+                                   get-obs-days
+                                   get-obs-interval
+                                   get-observations
+                                   get-ruuvitag-obs
+                                   get-tz-offset
+                                   get-weather-obs-days
+                                   get-weather-obs-interval
+                                   get-weather-observations
+                                   get-yc-image
+                                   image-age-check
+                                   insert-beacons
+                                   insert-observation
+                                   insert-plain-observation
+                                   insert-ruuvitag-observation
+                                   insert-tb-image-name
+                                   insert-wd
+                                   insert-yc-image-name
+                                   make-local-dt
+                                   test-db-connection
+                                   validate-date]])
   (:import (org.postgresql.util PSQLException
                                 PSQLState)
            (java.util Date
@@ -195,12 +217,12 @@
                                                (t/days 4)))
             :end (t/format date-fmt current-dt)}
            (get-obs-date-interval test-ds)))
-    (with-redefs [jdbc/execute-one! (fn [con query] nil)]
+    (with-redefs [jdbc/execute-one! (fn [_ _] nil)]
       (is (= {:start ""
               :end ""}
              (get-obs-date-interval test-ds))))
     (with-redefs [jdbc/execute-one!
-                  (fn [con query]
+                  (fn [_ _]
                     (throw (PSQLException.
                             "Test exception"
                             (PSQLState/COMMUNICATION_ERROR))))]
@@ -342,8 +364,9 @@
                  (assoc ruuvitag-obs
                         :pressure
                         nil))))
-      (= -1 (insert-ruuvitag-observation test-ds
-                                         (dissoc ruuvitag-obs :temperature))))))
+      (is (= -1 (insert-ruuvitag-observation test-ds
+                                             (dissoc ruuvitag-obs
+                                                     :temperature)))))))
 
 (deftest beacon-insert
   (testing "Insert of beacon(s)"
@@ -370,7 +393,7 @@
   (testing "Connection to the DB"
     (is (true? (test-db-connection test-ds)))
     (with-redefs [jdbc/execute-one!
-                  (fn [con query]
+                  (fn [_ _]
                     (throw (PSQLException.
                             "Test exception"
                             (PSQLState/COMMUNICATION_ERROR))))]
