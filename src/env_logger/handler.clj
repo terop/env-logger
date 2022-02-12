@@ -38,19 +38,7 @@
                               weather-query-ok?
                               get-weather-data]]
              [user :as u]])
-  (:import java.time.Instant
-           com.yubico.client.v2.YubicoClient))
-
-(defn otp-value-valid?
-  "Checks whether the provided Yubico OTP value is valid. Returns true
-  on success and false otherwise."
-  [otp-value]
-  (let [client (YubicoClient/getClient
-                (Integer/parseInt (get-conf-value :yubico-client-id))
-                (get-conf-value :yubico-secret-key))]
-    (if-not (YubicoClient/isValidOTPFormat otp-value)
-      false
-      (.isOk (.verify client otp-value)))))
+  (:import java.time.Instant))
 
 (defn check-auth-code
   "Checks whether the authentication code is valid."
@@ -66,17 +54,12 @@
   (with-open [con (jdbc/get-connection db/postgres-ds)]
     (let [username (get-in request [:form-params "username"])
           password (get-in request [:form-params "password"])
-          otp (get-in request [:form-params "otp"])
           session (:session request)
-          user-data (u/get-user-data con username)]
-      (if (:error user-data)
+          pw-hash (u/get-pw-hash con username)]
+      (if (:error pw-hash)
         (render-file "templates/error.html"
                      {})
-        (if (or (and user-data (h/check password (:pw-hash user-data)))
-                (and (seq otp)
-                     (otp-value-valid? otp)
-                     (contains? (u/get-yubikey-id con username)
-                                (YubicoClient/getPublicId otp))))
+        (if (and pw-hash (h/check password pw-hash))
           (let [next-url (get-in request [:query-params :next]
                                  (str (get-conf-value :url-path) "/"))
                 updated-session (assoc session :identity (keyword username))]

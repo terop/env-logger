@@ -47,13 +47,6 @@ CREATE TABLE users (
        username VARCHAR(100) NOT NULL UNIQUE,
        pw_hash VARCHAR(250),
        saved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
- );
-
--- Yubikey ID table
-CREATE TABLE yubikeys (
-       key_id SERIAL PRIMARY KEY,
-       user_id INTEGER REFERENCES users (user_id) ON DELETE CASCADE,
-       yubikey_id VARCHAR(32) NOT NULL UNIQUE
 );
 
 -- WebAuthn authenticator table

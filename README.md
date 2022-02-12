@@ -13,16 +13,29 @@ is needed. Database definitions can be found in `db-def.sql` and
 a database with the required tables must exist before the application
 can be started.
 
-Users and Yubikeys are added to the `users` and `yubikeys`
-tables respectively before running the application. This can be done
-with the `scripts/add_user.py` script. In order the install the necessary
-dependencies you need [pipenv](https://github.com/pypa/pipenv). Install dependencies
-themselves with `pipenv install` command in the `scripts` directory and run the
-script with `pipenv run python3 add_user.py <arguments>`.
+Users are added to the `users` tables respectively before running the application.
+This can be done with the `scripts/add_user.py` script. In order the install the
+necessary dependencies you need [pipenv](https://github.com/pypa/pipenv).
+Install dependencies themselves with `pipenv install` command in the `scripts`
+directory and run the script with `pipenv run python3 add_user.py <arguments>`.
 
 A user's password can be hashed with the `(hashers/derive "<password>")` command
 in a Clojure REPL where the `buddy-hashers` library is installed and imported
 as `hashers`.
+
+## Authentication
+
+This application supports both password and WebAuthn based authentication.
+Both methods work independently of each other and currently cannot be combined
+into a two factor authentication mechanism.
+
+To register a WebAuthn authenticator go the `<app url>/register` page when
+logged in. There you can register as many authenticators as needed. When an
+authenticator has been registered it can be used on the login page.
+
+Note that WebAuthn login offers the login challenge for one authenticator at a
+time so using the authenticator multiple times is needed if multiple authenticators
+are registered. A challenge for the most used authenticator(s) is offered first.
 
 ## Configuration
 

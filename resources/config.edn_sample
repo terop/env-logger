@@ -16,9 +16,6 @@
  :weather-timezone "UTC"
  ;; How many days to initially show in the plot
  :initial-show-days 2
- ;; Yubico OTP parameters
- :yubico-client-id "12345"
- :yubico-secret-key "xyz"
  ;; Weather station ID
  :station-id 1234
  ;; OpenWeatherMap application ID (access key)

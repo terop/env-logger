@@ -20,7 +20,6 @@
         buddy/buddy-sign {:mvn/version "3.4.333"}
         com.taoensso/timbre {:mvn/version "5.1.2"}
         com.fzakaria/slf4j-timbre {:mvn/version "0.3.21"}
-        com.yubico/yubico-validation-client2 {:mvn/version "3.1.0"}
         io.github.terop/cljwebauthn
         {:sha "aafabe018d8b5628a1330c9c206848f1ce3a1967"}}
  :aliases
