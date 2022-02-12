@@ -31,6 +31,8 @@
  :forecast-lon 56.78
  ;; Beacon MAC and name, currently only one beacon is supported
  :beacon-name {"7C:EC:79:3F:BE:98" "Beacon 1"}
+  ;; Hostname where the application is hosted
+ :hostname "localhost"
  ;; Development or production setting (TLS is enforced)
  :in-production true
  ;; Use through proxy (usually needed when reverse proxies are used)

@@ -43,6 +43,10 @@ var restoreDatasetState = function () {
     const hidden = JSON.parse(localStorage.getItem('hiddenDatasets'));
     localStorage.removeItem('checkedBoxes');
 
+    if (!weatherChart)
+        // Do not attempt restore if there is no data
+        return;
+
     for (var i = 0; i < weatherChart.data.datasets.length; i++)
         weatherChart.getDatasetMeta(i).hidden = hidden['weather'][i.toString()] ? true : null;
     weatherChart.update();

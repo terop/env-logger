@@ -14,7 +14,7 @@
             [cheshire.core :refer [generate-string parse-string]]
             [java-time :as t]
             [compojure
-             [core :refer [defroutes GET POST]]
+             [core :refer [context defroutes GET POST]]
              [route :as route]]
             [next.jdbc :as jdbc]
             [ring.adapter.jetty :refer [run-jetty]]
@@ -26,6 +26,11 @@
             [ring.util.response :as resp]
             [selmer.parser :refer [render-file]]
             [env-logger
+             [authentication :refer [wa-prepare-register
+                                     wa-register
+                                     wa-prepare-login
+                                     wa-login
+                                     get-authenticator-count]]
              [config :refer [get-conf-value]]
              [db :as db]
              [weather :refer [calculate-start-time
@@ -77,8 +82,8 @@
                 updated-session (assoc session :identity (keyword username))]
             (assoc (resp/redirect next-url) :session updated-session))
           (render-file "templates/login.html"
-                       {:error (str "Error: an invalid credential "
-                                    "was provided")}))))))
+                       {:error
+                        "Error: an invalid credential was provided"}))))))
 
 (defn unauthorized-handler
   "Handles unauthorized requests."
@@ -267,12 +272,32 @@
                    {})
       (render-file "templates/chart.html"
                    (get-plot-page-data request))))
-  (GET "/login" [] (render-file "templates/login.html" {}))
+  (GET "/login" request
+    (if-not (authenticated? request)
+      (render-file "templates/login.html" {})
+      (resp/redirect (str (get-conf-value :url-path) "/"))))
   (POST "/login" [] login-authenticate)
   (GET "/logout" _
     (assoc (resp/redirect (str (get-conf-value :url-path) "/"))
-           :session {}))
+           :session nil))
   (POST "/token-login" [] token-login)
+  ;; WebAuthn routes
+  (GET "/register" request
+    (if-not (authenticated? request)
+      response-unauthorized
+      (render-file "templates/register.html"
+                   {:username (name (get-in request
+                                            [:session :identity]))})))
+  (context "/webauthn" []
+    (GET "/register" [] wa-prepare-register)
+    (POST "/register" [] wa-register)
+    (GET "/login" [] wa-prepare-login)
+    (POST "/login" [] wa-login)
+    (GET "/auth-count" request
+      (resp/response
+       (str (get-authenticator-count db/postgres-ds
+                                     (get-in request [:params
+                                                      :username]))))))
   (GET "/get-last-obs" [] get-last-obs-data)
   (GET "/get-weather-data" request
     (if-not (authenticated? request)

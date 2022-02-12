@@ -1,5 +1,5 @@
 (ns env-logger.db-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [clojure.string :as s]
             [java-time :as t]
             [next.jdbc :as jdbc]
@@ -31,6 +31,7 @@
   (def test-postgres {:dbtype "postgresql"
                       :dbname db-name
                       :host db-host
+                      :port db-port
                       :user db-user
                       :password db-password})
   (def test-ds (jdbc/with-options (jdbc/get-datasource test-postgres)

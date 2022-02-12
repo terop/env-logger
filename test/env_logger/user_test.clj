@@ -2,8 +2,9 @@
   (:require [clojure.test :refer :all]
             [next.jdbc :as jdbc]
             [next.jdbc.sql :as js]
-            [env-logger.user :refer :all]
-            [env-logger.db-test :refer [test-ds]])
+            [env-logger
+             [user :refer :all]
+             [db-test :refer [test-ds]]])
   (:import (org.postgresql.util PSQLException
                                 PSQLState)))
 
