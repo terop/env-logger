@@ -9,9 +9,8 @@
                                      get-authenticators
                                      get-authenticator-count
                                      inc-login-count
-                                     register-user!
                                      wa-prepare-register
-                                     wa-prepare-login]]
+                                     do-prepare-login]]
              [db :refer [rs-opts]]
              [db-test :refer [test-ds]]])
   (:import com.webauthn4j.authenticator.AuthenticatorImpl
@@ -123,10 +122,6 @@
       (is (= 3 (get-login-count authn-id))))
     (delete-authenticators)))
 
-(deftest user-register
-  (testing "User register callback function"
-    (is (true? (register-user! "test-user" authenticator)))))
-
 (deftest register-preparation
   (testing "User register preparation data generation"
     (let [resp (wa-prepare-register {:params {:username "test-user"}})
@@ -137,8 +132,10 @@
 
 (deftest login-preparation
   (testing "User login preparation data generation"
-    (let [resp (wa-prepare-login {:params {:username "test-user"}})
+    (insert-authenticator)
+    (let [resp (do-prepare-login {:params {:username "test-user"}} test-ds)
           body (parse-string (:body resp) true)]
       (is (= 200 (:status resp)))
       (is (= "09w4snBXtbIKzw/O7krAjYTzkIWeOVDkYGvlT/v90Uc="
-             (:id (first (:credentials body))))))))
+             (:id (first (:credentials body))))))
+    (delete-authenticators)))

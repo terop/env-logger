@@ -144,11 +144,11 @@
     (resp/created "/login" (generate-string user))
     (resp/status 500)))
 
-(defn wa-prepare-login
-  "Function for getting user login preparation data."
-  [request]
+(defn do-prepare-login
+  "Function doing the login preparation."
+  [request db-con]
   (let [username (get-in request [:params :username])
-        authenticators (get-authenticators db/postgres-ds username)]
+        authenticators (get-authenticators db-con username)]
     (when (> @current-authn-number (dec (count authenticators)))
       (reset! current-authn-number 0))
     (if-let [resp (webauthn/prepare-login username
@@ -157,6 +157,11 @@
                                                  @current-authn-number) %))]
       (resp/response (generate-string resp))
       (resp/status 500))))
+
+(defn wa-prepare-login
+  "Function for getting user login preparation data."
+  [request]
+  (do-prepare-login request db/postgres-ds))
 
 (defn wa-login
   "User login function."
