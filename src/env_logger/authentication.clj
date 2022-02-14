@@ -1,17 +1,26 @@
 (ns env-logger.authentication
   "A namespace for authentication related functions"
-  (:require [cljwebauthn.core :as webauthn]
+  (:require [buddy.auth :refer [authenticated?]]
+            [buddy.auth.backends
+             [session :refer [session-backend]]
+             [token :refer [jwe-backend]]]
+            [buddy.core.nonce :as nonce]
+            [buddy.hashers :as h]
+            [buddy.sign.jwt :as jwt]
+            [cljwebauthn.core :as webauthn]
             [cljwebauthn.b64 :as b64]
             [cheshire.core :refer [generate-string]]
             [next.jdbc :as jdbc]
             [next.jdbc.sql :as js]
             [ring.util.response :as resp]
+            [selmer.parser :refer [render-file]]
             [taoensso.timbre :refer [error]]
             [env-logger
              [config :refer [get-conf-value]]
              [db :as db]
-             [user :refer [get-user-id]]])
-  (:import com.webauthn4j.authenticator.AuthenticatorImpl
+             [user :refer [get-user-id get-pw-hash]]])
+  (:import java.time.Instant
+           com.webauthn4j.authenticator.AuthenticatorImpl
            com.webauthn4j.converter.AttestedCredentialDataConverter
            com.webauthn4j.converter.util.ObjectConverter
            org.postgresql.util.PSQLException
@@ -183,3 +192,77 @@
             (assoc (resp/response (str "/" (get-conf-value :url-path) "/"))
                    :session (assoc session :identity (keyword username))))
           (resp/status 500))))))
+
+;; Other functions
+
+(def response-unauthorized {:status 401
+                            :headers {"Content-Type" "text/plain"}
+                            :body "Unauthorized"})
+(def response-server-error {:status 500
+                            :headers {"Content-Type" "text/plain"}
+                            :body "Internal Server Error"})
+
+(def jwe-secret (nonce/random-bytes 32))
+
+(def jwe-auth-backend (jwe-backend {:secret jwe-secret
+                                    :options {:alg :a256kw :enc :a128gcm}}))
+
+(defn unauthorized-handler
+  "Handles unauthorized requests."
+  [request _]
+  (if (authenticated? request)
+    ;; If request is authenticated, raise 403 instead of 401 as the user
+    ;; is authenticated but permission denied is raised.
+    (resp/status (resp/response "403 Forbidden") 403)
+    ;; In other cases, redirect it user to login
+    (resp/redirect (format (str (get-conf-value :url-path) "/login?next=%s")
+                           (:uri request)))))
+
+(def auth-backend (session-backend
+                   {:unauthorized-handler unauthorized-handler}))
+
+(defn check-auth-code
+  "Checks whether the authentication code is valid."
+  [code-to-check]
+  (= (get-conf-value :auth-code) code-to-check))
+
+(defn login-authenticate
+  "Check request username and password against user data in the database.
+  On successful authentication, set appropriate user into the session and
+  redirect to the value of (:query-params (:next request)).
+  On failed authentication, renders the login page."
+  [request]
+  (let [username (get-in request [:form-params "username"])
+        password (get-in request [:form-params "password"])
+        session (:session request)
+        pw-hash (get-pw-hash db/postgres-ds username)]
+    (if (:error pw-hash)
+      (render-file "templates/error.html"
+                   {})
+      (if (and pw-hash (h/check password pw-hash))
+        (let [next-url (get-in request [:query-params :next]
+                               (str (get-conf-value :url-path) "/"))
+              updated-session (assoc session :identity (keyword username))]
+          (assoc (resp/redirect next-url) :session updated-session))
+        (render-file "templates/login.html"
+                     {:error
+                      "Error: an invalid credential was provided"})))))
+
+(defn token-login
+  "Login method for getting an token for data access."
+  [request]
+  (let [auth-data (get-conf-value :data-user-auth-data)
+        username (get-in request [:params :username])
+        password (get-in request [:params :password])
+        valid? (and (and username
+                         (= username (:username auth-data)))
+                    (and password
+                         (h/check password (:password auth-data))))]
+    (if valid?
+      (let [claims {:user (keyword username)
+                    :exp (. (. (. Instant now) plusSeconds
+                               (get-conf-value :jwt-token-timeout))
+                            getEpochSecond)}
+            token (jwt/encrypt claims jwe-secret {:alg :a256kw :enc :a128gcm})]
+        token)
+      response-unauthorized)))

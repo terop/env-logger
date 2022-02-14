@@ -1,5 +1,6 @@
 (ns env-logger.authentication-test
   (:require [clojure.test :refer [deftest is testing use-fixtures]]
+            [buddy.auth :refer [authenticated?]]
             [cheshire.core :refer [parse-string]]
             [next.jdbc :as jdbc]
             [next.jdbc.sql :as js]
@@ -10,9 +11,16 @@
                                      get-authenticator-count
                                      inc-login-count
                                      wa-prepare-register
-                                     do-prepare-login]]
+                                     do-prepare-login
+                                     check-auth-code
+                                     unauthorized-handler
+                                     login-authenticate
+                                     token-login]]
+             [config :refer [get-conf-value]]
              [db :refer [rs-opts]]
-             [db-test :refer [test-ds]]])
+             [user :refer [get-pw-hash]]
+             [db-test :refer [test-ds]]]
+            [buddy.hashers :as h])
   (:import com.webauthn4j.authenticator.AuthenticatorImpl
            com.webauthn4j.converter.AttestedCredentialDataConverter
            com.webauthn4j.converter.util.ObjectConverter
@@ -42,13 +50,16 @@
                                        AttestationStatementEnvelope))
                           (:counter authenticator-data))))
 
+(def test-passwd "testpasswd")
+(def test-user "test-user")
+
 ;; Helpers
 (defn clean-test-database
   "Cleans the test database before and after running tests."
   [test-fn]
   (js/insert! test-ds
               :users
-              {:username "test-user"
+              {:username test-user
                :pw_hash "myhash"})
   (test-fn)
   (jdbc/execute! test-ds ["DELETE FROM users"]))
@@ -56,7 +67,7 @@
 (defn insert-authenticator
   "Inserts an authenticator to the DB for test purposes."
   []
-  (save-authenticator test-ds "test-user" authenticator))
+  (save-authenticator test-ds test-user authenticator))
 
 (defn delete-authenticators
   "Deletes all authenticators from the DB."
@@ -76,9 +87,11 @@
 ;; Fixture run at the start and end of tests
 (use-fixtures :once clean-test-database)
 
+;; WebAuthn
+
 (deftest authenticator-saving
   (testing "Saving of an authenticator to the DB"
-    (is (true? (save-authenticator test-ds "test-user" authenticator)))
+    (is (true? (save-authenticator test-ds test-user authenticator)))
     (is (= 1 (:count (jdbc/execute-one! test-ds
                                         (sql/format
                                          {:select [:%count.counter]
@@ -87,12 +100,12 @@
                                (throw (PSQLException.
                                        "Test exception"
                                        (PSQLState/COMMUNICATION_ERROR))))]
-      (is (false? (save-authenticator test-ds "test-user" authenticator))))))
+      (is (false? (save-authenticator test-ds test-user authenticator))))))
 
 (deftest authenticator-query
   (testing "Fetching of saved authenticators from the DB"
     (insert-authenticator)
-    (let [authenticator (get-authenticators test-ds "test-user")]
+    (let [authenticator (get-authenticators test-ds test-user)]
       (is (= 1 (count authenticator)))
       (is (not (nil? (first authenticator))))
       (is (instance? AuthenticatorImpl (:authn (first authenticator))))
@@ -101,9 +114,9 @@
 
 (deftest authenticator-count-query
   (testing "Querying the saved authenticator count from the DB"
-    (is (zero? (get-authenticator-count test-ds "test-user")))
+    (is (zero? (get-authenticator-count test-ds test-user)))
     (insert-authenticator)
-    (is (= 1 (get-authenticator-count test-ds "test-user")))
+    (is (= 1 (get-authenticator-count test-ds test-user)))
     (delete-authenticators)))
 
 (deftest login-count-increment
@@ -124,7 +137,7 @@
 
 (deftest register-preparation
   (testing "User register preparation data generation"
-    (let [resp (wa-prepare-register {:params {:username "test-user"}})
+    (let [resp (wa-prepare-register {:params {:username test-user}})
           body (parse-string (:body resp) true)]
       (is (= 200 (:status resp)))
       (is (= "localhost" (get-in body [:rp :id])))
@@ -133,9 +146,67 @@
 (deftest login-preparation
   (testing "User login preparation data generation"
     (insert-authenticator)
-    (let [resp (do-prepare-login {:params {:username "test-user"}} test-ds)
+    (let [resp (do-prepare-login {:params {:username test-user}} test-ds)
           body (parse-string (:body resp) true)]
       (is (= 200 (:status resp)))
       (is (= "09w4snBXtbIKzw/O7krAjYTzkIWeOVDkYGvlT/v90Uc="
              (:id (first (:credentials body))))))
     (delete-authenticators)))
+
+;; Other
+
+(deftest auth-code-check
+  (testing "Authentication code value check"
+    (with-redefs [get-conf-value (fn [_] "testvalue")]
+      (is (false? (check-auth-code "notmatching")))
+      (is (true? (check-auth-code "testvalue"))))))
+
+(deftest unauthorized-handler-test
+  (testing "Handler for unauthorised requests"
+    (with-redefs [authenticated? (fn [_] true)]
+      (is (= {:status 403
+              :headers {}
+              :body "403 Forbidden"}
+             (unauthorized-handler {} nil))))
+    (with-redefs [authenticated? (fn [_] false)]
+      (is (= 302 (:status (unauthorized-handler {} nil)))))))
+
+(deftest login-authentication-test
+  (testing "Credentials check for login"
+    (with-redefs [get-pw-hash (fn [_ _] "myhash")
+                  h/check (fn [_ _] true)]
+      (is (= {:status 302
+              :body "",
+              :session {:identity :test-user}}
+             (dissoc (login-authenticate
+                      {:session {}
+                       :form-params {"username" test-user
+                                     "password" test-passwd}})
+                     :headers))))
+    (with-redefs [get-pw-hash (fn [_ _] "myhash")
+                  h/check (fn [_ _] false)]
+      (is (> (count (login-authenticate
+                     {:session {}
+                      :form-params {"username" test-user
+                                    "password" test-passwd}}))
+             100)))))
+
+(deftest token-login-test
+  (testing "Test login with token"
+    (with-redefs [get-conf-value (fn [_]
+                                   {:username test-user
+                                    :password test-passwd})
+                  h/check (fn [_ _] false)]
+      (is (= 401
+             (:status (token-login
+                       {:params {:username test-user
+                                 :password test-passwd}})))))
+    (with-redefs [get-conf-value (fn [key]
+                                   (if (= key :data-user-auth-data)
+                                     {:username test-user
+                                      :password test-passwd}
+                                     10))
+                  h/check (fn [_ _] true)]
+      (is (= 167 (count (token-login
+                         {:params {:username test-user
+                                   :password test-passwd}})))))))

@@ -6,12 +6,6 @@
             [env-logger.handler :as h]
             [env-logger.db-test :refer [get-image-name]]))
 
-(deftest auth-code-check
-  (testing "Authentication code value check"
-    (with-redefs [get-conf-value (fn [_] "testvalue")]
-      (is (false? (h/check-auth-code "notmatching")))
-      (is (true? (h/check-auth-code "testvalue"))))))
-
 (deftest yc-image-validity-check-test
   (testing "Yardcam image name validity"
     (is (false? (h/yc-image-validity-check nil)))

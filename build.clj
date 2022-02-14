@@ -20,8 +20,7 @@
   (-> opts
       (assoc :lib lib :version version :main main)
       (build-java)
-      (bb/run-tests)
-      (bb/clean)))
+      (bb/run-tests)))
 
 (defn uberjar "Build uberjar." [opts]
   (-> opts

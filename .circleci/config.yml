@@ -43,6 +43,4 @@ jobs:
 
       - run: clojure -T:build ci
 
-      - run: |
-          clojure -T:build build-java
-          clojure -M:eastwood
+      - run: clojure -M:eastwood

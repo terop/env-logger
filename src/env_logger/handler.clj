@@ -2,15 +2,9 @@
   "The main namespace of the application"
   (:gen-class)
   (:require [clojure set]
-            [buddy
-             [auth :refer [authenticated?]]
-             [hashers :as h]]
-            [buddy.auth.backends.session :refer [session-backend]]
-            [buddy.auth.backends.token :refer [jwe-backend]]
+            [buddy.auth :refer [authenticated?]]
             [buddy.auth.middleware :refer [wrap-authentication
                                            wrap-authorization]]
-            [buddy.core.nonce :as nonce]
-            [buddy.sign.jwt :as jwt]
             [cheshire.core :refer [generate-string parse-string]]
             [java-time :as t]
             [compojure
@@ -26,95 +20,14 @@
             [ring.util.response :as resp]
             [selmer.parser :refer [render-file]]
             [env-logger
-             [authentication :refer [wa-prepare-register
-                                     wa-register
-                                     wa-prepare-login
-                                     wa-login
-                                     get-authenticator-count]]
+             [authentication :as auth]
              [config :refer [get-conf-value]]
              [db :as db]
              [weather :refer [calculate-start-time
                               get-fmi-weather-data
                               weather-query-ok?
-                              get-weather-data]]
-             [user :as u]])
+                              get-weather-data]]])
   (:import java.time.Instant))
-
-(defn check-auth-code
-  "Checks whether the authentication code is valid."
-  [code-to-check]
-  (= (get-conf-value :auth-code) code-to-check))
-
-(defn login-authenticate
-  "Check request username and password against user data in the database.
-  On successful authentication, set appropriate user into the session and
-  redirect to the value of (:query-params (:next request)).
-  On failed authentication, renders the login page."
-  [request]
-  (with-open [con (jdbc/get-connection db/postgres-ds)]
-    (let [username (get-in request [:form-params "username"])
-          password (get-in request [:form-params "password"])
-          session (:session request)
-          pw-hash (u/get-pw-hash con username)]
-      (if (:error pw-hash)
-        (render-file "templates/error.html"
-                     {})
-        (if (and pw-hash (h/check password pw-hash))
-          (let [next-url (get-in request [:query-params :next]
-                                 (str (get-conf-value :url-path) "/"))
-                updated-session (assoc session :identity (keyword username))]
-            (assoc (resp/redirect next-url) :session updated-session))
-          (render-file "templates/login.html"
-                       {:error
-                        "Error: an invalid credential was provided"}))))))
-
-(defn unauthorized-handler
-  "Handles unauthorized requests."
-  [request _]
-  (if (authenticated? request)
-    ;; If request is authenticated, raise 403 instead of 401 as the user
-    ;; is authenticated but permission denied is raised.
-    (assoc (resp/response "403 Forbidden") :status 403)
-    ;; In other cases, redirect it user to login
-    (resp/redirect (format (str (get-conf-value :url-path) "/login?next=%s")
-                           (:uri request)))))
-
-(def response-unauthorized {:status 401
-                            :headers {"Content-Type" "text/plain"}
-                            :body "Unauthorized"})
-(def response-invalid-request {:status 400
-                               :headers {"Content-Type" "text/plain"}
-                               :body "Invalid request"})
-(def response-server-error {:status 500
-                            :headers {"Content-Type" "text/plain"}
-                            :body "Internal Server Error"})
-
-(def jwe-secret (nonce/random-bytes 32))
-
-(def jwe-auth-backend (jwe-backend {:secret jwe-secret
-                                    :options {:alg :a256kw :enc :a128gcm}}))
-
-(def auth-backend (session-backend
-                   {:unauthorized-handler unauthorized-handler}))
-
-(defn token-login
-  "Login method for getting an token for data access."
-  [request]
-  (let [auth-data (get-conf-value :data-user-auth-data)
-        username (get-in request [:params :username])
-        password (get-in request [:params :password])
-        valid? (and (and username
-                         (= username (:username auth-data)))
-                    (and password
-                         (h/check password (:password auth-data))))]
-    (if valid?
-      (let [claims {:user (keyword username)
-                    :exp (. (. (. Instant now) plusSeconds
-                               (get-conf-value :jwt-token-timeout))
-                            getEpochSecond)}
-            token (jwt/encrypt claims jwe-secret {:alg :a256kw :enc :a128gcm})]
-        token)
-      response-unauthorized)))
 
 (defn convert-epoch-ms-to-string
   "Converts an Unix epoch timestamp to a 'human readable' value."
@@ -129,7 +42,7 @@
   "Get data for observation with a non-null FMI temperature value."
   [request]
   (if-not (authenticated? request)
-    response-unauthorized
+    auth/response-unauthorized
     (with-open [con (jdbc/get-connection db/postgres-ds)]
       (let [data (first (filter #(not (nil? (:fmi-temperature %)))
                                 (reverse (db/get-obs-days con 1))))
@@ -259,79 +172,80 @@
     (if-not (authenticated? request)
       (render-file "templates/login.html" {})
       (resp/redirect (str (get-conf-value :url-path) "/"))))
-  (POST "/login" [] login-authenticate)
+  (POST "/login" [] auth/login-authenticate)
   (GET "/logout" _
     (assoc (resp/redirect (str (get-conf-value :url-path) "/"))
            :session nil))
-  (POST "/token-login" [] token-login)
+  (POST "/token-login" [] auth/token-login)
   ;; WebAuthn routes
   (GET "/register" request
     (if-not (authenticated? request)
-      response-unauthorized
+      auth/response-unauthorized
       (render-file "templates/register.html"
                    {:username (name (get-in request
                                             [:session :identity]))})))
   (context "/webauthn" []
-    (GET "/register" [] wa-prepare-register)
-    (POST "/register" [] wa-register)
-    (GET "/login" [] wa-prepare-login)
-    (POST "/login" [] wa-login)
+    (GET "/register" [] auth/wa-prepare-register)
+    (POST "/register" [] auth/wa-register)
+    (GET "/login" [] auth/wa-prepare-login)
+    (POST "/login" [] auth/wa-login)
     (GET "/auth-count" request
       (resp/response
-       (str (get-authenticator-count db/postgres-ds
-                                     (get-in request [:params
-                                                      :username]))))))
+       (str (auth/get-authenticator-count
+             db/postgres-ds
+             (get-in request [:params
+                              :username]))))))
   (GET "/get-last-obs" [] get-last-obs-data)
   (GET "/get-weather-data" request
     (if-not (authenticated? request)
-      response-unauthorized
+      auth/response-unauthorized
       (generate-string (get-weather-data))))
   ;; Observation storing
   (POST "/observations" request
-    (if-not (check-auth-code (:code (:params request)))
-      response-unauthorized
+    (if-not (auth/check-auth-code (:code (:params request)))
+      auth/response-unauthorized
       (if-not (db/test-db-connection db/postgres-ds)
-        response-server-error
+        auth/response-server-error
         (if (handle-observation-insert (:obs-string (:params request)))
-          "OK" response-server-error))))
+          "OK" auth/response-server-error))))
   ;; RuuviTag observation storage
   (POST "/rt-observations" request
-    (if-not (check-auth-code (:code (:params request)))
-      response-unauthorized
+    (if-not (auth/check-auth-code (:code (:params request)))
+      auth/response-unauthorized
       (with-open [con (jdbc/get-connection db/postgres-ds)]
         (if-not (db/test-db-connection con)
-          response-server-error
+          auth/response-server-error
           (if (pos? (db/insert-ruuvitag-observation
                      con
                      (parse-string (:observation (:params request)) true)))
-            "OK" response-server-error)))))
+            "OK" auth/response-server-error)))))
   ;; Testbed image name storage
   (POST "/tb-image" request
-    (if-not (check-auth-code (:code (:params request)))
-      response-unauthorized
+    (if-not (auth/check-auth-code (:code (:params request)))
+      auth/response-unauthorized
       (with-open [con (jdbc/get-connection db/postgres-ds)]
         (if-not (db/test-db-connection con)
-          response-server-error
+          auth/response-server-error
           (if (re-find #"testbed-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+\d{4}\.png"
                        (:name (:params request)))
             (if (db/insert-tb-image-name con
                                          (db/get-last-obs-id con)
                                          (:name (:params request)))
-              "OK" response-server-error)
-            response-invalid-request)))))
+              "OK" auth/response-server-error)
+            (resp/bad-request "Bad request"))))))
   ;; Latest yardcam image name storage
   (POST "/yc-image" request
-    (if-not (check-auth-code (:code (:params request)))
-      response-unauthorized
+    (if-not (auth/check-auth-code (:code (:params request)))
+      auth/response-unauthorized
       (with-open [con (jdbc/get-connection db/postgres-ds)]
         (if-not (db/test-db-connection con)
-          response-server-error
+          auth/response-server-error
           (let [image-name (:image-name (:params request))]
             (if (yc-image-validity-check image-name)
               (if (db/insert-yc-image-name con
                                            image-name)
-                "OK" response-server-error)
-              response-invalid-request))))))
+                "OK" auth/response-server-error)
+              (resp/bad-request "Bad request")))))))
   ;; Serve static files
   (route/files "/")
   (route/not-found "404 Not Found"))
@@ -353,8 +267,8 @@
                           (assoc-in site-defaults
                                     [:security :anti-forgery] false))
         handler (as-> routes $
-                  (wrap-authorization $ auth-backend)
-                  (wrap-authentication $ jwe-auth-backend auth-backend)
+                  (wrap-authorization $ auth/auth-backend)
+                  (wrap-authentication $ auth/jwe-auth-backend auth/auth-backend)
                   (wrap-defaults $ defaults-config)
                   (wrap-json-response $ {:pretty false})
                   (wrap-json-params $ {:keywords? true}))
