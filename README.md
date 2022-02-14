@@ -2,8 +2,8 @@
 
 [![CircleCI](https://circleci.com/gh/terop/env-logger/tree/master.svg?style=svg)](https://circleci.com/gh/terop/env-logger/tree/master)
 
-The env-logger is a simple data logger for collecting various physical
-environment data, such as, temperature and brightness.
+The env-logger is a data logger and visualisation Web application for collecting
+and displaying various physical environment data, such as, temperature and brightness.
 
 ## Prerequisites
 

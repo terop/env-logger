@@ -54,9 +54,11 @@
                                     object-converter)
           cred-base64 (b64/encode-binary (.convert credential-converter
                                                    (.getAttestedCredentialData
-                                                    ^AuthenticatorImpl authenticator)))
+                                                    ^AuthenticatorImpl
+                                                    authenticator)))
           envelope (new AttestationStatementEnvelope (.getAttestationStatement
-                                                      ^AuthenticatorImpl authenticator))
+                                                      ^AuthenticatorImpl
+                                                      authenticator))
           row (js/insert! db-con
                           :webauthn_authenticators
                           {:user_id user-id
