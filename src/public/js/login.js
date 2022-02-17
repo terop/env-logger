@@ -1,4 +1,4 @@
-const publicKeyCredentialRequestOptions = function(server) {  // (server) => (
+const publicKeyCredentialRequestOptions = function(server) {
     var credentials = [];
     for (cred of server.credentials)
         credentials.push({
