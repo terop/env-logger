@@ -56,8 +56,7 @@ CREATE TABLE webauthn_authenticators (
        name VARCHAR(40),
        counter INTEGER NOT NULL,
        attested_credential VARCHAR(500) NOT NULL,
-       attestation_statement VARCHAR(2000) NOT NULL,
-       login_count INTEGER NOT NULL
+       attestation_statement VARCHAR(2000) NOT NULL
 );
 
 -- Table for storing the name of the latest yardcam image

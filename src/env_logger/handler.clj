@@ -1,6 +1,5 @@
 (ns env-logger.handler
   "The main namespace of the application"
-  (:gen-class)
   (:require [clojure set]
             [buddy.auth :refer [authenticated?]]
             [buddy.auth.middleware :refer [wrap-authentication
@@ -27,7 +26,8 @@
                               get-fmi-weather-data
                               weather-query-ok?
                               get-weather-data]]])
-  (:import java.time.Instant))
+  (:import java.time.Instant)
+  (:gen-class))
 
 (defn convert-epoch-ms-to-string
   "Converts an Unix epoch timestamp to a 'human readable' value."
@@ -188,13 +188,7 @@
     (GET "/register" [] auth/wa-prepare-register)
     (POST "/register" [] auth/wa-register)
     (GET "/login" [] auth/wa-prepare-login)
-    (POST "/login" [] auth/wa-login)
-    (GET "/auth-count" request
-      (resp/response
-       (str (auth/get-authenticator-count
-             db/postgres-ds
-             (get-in request [:params
-                              :username]))))))
+    (POST "/login" [] auth/wa-login))
   (GET "/get-last-obs" [] get-last-obs-data)
   (GET "/get-weather-data" request
     (if-not (authenticated? request)
@@ -256,19 +250,21 @@
   (let [port (Integer/parseInt (get (System/getenv)
                                     "APP_PORT" "8080"))
         production? (get-conf-value :in-production)
-        defaults-config (if production?
-                          ;; TODO fix CSRF tokens
-                          (assoc (assoc-in (assoc-in secure-site-defaults
-                                                     [:security :anti-forgery]
-                                                     false)
+        config-no-csrf (assoc-in (if production?
+                                   secure-site-defaults
+                                   site-defaults)
+                                 [:security :anti-forgery] false)
+        defaults-config (if-not production?
+                          config-no-csrf
+                          (assoc (assoc-in config-no-csrf
                                            [:security :hsts]
                                            (get-conf-value :use-hsts))
-                                 :proxy (get-conf-value :use-proxy))
-                          (assoc-in site-defaults
-                                    [:security :anti-forgery] false))
+                                 :proxy (get-conf-value :use-proxy)))
         handler (as-> routes $
                   (wrap-authorization $ auth/auth-backend)
-                  (wrap-authentication $ auth/jwe-auth-backend auth/auth-backend)
+                  (wrap-authentication $
+                                       auth/jwe-auth-backend
+                                       auth/auth-backend)
                   (wrap-defaults $ defaults-config)
                   (wrap-json-response $ {:pretty false})
                   (wrap-json-params $ {:keywords? true}))

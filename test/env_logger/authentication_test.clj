@@ -8,8 +8,6 @@
             [env-logger
              [authentication :refer [save-authenticator
                                      get-authenticators
-                                     get-authenticator-count
-                                     inc-login-count
                                      wa-prepare-register
                                      do-prepare-login
                                      check-auth-code
@@ -108,31 +106,7 @@
     (let [authenticator (get-authenticators test-ds test-user)]
       (is (= 1 (count authenticator)))
       (is (not (nil? (first authenticator))))
-      (is (instance? AuthenticatorImpl (:authn (first authenticator))))
-      (is (pos? (:id (first authenticator)))))
-    (delete-authenticators)))
-
-(deftest authenticator-count-query
-  (testing "Querying the saved authenticator count from the DB"
-    (is (zero? (get-authenticator-count test-ds test-user)))
-    (insert-authenticator)
-    (is (= 1 (get-authenticator-count test-ds test-user)))
-    (delete-authenticators)))
-
-(deftest login-count-increment
-  (testing "Incrementing the login count of an authenticator"
-    (insert-authenticator)
-    (let [authn-id (:authn-id (jdbc/execute-one!
-                               test-ds
-                               (sql/format {:select [:authn_id]
-                                            :from [:webauthn_authenticators]})
-                               rs-opts))]
-      (is (zero? (get-login-count authn-id)))
-      (inc-login-count test-ds authn-id)
-      (is (= 1 (get-login-count authn-id)))
-      (inc-login-count test-ds authn-id)
-      (inc-login-count test-ds authn-id)
-      (is (= 3 (get-login-count authn-id))))
+      (is (instance? AuthenticatorImpl (first authenticator))))
     (delete-authenticators)))
 
 (deftest register-preparation

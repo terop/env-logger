@@ -33,10 +33,6 @@ To register a WebAuthn authenticator go the `<app url>/register` page when
 logged in. There you can register as many authenticators as needed. When an
 authenticator has been registered it can be used on the login page.
 
-Note that WebAuthn login offers the login challenge for one authenticator at a
-time so using the authenticator multiple times is needed if multiple authenticators
-are registered. A challenge for the most used authenticator(s) is offered first.
-
 ## Configuration
 
 A sample configuration can be found in the `resources/config.edn_sample` file.
@@ -55,6 +51,7 @@ _NOTE_! The first variable is not defined in `config.edn`.
 
 ## Running
 ### Locally
+
 To start the application locally run `clojure -M:run`. If the `target/classes`
 directory does not exist then you need to run the `clojure -T:build build-java`
 command to create the required Java .class file.

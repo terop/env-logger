@@ -12,7 +12,7 @@
         compojure/compojure {:mvn/version "1.6.2"}
         selmer/selmer {:mvn/version "1.12.50"}
         cheshire/cheshire {:mvn/version "5.10.2"}
-        org.postgresql/postgresql {:mvn/version "42.3.2"}
+        org.postgresql/postgresql {:mvn/version "42.3.3"}
         com.github.seancorfield/honeysql {:mvn/version "2.2.861"}
         com.github.seancorfield/next.jdbc {:mvn/version "1.2.772"}
         buddy/buddy-auth {:mvn/version "3.0.323"}
@@ -21,7 +21,7 @@
         com.taoensso/timbre {:mvn/version "5.1.2"}
         com.fzakaria/slf4j-timbre {:mvn/version "0.3.21"}
         io.github.terop/cljwebauthn
-        {:sha "aafabe018d8b5628a1330c9c206848f1ce3a1967"}}
+        {:sha "985ee96e831f7484a0d9a76d2b4b668757f0a0bc"}}
  :aliases
  {:run {:main-opts ["-m" "env-logger.handler"]}
   :build {:deps {io.github.seancorfield/build-clj
