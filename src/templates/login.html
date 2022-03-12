@@ -47,14 +47,12 @@
 
         <script src="https://cdn.jsdelivr.net/npm/axios@0.26.0/dist/axios.min.js"
                 integrity="sha256-nec3W3r9OG4DeHKjWvWqWOCJmGz+nl4seDl2Uo77Xy8=" crossorigin="anonymous"></script>
+        <script src="js/login.js"></script>
         <script>
-            var username = '';
-
             {% if error %}
             document.getElementById('errorBox').innerHTML = '{{ error }}';
             document.getElementById('errorBox').classList.remove('hidden');
             {% endif %}
         </script>
-        <script src="js/login.js"></script>
     </body>
 </html>

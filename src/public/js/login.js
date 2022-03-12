@@ -1,3 +1,5 @@
+var username = '';
+
 const publicKeyCredentialRequestOptions = function(server) {
     var credentials = [];
     for (cred of server.credentials)
