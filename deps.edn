@@ -1,5 +1,5 @@
 {:paths ["src" "resources" "target/classes"]
- :deps {org.clojure/clojure {:mvn/version "1.10.3"}
+ :deps {org.clojure/clojure {:mvn/version "1.11.0"}
         org.clojure/core.cache {:mvn/version "1.0.225"}
         org.clojure/data.zip {:mvn/version "1.0.0"}
         ring/ring {:mvn/version "1.9.5"}
@@ -18,7 +18,7 @@
         buddy/buddy-auth {:mvn/version "3.0.323"}
         buddy/buddy-hashers {:mvn/version "1.8.158"}
         buddy/buddy-sign {:mvn/version "3.4.333"}
-        com.taoensso/timbre {:mvn/version "5.1.2"}
+        com.taoensso/timbre {:mvn/version "5.2.1"}
         com.fzakaria/slf4j-timbre {:mvn/version "0.3.21"}
         io.github.terop/cljwebauthn
         {:sha "ccb1de26a510947103457449f877327dcd777ef6"}}
