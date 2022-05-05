@@ -81,10 +81,10 @@ upload_image() {
     day_directory="${target_directory}/$(date +%Y-%m-%d)"
     conn_string="${target_user}@${target_host}"
 
-    ssh ${conn_string} "mkdir -p ${day_directory}"
+    ssh -4 ${conn_string} "mkdir -p ${day_directory}"
 
     echo "Uploading image ${image_filename}"
-    scp ./"${image_filename}" "${conn_string}:${day_directory}" 1>/dev/null
+    scp -4 ./"${image_filename}" "${conn_string}:${day_directory}" 1>/dev/null
     if [ $? -ne 0 ]; then
         echo 'Image upload failed, exiting.' >&2
         rm "${image_filename}"
