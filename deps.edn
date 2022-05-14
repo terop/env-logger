@@ -9,11 +9,11 @@
         io.github.terop/clojure.java-time
         {:sha "8e883f6bb3f940ba4b66fe8bfe414f6732ed508a"}
         org.threeten/threeten-extra {:mvn/version "1.7.0"}
-        compojure/compojure {:mvn/version "1.6.2"}
+        compojure/compojure {:mvn/version "1.6.3"}
         selmer/selmer {:mvn/version "1.12.50"}
         cheshire/cheshire {:mvn/version "5.10.2"}
-        org.postgresql/postgresql {:mvn/version "42.3.4"}
-        com.github.seancorfield/honeysql {:mvn/version "2.2.868"}
+        org.postgresql/postgresql {:mvn/version "42.3.5"}
+        com.github.seancorfield/honeysql {:mvn/version "2.2.891"}
         com.github.seancorfield/next.jdbc {:mvn/version "1.2.780"}
         buddy/buddy-auth {:mvn/version "3.0.323"}
         buddy/buddy-hashers {:mvn/version "1.8.158"}
@@ -33,7 +33,7 @@
           :ns-default build}
   :test {:extra-paths ["test"]
          :extra-deps {io.github.cognitect-labs/test-runner
-                      {:git/tag "v0.5.0" :git/sha "48c3c67"}
+                      {:git/tag "v0.5.1" :git/sha "dfb30dd"}
                       clj-http-fake/clj-http-fake {:mvn/version "1.0.3"}}
          :main-opts ["-m" "cognitect.test-runner"]
          :exec-fn cognitect.test-runner.api/test}
