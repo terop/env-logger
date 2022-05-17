@@ -1,24 +1,7 @@
 (ns env-logger.handler-test
   (:require [clojure.test :refer [deftest is testing]]
-            [java-time :as t]
-            [env-logger.config :refer [get-conf-value]]
             [env-logger.db :as db]
-            [env-logger.handler :as h]
-            [env-logger.db-test :refer [get-image-name]]))
-
-(deftest yc-image-validity-check-test
-  (testing "Yardcam image name validity"
-    (is (false? (h/yc-image-validity-check nil)))
-    (is (false? (h/yc-image-validity-check "test.jpg")))
-    (is (true? (h/yc-image-validity-check (get-image-name "yardcam"))))
-    (is (true? (h/yc-image-validity-check
-                (get-image-name "yardcam"
-                                (t/minutes (get-conf-value
-                                            :image-max-time-diff))))))
-    (is (false? (h/yc-image-validity-check
-                 (get-image-name "yardcam"
-                                 (t/minutes (inc (get-conf-value
-                                                  :image-max-time-diff)))))))))
+            [env-logger.handler :as h]))
 
 (deftest convert-epoch-ms-to-string-test
   (testing "Unix millisecond timestamp to string conversion"

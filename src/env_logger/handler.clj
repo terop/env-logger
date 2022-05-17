@@ -63,21 +63,6 @@
                                   (convert-epoch-ms-to-string
                                    (:recorded item))))}}))))
 
-(defn yc-image-validity-check
-  "Checks whether the yardcam image has the right format and is not too old.
-  Returns true when the image name is valid and false otherwise."
-  [image-name]
-  (boolean (and image-name
-                (re-find db/yc-image-pattern image-name)
-                (<= (t/as (t/interval (t/zoned-date-time
-                                       (t/formatter :iso-offset-date-time)
-                                       (nth (re-find db/yc-image-pattern
-                                                     image-name)
-                                            1))
-                                      (t/zoned-date-time))
-                          :minutes)
-                    (get-conf-value :image-max-time-diff)))))
-
 (defn get-plot-page-data
   "Returns data needed for rendering the plot page."
   [request]
@@ -91,8 +76,6 @@
           initial-days (get-conf-value :initial-show-days)
           common-values {:obs-dates obs-dates
                          :logged-in? logged-in?
-                         :yc-image-basepath (get-conf-value
-                                             :yc-image-basepath)
                          :tb-image-basepath (get-conf-value
                                              :tb-image-basepath)
                          :rt-names (generate-string
@@ -227,19 +210,6 @@
                                          (:name (:params request)))
               "OK" auth/response-server-error)
             (resp/bad-request "Bad request"))))))
-  ;; Latest yardcam image name storage
-  (POST "/yc-image" request
-    (if-not (auth/check-auth-code (:code (:params request)))
-      auth/response-unauthorized
-      (with-open [con (jdbc/get-connection db/postgres-ds)]
-        (if-not (db/test-db-connection con)
-          auth/response-server-error
-          (let [image-name (:image-name (:params request))]
-            (if (yc-image-validity-check image-name)
-              (if (db/insert-yc-image-name con
-                                           image-name)
-                "OK" auth/response-server-error)
-              (resp/bad-request "Bad request")))))))
   ;; Serve static files
   (route/files "/")
   (route/not-found "404 Not Found"))

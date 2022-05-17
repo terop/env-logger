@@ -31,7 +31,6 @@ if [ ${db_name} = "env_logger" ]; then
     psql "${db_name}" <<EOF
 TRUNCATE TABLE users CASCADE;
 TRUNCATE TABLE observations CASCADE;
-TRUNCATE TABLE yardcam_image;
 EOF
 fi
 

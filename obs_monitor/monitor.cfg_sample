@@ -21,12 +21,6 @@ Timeout = 10
 # Multiple locations separated by a comma are supported
 Location = inside,outside
 
-[yardcam]
-Enabled = True
-UrlBase = https://example.com/yardcam
-# Timeout in minutes
-Timeout = 15
-
 [email]
 Server = example.com
 Username = theuser

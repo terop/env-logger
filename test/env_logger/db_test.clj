@@ -18,7 +18,6 @@
                                    get-weather-obs-days
                                    get-weather-obs-interval
                                    get-weather-observations
-                                   get-yc-image
                                    image-age-check
                                    insert-beacons
                                    insert-observation
@@ -26,7 +25,6 @@
                                    insert-ruuvitag-observation
                                    insert-tb-image-name
                                    insert-wd
-                                   insert-yc-image-name
                                    make-local-dt
                                    test-db-connection
                                    validate-date]])
@@ -76,19 +74,16 @@
                :brightness 5
                :temperature 20})
   (test-fn)
-  (jdbc/execute! test-ds (sql/format {:delete-from :observations}))
-  (jdbc/execute! test-ds (sql/format {:delete-from :yardcam_image})))
+  (jdbc/execute! test-ds (sql/format {:delete-from :observations})))
 
 ;; Fixture run at the start and end of tests
 (use-fixtures :once clean-test-database)
 
 (defn get-image-name
-  "Returns a valid yardcam or Testbed image name using the current datetime
+  "Returns a valid Testbed image name using the current datetime
   or the current datetime minus an optional time unit."
-  ([image-type]
-   (get-image-name image-type nil))
-  ([image-type minus-time]
-   (str (if (= image-type "yardcam") "yc-" "testbed-")
+  ([minus-time]
+   (str "testbed-"
         (s/replace (if minus-time
                      (t/format (t/formatter "Y-MM-dd HH:mmxxx")
                                (t/minus (t/offset-date-time)
@@ -153,8 +148,7 @@
             :name "7C:EC:79:3F:BE:97"
             :rssi -68
             :tb-image-name nil
-            :temp-delta -15.0
-            :yc-image-name (get-image-name "yardcam")}
+            :temp-delta -15.0}
            (dissoc (nth (get-obs-days test-ds 3) 1) :recorded)))))
 
 (deftest obs-interval-select
@@ -284,41 +278,6 @@
     (is (zero? (count (get-weather-observations test-ds
                                                 :where [:= 1 0]))))))
 
-(deftest yc-image-name-storage
-  (testing "Storing of the latest Yardcam image name"
-    (jdbc/execute! test-ds (sql/format {:delete-from :yardcam_image}))
-    (js/insert! test-ds
-                :yardcam_image
-                {:image_name (get-image-name "yardcam")})
-    (js/insert! test-ds
-                :yardcam_image
-                {:image_name (get-image-name "yardcam" (t/minutes 5))})
-    (is (= 2
-           (:count (jdbc/execute-one! test-ds
-                                      (sql/format {:select [:%count.image_id]
-                                                   :from :yardcam_image})))))
-    (is (true? (insert-yc-image-name test-ds
-                                     (get-image-name "yardcam"))))
-    (is (= 1
-           (:count (jdbc/execute-one! test-ds
-                                      (sql/format {:select [:%count.image_id]
-                                                   :from :yardcam_image})))))))
-
-(deftest yc-image-name-query
-  (testing "Querying of the yardcam image name"
-    (jdbc/execute! test-ds (sql/format {:delete-from :yardcam_image}))
-    (is (nil? (get-yc-image test-ds)))
-    (js/insert! test-ds
-                :yardcam_image
-                {:image_name (get-image-name "yardcam" (t/hours 4))})
-    (is (nil? (get-yc-image test-ds)))
-    (let [valid-name (get-image-name "yardcam")]
-      (jdbc/execute! test-ds (sql/format {:delete-from :yardcam_image}))
-      (js/insert! test-ds
-                  :yardcam_image
-                  {:image_name valid-name})
-      (is (= valid-name (get-yc-image test-ds))))))
-
 (deftest last-observation-id
   (testing "Query of last observation's ID"
     (let [last-id (:max (jdbc/execute-one! test-ds
@@ -385,9 +344,7 @@
                                         {:timestamp current-dt-zoned
                                          :insideLight 0
                                          :insideTemperature 20
-                                         :outsideTemperature 5
-                                         :image-name (get-image-name
-                                                      "yardcam")})))))
+                                         :outsideTemperature 5})))))
 
 (deftest db-connection-test
   (testing "Connection to the DB"
@@ -399,42 +356,18 @@
                             (PSQLState/COMMUNICATION_ERROR))))]
       (is (false? (test-db-connection test-ds))))))
 
-(deftest yc-image-age-check-test
-  (testing "Yardcam image date checking"
-    (is (false? (image-age-check "yardcam"
-                                 (get-image-name "yardcam" (t/minutes 10))
-                                 (t/zoned-date-time)
-                                 9)))
-    (is (true? (image-age-check "yardcam"
-                                (get-image-name "yardcam")
-                                (t/zoned-date-time)
-                                1)))
-    (is (true? (image-age-check "yardcam"
-                                (get-image-name "yardcam")
-                                (t/zoned-date-time)
-                                5)))
-    (is (true? (image-age-check "yardcam"
-                                (get-image-name "yardcam")
-                                (t/minus (t/zoned-date-time)
-                                         (t/minutes 10))
-                                9)))))
-
 (deftest testbed-image-age-check-test
   (testing "Testbed image date checking"
-    (is (false? (image-age-check "testbed"
-                                 (get-image-name "testbed" (t/minutes 10))
+    (is (false? (image-age-check (get-image-name (t/minutes 10))
                                  (t/zoned-date-time)
                                  9)))
-    (is (true? (image-age-check "testbed"
-                                (get-image-name "testbed")
+    (is (true? (image-age-check (get-image-name nil)
                                 (t/zoned-date-time)
                                 1)))
-    (is (true? (image-age-check "testbed"
-                                (get-image-name "testbed")
+    (is (true? (image-age-check (get-image-name nil)
                                 (t/zoned-date-time)
                                 5)))
-    (is (true? (image-age-check "testbed"
-                                (get-image-name "testbed")
+    (is (true? (image-age-check (get-image-name nil)
                                 (t/minus (t/zoned-date-time)
                                          (t/minutes 10))
                                 9)))))

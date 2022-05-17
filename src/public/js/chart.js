@@ -10,7 +10,6 @@ var labelValues = {'weather': {},
     dataLabels = [],
     dataSets = {'weather': [],
                 'other': []},
-    yardcamImageNames = [],
     testbedImageNames = [],
     beaconName = '',
     observationCount = 0;
@@ -147,8 +146,6 @@ var parseData = function (observation) {
         if (beaconName === '' && observation['name']) {
             beaconName = observation['name'];
         }
-
-        yardcamImageNames.push(observation['yc-image-name']);
     } else {
         dataLabels.push(new Date(observation['time']));
 
@@ -300,27 +297,6 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
     };
     showLastObservation();
 
-    var showYardcamImage = function (dataIndex) {
-        var imageName = yardcamImageNames[dataIndex];
-        if (imageName) {
-            var pattern = /yc-([\d-]+)T.+/,
-                result = pattern.exec(imageName);
-            if (result) {
-                document.getElementById('yardcamImageLink').style.display = '';
-                document.getElementById('yardcamImage').src =
-                    `${ycImageBasepath}${result[1]}/${imageName}`;
-                document.getElementById('yardcamImageLink').href =
-                    `${ycImageBasepath}${result[1]}/${imageName}`;
-                // For improved viewing scroll page to bottom after loading the image
-                window.setTimeout(function() {
-                    window.scroll(0, document.body.scrollHeight);
-                }, 500);
-            }
-        } else {
-            document.getElementById('yardcamImageLink').style.display = 'none';
-        }
-    };
-
     var showTestbedImage = function (dataIndex) {
         var imageName = testbedImageNames[dataIndex];
         if (imageName) {
@@ -425,8 +401,6 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
               document.getElementById('imageDiv').classList.remove('display-none');
 
               showTestbedImage(elements[0].index);
-              if (mode === 'all')
-                  showYardcamImage(elements[0].index);
           };
 
     Chart.defaults.animation.duration = 400;

@@ -42,8 +42,6 @@
 (def postgres-ds (jdbc/get-datasource postgres))
 (def rs-opts {:builder-fn rs/as-unqualified-kebab-maps})
 
-(def yc-image-pattern
-  #"yc-(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:?\+\d{2}(:?:\d{2})?|Z)).+")
 (def tb-image-pattern
   #"testbed-(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:?\+\d{2}(:?:\d{2})?|Z)).+")
 
@@ -60,11 +58,9 @@
   "Returns true when the following condition is true:
   (image datetime - reference datetime) <= diff-minutes
   and false otherwise. Also return true if
-  (image datetime - reference datetime) < 0.
-  Allowed values for image-type are yardcam and testbed."
-  [image-type image-name ref-dt diff-minutes]
-  (let [match (re-find (if (= image-type "yardcam")
-                         yc-image-pattern tb-image-pattern)
+  (image datetime - reference datetime) < 0."
+  [image-name ref-dt diff-minutes]
+  (let [match (re-find tb-image-pattern
                        image-name)
         image-dt (t/zoned-date-time (t/formatter :iso-offset-date-time)
                                     (nth match 1))]
@@ -72,23 +68,8 @@
       (<= (t/as (t/interval image-dt ref-dt) :minutes)
           diff-minutes)
       (catch DateTimeException _
-        ;; ref-dt < yc-dt results in DateTimeException
+        ;; ref-dt < image-dt results in DateTimeException
         true))))
-
-(defn get-yc-image
-  "Returns the name of the latest yardcam image."
-  [db-con]
-  (let [image-name (:image-name (jdbc/execute-one! db-con
-                                                   (sql/format
-                                                    {:select [:image_name]
-                                                     :from [:yardcam_image]})
-                                                   rs-opts))]
-    (when (and image-name
-               (image-age-check "yardcam"
-                                image-name
-                                (t/zoned-date-time)
-                                (get-conf-value :image-max-time-diff)))
-      image-name)))
 
 (defn get-tb-image
   "Returns the name of the latest FMI Testbed image."
@@ -105,8 +86,7 @@
                                             :limit [1]})
                                           rs-opts))]
     (when (and tb-image-name
-               (image-age-check "testbed"
-                                tb-image-name
+               (image-age-check tb-image-name
                                 (t/zoned-date-time)
                                 (get-conf-value :image-max-time-diff)))
       tb-image-name)))
@@ -139,7 +119,6 @@
                                                    :store-timezone)))))
                     :temperature (:insideTemperature observation)
                     :brightness (:insideLight observation)
-                    :yc_image_name (:image-name observation)
                     :outside_temperature (:outsideTemperature observation)
                     :tb_image_name (get-tb-image db-con)}
                    rs-opts)))
@@ -201,9 +180,7 @@
     (jdbc/with-transaction [tx db-con]
       (try
         (let [obs-id (insert-plain-observation tx
-                                               (merge observation
-                                                      {:image-name
-                                                       (get-yc-image tx)}))]
+                                               observation)]
           (when (pos? obs-id)
             (if (every? pos?
                         (insert-beacons tx obs-id observation))
@@ -277,7 +254,6 @@
                              [:w.temperature "fmi_temperature"]
                              :w.cloudiness
                              :w.wind_speed
-                             :o.yc_image_name
                              [:o.outside_temperature "o_temperature"]
                              :b.mac_address
                              :b.rssi
@@ -311,17 +287,7 @@
                                      (format "%.2f"
                                              (- (:o-temperature row)
                                                 (:fmi-temperature
-                                                 row)))))
-                      :yc-image-name (if (:yc-image-name row)
-                                       (if (image-age-check
-                                            "yardcam"
-                                            (:yc-image-name row)
-                                            (:recorded row)
-                                            (get-conf-value
-                                             :image-max-time-diff))
-                                         (:yc-image-name row)
-                                         nil)
-                                       nil)})
+                                                 row)))))})
               :mac-address))))
 
 (defn get-obs-days
@@ -426,28 +392,6 @@
     (catch PSQLException pe
       (error pe "RuuviTag observation fetching failed")
       {})))
-
-(defn insert-yc-image-name
-  "Stores the name of the latest yardcam image. Rows from the table are
-  deleted before a new row is inserted. Returns true on success and
-  false otherwise."
-  [db-con image-name]
-  (try
-    (when (pos? (:count (jdbc/execute-one! db-con
-                                           (sql/format
-                                            {:select [:%count.image_id]
-                                             :from :yardcam_image})
-                                           rs-opts)))
-      (jdbc/execute! db-con
-                     (sql/format {:delete-from :yardcam_image})
-                     rs-opts))
-    (pos? (:image-id (js/insert! db-con
-                                 :yardcam_image
-                                 {:image_name image-name}
-                                 rs-opts)))
-    (catch PSQLException pe
-      (error pe "Yardcam image name insert failed")
-      false)))
 
 (defn get-last-obs-id
   "Returns the ID of the last observation."

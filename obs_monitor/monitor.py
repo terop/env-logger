@@ -165,78 +165,6 @@ class RuuvitagMonitor:
         return self._state
 
 
-class YardcamImageMonitor:
-    """Class for monitoring Yardcam images."""
-    def __init__(self, config, state):
-        self._config = config
-        self._state = state
-
-    def get_yardcam_image_info(self):
-        """Returns the name and date and time of the latest Yardcam image."""
-        url_base = self._config['yardcam']['UrlBase']
-        todays_date = datetime.now().strftime('%Y-%m-%d')
-        image_page = f'{url_base}/{todays_date}'
-
-        resp = requests.get(image_page)
-        if not resp.ok and resp.status_code == 404:
-            date = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
-            resp = requests.get(f'{url_base}/{date}')
-
-        if not resp.ok:
-            print(f'Yardcam image HTTP request of URL "{image_page}" failed with '
-                  f'HTTP status code {resp.status_code}', file=sys.stderr)
-            return None, None
-
-        tree = BeautifulSoup(resp.content, features='lxml')
-        image_name = tree.find_all('tr')[-2].find_all('td')[1].text
-        image_ts = tree.find_all('tr')[-2].find_all('td')[-3].text.strip()
-
-        if not re.match(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}', image_ts):
-            print(f'Image date and time from {image_ts} is not in the expected format',
-                  file=sys.stderr)
-            return None, None
-
-        return image_name, datetime.strptime(image_ts, '%Y-%m-%d %H:%M')
-
-    def send_yardcam_email(self, image_ts):
-        """"Sends an email about a missing Yardcam image."""
-        # pylint: disable=consider-using-f-string
-        if send_email(self._config['email'],
-                      'env-logger: Yardcam image inactivity warning',
-                      'No Yardcam image name has been stored '
-                      'in env-logger{} (timeout {} minutes). '
-                      'Please check for possible problems.'
-                      .format(' after {}'.format(image_ts.isoformat()) if image_ts else '',
-                              self._config['yardcam']['Timeout'])):
-            self._state['email_sent'] = 'True'
-        else:
-            self._state['email_sent'] = 'False'
-
-    def check_yardcam(self):
-        """Checks the latest Yardcam image name timestamp and sends an email if
-        the threshold is exceeded."""
-        image_name, image_dt = self.get_yardcam_image_info()
-        if not image_name:
-            return
-
-        time_diff = int((datetime.now() - image_dt).total_seconds() / 60)
-
-        if time_diff > int(self._config['yardcam']['Timeout']):
-            if self._state['email_sent'] == 'False':
-                self.send_yardcam_email(image_dt)
-        else:
-            if self._state['email_sent'] == 'True':
-                send_email(self._config['email'],
-                           'env-logger: Yardcam image found',
-                           f'A Yardcam image ({image_name}) has been stored '
-                           f'at {image_dt.isoformat()}.')
-                self._state['email_sent'] = 'False'
-
-    def get_state(self):
-        """Returns the RuuviTag scan state."""
-        return self._state
-
-
 def send_email(config, subject, message):
     """Sends an email with provided subject and message to specified recipients."""
     msg = MIMEText(message)
@@ -284,7 +212,6 @@ def main():
     except FileNotFoundError:
         state = {'observation': {'email_sent': 'False'},
                  'blebeacon': {'email_sent': 'False'},
-                 'yardcam': {'email_sent': 'False'},
                  'ruuvitag': {}}
         for location in config['ruuvitag']['Location'].split(','):
             state['ruuvitag'][location] = {}
@@ -302,10 +229,6 @@ def main():
         ruuvitag = RuuvitagMonitor(config, state['ruuvitag'])
         ruuvitag.check_ruuvitag()
         state['ruuvitag'] = ruuvitag.get_state()
-    if config['yardcam']['Enabled'] == 'True':
-        yardcam = YardcamImageMonitor(config, state['yardcam'])
-        yardcam.check_yardcam()
-        state['yardcam'] = yardcam.get_state()
 
     with open(state_file_name, 'w', encoding='utf-8') as state_file:
         json.dump(state, state_file, indent=4)

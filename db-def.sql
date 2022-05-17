@@ -6,7 +6,6 @@ CREATE TABLE observations (
        recorded TIMESTAMP WITH TIME ZONE NOT NULL,
        temperature REAL NOT NULL,
        brightness SMALLINT NOT NULL,
-       yc_image_name VARCHAR(30),
        tb_image_name VARCHAR(40),
        outside_temperature REAL
 );
@@ -57,10 +56,4 @@ CREATE TABLE webauthn_authenticators (
        counter INTEGER NOT NULL,
        attested_credential VARCHAR(500) NOT NULL,
        attestation_statement VARCHAR(2000) NOT NULL
-);
-
--- Table for storing the name of the latest yardcam image
-CREATE TABLE yardcam_image (
-       image_id SERIAL PRIMARY KEY,
-       image_name VARCHAR(40)
 );
