@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "1857cbb785c71385a956ae4265d0317bff304bbc807e411511af8f0f0fcbaa40"
+            "sha256": "7914a7b7f83babc4a18741d1e9efc4715eea35e7226cdc6b064ae49d40914560"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -26,10 +26,11 @@
         },
         "certifi": {
             "hashes": [
-                "sha256:78884e7c1d4b00ce3cea67b44566851c4343c120abd683433ce934a68ea58872",
-                "sha256:d62a0163eb4c2344ac042ab2bdf75399a71a2d8c7d47eac2e2ee91b9d6339569"
+                "sha256:9c5705e395cd70084351dd8ad5c41e65655e08ce46f2ec9cf6c2c08390f71eb7",
+                "sha256:f1d53542ee8cbedbe2118b5686372fb33c297fcd6379b050cca0ef13a597382a"
             ],
-            "version": "==2021.10.8"
+            "markers": "python_version >= '3.6'",
+            "version": "==2022.5.18.1"
         },
         "charset-normalizer": {
             "hashes": [
@@ -118,17 +119,17 @@
                 "c"
             ],
             "hashes": [
-                "sha256:78287732c9f9d86d669dd675c1faae9b692ef951ec04d91b928a3bf165a77dce",
-                "sha256:d38f3d87c9e0f1d95595066d24b2d62f84f7fe3d385a9c483e6d8170e75026e5"
+                "sha256:6d7099b7dd940341d8e9e52e346d194fc94e39faa19d91b36110ca8215c3bf36",
+                "sha256:9da6b46170dd78e2c5e072ac380a7c89b2af3381c20383118ef5bc66610e77f8"
             ],
             "index": "pypi",
-            "version": "==3.0.13"
+            "version": "==3.0.14"
         },
         "psycopg-c": {
             "hashes": [
-                "sha256:fd568cc9fef37e978223f409f3d9f2fb67e192a799bcb88b8da27cb6e8ee6848"
+                "sha256:17ad0dee7ec26ef46686beafd65e57c9bf7153f8cd0273d8c140a689de8c0c62"
             ],
-            "version": "==3.0.13"
+            "version": "==3.0.14"
         },
         "requests": {
             "hashes": [
@@ -143,7 +144,7 @@
                 "sha256:3b2503d3c7084a42b1ebd08116e5f81aadfaea95863628c80a3b774a11b7c759",
                 "sha256:fc53893b3da2c33de295667a0e19f078c14bf86544af307354de5fcf12a3f30d"
             ],
-            "markers": "python_full_version >= '3.6.0'",
+            "markers": "python_version >= '3.6'",
             "version": "==2.3.2.post1"
         },
         "urllib3": {

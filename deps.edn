@@ -9,10 +9,10 @@
         io.github.dm3/clojure.java-time
         {:sha "693dffad2343cd9722482a5f200efe75dfbfbd31"}
         org.threeten/threeten-extra {:mvn/version "1.7.0"}
-        compojure/compojure {:mvn/version "1.6.3"}
+        compojure/compojure {:mvn/version "1.7.0"}
         selmer/selmer {:mvn/version "1.12.50"}
         cheshire/cheshire {:mvn/version "5.10.2"}
-        org.postgresql/postgresql {:mvn/version "42.3.5"}
+        org.postgresql/postgresql {:mvn/version "42.3.6"}
         com.github.seancorfield/honeysql {:mvn/version "2.2.891"}
         com.github.seancorfield/next.jdbc {:mvn/version "1.2.780"}
         buddy/buddy-auth {:mvn/version "3.0.323"}
