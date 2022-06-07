@@ -137,7 +137,7 @@
                                                (t/zoned-date-time))
                                   (weather-query-ok? con 3))
                          (get-fmi-weather-data
-                          (get-conf-value :station-id)))]
+                          (get-conf-value :fmi-station-id)))]
       (db/insert-observation con
                              (assoc (parse-string obs-string
                                                   true)

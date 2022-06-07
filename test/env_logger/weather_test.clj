@@ -8,6 +8,7 @@
             [java-time :as t]
             [next.jdbc :as jdbc]
             [env-logger.weather :refer [-cache-set-value
+                                        -convert-to-iso8601-str
                                         -get-fmi-weather-data-wd
                                         -get-fmi-weather-data-wfs
                                         -get-fmi-weather-forecast
@@ -21,6 +22,16 @@
                                         get-weather-data
                                         weather-query-ok?]])
   (:import java.time.ZonedDateTime))
+
+;; Utilities
+
+(deftest test-iso8601-str-generation
+  (testing "ZonedDateTime to ISO 8601 string conversion"
+    (is (= "2022-06-06T15:33:50ZZ"
+           (-convert-to-iso8601-str (ZonedDateTime/of 2022 6 6
+                                                      18 33 50 0
+                                                      (t/zone-id
+                                                       "Europe/Helsinki")))))))
 
 ;; FMI
 
@@ -44,10 +55,10 @@
 
 (deftest test-forecast-data-extraction
   (testing "Forecast data extraction function tests"
-    (is (= {:temperature -8.0
-            :wind-speed 5.0
+    (is (= {:temperature 17.0
+            :wind-speed 4.0
             :cloudiness 0
-            :wind-direction {:long "north west", :short "NW"}}
+            :wind-direction {:long "south east", :short "SE"}}
            (extract-forecast-data
             (load-file "test/env_logger/wfs_forecast_data.txt"))))))
 
@@ -94,10 +105,10 @@
   (testing "Tests FMI forecast data fetching"
     (with-redefs [parse (fn [_]
                           (load-file "test/env_logger/wfs_forecast_data.txt"))]
-      (is (= {:temperature -8.0
-              :wind-speed 5.0
+      (is (= {:temperature 17.0
+              :wind-speed 4.0
               :cloudiness 0
-              :wind-direction {:long "north west", :short "NW"}}
+              :wind-direction {:long "south east", :short "SE"}}
              (-get-fmi-weather-forecast 87874))))
     (with-redefs [parse (fn [_]
                           {:content "garbage"})]

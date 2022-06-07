@@ -16,6 +16,14 @@
 
 (def weather-cache (c/basic-cache-factory {:data nil :recorded nil}))
 
+;; Utilities
+
+(defn -convert-to-iso8601-str
+  "Converts a ZonedDateTime object to a ISO 8601 formatted datetime string."
+  [datetime]
+  (str (first (s/split (str (t/instant datetime))
+                       #"\.\d+")) "Z"))
+
 ;; FMI
 
 (defn get-wd-str
@@ -90,27 +98,22 @@
       (Float/parseFloat (nth value 0)))))
 
 (defn extract-forecast-data
-  "Parses forecast data values from the given XML data."
+  "Parses and returns forecast data values from the given XML data."
   [parsed-xml]
-  (let [root (xml-zip parsed-xml)
-        raw-data (s/trim (zx/text (zx/xml1-> root
-                                             :wfs:member
-                                             :omso:GridSeriesObservation
-                                             :om:result
-                                             :gmlcov:MultiPointCoverage
-                                             :gml:rangeSet
-                                             :gml:DataBlock
-                                             :gml:doubleOrNilReasonTupleList)))
-        split-data (s/split raw-data #" ")]
-    (when (>= (count split-data) 4)
+  (when (>= (count (:content parsed-xml)) 4)
+    (let [root (xml-zip parsed-xml)
+          values (for [m (zx/xml-> root
+                                   :wfs:member
+                                   :BsWfs:BsWfsElement
+                                   :BsWfs:ParameterValue)]
+                   (zx/text m))]
       {:temperature (Float/parseFloat (format "%.1f" (Float/parseFloat
-                                                      (nth split-data 0))))
+                                                      (nth values 0))))
        :wind-speed (Float/parseFloat (format "%.1f" (Float/parseFloat
-                                                     (nth split-data 1))))
-       :cloudiness (Math/round (Float/parseFloat (nth split-data 2)))
+                                                     (nth values 1))))
+       :cloudiness (Math/round (Float/parseFloat (nth values 2)))
        :wind-direction (get-wd-str (Float/parseFloat
-                                    (format "%.1f" (Float/parseFloat
-                                                    (nth split-data 3)))))})))
+                                    (nth values 3)))})))
 
 (defn calculate-start-time
   "Calculates the start time for the data request and returns it as a
@@ -134,12 +137,10 @@
                          "fmi::observations::weather::simple&fmisid=%d&"
                          "parameters=t2m,n_man,ws_10min&starttime=%s")
                     station-id
-                    (str (first (s/split
-                                 (str (t/instant (t/with-zone
-                                                   (calculate-start-time)
-                                                   (get-conf-value
-                                                    :weather-timezone))))
-                                 #"\.\d+")) "Z"))]
+                    (-convert-to-iso8601-str (t/with-zone
+                                               (calculate-start-time)
+                                               (get-conf-value
+                                                :weather-timezone))))]
     (try
       (extract-weather-data (parse url))
       (catch org.xml.sax.SAXParseException spe
@@ -158,12 +159,10 @@
                          "fmi::observations::weather::simple&fmisid=%d&"
                          "parameters=wd_10min&starttime=%s")
                     station-id
-                    (str (first (s/split
-                                 (str (t/instant (t/with-zone
-                                                   (calculate-start-time)
-                                                   (get-conf-value
-                                                    :weather-timezone))))
-                                 #"\.\d+")) "Z"))]
+                    (-convert-to-iso8601-str (t/with-zone
+                                               (calculate-start-time)
+                                               (get-conf-value
+                                                :weather-timezone))))]
     (try
       (extract-weather-data-wd (parse url))
       (catch org.xml.sax.SAXParseException spe
@@ -201,22 +200,29 @@
       true)))
 
 (defn -get-fmi-weather-forecast
-  "Fetches the latest FMI HIRLAM weather forecasrt from the FMI WFS for the
+  "Fetches the latest FMI HARMONIE weather forecast from the FMI WFS for the
   given weather  observation station. If fetching or parsing failed, nil is
   returned."
   [station-id]
   (let [url (format (str "https://opendata.fmi.fi/wfs?service=WFS&version=2.0.0"
                          "&request=getFeature&storedquery_id=fmi::forecast::"
-                         "hirlam::surface::point::multipointcoverage&fmisid=%d"
+                         "harmonie::surface::point::simple&fmisid=%d"
                          "&parameters=Temperature,WindSpeedMS,TotalCloudCover,"
-                         "WindDirection&starttime=%s")
+                         "WindDirection&starttime=%s&endtime=%s")
                     station-id
-                    (str (first (s/split
-                                 (str (t/instant (t/with-zone
-                                                   (calculate-start-time)
-                                                   (get-conf-value
-                                                    :weather-timezone))))
-                                 #"\.\d+")) "Z"))]
+                    ;; Start time must always be ahead of the current time so
+                    ;; that forecast for the next time is fetched
+                    (-convert-to-iso8601-str (t/with-zone
+                                               (t/plus (calculate-start-time)
+                                                       (t/minutes 15))
+                                               (get-conf-value
+                                                :weather-timezone)))
+                    (-convert-to-iso8601-str (t/with-zone
+                                               (t/plus
+                                                (calculate-start-time)
+                                                (t/hours 1))
+                                               (get-conf-value
+                                                :weather-timezone))))]
     (try
       (extract-forecast-data (parse url))
       (catch org.xml.sax.SAXParseException spe
@@ -262,11 +268,12 @@
   (-cache-set-value weather-cache
                     :data
                     {:fmi (conj {:forecast (-get-fmi-weather-forecast
-                                            (get-conf-value :station-id))}
+                                            (get-conf-value :fmi-station-id))}
                                 {:current {:wind-direction
                                            (get-wd-str
                                             (-get-fmi-weather-data-wd
-                                             (get-conf-value :station-id)))}})
+                                             (get-conf-value
+                                              :fmi-station-id)))}})
                      :owm (fetch-owm-data (get-conf-value :owm-app-id)
                                           (get-conf-value :forecast-lat)
                                           (get-conf-value :forecast-lon))})

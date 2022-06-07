@@ -16,6 +16,7 @@
 #include <time.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
@@ -113,8 +114,8 @@ int le_set_reports_mask(int device)
 void print_help(const char *program_name)
 {
     fprintf(stderr, "Usage: %s [-h] [-d device] [-t seconds] [-f output file]\n" \
-            "-h: print this help\n" \
-            "-d: Bluetooth device name (hciX) to use\n" \
+            "-h: print this message\n" \
+            "-d: Bluetooth device name (hciX) to use\n"  \
             "-t: how many seconds to run this program\n" \
             "-f: write scan results to file with the provided name\n",
             program_name);

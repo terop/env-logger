@@ -16,8 +16,8 @@
  :weather-timezone "UTC"
  ;; How many days to initially show in the plot
  :initial-show-days 2
- ;; Weather station ID
- :station-id 1234
+ ;; FMI weather station ID
+ :fmi-station-id 1234
  ;; OpenWeatherMap application ID (access key)
  :owm-app-id "myappid"
  ;; Weather data query threshold in minutes
