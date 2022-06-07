@@ -56,8 +56,7 @@ def get_env_data(env_settings):
         logging.error('Cannot read Wio Terminal serial: %s', exc)
         return {}
 
-    final_data = {'insideTemperature': round(terminal_data['temperature'], 2),
-                  'outsideTemperature': round(arduino_data['outsideTemperature'], 2),
+    final_data = {'outsideTemperature': round(arduino_data['outsideTemperature'], 2),
                   'insideLight': terminal_data['light']}
 
     return final_data
@@ -205,7 +204,6 @@ def main():
     env_config = config['environment']
     if args.dummy:
         env_data = {'insideLight': 10,
-                    'insideTemperature': 20,
                     'outsideTemperature': 5,
                     'beacons': []}
     else:

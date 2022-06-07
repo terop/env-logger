@@ -71,8 +71,7 @@
   (js/insert! test-ds
               :observations
               {:recorded (t/minus current-dt (t/days 4))
-               :brightness 5
-               :temperature 20})
+               :brightness 5})
   (test-fn)
   (jdbc/execute! test-ds (sql/format {:delete-from :observations})))
 
@@ -96,7 +95,6 @@
   (testing "Full observation insert"
     (let [observation {:timestamp current-dt-zoned
                        :insideLight 0
-                       :insideTemperature 20
                        :beacons [{:rssi -68
                                   :mac "7C:EC:79:3F:BE:97"}]}
           weather-data {:time (t/sql-timestamp current-dt)
@@ -140,7 +138,6 @@
 (deftest n-days-observations
   (testing "Selecting observations from N days"
     (is (= {:brightness 0
-            :temperature 20.0
             :cloudiness 2
             :wind-speed 5.0
             :fmi-temperature 20.0
@@ -198,8 +195,6 @@
 
 (deftest get-observations-tests
   (testing "Observation querying with arbitrary WHERE clause and LIMIT"
-    (is (= 2 (count (get-observations test-ds
-                                      :where [:= :o.temperature 20]))))
     (is (= 1 (count (get-observations test-ds
                                       :limit 1))))
     (is (zero? (count (get-observations test-ds
@@ -343,7 +338,6 @@
     (is (pos? (insert-plain-observation test-ds
                                         {:timestamp current-dt-zoned
                                          :insideLight 0
-                                         :insideTemperature 20
                                          :outsideTemperature 5})))))
 
 (deftest db-connection-test

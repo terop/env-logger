@@ -118,7 +118,7 @@ var parseRTData = function (rtObservations, rtLabels, observationCount) {
 var parseData = function (observation) {
     const weatherFields = ['o-temperature', 'fmi-temperature', 'temp-delta',
                            'cloudiness', 'wind-speed'],
-          otherFields = ['temperature', 'brightness', 'rssi'];
+          otherFields = ['brightness', 'rssi'];
 
     // dataMode - string, which mode to process data in, values: weather, other
     // observation - object, observation to process
@@ -187,8 +187,7 @@ var transformData = function (jsonData) {
 
         parseRTData(rtObservations, rtNames, observations.length);
 
-        labelValues['other'] = {'temperature': 'Inside temperature',
-                                'brightness': 'Brightness',
+        labelValues['other'] = {'brightness': 'Brightness',
                                 'rssi': beaconName !== '' ? `Beacon "${beaconName}" RSSI` : 'Beacon RSSI'};
         for (const key in rtLabels) {
             labelValues['other'][key] = rtLabels[key];
@@ -282,6 +281,8 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
             observationText = observationText.slice(0, -2);
 
             const forecast = weatherData['fmi']['forecast'];
+            if (!forecast || !weatherData['owm'])
+                return;
             observationText += '<br><br>Forecast for ' +
                 luxon.DateTime.fromSeconds(weatherData['owm']['forecast']['dt']).toFormat('dd.MM.yyyy HH:mm') +
                 `: temperature: ${forecast['temperature']} \u2103, ` +
@@ -322,7 +323,7 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
         },
             index = 0,
             weatherFields = ['fmi-temperature', 'cloudiness', 'wind-speed'],
-            otherFields = ['temperature', 'brightness', 'rssi'];
+            otherFields = ['brightness', 'rssi'];
 
         if (mode === 'all' && dataMode === 'weather') {
             weatherFields.unshift('temp-delta');

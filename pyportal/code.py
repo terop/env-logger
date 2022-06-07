@@ -154,6 +154,7 @@ def adjust_backlight(display):
         display.brightness = BACKLIGHT_DEFAULT_VALUE
 
 
+# pylint: disable=too-many-locals
 def update_screen(display, observation, weather_data, utc_offset_hour):
     """Update screen contents."""
     w_recorded = observation['data']['recorded']
@@ -172,19 +173,22 @@ def update_screen(display, observation, weather_data, utc_offset_hour):
         sunset = time.localtime(weather_data['owm']['current']['sunset'])
         sunset = f'{sunset.tm_hour + utc_offset_hour:02}:{sunset.tm_min:02}'
         display[0].text += f'           sr {sunrise} ss {sunset}'
-    display[1].text = f'Weather: temperature {observation["data"]["fmi-temperature"]} \u00b0C, ' \
+    display[1].text = f'Weather: temperature {observation["data"]["fmi-temperature"]} \u00b0C, ' + \
         f'cloudiness {observation["data"]["cloudiness"]},'
     if weather_data:
         current = weather_data['owm']['current']
         forecast = weather_data['fmi']['forecast']
+        forecast_dt = time.localtime(weather_data['owm']['forecast']['dt'])
 
-        display[2].text = f'wind {weather_data["fmi"]["current"]["wind-direction"]["short"]} ' \
-            f'{observation["data"]["wind-speed"]} m/s, desc ' \
+        display[2].text = f'wind {weather_data["fmi"]["current"]["wind-direction"]["short"]} ' + \
+            f'{observation["data"]["wind-speed"]} m/s, desc ' + \
             f'\"{current["weather"][0]["description"]}\"'
-        display[3].text = f'Forecast: temp {forecast["temperature"]} \u00b0C, ' \
+        display[3].text = f'Forecast ({forecast_dt.tm_hour + utc_offset_hour:02}:' + \
+            f'{forecast_dt.tm_min:02}): temp {forecast["temperature"]} \u00b0C, ' + \
             f'cloudiness {forecast["cloudiness"]} %,'
-        display[4].text = f'wind {forecast["wind-direction"]["short"]} {forecast["wind-speed"]} ' \
-            f'm/s, desc \"{weather_data["owm"]["forecast"]["weather"][0]["description"]}\"'
+        display[4].text = f'wind {forecast["wind-direction"]["short"]} ' + \
+            f'{forecast["wind-speed"]} m/s, ' + \
+            f'desc \"{weather_data["owm"]["forecast"]["weather"][0]["description"]}\"'
         row = 5
     else:
         row = 2
@@ -194,13 +198,11 @@ def update_screen(display, observation, weather_data, utc_offset_hour):
 
     display[row].text = rt_recorded
     row += 1
-    display[row].text = f'Inside temperature {observation["data"]["temperature"]} \u00b0C, ' \
-        f'brightness {observation["data"]["brightness"]},'
-    row += 1
-    display[row].text = f'outside temperature {observation["data"]["o-temperature"]} \u00b0C'
+    display[row].text = f'Brightness {observation["data"]["brightness"]}, '
+    display[row].text += f'outside temperature {observation["data"]["o-temperature"]} \u00b0C'
     row += 1
     if observation['data']['rssi']:
-        display[row].text = f'Beacon "{observation["data"]["name"]}" ' \
+        display[row].text = f'Beacon "{observation["data"]["name"]}" ' + \
             f'RSSI {observation["data"]["rssi"]}'
         row += 1
 
@@ -215,7 +217,7 @@ def update_screen(display, observation, weather_data, utc_offset_hour):
                (location in secrets['hidden_ruuvitag_locations']):
                 continue
 
-            display[row].text = f'RuuviTag \"{location}\": temperature ' \
+            display[row].text = f'RuuviTag \"{location}\": temperature ' + \
                 f'{tag["temperature"]} \u00b0C,'
             display[row + 1].text = f'humidity {tag["humidity"]} %H'
             row += 2
