@@ -3,4 +3,4 @@ build: update # build container
 
 update: # update runtime base image
 	podman pull gcr.io/distroless/java17-debian11:latest
-	podman pull clojure:openjdk-17-tools-deps-bullseye
+	podman pull clojure:temurin-17-tools-deps-focal
