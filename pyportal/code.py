@@ -180,18 +180,22 @@ def update_screen(display, observation, weather_data, utc_offset_hour):
         forecast = weather_data['fmi']['forecast']
         forecast_dt = time.localtime(weather_data['owm']['forecast']['dt'])
 
-        display[2].text = f'wind {weather_data["fmi"]["current"]["wind-direction"]["short"]} ' + \
-            f'{observation["data"]["wind-speed"]} m/s, desc ' + \
-            f'\"{current["weather"][0]["description"]}\"'
-        display[3].text = 'Forecast'
-        if forecast_dt and forecast_dt.tm_hour is not None and forecast_dt.tm_min is not None:
-            display[3].text += f' ({forecast_dt.tm_hour + utc_offset_hour:02}:' + \
-                f'{forecast_dt.tm_min:02})'
-        display[3].text += f': temp {forecast["temperature"]} \u00b0C, ' + \
-            f'clouds {forecast["cloudiness"]} %,'
-        display[4].text = f'wind {forecast["wind-direction"]["short"]} ' + \
-            f'{forecast["wind-speed"]} m/s, ' + \
-            f'desc \"{weather_data["owm"]["forecast"]["weather"][0]["description"]}\"'
+        if current:
+            display[2].text = 'wind ' + \
+                f'{weather_data["fmi"]["current"]["wind-direction"]["short"]} ' + \
+                f'{observation["data"]["wind-speed"]} m/s, desc ' + \
+                f'\"{current["weather"][0]["description"]}\"'
+        if forecast:
+            display[3].text = 'Forecast'
+            if forecast_dt and forecast_dt.tm_hour is not None \
+               and forecast_dt.tm_min is not None:
+                display[3].text += f' ({forecast_dt.tm_hour + utc_offset_hour:02}:' + \
+                    f'{forecast_dt.tm_min:02})'
+            display[3].text += f': temp {forecast["temperature"]} \u00b0C, ' + \
+                f'clouds {forecast["cloudiness"]} %,'
+            display[4].text = f'wind {forecast["wind-direction"]["short"]} ' + \
+                f'{forecast["wind-speed"]} m/s, ' + \
+                f'desc \"{weather_data["owm"]["forecast"]["weather"][0]["description"]}\"'
         row = 5
     else:
         row = 2
