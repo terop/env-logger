@@ -6,13 +6,18 @@
             :password "testpwd1!"}
  ;; RuuviTag locations to show
  :ruuvitag-locations ["indoor"]
+ ;; Select RuuviTag(s) for values are shown by default
+ ;; The special value "all" shows all RuuviTag(s)
+ :ruuvitag-default-show ["indoor"]
+ ;; Select which RuuviTag data values (temperature, humidity) to show by default
+ :ruuvitag-default-values ["temperature"]
  ;; Timezone offset to use in observation storing
  ;; Set to UTC if no offset is needed
  :store-timezone "UTC"
  ;; Timezone offset to use in observation display
  ;; Set to UTC if no offset is needed
  :display-timezone "UTC"
-  ;; Timezone to use in weather data handling
+ ;; Timezone to use in weather data handling
  :weather-timezone "UTC"
  ;; How many days to initially show in the plot
  :initial-show-days 2
@@ -28,7 +33,7 @@
  :forecast-lon 56.78
  ;; Beacon MAC and name, currently only one beacon is supported
  :beacon-name {"7C:EC:79:3F:BE:98" "Beacon 1"}
-  ;; Hostname where the application is hosted
+ ;; Hostname where the application is hosted
  :hostname "localhost"
  ;; Development or production setting (TLS is enforced)
  :in-production true
@@ -44,8 +49,6 @@
  :auth-code "somebadvalue"
  ;; Maximum time difference for FMI Testbed images in minutes
  :image-max-time-diff 15
- ;; Hide RuuviTag data series by default
- :hide-ruuvitag-data true
  ;; JWT token timeout in seconds
  :jwt-token-timeout 7200
  ;; Data read user data

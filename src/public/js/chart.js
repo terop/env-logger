@@ -6,13 +6,18 @@ const colors = [
 
 var labelValues = {'weather': {},
                    'other': {}},
-    chartData = [],
-    dataLabels = [],
     dataSets = {'weather': [],
                 'other': []},
-    testbedImageNames = [],
+    chartData = [],
+    dataLabels = [],
     beaconName = '',
-    observationCount = 0;
+    testbedImageBasepath = '',
+    testbedImageNames = [],
+    observationCount = 0,
+    mode = null,
+    rtDefaultShow = null,
+    rtDefaultValues = [],
+    rtNames = [];
 
 // Formats the given date as 'dd.mm.yyyy hh:MM'
 var formatDate = function (date) {
@@ -179,9 +184,6 @@ var transformData = function (jsonData) {
 
     // Data labels
     if (mode === 'all') {
-        // Hack because of JSON unparsing problem in the backend
-        const rtNames = JSON.parse(rtNamesRaw.replaceAll('&quot;', '"'));
-
         // Get labels for RuuviTag data
         const rtLabels = getRTLabels(rtNames);
 
@@ -205,227 +207,228 @@ var transformData = function (jsonData) {
     return labelValues;
 };
 
-if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
-    document.getElementById('noDataError').style.display = 'block';
-    document.getElementById('weatherDiv').style.display = 'none';
-    document.getElementById('imageButtonDiv').style.display = 'none';
-    if (mode === 'all') {
-        document.getElementById('weatherCheckboxDiv').style.display = 'none';
-        document.getElementById('otherDiv').style.display = 'none';
-        document.getElementById('otherCheckboxDiv').style.display = 'none';
-    }
-} else {
-    labelValues = transformData(document.getElementById('chartData').innerText);
-
-    // Add unit suffix
-    var addUnitSuffix = function(keyName) {
-        return `${keyName.indexOf('temperature') >= 0 ? ' \u2103' : ''}` +
-            `${keyName.indexOf('wind') >= 0 ? ' m/s' : ''}` +
-            `${keyName.indexOf('humidity') >= 0 ? ' %H' : ''}`;
-    };
-
-    // Format a given Unix second timestamp in hour:minute format
-    var formatUnixSecondTs = function (unixTs) {
-        return luxon.DateTime.fromSeconds(unixTs).toFormat('HH:mm');
-    };
-
-    // Show last observation and some other data for quick viewing
-    var showLastObservation = function () {
-        var lastObservationIndex = observationCount - 1,
-            observationText = `Date: ${formatDate(dataLabels[lastObservationIndex])}<br>`,
-            itemsAdded = 0,
-            weatherKeys = ['fmi-temperature', 'cloudiness', 'wind-speed'];
-
-        var weatherData = JSON.parse(document.getElementById('weatherData').textContent);
+var loadPage = function () {
+    if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
+        document.getElementById('noDataError').style.display = 'block';
+        document.getElementById('weatherDiv').style.display = 'none';
+        document.getElementById('imageButtonDiv').style.display = 'none';
         if (mode === 'all') {
-            weatherKeys.unshift('o-temperature');
-
-            observationText += `Sun: Sunrise ${formatUnixSecondTs(weatherData['owm']['current']['sunrise'])},` +
-                ` Sunset ${formatUnixSecondTs(weatherData['owm']['current']['sunset'])}<br>`;
+            document.getElementById('weatherCheckboxDiv').style.display = 'none';
+            document.getElementById('otherDiv').style.display = 'none';
+            document.getElementById('otherCheckboxDiv').style.display = 'none';
         }
+    } else {
+        labelValues = transformData(document.getElementById('chartData').innerText);
 
-        for (var i = lastObservationIndex; i > 0; i--) {
-            if (dataSets['weather']['fmi-temperature'][i] !== null) {
-                lastObservationIndex = i;
-                break;
+        // Add unit suffix
+        var addUnitSuffix = function(keyName) {
+            return `${keyName.indexOf('temperature') >= 0 ? ' \u2103' : ''}` +
+                `${keyName.indexOf('wind') >= 0 ? ' m/s' : ''}` +
+                `${keyName.indexOf('humidity') >= 0 ? ' %H' : ''}`;
+        };
+
+        // Format a given Unix second timestamp in hour:minute format
+        var formatUnixSecondTs = function (unixTs) {
+            return luxon.DateTime.fromSeconds(unixTs).toFormat('HH:mm');
+        };
+
+        // Show last observation and some other data for quick viewing
+        var showLastObservation = function () {
+            var lastObservationIndex = observationCount - 1,
+                observationText = `Date: ${formatDate(dataLabels[lastObservationIndex])}<br>`,
+                itemsAdded = 0,
+                weatherKeys = ['fmi-temperature', 'cloudiness', 'wind-speed'];
+
+            var weatherData = JSON.parse(document.getElementById('weatherData').textContent);
+            if (mode === 'all') {
+                weatherKeys.unshift('o-temperature');
+
+                observationText += `Sun: Sunrise ${formatUnixSecondTs(weatherData['owm']['current']['sunrise'])},` +
+                    ` Sunset ${formatUnixSecondTs(weatherData['owm']['current']['sunset'])}<br>`;
             }
-        }
 
-        for (const key of weatherKeys) {
-            if (key === 'wind-speed')
-                observationText += 'Wind: ' +
-                (mode === 'all' ? `${weatherData['fmi']['current']['wind-direction']['long']} ` :
-                 `${weatherData['wind-direction']['long']} `) +
-                `${dataSets['weather'][key][lastObservationIndex]} ${addUnitSuffix(key)}, `;
-            else
-                observationText += `${labelValues['weather'][key]}: ${dataSets['weather'][key][lastObservationIndex]}` +
-                    `${addUnitSuffix(key)}, `;
-        }
-        if (mode === 'all') {
-            observationText += `Description: ${weatherData['owm']['current']['weather'][0]['description']}`;
-
-            var firstRTLabelSeen = false;
-            for (const key in labelValues['other']) {
-                if ((!firstRTLabelSeen && (itemsAdded % 5) === 0) ||
-                    (firstRTLabelSeen && (itemsAdded % 4) === 0))
-                    observationText += '<br>';
-                if (!firstRTLabelSeen && key.indexOf('rt') >= 0) {
-                    firstRTLabelSeen = true;
-                    observationText += '<br>';
-                    itemsAdded = 0;
+            for (var i = lastObservationIndex; i > 0; i--) {
+                if (dataSets['weather']['fmi-temperature'][i] !== null) {
+                    lastObservationIndex = i;
+                    break;
                 }
-                observationText += `${labelValues['other'][key]}: ${dataSets['other'][key][lastObservationIndex]}` +
+            }
+
+            for (const key of weatherKeys) {
+                if (key === 'wind-speed')
+                    observationText += 'Wind: ' +
+                    (mode === 'all' ? `${weatherData['fmi']['current']['wind-direction']['long']} ` :
+                     `${weatherData['wind-direction']['long']} `) +
+                    `${dataSets['weather'][key][lastObservationIndex]} ${addUnitSuffix(key)}, `;
+                else
+                    observationText += `${labelValues['weather'][key]}: ${dataSets['weather'][key][lastObservationIndex]}` +
                     `${addUnitSuffix(key)}, `;
-                itemsAdded++;
             }
-            observationText = observationText.slice(0, -2);
+            if (mode === 'all') {
+                observationText += `Description: ${weatherData['owm']['current']['weather'][0]['description']}`;
 
-            const forecast = weatherData['fmi']['forecast'];
-            if (!forecast || !weatherData['owm'])
-                return;
-            observationText += '<br><br>Forecast for ' +
-                luxon.DateTime.fromSeconds(weatherData['owm']['forecast']['dt']).toFormat('dd.MM.yyyy HH:mm') +
-                `: temperature: ${forecast['temperature']} \u2103, ` +
-                `cloudiness: ${forecast['cloudiness']} %, ` +
-                `wind: ${forecast['wind-direction']['long']} ${forecast['wind-speed']} m/s, ` +
-                `description: ${weatherData['owm']['forecast']['weather'][0]['description']}`;
-        } else {
-            observationText = observationText.slice(0, -2);
-        }
+                var firstRTLabelSeen = false;
+                for (const key in labelValues['other']) {
+                    if ((!firstRTLabelSeen && (itemsAdded % 5) === 0) ||
+                        (firstRTLabelSeen && (itemsAdded % 4) === 0))
+                        observationText += '<br>';
+                    if (!firstRTLabelSeen && key.indexOf('rt') >= 0) {
+                        firstRTLabelSeen = true;
+                        observationText += '<br>';
+                        itemsAdded = 0;
+                    }
+                    observationText += `${labelValues['other'][key]}: ${dataSets['other'][key][lastObservationIndex]}` +
+                        `${addUnitSuffix(key)}, `;
+                    itemsAdded++;
+                }
+                observationText = observationText.slice(0, -2);
 
-        document.getElementById('lastObservation').innerHTML = observationText;
-        document.getElementById('lastObservation').classList.remove('display-none');
-    };
-    showLastObservation();
-
-    var showTestbedImage = function (dataIndex) {
-        var imageName = testbedImageNames[dataIndex];
-        if (imageName) {
-            var pattern = /testbed-([\d-]+)T.+/,
-                result = pattern.exec(imageName);
-            if (result) {
-                document.getElementById('testbedImage').src =
-                    `${tbImageBasepath}${result[1]}/${imageName}`;
-                // For improved viewing scroll page to bottom after loading the image
-                window.setTimeout(function() {
-                    window.scroll(0, document.body.scrollHeight);
-                }, 500);
-            }
-        } else {
-            document.getElementById('testbedImage').src = '';
-        }
-    };
-
-    var generateDataConfig = function(dataMode) {
-        var config = {
-            labels: dataLabels,
-            datasets: []
-        },
-            index = 0,
-            weatherFields = ['fmi-temperature', 'cloudiness', 'wind-speed'],
-            otherFields = ['brightness', 'rssi'];
-
-        if (mode === 'all' && dataMode === 'weather') {
-            weatherFields.unshift('temp-delta');
-            weatherFields.unshift('o-temperature');
-        }
-        if (dataMode === 'other')
-            for (const key in labelValues['other']) {
-                if (key.indexOf('rt') !== -1)
-                    otherFields.push(key);
+                const forecast = weatherData['fmi']['forecast'];
+                if (!forecast || !weatherData['owm'])
+                    return;
+                observationText += '<br><br>Forecast for ' +
+                    luxon.DateTime.fromSeconds(weatherData['owm']['forecast']['dt']).toFormat('dd.MM.yyyy HH:mm') +
+                    `: temperature: ${forecast['temperature']} \u2103, ` +
+                    `cloudiness: ${forecast['cloudiness']} %, ` +
+                    `wind: ${forecast['wind-direction']['long']} ${forecast['wind-speed']} m/s, ` +
+                    `description: ${weatherData['owm']['forecast']['weather'][0]['description']}`;
+            } else {
+                observationText = observationText.slice(0, -2);
             }
 
-        for (const key of (dataMode === 'weather' ? weatherFields : otherFields)) {
-            config.datasets.push({
-                label: labelValues[dataMode][key],
-                borderColor: colors[index],
-                data: dataSets[dataMode][key],
-                hidden: (dataMode === 'other' && hideRt === 'true' &&
-                         labelValues[dataMode][key].indexOf('RT ') !== -1) ?
-                    true : false,
-                fill: false,
-                pointRadius: 1,
-                borderWidth: 1
-            });
-            index++;
-        }
+            document.getElementById('lastObservation').innerHTML = observationText;
+            document.getElementById('lastObservation').classList.remove('display-none');
+        };
+        showLastObservation();
 
-        return config;
-    };
-    const scaleOptions = {
-        x: {
-            type: 'time',
-            time: {
-                unit: 'hour',
-                tooltipFormat: 'd.L.yyyy HH:mm:ss',
-                displayFormats: {
-                    hour: 'HH',
-                    minute: 'HH:mm'
+        var showTestbedImage = function (dataIndex) {
+            var imageName = testbedImageNames[dataIndex];
+            if (imageName) {
+                var pattern = /testbed-([\d-]+)T.+/,
+                    result = pattern.exec(imageName);
+                if (result) {
+                    document.getElementById('testbedImage').src =
+                        `${testbedImageBasepath}${result[1]}/${imageName}`;
+                    // Scroll page to bottom after loading the image for improved viewing
+                    window.setTimeout(function() {
+                        window.scroll(0, document.body.scrollHeight);
+                    }, 500);
+                }
+            } else {
+                document.getElementById('testbedImage').src = '';
+            }
+        };
+
+        // Infer if dataset should be shown or hidden by default
+        var checkDatasetDisplayStatus = (keyName) => {
+            if (keyName.indexOf('rt_') === -1) {
+                return true;
+            } else {
+                const keyParts = keyName.split('_');
+                if (rtDefaultShow.length === 1 && rtDefaultShow[0] === 'all' &&
+                    rtDefaultValues.includes(keyParts[2])) {
+                    return true;
+                } else if (rtDefaultShow.includes(keyParts[1]) &&
+                           rtDefaultValues.includes(keyParts[2])) {
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+        };
+
+        var generateDataConfig = function(dataMode) {
+            var config = {
+                labels: dataLabels,
+                datasets: []
+            },
+                index = 0,
+                weatherFields = ['fmi-temperature', 'cloudiness', 'wind-speed'],
+                otherFields = ['brightness', 'rssi'];
+
+            if (mode === 'all' && dataMode === 'weather') {
+                weatherFields.unshift('temp-delta');
+                weatherFields.unshift('o-temperature');
+            }
+            if (dataMode === 'other')
+                for (const key in labelValues['other']) {
+                    if (key.indexOf('rt') !== -1)
+                        otherFields.push(key);
+                }
+
+            for (const key of (dataMode === 'weather' ? weatherFields : otherFields)) {
+                config.datasets.push({
+                    label: labelValues[dataMode][key],
+                    borderColor: colors[index],
+                    data: dataSets[dataMode][key],
+                    hidden: !checkDatasetDisplayStatus(key),
+                    fill: false,
+                    pointRadius: 1,
+                    borderWidth: 1
+                });
+                index++;
+            }
+
+            return config;
+        };
+        const scaleOptions = {
+            x: {
+                type: 'time',
+                time: {
+                    unit: 'hour',
+                    tooltipFormat: 'd.L.yyyy HH:mm:ss',
+                    displayFormats: {
+                        hour: 'HH',
+                        minute: 'HH:mm'
+                    }
+                },
+                title: {
+                    display: true,
+                    text: 'Time'
                 }
             },
-            title: {
-                display: true,
-                text: 'Time'
+            y: {
+                title: {
+                    display: true,
+                    text: 'Value'
+                },
+                ticks: {
+                    beginAtZero: true
+                }
             }
         },
-        y: {
-            title: {
-                display: true,
-                text: 'Value'
-            },
-            ticks: {
-                beginAtZero: true
-            }
-        }
-    },
-          interactionOptions = {
-              mode: 'index'
-          },
-          plugins = {
-              title: {
-                  display: true
+              interactionOptions = {
+                  mode: 'index'
               },
-              zoom: {
+              plugins = {
+                  title: {
+                      display: true
+                  },
                   zoom: {
-                      drag: {
-                          enabled: true
-                      },
-                      mode: 'x'
+                      zoom: {
+                          drag: {
+                              enabled: true
+                          },
+                          mode: 'x'
+                      }
                   }
-              }
-          },
-          onClickFunction = function (event, elements) {
-              if (!elements.length)
-                  return;
+              },
+              onClickFunction = function (event, elements) {
+                  if (!elements.length)
+                      return;
 
-              document.getElementById('showImages').checked = true;
-              document.getElementById('imageDiv').classList.remove('display-none');
+                  document.getElementById('showImages').checked = true;
+                  document.getElementById('imageDiv').classList.remove('display-none');
 
-              showTestbedImage(elements[0].index);
-          };
+                  showTestbedImage(elements[0].index);
+              };
 
-    Chart.defaults.animation.duration = 400;
+        Chart.defaults.animation.duration = 400;
 
-    plugins.title.text = 'Weather observations';
-    var weatherChart = new Chart(document.getElementById('weatherChart').getContext('2d'), {
-        type: 'line',
-        data: generateDataConfig('weather'),
-        options: {
-            scales: scaleOptions,
-            interaction: interactionOptions,
-            plugins: plugins,
-            onClick: onClickFunction,
-            spanGaps: true,
-            normalized: true,
-            tension: 0.1
-        }
-    });
-
-    if (mode === 'all') {
-        plugins.title.text = 'Other observations';
-        var otherChart = new Chart(document.getElementById('otherChart').getContext('2d'), {
+        plugins.title.text = 'Weather observations';
+        var weatherChart = new Chart(document.getElementById('weatherChart').getContext('2d'), {
             type: 'line',
-            data: generateDataConfig('other'),
+            data: generateDataConfig('weather'),
             options: {
                 scales: scaleOptions,
                 interaction: interactionOptions,
@@ -436,81 +439,115 @@ if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
                 tension: 0.1
             }
         });
-        document.getElementById('otherResetZoom').addEventListener(
+
+        if (mode === 'all') {
+            plugins.title.text = 'Other observations';
+            var otherChart = new Chart(document.getElementById('otherChart').getContext('2d'), {
+                type: 'line',
+                data: generateDataConfig('other'),
+                options: {
+                    scales: scaleOptions,
+                    interaction: interactionOptions,
+                    plugins: plugins,
+                    onClick: onClickFunction,
+                    spanGaps: true,
+                    normalized: true,
+                    tension: 0.1
+                }
+            });
+            document.getElementById('otherResetZoom').addEventListener(
+                'click',
+                function() {
+                    otherChart.resetZoom();
+                },
+                false);
+        }
+        document.getElementById('weatherResetZoom').addEventListener(
             'click',
             function() {
-                otherChart.resetZoom();
+                weatherChart.resetZoom();
             },
             false);
     }
-    document.getElementById('weatherResetZoom').addEventListener(
-        'click',
-        function() {
-            weatherChart.resetZoom();
-        },
-        false);
-}
 
-restoreDatasetState();
+    restoreDatasetState();
 
-// Function validating date field values
-var validateDates = function (event) {
-    var startDate = document.getElementById('startDate').value,
-        endDate = document.getElementById('endDate').value;
+    // Function validating date field values
+    var validateDates = function (event) {
+        var startDate = document.getElementById('startDate').value,
+            endDate = document.getElementById('endDate').value;
 
-    if ((startDate && luxon.DateTime.fromISO(startDate).invalid) ||
-        (endDate && luxon.DateTime.fromISO(endDate).invalid)) {
-        alert('Error: either the start or end date is invalid!');
-        event.preventDefault();
-        return;
+        if ((startDate && luxon.DateTime.fromISO(startDate).invalid) ||
+            (endDate && luxon.DateTime.fromISO(endDate).invalid)) {
+            alert('Error: either the start or end date is invalid!');
+            event.preventDefault();
+            return;
+        }
+        persistDatasetState();
+    };
+
+    document.getElementById('updateBtn').addEventListener('click',
+                                                          validateDates,
+                                                          false);
+
+    var toggleVisibility = function (elementId) {
+        document.getElementById(elementId).classList.toggle('display-none');
+    };
+
+    document.getElementById('showImages').addEventListener('click',
+                                                           function () {
+                                                               toggleVisibility('imageDiv');
+                                                           },
+                                                           false);
+
+    if (mode === 'all') {
+        document.getElementById('showWeatherChart').addEventListener('click',
+                                                                     function () {
+                                                                         toggleVisibility('weatherDiv');
+                                                                     },
+                                                                     false);
+
+
+        document.getElementById('showOtherChart').addEventListener('click',
+                                                                   function () {
+                                                                       toggleVisibility('otherDiv');
+                                                                   },
+                                                                   false);
     }
-    persistDatasetState();
+
+    document.getElementById('weatherHideAll')
+        .addEventListener('click',
+                          function () {
+                              for (var i = 0; i < weatherChart.data.datasets.length; i++)
+                                  weatherChart.getDatasetMeta(i).hidden = true;
+                              weatherChart.update();
+                          },
+                          false);
+
+    if (mode === 'all')
+        document.getElementById('otherHideAll')
+        .addEventListener('click',
+                          function () {
+                              for (var i = 0; i < otherChart.data.datasets.length; i++)
+                                  otherChart.getDatasetMeta(i).hidden = true;
+                              otherChart.update();
+                          },
+                          false);
 };
 
-document.getElementById('updateBtn').addEventListener('click',
-                                                      validateDates,
-                                                      false);
+// Get front-end parameters
+axios.get('params')
+    .then(resp => {
+        mode = resp.data['mode'],
+        testbedImageBasepath = resp.data['tb-image-basepath'];
+        if (mode === 'all') {
+            rtNames = resp.data ['rt-names'],
+            rtDefaultShow = resp.data['rt-default-show'],
+            rtDefaultValues = resp.data['rt-default-values'];
+        }
 
-var toggleVisibility = function (elementId) {
-    document.getElementById(elementId).classList.toggle('display-none');
-};
-
-document.getElementById('showImages').addEventListener('click',
-                                                       function () {
-                                                           toggleVisibility('imageDiv');
-                                                       },
-                                                       false);
-
-if (mode === 'all') {
-    document.getElementById('showWeatherChart').addEventListener('click',
-                                                                 function () {
-                                                                     toggleVisibility('weatherDiv');
-                                                                 },
-                                                                 false);
-
-
-    document.getElementById('showOtherChart').addEventListener('click',
-                                                               function () {
-                                                                   toggleVisibility('otherDiv');
-                                                               },
-                                                               false);
-}
-
-document.getElementById('weatherHideAll')
-    .addEventListener('click',
-                      function () {
-                          for (var i = 0; i < weatherChart.data.datasets.length; i++)
-                              weatherChart.getDatasetMeta(i).hidden = true;
-                          weatherChart.update();
-                      },
-                      false);
-
-if (mode === 'all')
-    document.getElementById('otherHideAll')
-    .addEventListener('click',
-                      function () {
-                          for (var i = 0; i < otherChart.data.datasets.length; i++)
-                              otherChart.getDatasetMeta(i).hidden = true;
-                          otherChart.update();
-                      },
-                      false);
+        loadPage();
+    })
+    .catch(error => {
+        console.log(`Parameter fetch error: ${error}`);
+    });

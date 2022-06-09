@@ -75,13 +75,7 @@
           logged-in? (authenticated? request)
           initial-days (get-conf-value :initial-show-days)
           common-values {:obs-dates obs-dates
-                         :logged-in? logged-in?
-                         :tb-image-basepath (get-conf-value
-                                             :tb-image-basepath)
-                         :rt-names (generate-string
-                                    (get-conf-value :ruuvitag-locations))
-                         :hide-rt (generate-string (get-conf-value
-                                                    :hide-ruuvitag-data))}]
+                         :logged-in? logged-in?}]
       (merge common-values
              (if (or start-date end-date)
                {:data (generate-string
@@ -160,6 +154,17 @@
     (assoc (resp/redirect (str (get-conf-value :url-path) "/"))
            :session nil))
   (POST "/token-login" [] auth/token-login)
+  ;; Parameter query
+  (GET "/params" request
+    (generate-string (merge {:mode (if (authenticated? request) "all" "weather")
+                             :tb-image-basepath (get-conf-value
+                                                 :tb-image-basepath)}
+                            (when (authenticated? request)
+                              {:rt-names (get-conf-value :ruuvitag-locations)
+                               :rt-default-show (get-conf-value
+                                                 :ruuvitag-default-show)
+                               :rt-default-values
+                               (get-conf-value :ruuvitag-default-values)}))))
   ;; WebAuthn routes
   (GET "/register" request
     (if-not (authenticated? request)

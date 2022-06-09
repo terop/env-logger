@@ -148,12 +148,8 @@
                 integrity="sha256-eVNjHw5UeU0jUqPPpZHAkU1z4U+QFBBY488WvueTm88=" crossorigin="anonymous"></script>
         <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@1.2.1/dist/chartjs-plugin-zoom.min.js"
                 integrity="sha256-cRtVj62HOT1M3EGc+4EBacU/38hYsYrNBB48zEVn8uU=" crossorigin="anonymous"></script>
-        <script>
-            const mode = '{% if logged-in? %}all{% else %}weather{% endif %}',
-                  tbImageBasepath = '{{ tb-image-basepath }}',
-                  rtNamesRaw = '{% if logged-in? %}{{ rt-names }}{% else %}null{% endif %}',
-                  hideRt = '{{ hide-rt }}';
-        </script>
+        <script src="https://cdn.jsdelivr.net/npm/axios@0.27.2/dist/axios.min.js"
+                integrity="sha256-43O3ClFnSFxzomVCG8/NH93brknJxRYF5tKRij3krg0=" crossorigin="anonymous"></script>
         <script src="js/chart.js"></script>
     </body>
 </html>
