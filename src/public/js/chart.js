@@ -495,21 +495,21 @@ var loadPage = function () {
     };
 
     document.getElementById('showImages').addEventListener('click',
-                                                           function () {
+                                                           () => {
                                                                toggleVisibility('imageDiv');
                                                            },
                                                            false);
 
     if (mode === 'all') {
         document.getElementById('showWeatherChart').addEventListener('click',
-                                                                     function () {
+                                                                     () => {
                                                                          toggleVisibility('weatherDiv');
                                                                      },
                                                                      false);
 
 
         document.getElementById('showOtherChart').addEventListener('click',
-                                                                   function () {
+                                                                   () => {
                                                                        toggleVisibility('otherDiv');
                                                                    },
                                                                    false);
@@ -517,22 +517,32 @@ var loadPage = function () {
 
     document.getElementById('weatherHideAll')
         .addEventListener('click',
-                          function () {
+                          () => {
                               for (var i = 0; i < weatherChart.data.datasets.length; i++)
                                   weatherChart.getDatasetMeta(i).hidden = true;
                               weatherChart.update();
                           },
                           false);
 
-    if (mode === 'all')
+    if (mode === 'all') {
         document.getElementById('otherHideAll')
-        .addEventListener('click',
-                          function () {
-                              for (var i = 0; i < otherChart.data.datasets.length; i++)
-                                  otherChart.getDatasetMeta(i).hidden = true;
-                              otherChart.update();
-                          },
-                          false);
+            .addEventListener('click',
+                              () => {
+                                  for (var i = 0; i < otherChart.data.datasets.length; i++)
+                                      otherChart.getDatasetMeta(i).hidden = true;
+                                  otherChart.update();
+                              },
+                              false);
+        document.getElementById('ruuvitagMode')
+            .addEventListener('click',
+                              () => {
+                                  for (var i = 0; i < otherChart.data.datasets.length; i++)
+                                      if (otherChart.data.datasets[i].label.indexOf('RT ') === -1)
+                                          otherChart.getDatasetMeta(i).hidden = true;
+                                  otherChart.update();
+                              },
+                              false);
+    }
 };
 
 // Get front-end parameters

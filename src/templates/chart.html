@@ -24,7 +24,7 @@
             .display-none {
                 display: none;
             }
-            .hide-all {
+            .hide-all,#otherResetZoom {
                 margin-left: 30px;
             }
             #plotControls > div > label {
@@ -49,7 +49,7 @@
             }
             #otherCheckboxDiv,#imageButtonDiv {
                 margin-top: 10px;
-                margin-bottom: 10px;
+                margin-bottom: 8px;
             }
             #lastObservation {
                 font-size: 0.9em;
@@ -123,6 +123,7 @@
             <div class="left-margin" id="otherDiv">
                 <canvas id="otherChart"></canvas>
 
+                <input type="button" id="ruuvitagMode" class="btn btn-secondary" value="Only show RuuviTags" />
                 <input type="button" id="otherResetZoom" class="btn btn-light" value="Reset chart zoom" />
                 <input type="button" id="otherHideAll" class="btn btn-danger hide-all" value="Hide all series" />
             </div>
