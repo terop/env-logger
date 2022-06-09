@@ -24,190 +24,190 @@ var formatDate = function (date) {
     return luxon.DateTime.fromJSDate(date).toFormat('dd.MM.yyyy HH:mm');
 };
 
-// Persist state of chart data sets
-var persistDatasetState = function () {
-    var hidden = {'weather': {},
-                  'other': {}};
+var loadPage = function () {
+    // Persist state of chart data sets
+    var persistDatasetState = function () {
+        var hidden = {'weather': {},
+                      'other': {}};
 
-    for (var i = 0; i < weatherChart.data.datasets.length; i++)
-        hidden['weather'][i.toString()] = !!weatherChart.getDatasetMeta(i).hidden;
+        for (var i = 0; i < weatherChart.data.datasets.length; i++)
+            hidden['weather'][i.toString()] = !!weatherChart.getDatasetMeta(i).hidden;
 
-    if (mode === 'all')
-        for (var j = 0; j < otherChart.data.datasets.length; j++)
-            hidden['other'][j.toString()] = !!otherChart.getDatasetMeta(j).hidden;
+        if (mode === 'all')
+            for (var j = 0; j < otherChart.data.datasets.length; j++)
+                hidden['other'][j.toString()] = !!otherChart.getDatasetMeta(j).hidden;
 
-    localStorage.setItem('hiddenDatasets', JSON.stringify(hidden));
-};
+        localStorage.setItem('hiddenDatasets', JSON.stringify(hidden));
+    };
 
-// Restore chart data sets state
-var restoreDatasetState = function () {
-    if (!localStorage.getItem('hiddenDatasets'))
-        return;
+    // Restore chart data sets state
+    var restoreDatasetState = function () {
+        if (!localStorage.getItem('hiddenDatasets'))
+            return;
 
-    const hidden = JSON.parse(localStorage.getItem('hiddenDatasets'));
-    localStorage.removeItem('checkedBoxes');
+        const hidden = JSON.parse(localStorage.getItem('hiddenDatasets'));
+        localStorage.removeItem('checkedBoxes');
 
-    if (!weatherChart)
-        // Do not attempt restore if there is no data
-        return;
+        if (!weatherChart)
+            // Do not attempt restore if there is no data
+            return;
 
-    for (var i = 0; i < weatherChart.data.datasets.length; i++)
-        weatherChart.getDatasetMeta(i).hidden = hidden['weather'][i.toString()] ? true : null;
-    weatherChart.update();
+        for (var i = 0; i < weatherChart.data.datasets.length; i++)
+            weatherChart.getDatasetMeta(i).hidden = hidden['weather'][i.toString()] ? true : null;
+        weatherChart.update();
 
-    if (mode === 'all') {
-        for (var j = 0; j < otherChart.data.datasets.length; j++)
-            otherChart.getDatasetMeta(j).hidden = hidden['other'][j.toString()] ? true : null;
-        otherChart.update();
-    }
-};
-
-// Parse RuuviTag observations
-// rtObservations - observations as JSON
-// rtLabels - RuuviTag labels
-// observationCount - number of non-RuuviTag observations
-var parseRTData = function (rtObservations, rtLabels, observationCount) {
-    const labelCount = rtLabels.length,
-          timeDiffThreshold = 10;
-    var location = null,
-        dateRef = null,
-        obsByDate = {};
-
-    for (const label of rtLabels) {
-        dataSets['other'][`rt_${label}_temperature`] = [];
-        dataSets['other'][`rt_${label}_humidity`] = [];
-    }
-
-    for (var i = 0; i < rtObservations.length; i++) {
-        const obs = rtObservations[i];
-
-        if (!dateRef)
-            dateRef = obs['recorded'];
-
-        location = obs['location'];
-
-        const diff = luxon.DateTime.fromMillis(dateRef).diff(
-            luxon.DateTime.fromMillis(obs['recorded']), 'seconds');
-
-        if (Math.abs(diff.toObject()['seconds']) > timeDiffThreshold) {
-            dateRef = obs['recorded'];
+        if (mode === 'all') {
+            for (var j = 0; j < otherChart.data.datasets.length; j++)
+                otherChart.getDatasetMeta(j).hidden = hidden['other'][j.toString()] ? true : null;
+            otherChart.update();
         }
+    };
 
-        if (obsByDate[dateRef] === undefined)
-            obsByDate[dateRef] = {};
+    // Parse RuuviTag observations
+    // rtObservations - observations as JSON
+    // rtLabels - RuuviTag labels
+    // observationCount - number of non-RuuviTag observations
+    var parseRTData = function (rtObservations, rtLabels, observationCount) {
+        const labelCount = rtLabels.length,
+              timeDiffThreshold = 10;
+        var location = null,
+            dateRef = null,
+            obsByDate = {};
 
-        if (obsByDate[dateRef] !== undefined) {
-            if (obsByDate[dateRef][location] === undefined)
-                obsByDate[dateRef][location] = {};
-
-            obsByDate[dateRef][location]['temperature'] = obs['temperature'];
-            obsByDate[dateRef][location]['humidity'] = obs['humidity'];
-        }
-    }
-
-    for (const key of Object.keys(obsByDate)) {
         for (const label of rtLabels) {
-            if (obsByDate[key][label] !== undefined) {
-                dataSets['other'][`rt_${label}_temperature`].push(obsByDate[key][label]['temperature']);
-                dataSets['other'][`rt_${label}_humidity`].push(obsByDate[key][label]['humidity']);
-            } else {
-                dataSets['other'][`rt_${label}_temperature`].push(null);
-                dataSets['other'][`rt_${label}_humidity`].push(null);
+            dataSets['other'][`rt_${label}_temperature`] = [];
+            dataSets['other'][`rt_${label}_humidity`] = [];
+        }
+
+        for (var i = 0; i < rtObservations.length; i++) {
+            const obs = rtObservations[i];
+
+            if (!dateRef)
+                dateRef = obs['recorded'];
+
+            location = obs['location'];
+
+            const diff = luxon.DateTime.fromMillis(dateRef).diff(
+                luxon.DateTime.fromMillis(obs['recorded']), 'seconds');
+
+            if (Math.abs(diff.toObject()['seconds']) > timeDiffThreshold) {
+                dateRef = obs['recorded'];
+            }
+
+            if (obsByDate[dateRef] === undefined)
+                obsByDate[dateRef] = {};
+
+            if (obsByDate[dateRef] !== undefined) {
+                if (obsByDate[dateRef][location] === undefined)
+                    obsByDate[dateRef][location] = {};
+
+                obsByDate[dateRef][location]['temperature'] = obs['temperature'];
+                obsByDate[dateRef][location]['humidity'] = obs['humidity'];
             }
         }
-    }
-};
 
-// Parses an observation.
-// observation - observation as JSON
-var parseData = function (observation) {
-    const weatherFields = ['o-temperature', 'fmi-temperature', 'temp-delta',
-                           'cloudiness', 'wind-speed'],
-          otherFields = ['brightness', 'rssi'];
-
-    // dataMode - string, which mode to process data in, values: weather, other
-    // observation - object, observation to process
-    // selectKeys - array, which data keys to select
-    var processFields = function(dataMode, observation, selectKeys) {
-        for (key in observation) {
-            if (selectKeys.includes(key)) {
-                if (dataSets[dataMode][key] !== undefined)
-                    dataSets[dataMode][key].push(observation[key]);
-                else
-                    dataSets[dataMode][key] = [observation[key]];
+        for (const key of Object.keys(obsByDate)) {
+            for (const label of rtLabels) {
+                if (obsByDate[key][label] !== undefined) {
+                    dataSets['other'][`rt_${label}_temperature`].push(obsByDate[key][label]['temperature']);
+                    dataSets['other'][`rt_${label}_humidity`].push(obsByDate[key][label]['humidity']);
+                } else {
+                    dataSets['other'][`rt_${label}_temperature`].push(null);
+                    dataSets['other'][`rt_${label}_humidity`].push(null);
+                }
             }
         }
     };
 
-    if (mode === 'all') {
-        dataLabels.push(new Date(observation['recorded']));
+    // Parses an observation.
+    // observation - observation as JSON
+    var parseData = function (observation) {
+        const weatherFields = ['o-temperature', 'fmi-temperature', 'temp-delta',
+                               'cloudiness', 'wind-speed'],
+              otherFields = ['brightness', 'rssi'];
 
-        // Weather
-        processFields('weather', observation, weatherFields);
+        // dataMode - string, which mode to process data in, values: weather, other
+        // observation - object, observation to process
+        // selectKeys - array, which data keys to select
+        var processFields = function(dataMode, observation, selectKeys) {
+            for (key in observation) {
+                if (selectKeys.includes(key)) {
+                    if (dataSets[dataMode][key] !== undefined)
+                        dataSets[dataMode][key].push(observation[key]);
+                    else
+                        dataSets[dataMode][key] = [observation[key]];
+                }
+            }
+        };
 
-        // Other
-        processFields('other', observation, otherFields);
+        if (mode === 'all') {
+            dataLabels.push(new Date(observation['recorded']));
 
-        if (beaconName === '' && observation['name']) {
-            beaconName = observation['name'];
+            // Weather
+            processFields('weather', observation, weatherFields);
+
+            // Other
+            processFields('other', observation, otherFields);
+
+            if (beaconName === '' && observation['name']) {
+                beaconName = observation['name'];
+            }
+        } else {
+            dataLabels.push(new Date(observation['time']));
+
+            processFields('weather', observation, weatherFields);
         }
-    } else {
-        dataLabels.push(new Date(observation['time']));
-
-        processFields('weather', observation, weatherFields);
-    }
-    testbedImageNames.push(observation['tb-image-name']);
-};
+        testbedImageNames.push(observation['tb-image-name']);
+    };
 
 
-var getRTLabels = function(rtNames) {
-    var labels = {};
+    var getRTLabels = function(rtNames) {
+        var labels = {};
 
-    for (const name of rtNames) {
-        labels[`rt_${name}_temperature`] = `RT "${name}" temperature`;
-        labels[`rt_${name}_humidity`] = `RT "${name}" humidity`;
-    }
-
-    return labels;
-};
-
-// Transform data to Chart.js compatible format. Returns the data series labels.
-// jsonData - JSON input data
-var transformData = function (jsonData) {
-    const observations = JSON.parse(jsonData),
-          rtObservations = JSON.parse(document.getElementById('rtData').innerText);
-    observationCount = observations.length;
-
-    observations.map(function (element) {
-        parseData(element);
-    });
-
-    // Data labels
-    if (mode === 'all') {
-        // Get labels for RuuviTag data
-        const rtLabels = getRTLabels(rtNames);
-
-        parseRTData(rtObservations, rtNames, observations.length);
-
-        labelValues['other'] = {'brightness': 'Brightness',
-                                'rssi': beaconName !== '' ? `Beacon "${beaconName}" RSSI` : 'Beacon RSSI'};
-        for (const key in rtLabels) {
-            labelValues['other'][key] = rtLabels[key];
+        for (const name of rtNames) {
+            labels[`rt_${name}_temperature`] = `RT "${name}" temperature`;
+            labels[`rt_${name}_humidity`] = `RT "${name}" humidity`;
         }
-    }
-    labelValues['weather'] = {'o-temperature': 'Temperature (outside)',
-                              'fmi-temperature': 'Temperature (FMI)',
-                              'temp-delta': 'Temperature delta',
-                              'cloudiness': 'Cloudiness',
-                              'wind-speed': 'Wind speed'};
 
-    if (mode === 'all' && beaconName !== '') {
-        var label = `Beacon "${beaconName}" RSSI`;
-    }
-    return labelValues;
-};
+        return labels;
+    };
 
-var loadPage = function () {
+    // Transform data to Chart.js compatible format. Returns the data series labels.
+    // jsonData - JSON input data
+    var transformData = function (jsonData) {
+        const observations = JSON.parse(jsonData),
+              rtObservations = JSON.parse(document.getElementById('rtData').innerText);
+        observationCount = observations.length;
+
+        observations.map(function (element) {
+            parseData(element);
+        });
+
+        // Data labels
+        if (mode === 'all') {
+            // Get labels for RuuviTag data
+            const rtLabels = getRTLabels(rtNames);
+
+            parseRTData(rtObservations, rtNames, observations.length);
+
+            labelValues['other'] = {'brightness': 'Brightness',
+                                    'rssi': beaconName !== '' ? `Beacon "${beaconName}" RSSI` : 'Beacon RSSI'};
+            for (const key in rtLabels) {
+                labelValues['other'][key] = rtLabels[key];
+            }
+        }
+        labelValues['weather'] = {'o-temperature': 'Temperature (outside)',
+                                  'fmi-temperature': 'Temperature (FMI)',
+                                  'temp-delta': 'Temperature delta',
+                                  'cloudiness': 'Cloudiness',
+                                  'wind-speed': 'Wind speed'};
+
+        if (mode === 'all' && beaconName !== '') {
+            var label = `Beacon "${beaconName}" RSSI`;
+        }
+        return labelValues;
+    };
+
     if (JSON.parse(document.getElementById('chartData').innerText).length === 0) {
         document.getElementById('noDataError').style.display = 'block';
         document.getElementById('weatherDiv').style.display = 'none';
@@ -541,7 +541,7 @@ axios.get('params')
         mode = resp.data['mode'],
         testbedImageBasepath = resp.data['tb-image-basepath'];
         if (mode === 'all') {
-            rtNames = resp.data ['rt-names'],
+            rtNames = resp.data['rt-names'],
             rtDefaultShow = resp.data['rt-default-show'],
             rtDefaultValues = resp.data['rt-default-values'];
         }
