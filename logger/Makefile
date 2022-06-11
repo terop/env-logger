@@ -8,7 +8,7 @@ CFLAGS=-O2 -Wall -Wextra -pedantic
 all: scan
 
 scan: ble_beacon_scan.c
-	$(CC) $(CFLAGS) -lbluetooth -o ble_beacon_scan ble_beacon_scan.c
+	$(CC) $(CFLAGS) -o ble_beacon_scan ble_beacon_scan.c -lbluetooth
 
 clean:
 	rm -f ble_beacon_scan
