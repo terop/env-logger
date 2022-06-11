@@ -9,6 +9,5 @@ Extra capabilities for `ble_beacon_scan` must be set to run the program as a non
 
 ## RuuviTag scanning
 
-[Bluewalker](https://gitlab.com/jtaimisto/bluewalker) is needed for RuuviTag scanning.
-Install it with `go get gitlab.com/jtaimisto/bluewalker`. The binary must be placed in
-`PATH`. Passwordless sudo access is needed for the `bluewalker` and `hciconfig` commands.
+[ruuvitag-sensor](https://github.com/ttu/ruuvitag-sensor) is used for RuuviTag scanning.
+Passwordless `sudo` access is needed for the `hciconfig`, `hcidump` and `hcitool` commands.
