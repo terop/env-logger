@@ -1,6 +1,6 @@
 
 CC=gcc
-CFLAGS=-O2 -Wall -Wextra
+CFLAGS=-O2 -Wall -Wextra -pedantic
 
 # Dependencies on Debian:
 # sudo apt install build-essential libbluetooth-dev
