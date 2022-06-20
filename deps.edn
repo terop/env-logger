@@ -7,12 +7,12 @@
         ring/ring-json {:mvn/version "0.5.1"}
         clj-http/clj-http {:mvn/version "3.12.3"}
         io.github.dm3/clojure.java-time
-        {:sha "693dffad2343cd9722482a5f200efe75dfbfbd31"}
+        {:sha "bfab1c306fc7f8cc83710ea0d35ab10f385a9f35"}
         org.threeten/threeten-extra {:mvn/version "1.7.0"}
         compojure/compojure {:mvn/version "1.7.0"}
-        selmer/selmer {:mvn/version "1.12.50"}
+        selmer/selmer {:mvn/version "1.12.52"}
         cheshire/cheshire {:mvn/version "5.11.0"}
-        org.postgresql/postgresql {:mvn/version "42.3.6"}
+        org.postgresql/postgresql {:mvn/version "42.4.0"}
         com.github.seancorfield/honeysql {:mvn/version "2.2.891"}
         com.github.seancorfield/next.jdbc {:mvn/version "1.2.780"}
         buddy/buddy-auth {:mvn/version "3.0.323"}
@@ -25,7 +25,7 @@
  :aliases
  {:run {:main-opts ["-m" "env-logger.handler"]}
   :build {:deps {io.github.seancorfield/build-clj
-                 {:git/tag "v0.8.0" :git/sha "9bd8b8a"
+                 {:git/tag "v0.8.2" :git/sha "0ffdb4c"
                   ;; since we're building an app uberjar, we do not
                   ;; need deps-deploy for clojars.org deployment:
                   :deps/root "slim"}
@@ -40,4 +40,4 @@
   :eastwood {:main-opts ["-m" "eastwood.lint"
                          ;; Any Eastwood options can be passed here as edn:
                          {}]
-             :extra-deps {jonase/eastwood {:mvn/version "1.2.3"}}}}}
+             :extra-deps {jonase/eastwood {:mvn/version "1.2.4"}}}}}
