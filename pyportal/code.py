@@ -1,6 +1,7 @@
 """Code for showing various data on a PyPortal Titano display."""
 
 import time
+# pylint: disable=no-name-in-module
 from secrets import secrets
 
 # pylint: disable=import-error
@@ -33,7 +34,7 @@ BACKLIGHT_DIMMING_END = 7
 # Backlight value during dimming
 BACKLIGHT_DIMMING_VALUE = 0.5
 # Network failure threshold after which the board is rebooted
-NW_FAILURE_THRESHOLD = 5
+NW_FAILURE_THRESHOLD = 4
 
 
 def connect_to_wlan():
@@ -125,6 +126,10 @@ def get_backend_endpoint_content(endpoint, token):
                       'reloading board')
                 time.sleep(5)
                 supervisor.reload()
+        except requests.OutOfRetries as oor:
+            print(f'Too many retries exception: {oor}\nReloading board')
+            time.sleep(5)
+            supervisor.reload()
 
     return (token, resp.json())
 
@@ -160,7 +165,7 @@ def update_screen(display, observation, weather_data, utc_offset_hour):
     w_recorded = observation['data']['recorded']
 
     if observation['rt-data']:
-        rt_recorded = max([tag['recorded'] for tag in observation['rt-data']])
+        rt_recorded = max(tag['recorded'] for tag in observation['rt-data'])
     else:
         rt_recorded = w_recorded
 
