@@ -7,7 +7,7 @@ name = "pypi"
 pyserial = "*"
 pytz = "*"
 requests = "*"
-ruuvitag-sensor = "*"
+ruuvitag-sensor = {editable = true, git = "https://github.com/ttu/ruuvitag-sensor.git"}
 
 [dev-packages]
 
