@@ -7,7 +7,7 @@
         ring/ring-json {:mvn/version "0.5.1"}
         clj-http/clj-http {:mvn/version "3.12.3"}
         io.github.dm3/clojure.java-time
-        {:sha "bfab1c306fc7f8cc83710ea0d35ab10f385a9f35"}
+        {:sha "bee12188b3e479eb7766946d6b5e89226bc67520"}
         org.threeten/threeten-extra {:mvn/version "1.7.0"}
         compojure/compojure {:mvn/version "1.7.0"}
         selmer/selmer {:mvn/version "1.12.52"}
@@ -25,7 +25,7 @@
  :aliases
  {:run {:main-opts ["-m" "env-logger.handler"]}
   :build {:deps {io.github.seancorfield/build-clj
-                 {:git/tag "v0.8.2" :git/sha "0ffdb4c"
+                 {:git/tag "v0.8.3" :git/sha "7ac1f8d"
                   ;; since we're building an app uberjar, we do not
                   ;; need deps-deploy for clojars.org deployment:
                   :deps/root "slim"}

@@ -234,36 +234,29 @@ var loadPage = function () {
 
         // Show last observation and some other data for quick viewing
         var showLastObservation = function () {
-            var lastObservationIndex = observationCount - 1,
-                observationText = `Date: ${formatDate(dataLabels[lastObservationIndex])}<br>`,
+            var obsIndex = observationCount - 1,
+                observationText = `Date: ${formatDate(dataLabels[obsIndex])}<br>`,
                 itemsAdded = 0,
                 weatherKeys = ['fmi-temperature', 'cloudiness', 'wind-speed'];
 
             var weatherData = JSON.parse(document.getElementById('weatherData').textContent);
-            if (mode === 'all') {
-                weatherKeys.unshift('o-temperature');
-
+            if (mode === 'all')
                 observationText += `Sun: Sunrise ${formatUnixSecondTs(weatherData['owm']['current']['sunrise'])},` +
-                    ` Sunset ${formatUnixSecondTs(weatherData['owm']['current']['sunset'])}<br>`;
-            }
+                ` Sunset ${formatUnixSecondTs(weatherData['owm']['current']['sunset'])}<br>`;
 
-            for (var i = lastObservationIndex; i > 0; i--) {
-                if (dataSets['weather']['fmi-temperature'][i] !== null) {
-                    lastObservationIndex = i;
-                    break;
+            const wd = (mode === 'all' ? weatherData['fmi']['current'] : weatherData);
+            if (wd)
+                for (const key of weatherKeys) {
+                    if (key === 'wind-speed')
+                        observationText += `Wind: ${wd['wind-direction']['long']} ` +
+                        `${wd[key]} ${addUnitSuffix(key)}, `;
+                    else if (key === 'fmi-temperature')
+                        observationText += `${labelValues['weather'][key]}: ` +
+                        `${wd['temperature']} ${addUnitSuffix(key)}, `;
+                    else
+                        observationText += `${labelValues['weather'][key]}: ${wd[key]}` +
+                        `${addUnitSuffix(key)}, `;
                 }
-            }
-
-            for (const key of weatherKeys) {
-                if (key === 'wind-speed')
-                    observationText += 'Wind: ' +
-                    (mode === 'all' ? `${weatherData['fmi']['current']['wind-direction']['long']} ` :
-                     `${weatherData['wind-direction']['long']} `) +
-                    `${dataSets['weather'][key][lastObservationIndex]} ${addUnitSuffix(key)}, `;
-                else
-                    observationText += `${labelValues['weather'][key]}: ${dataSets['weather'][key][lastObservationIndex]}` +
-                    `${addUnitSuffix(key)}, `;
-            }
             if (mode === 'all') {
                 observationText += `Description: ${weatherData['owm']['current']['weather'][0]['description']}`;
 
@@ -277,16 +270,15 @@ var loadPage = function () {
                         observationText += '<br>';
                         itemsAdded = 0;
                     }
-                    observationText += `${labelValues['other'][key]}: ${dataSets['other'][key][lastObservationIndex]}` +
+                    observationText += `${labelValues['other'][key]}: ${dataSets['other'][key][obsIndex]}` +
                         `${addUnitSuffix(key)}, `;
                     itemsAdded++;
                 }
                 observationText = observationText.slice(0, -2);
 
                 const forecast = weatherData['fmi']['forecast'];
-                if (!forecast || !weatherData['owm'])
-                    return;
-                observationText += '<br><br>Forecast for ' +
+                if (forecast && weatherData['owm'])
+                    observationText += '<br><br>Forecast for ' +
                     luxon.DateTime.fromSeconds(weatherData['owm']['forecast']['dt']).toFormat('dd.MM.yyyy HH:mm') +
                     `: temperature: ${forecast['temperature']} \u2103, ` +
                     `cloudiness: ${forecast['cloudiness']} %, ` +

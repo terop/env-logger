@@ -66,7 +66,7 @@
   "Parses and returns various weather data values from the given XML
   data. It is assumed that there only one set of values in the XML data."
   [parsed-xml]
-  (when (>= (count (:content parsed-xml)) 3)
+  (when (>= (count (:content parsed-xml)) 4)
     (let [root (xml-zip parsed-xml)
           values (for [m (zx/xml-> root
                                    :wfs:member
@@ -82,20 +82,9 @@
                                  (get-conf-value :weather-timezone)))
        :temperature (Float/parseFloat (nth values 0))
        :cloudiness (Math/round (Float/parseFloat (nth values 1)))
-       :wind-speed (Float/parseFloat (nth values 2))})))
-
-(defn extract-weather-data-wd
-  "Parses and returns various wind direction value from the given XML
-  data. It is assumed that there only one value in the XML data."
-  [parsed-xml]
-  (when (>= (count (:content parsed-xml)) 1)
-    (let [root (xml-zip parsed-xml)
-          value (for [m (zx/xml-> root
-                                  :wfs:member
-                                  :BsWfs:BsWfsElement
-                                  :BsWfs:ParameterValue)]
-                  (zx/text m))]
-      (Float/parseFloat (nth value 0)))))
+       :wind-speed (Float/parseFloat (nth values 2))
+       :wind-direction (get-wd-str (Float/parseFloat
+                                    (nth values 3)))})))
 
 (defn extract-forecast-data
   "Parses and returns forecast data values from the given XML data."
@@ -128,14 +117,14 @@
                             (t/seconds (.getSecond (t/zoned-date-time))))]
     start-time))
 
-(defn -get-fmi-weather-data-wfs
+(defn get-fmi-weather-data
   "Fetches the latest FMI data from the FMI WFS for the given weather
   observation station. If fetching or parsing failed, nil is returned."
   [station-id]
   (let [url (format (str "https://opendata.fmi.fi/wfs?service=WFS&version=2.0.0"
                          "&request=getFeature&storedquery_id="
                          "fmi::observations::weather::simple&fmisid=%d&"
-                         "parameters=t2m,n_man,ws_10min&starttime=%s")
+                         "parameters=t2m,n_man,ws_10min,wd_10min&starttime=%s")
                     station-id
                     (-convert-to-iso8601-str (t/with-zone
                                                (calculate-start-time)
@@ -149,35 +138,6 @@
       (catch Exception ex
         (error ex "FMI weather data fetch failed")
         nil))))
-
-(defn -get-fmi-weather-data-wd
-  "Fetches the latest FMI wind direction data from the FMI WFS for the given
-  weather observation station. If fetching or parsing failed, nil is returned."
-  [station-id]
-  (let [url (format (str "https://opendata.fmi.fi/wfs?service=WFS&version=2.0.0"
-                         "&request=getFeature&storedquery_id="
-                         "fmi::observations::weather::simple&fmisid=%d&"
-                         "parameters=wd_10min&starttime=%s")
-                    station-id
-                    (-convert-to-iso8601-str (t/with-zone
-                                               (calculate-start-time)
-                                               (get-conf-value
-                                                :weather-timezone))))]
-    (try
-      (extract-weather-data-wd (parse url))
-      (catch org.xml.sax.SAXParseException spe
-        (error spe "FMI weather data XML parsing failed")
-        nil)
-      (catch Exception ex
-        (error ex "FMI weather data fetch failed")
-        nil))))
-
-(defn get-fmi-weather-data
-  "Fetches the latest FMI weather data either using WFS
-  for the given weather observation station. If fetching or parsing failed,
-  nil is returned."
-  [station-id]
-  (-get-fmi-weather-data-wfs station-id))
 
 (defn weather-query-ok?
   "Tells whether it is OK to query the FMI API for weather observations.
@@ -267,13 +227,10 @@
   []
   (-cache-set-value weather-cache
                     :data
-                    {:fmi (conj {:forecast (-get-fmi-weather-forecast
-                                            (get-conf-value :fmi-station-id))}
-                                {:current {:wind-direction
-                                           (get-wd-str
-                                            (-get-fmi-weather-data-wd
-                                             (get-conf-value
-                                              :fmi-station-id)))}})
+                    {:fmi {:current (get-fmi-weather-data
+                                     (get-conf-value :fmi-station-id))
+                           :forecast (-get-fmi-weather-forecast
+                                      (get-conf-value :fmi-station-id))}
                      :owm (fetch-owm-data (get-conf-value :owm-app-id)
                                           (get-conf-value :forecast-lat)
                                           (get-conf-value :forecast-lon))})
@@ -289,12 +246,14 @@
   Otherwise fetch updated data and store it in the cache. Always return
   the available data."
   []
-  (if-not (nil? (c/lookup weather-cache :recorded))
+  (if (or (nil? (c/lookup weather-cache :recorded))
+          (nil? (:current (:fmi (c/lookup weather-cache :data))))
+          (nil? (:forecast (:fmi (c/lookup weather-cache :data)))))
+    (update-cache-data)
     (when (>= (t/time-between (t/local-date-time
                                (c/lookup weather-cache :recorded))
                               (t/local-date-time)
                               :minutes)
               (get-conf-value :weather-query-threshold))
-      (update-cache-data))
-    (update-cache-data))
+      (update-cache-data)))
   (c/lookup weather-cache :data))

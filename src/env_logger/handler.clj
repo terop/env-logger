@@ -38,14 +38,13 @@
                     (t/hours (db/get-tz-offset
                               (get-conf-value :store-timezone))))))
 
-(defn get-last-obs-data
-  "Get data for observation with a non-null FMI temperature value."
+(defn get-latest-obs-data
+  "Get data for the latest observation."
   [request]
   (if-not (authenticated? request)
     auth/response-unauthorized
     (with-open [con (jdbc/get-connection db/postgres-ds)]
-      (let [data (first (filter #(not (nil? (:fmi-temperature %)))
-                                (reverse (db/get-obs-days con 1))))
+      (let [data (first (reverse (db/get-obs-days con 1)))
             rt-data (sort-by :location
                              (take (count (get-conf-value :ruuvitag-locations))
                                    (reverse (db/get-ruuvitag-obs
@@ -61,7 +60,9 @@
                 :rt-data (for [item rt-data]
                            (assoc item :recorded
                                   (convert-epoch-ms-to-string
-                                   (:recorded item))))}}))))
+                                   (:recorded item))))
+                :weather-data (get-fmi-weather-data
+                               (get-conf-value :fmi-station-id))}}))))
 
 (defn get-plot-page-data
   "Returns data needed for rendering the plot page."
@@ -177,7 +178,7 @@
     (POST "/register" [] auth/wa-register)
     (GET "/login" [] auth/wa-prepare-login)
     (POST "/login" [] auth/wa-login))
-  (GET "/get-last-obs" [] get-last-obs-data)
+  (GET "/get-latest-obs" [] get-latest-obs-data)
   (GET "/get-weather-data" request
     (if-not (authenticated? request)
       auth/response-unauthorized

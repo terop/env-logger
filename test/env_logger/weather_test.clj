@@ -9,13 +9,10 @@
             [next.jdbc :as jdbc]
             [env-logger.weather :refer [-cache-set-value
                                         -convert-to-iso8601-str
-                                        -get-fmi-weather-data-wd
-                                        -get-fmi-weather-data-wfs
                                         -get-fmi-weather-forecast
                                         calculate-start-time
                                         extract-forecast-data
                                         extract-weather-data
-                                        extract-weather-data-wd
                                         fetch-owm-data
                                         get-fmi-weather-data
                                         get-wd-str
@@ -38,6 +35,8 @@
 (deftest test-data-extraction
   (testing "Data extraction function tests"
     (is (= {:wind-speed 5.0,
+            :wind-direction {:short "N"
+                             :long "north"}
             :cloudiness 3,
             :temperature -9.0,
             :time #inst "2021-12-02T18:10:00.000000000-00:00"}
@@ -46,12 +45,6 @@
     (is (nil? (extract-weather-data
                (load-file
                 "test/env_logger/wfs_extraction_data_invalid.txt"))))))
-
-(deftest test-wd-data-extraction
-  (testing "Wind direction data extraction function tests"
-    (is (= 300.0
-           (extract-weather-data-wd
-            (load-file "test/env_logger/wfs_data_wd.txt"))))))
 
 (deftest test-forecast-data-extraction
   (testing "Forecast data extraction function tests"
@@ -81,26 +74,6 @@
              (first (s/split (str (t/local-date-time (calculate-start-time)))
                              #"\[")))))))
 
-(deftest test-weather-data-extraction-wfs
-  (testing "Tests FMI weather data (WFS) extraction"
-    (with-redefs [parse (fn [_]
-                          (load-file "test/env_logger/wfs_data.txt"))]
-      (is (= {:wind-speed 5.0,
-              :cloudiness 3,
-              :temperature -9.0,
-              :time #inst "2021-12-02T18:10:00.000000000-00:00"}
-             (-get-fmi-weather-data-wfs 87874))))
-    (with-redefs [parse (fn [_]
-                          {:content "garbage"})]
-      (is (nil? (-get-fmi-weather-data-wfs 87874))))))
-
-(deftest test-weather-data-extraction-wd
-  (testing "Tests FMI weather wind speed data extraction"
-    (with-redefs [parse (fn [_]
-                          (load-file "test/env_logger/wfs_data_wd.txt"))]
-      (is (= 300.0
-             (-get-fmi-weather-data-wd 87874))))))
-
 (deftest test-forecast-data-fetch
   (testing "Tests FMI forecast data fetching"
     (with-redefs [parse (fn [_]
@@ -119,6 +92,8 @@
     (with-redefs [parse (fn [_]
                           (load-file "test/env_logger/wfs_data.txt"))]
       (is (= {:wind-speed 5.0,
+              :wind-direction {:short "N"
+                               :long "north"}
               :cloudiness 3,
               :temperature -9.0,
               :time #inst "2021-12-02T18:10:00.000000000-00:00"}

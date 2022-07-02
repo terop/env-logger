@@ -159,7 +159,7 @@ def adjust_backlight(display):
         display.brightness = BACKLIGHT_DEFAULT_VALUE
 
 
-# pylint: disable=too-many-locals
+# pylint: disable=too-many-locals,too-many-statements
 def update_screen(display, observation, weather_data, utc_offset_hour):
     """Update screen contents."""
     w_recorded = observation['data']['recorded']
@@ -172,36 +172,37 @@ def update_screen(display, observation, weather_data, utc_offset_hour):
     clear_display(display)
 
     display[0].text = w_recorded
-    if weather_data:
+    if observation['weather-data']:
         sunrise = time.localtime(weather_data['owm']['current']['sunrise'])
         sunrise = f'{sunrise.tm_hour + utc_offset_hour:02}:{sunrise.tm_min:02}'
         sunset = time.localtime(weather_data['owm']['current']['sunset'])
         sunset = f'{sunset.tm_hour + utc_offset_hour:02}:{sunset.tm_min:02}'
         display[0].text += f'           sr {sunrise} ss {sunset}'
-    display[1].text = f'Weather: temperature {observation["data"]["fmi-temperature"]} \u00b0C, ' + \
-        f'cloudiness {observation["data"]["cloudiness"]},'
-    if weather_data:
+
+        weather = observation['weather-data']
+        display[1].text = f'Weather: temperature {weather["temperature"]} ' + \
+            f'\u00b0C, cloudiness {weather["cloudiness"]},'
+        display[2].text = 'wind ' + \
+            f'{weather["wind-direction"]["short"]} {weather["wind-speed"]} m/s'
+
+    if weather_data['fmi']['forecast']:
         current = weather_data['owm']['current']
         forecast = weather_data['fmi']['forecast']
         forecast_dt = time.localtime(weather_data['owm']['forecast']['dt'])
 
-        if current:
-            display[2].text = 'wind ' + \
-                f'{weather_data["fmi"]["current"]["wind-direction"]["short"]} ' + \
-                f'{observation["data"]["wind-speed"]} m/s, desc ' + \
-                f'\"{current["weather"][0]["description"]}\"'
+        display[2].text += f', desc \"{current["weather"][0]["description"]}\"'
         if forecast:
             display[3].text = 'Forecast'
             if forecast_dt and forecast_dt.tm_hour is not None \
                and forecast_dt.tm_min is not None:
                 display[3].text += f' ({forecast_dt.tm_hour + utc_offset_hour:02}:' + \
                     f'{forecast_dt.tm_min:02})'
-            display[3].text += f': temp {forecast["temperature"]} \u00b0C, ' + \
-                f'clouds {forecast["cloudiness"]} %,'
-            display[4].text = f'wind {forecast["wind-direction"]["short"]} ' + \
-                f'{forecast["wind-speed"]} m/s, ' + \
-                f'desc \"{weather_data["owm"]["forecast"]["weather"][0]["description"]}\"'
-        row = 5
+                display[3].text += f': temp {forecast["temperature"]} \u00b0C, ' + \
+                    f'clouds {forecast["cloudiness"]} %,'
+                display[4].text = f'wind {forecast["wind-direction"]["short"]} ' + \
+                    f'{forecast["wind-speed"]} m/s, ' + \
+                    f'desc \"{weather_data["owm"]["forecast"]["weather"][0]["description"]}\"'
+                row = 5
     else:
         row = 2
 
@@ -264,7 +265,7 @@ def main():
         if BACKLIGHT_DIMMING_ENABLED:
             adjust_backlight(board.DISPLAY)
 
-        token, observation = get_backend_endpoint_content('get-last-obs', token)
+        token, observation = get_backend_endpoint_content('get-latest-obs', token)
         token, weather_data = get_backend_endpoint_content('get-weather-data', token)
 
         update_screen(display, observation, weather_data, utc_offset_hour)
