@@ -246,6 +246,8 @@ var loadPage = function () {
 
             const wd = (mode === 'all' ? weatherData['fmi']['current'] : weatherData);
             if (wd)
+                observationText += `Time ${luxon.DateTime.fromISO(wd['time']).toLocaleString(luxon.DateTime.TIME_SIMPLE)}` +
+                ': ';
                 for (const key of weatherKeys) {
                     if (key === 'wind-speed')
                         observationText += `Wind: ${wd['wind-direction']['long']} ` +
@@ -279,7 +281,7 @@ var loadPage = function () {
                 const forecast = weatherData['fmi']['forecast'];
                 if (forecast && weatherData['owm'])
                     observationText += '<br><br>Forecast for ' +
-                    luxon.DateTime.fromSeconds(weatherData['owm']['forecast']['dt']).toFormat('dd.MM.yyyy HH:mm') +
+                    luxon.DateTime.fromISO(forecast['time']).toFormat('dd.MM.yyyy HH:mm') +
                     `: temperature: ${forecast['temperature']} \u2103, ` +
                     `cloudiness: ${forecast['cloudiness']} %, ` +
                     `wind: ${forecast['wind-direction']['long']} ${forecast['wind-speed']} m/s, ` +

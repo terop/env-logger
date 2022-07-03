@@ -25,7 +25,8 @@
              [weather :refer [calculate-start-time
                               get-fmi-weather-data
                               weather-query-ok?
-                              get-weather-data]]])
+                              get-weather-data
+                              fetch-all-weather-data]]])
   (:import java.time.Instant)
   (:gen-class))
 
@@ -61,8 +62,7 @@
                            (assoc item :recorded
                                   (convert-epoch-ms-to-string
                                    (:recorded item))))
-                :weather-data (get-fmi-weather-data
-                               (get-conf-value :fmi-station-id))}}))))
+                :weather-data (get-fmi-weather-data)}}))))
 
 (defn get-plot-page-data
   "Returns data needed for rendering the plot page."
@@ -131,8 +131,7 @@
           weather-data (when (and (t/contains? start-time-int
                                                (t/zoned-date-time))
                                   (weather-query-ok? con 3))
-                         (get-fmi-weather-data
-                          (get-conf-value :fmi-station-id)))]
+                         (get-fmi-weather-data))]
       (db/insert-observation con
                              (assoc (parse-string obs-string
                                                   true)
@@ -185,6 +184,7 @@
       (generate-string (get-weather-data))))
   ;; Observation storing
   (POST "/observations" request
+    (fetch-all-weather-data)
     (if-not (auth/check-auth-code (:code (:params request)))
       auth/response-unauthorized
       (if-not (db/test-db-connection db/postgres-ds)
@@ -245,6 +245,8 @@
                   (wrap-json-response $ {:pretty false})
                   (wrap-json-params $ {:keywords? true}))
         opts {:port port}]
+    ;; Load initial weather data
+    (fetch-all-weather-data)
     (run-jetty (if production?
                  handler
                  (wrap-reload handler))

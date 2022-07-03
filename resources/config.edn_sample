@@ -25,8 +25,6 @@
  :fmi-station-id 1234
  ;; OpenWeatherMap application ID (access key)
  :owm-app-id "myappid"
- ;; Weather data query threshold in minutes
- :weather-query-threshold 5
  ;; Position latitude for weather data
  :forecast-lat 12.34
  ;; Position longitude for weather data
