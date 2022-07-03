@@ -8,6 +8,7 @@
             [next.jdbc :as jdbc]
             [env-logger
              [config :refer [get-conf-value]]
+             [db :refer [get-tz-offset]]
              [weather :refer [-convert-to-iso8601-str
                               -convert-to-tz-iso8601-str
                               calculate-start-time
@@ -33,7 +34,9 @@
     (is (= "2022-06-06T15:33:50Z"
            (-convert-to-iso8601-str
             (ZonedDateTime/of 2022 6 6
-                              18 33 50 0
+                              (+ 15 (get-tz-offset
+                                     (get-conf-value :weather-timezone)))
+                              33 50 0
                               (t/zone-id
                                (get-conf-value :weather-timezone))))))))
 
@@ -42,7 +45,9 @@
     (is (= "2022-06-06T15:33:50Z"
            (-convert-to-tz-iso8601-str
             (ZonedDateTime/of 2022 6 6
-                              18 33 50 0
+                              (+ 15 (get-tz-offset
+                                     (get-conf-value :weather-timezone)))
+                              33 50 0
                               (t/zone-id
                                (get-conf-value
                                 :weather-timezone))))))))
