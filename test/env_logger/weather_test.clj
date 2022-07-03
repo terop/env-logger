@@ -6,18 +6,20 @@
             [cheshire.core :refer [generate-string]]
             [java-time :as t]
             [next.jdbc :as jdbc]
-            [env-logger.weather :refer [-convert-to-iso8601-str
-                                        -convert-to-tz-iso8601-str
-                                        calculate-start-time
-                                        extract-forecast-data
-                                        extract-weather-data
-                                        -update-fmi-weather-forecast
-                                        -update-fmi-weather-data
-                                        -fetch-owm-data
-                                        get-fmi-weather-data
-                                        get-wd-str
-                                        get-weather-data
-                                        weather-query-ok?]])
+            [env-logger
+             [config :refer [get-conf-value]]
+             [weather :refer [-convert-to-iso8601-str
+                              -convert-to-tz-iso8601-str
+                              calculate-start-time
+                              extract-forecast-data
+                              extract-weather-data
+                              -update-fmi-weather-forecast
+                              -update-fmi-weather-data
+                              -fetch-owm-data
+                              get-fmi-weather-data
+                              get-wd-str
+                              get-weather-data
+                              weather-query-ok?]]])
   (:import java.time.ZonedDateTime))
 
 (def fmi-current (atom {}))
@@ -29,10 +31,11 @@
 (deftest test-iso8601-str-generation
   (testing "ZonedDateTime to ISO 8601 string conversion"
     (is (= "2022-06-06T15:33:50Z"
-           (-convert-to-iso8601-str (ZonedDateTime/of 2022 6 6
-                                                      18 33 50 0
-                                                      (t/zone-id
-                                                       "Europe/Helsinki")))))))
+           (-convert-to-iso8601-str
+            (ZonedDateTime/of 2022 6 6
+                              18 33 50 0
+                              (t/zone-id
+                               (get-conf-value :weather-timezone))))))))
 
 (deftest test-iso8601-and-tz-str-formatting
   (testing "Date and time to ISO 8601 with timezone string conversion"
@@ -41,7 +44,8 @@
             (ZonedDateTime/of 2022 6 6
                               18 33 50 0
                               (t/zone-id
-                               "Europe/Helsinki")))))))
+                               (get-conf-value
+                                :weather-timezone))))))))
 
 ;; FMI
 
