@@ -24,6 +24,7 @@ not be needed.
     * `adafruit_portalbase/`
     * `adafruit_requests.mpy`
     * `adafruit_simple_text_display.mpy`
+    * `adafruit_datetime.mpy`
     * `neopixel.mpy`
     * `simpleio.mpy`
 

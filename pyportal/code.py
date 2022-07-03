@@ -12,6 +12,7 @@ import busio
 import rtc
 import supervisor
 from adafruit_bitmap_font import bitmap_font
+from adafruit_datetime import datetime
 from adafruit_esp32spi import adafruit_esp32spi
 from adafruit_simple_text_display import SimpleTextDisplay
 from digitalio import DigitalInOut
@@ -180,7 +181,10 @@ def update_screen(display, observation, weather_data, utc_offset_hour):
         display[0].text += f'           sr {sunrise} ss {sunset}'
 
         weather = observation['weather-data']
-        display[1].text = f'Weather: temperature {weather["temperature"]} ' + \
+        dt_time = datetime.fromisoformat(weather['time'].replace('Z', ''))
+        time_str = f'{dt_time.hour + utc_offset_hour:02}:{dt_time.minute:02}'
+
+        display[1].text = f'Weather ({time_str}): temp {weather["temperature"]} ' + \
             f'\u00b0C, cloudiness {weather["cloudiness"]},'
         display[2].text = 'wind ' + \
             f'{weather["wind-direction"]["short"]} {weather["wind-speed"]} m/s'
