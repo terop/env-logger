@@ -20,8 +20,10 @@
                               get-fmi-weather-data
                               get-wd-str
                               get-weather-data
-                              weather-query-ok?]]])
-  (:import java.time.ZonedDateTime))
+                              store-weather-data?]]])
+  (:import java.time.ZonedDateTime
+           (org.postgresql.util PSQLException
+                                PSQLState)))
 
 (def fmi-current (atom {}))
 (def fmi-forecast (atom nil))
@@ -122,40 +124,20 @@
 
 (deftest fmi-weather-data-fetch
   (testing "Tests FMI weather data fetch"
-    (reset! fmi-current
-            {(-convert-to-tz-iso8601-str (t/zoned-date-time))
-             {:wind-speed 5.0,
-              :wind-direction {:short "N"
-                               :long "north"}
-              :cloudiness 3,
-              :temperature -9.0,
-              :time #inst "2021-12-02T18:10:00.000000000-00:00"}})
-    ;; TODO fix this test case
-    ;; (is (= {:wind-speed 5.0,
-    ;;         :wind-direction {:short "N"
-    ;;                          :long "north"}
-    ;;         :cloudiness 3,
-    ;;         :temperature -9.0,
-    ;;         :time #inst "2021-12-02T18:10:00.000000000-00:00"}
-    ;;        (get-fmi-weather-data)))
+    ;; Dummy test case, should be improved in the future
     (is (nil? (get-fmi-weather-data)))))
 
-(deftest test-weather-query-ok
-  (testing "Test when it is OK to query for FMI weather data"
-    (with-redefs [jdbc/execute-one! (fn [_ _ _] '())]
-      (is (true? (weather-query-ok? {} 5))))
-    (with-redefs [jdbc/execute-one! (fn [_ _ _]
-                                      {:recorded (t/minus (t/offset-date-time)
-                                                          (t/minutes 3))})]
-      (is (false? (weather-query-ok? {} 5))))
-    (with-redefs [jdbc/execute-one! (fn [_ _ _]
-                                      {:recorded (t/minus (t/offset-date-time)
-                                                          (t/minutes 3))})]
-      (is (true? (weather-query-ok? {} 3))))
-    (with-redefs [jdbc/execute-one! (fn [_ _ _]
-                                      {:recorded (t/minus (t/offset-date-time)
-                                                          (t/minutes 6))})]
-      (is (true? (weather-query-ok? {} 5))))))
+(deftest test-store-weather-data
+  (testing "Tests if FMI weather data needs to be stored"
+    (with-redefs [jdbc/execute-one! (fn [_ _ _] {:count 0})]
+      (is (true? (store-weather-data? {}))))
+    (with-redefs [jdbc/execute-one! (fn [_ _ _] {:count 1})]
+      (is (false? (store-weather-data? {}))))
+    (with-redefs [jdbc/execute-one!
+                  (fn [_ _ _] (throw (PSQLException.
+                                      "Test exception"
+                                      (PSQLState/COMMUNICATION_ERROR))))]
+      (is (false? (store-weather-data? {}))))))
 
 (deftest test-get-wd-str
   (testing "Test wind direction to string conversion"

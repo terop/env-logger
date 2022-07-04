@@ -24,7 +24,7 @@
              [db :as db]
              [weather :refer [calculate-start-time
                               get-fmi-weather-data
-                              weather-query-ok?
+                              store-weather-data?
                               get-weather-data
                               fetch-all-weather-data]]])
   (:import java.time.Instant)
@@ -130,7 +130,7 @@
                                      (t/plus start-time (t/minutes 7)))
           weather-data (when (and (t/contains? start-time-int
                                                (t/zoned-date-time))
-                                  (weather-query-ok? con 3))
+                                  (store-weather-data? con))
                          (get-fmi-weather-data))]
       (db/insert-observation con
                              (assoc (parse-string obs-string

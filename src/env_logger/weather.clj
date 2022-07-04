@@ -11,7 +11,10 @@
             [java-time :as t]
             [env-logger
              [config :refer [get-conf-value]]
-             [db :refer [rs-opts]]]))
+             [db :refer [rs-opts]]])
+  (:import org.postgresql.util.PSQLException))
+(refer-clojure :exclude '[filter for group-by into partition-by set update])
+(require '[honey.sql :as sql])
 
 (def fmi-current (atom {}))
 (def fmi-forecast (atom nil))
@@ -52,25 +55,23 @@
                              (get-conf-value
                               :weather-timezone))))
 
-(defn weather-query-ok?
-  "Tells whether it is OK to query the FMI API for weather observations.
-  Criteria for being OK is that the last observation's timestamp does not lie
-  within the [now-waittime,now] interval. Wait time must be provided in
-  minutes."
-  [db-con wait-time]
-  (let [obs-recorded (:recorded
-                      (jdbc/execute-one! db-con
-                                         ["SELECT recorded FROM observations
-                                          WHERE id = (SELECT obs_id FROM
-                                          weather_data ORDER BY id DESC
-                                          LIMIT 1)"]
-                                         rs-opts))]
-    (if-not (nil? obs-recorded)
-      (not (t/contains? (t/interval (t/minus (t/offset-date-time)
-                                             (t/minutes wait-time))
-                                    (t/offset-date-time))
-                        obs-recorded))
-      true)))
+(defn store-weather-data?
+  "Tells whether to FMI weather data.
+  The criteria for storing is that there is no recorded data in the
+  [(last even 10 minutes), (current time)] window."
+  [db-con]
+  (try
+    (zero? (:count (jdbc/execute-one!
+                    db-con
+                    (sql/format {:select :%count.id
+                                 :from :weather_data
+                                 :where [:>= :time
+                                         (t/local-date-time
+                                          (calculate-start-time))]})
+                    rs-opts)))
+    (catch PSQLException pe
+      (error pe "Weather data storage check failed")
+      false)))
 
 ;; FMI
 
@@ -174,7 +175,10 @@
                       start-time-str)
           index (atom retry-count)]
       (try
-        (while (and (pos? @index)
+        ;; The first check is to prevent pointless fetch attempts when data
+        ;; is not yet available
+        (while (and (>= (rem (.getMinute (t/local-date-time)) 10) 3)
+                    (pos? @index)
                     (nil? (get @fmi-current start-time-str)))
           (let [wd (extract-weather-data (parse url))]
             (if wd
@@ -227,7 +231,9 @@
                                                    (t/hours 1))))
           index (atom retry-count)]
       (try
-        (while (and (pos? @index)
+        ;; Fetch after x:56 seems to always fail so do not even attempt it
+        (while (and (<= (.getMinute (t/local-date-time)) 56)
+                    (pos? @index)
                     (or (nil? @fmi-forecast)
                         (< (abs (t/time-between (t/local-date-time
                                                  (:time @fmi-forecast))
