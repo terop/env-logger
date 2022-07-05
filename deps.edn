@@ -20,7 +20,7 @@
         com.taoensso/timbre {:mvn/version "5.2.1"}
         com.fzakaria/slf4j-timbre {:mvn/version "0.3.21"}
         io.github.terop/cljwebauthn
-        {:sha "ccb1de26a510947103457449f877327dcd777ef6"}}
+        {:sha "bb262552d3e79bda6b975c71d06ec3d323d5580f"}}
  :aliases
  {:run {:main-opts ["-m" "env-logger.handler"]}
   :build {:deps {io.github.seancorfield/build-clj
