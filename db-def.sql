@@ -36,7 +36,8 @@ CREATE TABLE ruuvitag_observations(
        -- allow NULL values as not all RuuviTags have a pressure sensor
        pressure REAL,
        humidity REAL NOT NULL,
-       battery_voltage REAL NOT NULL
+       battery_voltage REAL NOT NULL,
+       rssi INTEGER NOT NULL
 );
 
 -- User table

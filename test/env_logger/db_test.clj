@@ -305,7 +305,8 @@
                         :temperature 21
                         :pressure 1100
                         :humidity 25
-                        :battery_voltage 2.921}]
+                        :battery_voltage 2.921
+                        :rssi -72}]
       (is (pos? (insert-ruuvitag-observation test-ds
                                              ruuvitag-obs)))
       (is (pos? (insert-ruuvitag-observation

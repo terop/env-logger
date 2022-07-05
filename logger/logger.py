@@ -92,7 +92,8 @@ def scan_ruuvitags(config, device):
                     'temperature': tag['temperature'],
                     'pressure': tag['pressure'],
                     'humidity': tag['humidity'],
-                    'battery_voltage': tag['battery'] / 1000.0}
+                    'battery_voltage': tag['battery'] / 1000.0,
+                    'rssi': tag['rssi']}
 
             resp = requests.post(config['ruuvitag']['url'],
                                  params={'observation': json.dumps(data),
