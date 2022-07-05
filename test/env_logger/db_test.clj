@@ -376,21 +376,24 @@
                  :temperature 22.0
                  :pressure 1024.0
                  :humidity 45.0
-                 :battery_voltage 2.910})
+                 :battery_voltage 2.910
+                 :rssi -72})
     (js/insert! test-ds
                 :ruuvitag_observations
                 {:location "indoor"
                  :temperature 21.0
                  :pressure 1023.0
                  :humidity 45.0
-                 :battery_voltage 2.890})
+                 :battery_voltage 2.890
+                 :rssi -66})
     (js/insert! test-ds
                 :ruuvitag_observations
                 {:location "balcony"
                  :temperature 15.0
                  :pressure 1024.0
                  :humidity 30.0
-                 :battery_voltage 2.805})
+                 :battery_voltage 2.805
+                 :rssi -75})
     (is (= '{:location "balcony"
              :temperature 15.0
              :humidity 30.0}
