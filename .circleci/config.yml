@@ -44,3 +44,5 @@ jobs:
       - run: clojure -T:build ci
 
       - run: clojure -M:eastwood
+
+      - run: clojure -M:kibit

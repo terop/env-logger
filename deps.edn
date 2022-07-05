@@ -39,4 +39,6 @@
   :eastwood {:main-opts ["-m" "eastwood.lint"
                          ;; Any Eastwood options can be passed here as edn:
                          {}]
-             :extra-deps {jonase/eastwood {:mvn/version "1.2.4"}}}}}
+             :extra-deps {jonase/eastwood {:mvn/version "1.2.4"}}}
+  :kibit {:extra-deps {tvaughan/kibit-runner {:mvn/version "1.0.1"}}
+          :main-opts  ["-m" "kibit-runner.cmdline"]}}}

@@ -201,13 +201,10 @@
   If there is no data for the current or the previous check times nil
   is returned."
   []
-  (let [wd (get @fmi-current
-                (-convert-to-tz-iso8601-str (calculate-start-time)))]
-    (if wd
-      wd
-      (get @fmi-current
-           (-convert-to-tz-iso8601-str (t/minus (calculate-start-time)
-                                                (t/minutes 10)))))))
+  (or (get @fmi-current
+           (-convert-to-tz-iso8601-str (calculate-start-time)))
+      (get @fmi-current (-convert-to-tz-iso8601-str
+                         (t/minus (calculate-start-time) (t/minutes 10))))))
 
 (defn -update-fmi-weather-forecast
   "Updates the latest FMI HARMONIE weather forecast from the FMI WFS for the
