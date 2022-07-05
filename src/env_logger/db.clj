@@ -154,7 +154,7 @@
                   :pressure (:pressure observation)
                   :humidity (:humidity observation)
                   :battery_voltage (:battery_voltage observation)
-                  :rssi (:battery_voltage observation)}]
+                  :rssi (:rssi observation)}]
       (:id (js/insert! db-con
                        :ruuvitag_observations
                        (if (:timestamp observation)
