@@ -17,7 +17,8 @@ var labelValues = {'weather': {},
     mode = null,
     rtDefaultShow = null,
     rtDefaultValues = [],
-    rtNames = [];
+    rtNames = [],
+    weatherData = null;
 
 // Formats the given date as 'dd.mm.yyyy hh:MM'
 var formatDate = function (date) {
@@ -239,7 +240,10 @@ var loadPage = function () {
                 itemsAdded = 0,
                 weatherKeys = ['fmi-temperature', 'cloudiness', 'wind-speed'];
 
-            var weatherData = JSON.parse(document.getElementById('weatherData').textContent);
+            if (!weatherData) {
+                console.log('Error: no weather data');
+                return;
+            }
             if (mode === 'all')
                 observationText += `Sun: Sunrise ${formatUnixSecondTs(weatherData['owm']['current']['sunrise'])},` +
                 ` Sunset ${formatUnixSecondTs(weatherData['owm']['current']['sunset'])}<br>`;
@@ -550,7 +554,15 @@ axios.get('params')
             rtDefaultValues = resp.data['rt-default-values'];
         }
 
-        loadPage();
+        axios.get('display-data')
+            .then(resp => {
+                weatherData = resp.data['weather-data'];
+
+                loadPage();
+            })
+            .catch(error => {
+                console.log(`Weather data fetch error: ${error}`);
+            });
     })
     .catch(error => {
         console.log(`Parameter fetch error: ${error}`);

@@ -115,11 +115,7 @@
                                                               :iso-local-date)
                                                              (:end obs-dates))
                                                (t/days initial-days)))
-                :end-date (:end obs-dates)})
-             {:weather-data (if logged-in?
-                              (generate-string (get-weather-data))
-                              (generate-string
-                               (:current (:fmi (get-weather-data)))))}))))
+                :end-date (:end obs-dates)})))))
 
 (defn handle-observation-insert
   "Handles the insertion of an observation to the database."
@@ -154,7 +150,12 @@
     (assoc (resp/redirect (str (get-conf-value :url-path) "/"))
            :session nil))
   (POST "/token-login" [] auth/token-login)
-  ;; Parameter query
+  ;; Data and parameter query
+  (GET "/display-data" request
+    (generate-string {:weather-data
+                      (if-not (authenticated? request)
+                        (:current (:fmi (get-weather-data)))
+                        (get-weather-data))}))
   (GET "/params" request
     (generate-string (merge {:mode (if (authenticated? request) "all" "weather")
                              :tb-image-basepath (get-conf-value
