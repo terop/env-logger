@@ -7,7 +7,7 @@ name = "pypi"
 requests = "*"
 beautifulsoup4 = "*"
 pytz = "*"
-lxml = "==4.7.1"
+lxml = "==4.9.1"
 
 [dev-packages]
 
