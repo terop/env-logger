@@ -9,7 +9,7 @@
         {:sha "bee12188b3e479eb7766946d6b5e89226bc67520"}
         org.threeten/threeten-extra {:mvn/version "1.7.0"}
         compojure/compojure {:mvn/version "1.7.0"}
-        selmer/selmer {:mvn/version "1.12.52"}
+        selmer/selmer {:mvn/version "1.12.53"}
         cheshire/cheshire {:mvn/version "5.11.0"}
         org.postgresql/postgresql {:mvn/version "42.4.0"}
         com.github.seancorfield/honeysql {:mvn/version "2.2.891"}
