@@ -74,48 +74,41 @@
                      (:endDate (:params request)))
           obs-dates (db/get-obs-date-interval con)
           logged-in? (authenticated? request)
-          initial-days (get-conf-value :initial-show-days)
-          common-values {:obs-dates obs-dates
-                         :logged-in? logged-in?}]
-      (merge common-values
-             (if (or start-date end-date)
-               {:data (generate-string
-                       (if logged-in?
-                         (db/get-obs-interval con
-                                              {:start start-date
-                                               :end end-date})
-                         (db/get-weather-obs-interval con
-                                                      {:start start-date
-                                                       :end end-date})))
-                :rt-data (generate-string
-                          (when logged-in?
-                            (db/get-ruuvitag-obs
-                             con
-                             (db/make-local-dt start-date "start")
-                             (db/make-local-dt end-date "end")
-                             (get-conf-value :ruuvitag-locations))))
-                :start-date start-date
-                :end-date end-date}
-               {:data (generate-string
-                       (if logged-in?
-                         (db/get-obs-days con
-                                          initial-days)
-                         (db/get-weather-obs-days con
-                                                  initial-days)))
-                :rt-data (generate-string
-                          (when logged-in?
-                            (db/get-ruuvitag-obs
-                             con
-                             (t/minus (t/local-date-time)
-                                      (t/days initial-days))
-                             (t/local-date-time)
-                             (get-conf-value :ruuvitag-locations))))
-                :start-date (t/format (t/formatter :iso-local-date)
-                                      (t/minus (t/local-date (t/formatter
-                                                              :iso-local-date)
-                                                             (:end obs-dates))
-                                               (t/days initial-days)))
-                :end-date (:end obs-dates)})))))
+          initial-days (get-conf-value :initial-show-days)]
+      (if (or start-date end-date)
+        {:obs-data (if logged-in?
+                     (db/get-obs-interval con
+                                          {:start start-date
+                                           :end end-date})
+                     (db/get-weather-obs-interval con
+                                                  {:start start-date
+                                                   :end end-date}))
+         :rt-data (when logged-in?
+                    (db/get-ruuvitag-obs
+                     con
+                     (db/make-local-dt start-date "start")
+                     (db/make-local-dt end-date "end")
+                     (get-conf-value :ruuvitag-locations)))
+         :start-date start-date
+         :end-date end-date}
+        {:obs-data (if logged-in?
+                     (db/get-obs-days con
+                                      initial-days)
+                     (db/get-weather-obs-days con
+                                              initial-days))
+         :rt-data (when logged-in?
+                    (db/get-ruuvitag-obs
+                     con
+                     (t/minus (t/local-date-time)
+                              (t/days initial-days))
+                     (t/local-date-time)
+                     (get-conf-value :ruuvitag-locations)))
+         :start-date (t/format (t/formatter :iso-local-date)
+                               (t/minus (t/local-date (t/formatter
+                                                       :iso-local-date)
+                                                      (:end obs-dates))
+                                        (t/days initial-days)))
+         :end-date (:end obs-dates)}))))
 
 (defn handle-observation-insert
   "Handles the insertion of an observation to the database."
@@ -140,7 +133,8 @@
       (render-file "templates/error.html"
                    {})
       (render-file "templates/chart.html"
-                   (get-plot-page-data request))))
+                   {:logged-in? (authenticated? request)
+                    :obs-dates (db/get-obs-date-interval db/postgres-ds)})))
   (GET "/login" request
     (if-not (authenticated? request)
       (render-file "templates/login.html" {})
@@ -150,22 +144,6 @@
     (assoc (resp/redirect (str (get-conf-value :url-path) "/"))
            :session nil))
   (POST "/token-login" [] auth/token-login)
-  ;; Data and parameter query
-  (GET "/display-data" request
-    (generate-string {:weather-data
-                      (if-not (authenticated? request)
-                        (:current (:fmi (get-weather-data)))
-                        (get-weather-data))}))
-  (GET "/params" request
-    (generate-string (merge {:mode (if (authenticated? request) "all" "weather")
-                             :tb-image-basepath (get-conf-value
-                                                 :tb-image-basepath)}
-                            (when (authenticated? request)
-                              {:rt-names (get-conf-value :ruuvitag-locations)
-                               :rt-default-show (get-conf-value
-                                                 :ruuvitag-default-show)
-                               :rt-default-values
-                               (get-conf-value :ruuvitag-default-values)}))))
   ;; WebAuthn routes
   (GET "/register" request
     (if-not (authenticated? request)
@@ -178,6 +156,23 @@
     (POST "/register" [] auth/wa-register)
     (GET "/login" [] auth/wa-prepare-login)
     (POST "/login" [] auth/wa-login))
+  ;; Data query
+  (GET "/display-data" request
+    (generate-string
+     (merge {:weather-data
+             (if-not (authenticated? request)
+               (:current (:fmi (get-weather-data)))
+               (get-weather-data))}
+            (merge {:mode (if (authenticated? request) "all" "weather")
+                    :tb-image-basepath (get-conf-value
+                                        :tb-image-basepath)}
+                   (when (authenticated? request)
+                     {:rt-names (get-conf-value :ruuvitag-locations)
+                      :rt-default-show (get-conf-value
+                                        :ruuvitag-default-show)
+                      :rt-default-values
+                      (get-conf-value :ruuvitag-default-values)}))
+            (get-plot-page-data request))))
   (GET "/get-latest-obs" [] get-latest-obs-data)
   (GET "/get-weather-data" request
     (if-not (authenticated? request)
