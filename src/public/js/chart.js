@@ -22,9 +22,9 @@ var labelValues = {'weather': {},
     chart = {'weather': null,
              'other': null};
 
-var loadPage = function () {
+var loadPage = () => {
     // Persist state of chart data sets
-    var persistDatasetState = function () {
+    var persistDatasetState = () => {
         var hidden = {'weather': {},
                       'other': {}};
 
@@ -39,7 +39,7 @@ var loadPage = function () {
     };
 
     // Restore chart data sets state
-    var restoreDatasetState = function () {
+    var restoreDatasetState = () => {
         if (!localStorage.getItem('hiddenDatasets'))
             return;
 
@@ -65,7 +65,7 @@ var loadPage = function () {
     // rtObservations - observations as JSON
     // rtLabels - RuuviTag labels
     // observationCount - number of non-RuuviTag observations
-    var parseRTData = function (rtObservations, rtLabels, observationCount) {
+    var parseRTData = (rtObservations, rtLabels, observationCount) => {
         const labelCount = rtLabels.length,
               timeDiffThreshold = 10;
         var location = null,
@@ -119,7 +119,7 @@ var loadPage = function () {
 
     // Parses an observation.
     // observation - observation as JSON
-    var parseData = function (observation) {
+    var parseData = (observation) => {
         const weatherFields = ['o-temperature', 'fmi-temperature', 'temp-delta',
                                'cloudiness', 'wind-speed'],
               otherFields = ['brightness', 'rssi'];
@@ -127,7 +127,7 @@ var loadPage = function () {
         // dataMode - string, which mode to process data in, values: weather, other
         // observation - object, observation to process
         // selectKeys - array, which data keys to select
-        var processFields = function(dataMode, observation, selectKeys) {
+        var processFields = (dataMode, observation, selectKeys) => {
             for (key in observation) {
                 if (selectKeys.includes(key)) {
                     if (dataSets[dataMode][key] !== undefined)
@@ -159,7 +159,7 @@ var loadPage = function () {
     };
 
 
-    var getRTLabels = function(rtNames) {
+    var getRTLabels = (rtNames) => {
         var labels = {};
 
         for (const name of rtNames) {
@@ -171,12 +171,12 @@ var loadPage = function () {
     };
 
     // Transform data to Chart.js compatible format. Returns the data series labels.
-    var transformData = function () {
+    var transformData = () => {
         dataSets['weather'] = [],
         dataSets['other'] = [],
         dataLabels = [];
 
-        data['obs'].map(function (element) {
+        data['obs'].map((element) => {
             parseData(element);
         });
 
@@ -218,24 +218,24 @@ var loadPage = function () {
         labelValues = transformData();
 
         // Add unit suffix
-        var addUnitSuffix = function(keyName) {
+        var addUnitSuffix = (keyName) => {
             return `${keyName.indexOf('temperature') >= 0 ? ' \u2103' : ''}` +
                 `${keyName.indexOf('wind') >= 0 ? ' m/s' : ''}` +
                 `${keyName.indexOf('humidity') >= 0 ? ' %H' : ''}`;
         };
 
         // Format a given Unix second timestamp in hour:minute format
-        var formatUnixSecondTs = function (unixTs) {
+        var formatUnixSecondTs = (unixTs) => {
             return luxon.DateTime.fromSeconds(unixTs).toFormat('HH:mm');
         };
 
         // Formats the given date as 'dd.mm.yyyy hh:MM'
-        var formatDate = function (date) {
+        var formatDate = (date) => {
             return luxon.DateTime.fromJSDate(date).toFormat('dd.MM.yyyy HH:mm');
         };
 
         // Show last observation and some other data for quick viewing
-        var showLastObservation = function () {
+        var showLastObservation = () => {
             var obsIndex = data['obs'].length - 1,
                 observationText = `Date: ${formatDate(dataLabels[obsIndex])}<br>`,
                 itemsAdded = 0,
@@ -300,7 +300,7 @@ var loadPage = function () {
         };
         showLastObservation();
 
-        var showTestbedImage = function (dataIndex) {
+        var showTestbedImage = (dataIndex) => {
             var imageName = testbedImageNames[dataIndex];
             if (imageName) {
                 var pattern = /testbed-([\d-]+)T.+/,
@@ -309,7 +309,7 @@ var loadPage = function () {
                     document.getElementById('testbedImage').src =
                         `${testbedImageBasepath}${result[1]}/${imageName}`;
                     // Scroll page to bottom after loading the image for improved viewing
-                    window.setTimeout(function() {
+                    window.setTimeout(() => {
                         window.scroll(0, document.body.scrollHeight);
                     }, 500);
                 }
@@ -336,7 +336,7 @@ var loadPage = function () {
             }
         };
 
-        var generateDataConfig = function (dataMode) {
+        var generateDataConfig = (dataMode) => {
             var config = {
                 labels: dataLabels,
                 datasets: []
@@ -418,7 +418,7 @@ var loadPage = function () {
               interactionOptions = {
                   mode: 'index'
               },
-              onClickFunction = function (event, elements) {
+              onClickFunction = (event, elements) => {
                   if (!elements.length)
                       return;
 
@@ -460,14 +460,14 @@ var loadPage = function () {
             });
             document.getElementById('otherResetZoom').addEventListener(
                 'click',
-                function() {
+                () => {
                     chart['other'].resetZoom();
                 },
                 false);
         }
         document.getElementById('weatherResetZoom').addEventListener(
             'click',
-            function() {
+            () => {
                 chart['weather'].resetZoom();
             },
             false);
