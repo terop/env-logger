@@ -4,13 +4,13 @@
             [clojure.xml :refer [parse]]
             [clojure.zip :refer [xml-zip]]
             [clojure.data.zip.xml :as zx]
+            [config.core :refer [env]]
             [taoensso.timbre :refer [error info]]
             [cheshire.core :refer [parse-string]]
             [clj-http.client :as client]
             [next.jdbc :as jdbc]
             [java-time :as t]
             [env-logger
-             [config :refer [get-conf-value]]
              [db :refer [rs-opts]]])
   (:import org.postgresql.util.PSQLException))
 (refer-clojure :exclude '[filter for group-by into partition-by set update])
@@ -52,8 +52,7 @@
   [datetime]
   (-convert-to-iso8601-str (t/with-zone
                              datetime
-                             (get-conf-value
-                              :weather-timezone))))
+                             (:weather-timezone env))))
 
 (defn store-weather-data?
   "Tells whether to FMI weather data.
@@ -128,7 +127,7 @@
                                         :BsWfs:Time))]
       {:time (t/sql-timestamp
               (t/local-date-time (t/instant date-text)
-                                 (get-conf-value :weather-timezone)))
+                                 (:weather-timezone env)))
        :temperature (Float/parseFloat (nth values 0))
        :cloudiness (Math/round (Float/parseFloat (nth values 1)))
        :wind-speed (Float/parseFloat (nth values 2))
@@ -151,7 +150,7 @@
                                         :BsWfs:Time))]
       {:time (t/sql-timestamp
               (t/local-date-time (t/instant date-text)
-                                 (get-conf-value :weather-timezone)))
+                                 (:weather-timezone env)))
        :temperature (Float/parseFloat (format "%.1f" (Float/parseFloat
                                                       (nth values 0))))
        :wind-speed (Float/parseFloat (format "%.1f" (Float/parseFloat
@@ -285,11 +284,11 @@
 (defn fetch-all-weather-data
   "Fetches all (FMI current and forecast as well as OWM) weather data."
   []
-  (-update-fmi-weather-data (get-conf-value :fmi-station-id))
-  (-update-fmi-weather-forecast (get-conf-value :fmi-station-id))
-  (-fetch-owm-data (get-conf-value :owm-app-id)
-                   (get-conf-value :forecast-lat)
-                   (get-conf-value :forecast-lon)))
+  (-update-fmi-weather-data (:fmi-station-id env))
+  (-update-fmi-weather-forecast (:fmi-station-id env))
+  (-fetch-owm-data (:owm-app-id env)
+                   (:forecast-lat env)
+                   (:forecast-lon env)))
 
 (defn get-weather-data
   "Get weather (FMI and OpenWeatherMap) weather data from cache if it is

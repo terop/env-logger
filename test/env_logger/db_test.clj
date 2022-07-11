@@ -6,8 +6,8 @@
             [next.jdbc
              [result-set :as rs]
              [sql :as js]]
-            [env-logger.config :refer [db-conf get-conf-value]]
-            [env-logger.db :refer [convert-to-epoch-ms
+            [env-logger.db :refer [db-conf
+                                   convert-to-epoch-ms
                                    get-last-obs-id
                                    get-obs-date-interval
                                    get-obs-days
@@ -419,8 +419,7 @@
 
 (deftest convert-to-epoch-ms-test
   (testing "Unix epoch time calculation"
-    (let [tz-offset (get-tz-offset (get-conf-value :display-timezone
-                                                   :use-sample true))]
+    (let [tz-offset (get-tz-offset "UTC")]
       (is (= 1620734400000
              (convert-to-epoch-ms tz-offset
                                   (t/to-sql-timestamp

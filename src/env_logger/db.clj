@@ -1,12 +1,12 @@
 (ns env-logger.db
   "Namespace containing the application's database function"
-  (:require [taoensso.timbre :refer [error info]]
+  (:require [config.core :refer [env]]
+            [taoensso.timbre :refer [error info]]
             [next.jdbc :as jdbc]
             [next.jdbc
              [result-set :as rs]
              [sql :as js]]
-            [java-time :as t]
-            [env-logger.config :refer [db-conf get-conf-value]])
+            [java-time :as t])
   (:import (java.text NumberFormat
                       DecimalFormat)
            (java.time DateTimeException
@@ -17,6 +17,11 @@
            org.postgresql.util.PSQLException))
 (refer-clojure :exclude '[filter for group-by into partition-by set update])
 (require '[honey.sql :as sql])
+
+(defn db-conf
+  "Returns the value of the requested database configuration key"
+  [k]
+  (k (:database env)))
 
 (let [db-host (get (System/getenv)
                    "POSTGRESQL_DB_HOST"
@@ -88,7 +93,7 @@
     (when (and tb-image-name
                (image-age-check tb-image-name
                                 (t/zoned-date-time)
-                                (get-conf-value :image-max-time-diff)))
+                                (:image-max-time-diff env)))
       tb-image-name)))
 
 (defn get-tz-offset
@@ -115,8 +120,7 @@
                                (t/minus (t/zoned-date-time
                                          (:timestamp observation))
                                         (t/hours (get-tz-offset
-                                                  (get-conf-value
-                                                   :store-timezone)))))
+                                                  (:store-timezone env)))))
                     :brightness (:insideLight observation)
                     :outside_temperature (:outsideTemperature observation)
                     :tb_image_name (get-tb-image db-con)}
@@ -165,8 +169,7 @@
                                            (:timestamp
                                             observation))
                                           (t/hours (get-tz-offset
-                                                    (get-conf-value
-                                                     :store-timezone))))))
+                                                    (:store-timezone env))))))
                          values)
                        rs-opts)))
     (catch PSQLException pe
@@ -269,8 +272,8 @@
                       (merge where-query {:limit limit
                                           :order-by [[:o.id :desc]]})
                       (assoc where-query :order-by [[:o.id :asc]]))
-        beacon-names (get-conf-value :beacon-name)
-        tz-offset (get-tz-offset (get-conf-value :display-timezone))]
+        beacon-names (:beacon-name env)
+        tz-offset (get-tz-offset (:display-timezone env))]
     (for [row (jdbc/execute! db-con
                              (sql/format limit-query)
                              rs-opts)]
@@ -308,7 +311,7 @@
 (defn get-weather-observations
   "Fetches weather observations filtered by the provided SQL WHERE clause."
   [db-con & {:keys [where]}]
-  (let [tz-offset (get-tz-offset (get-conf-value :display-timezone))]
+  (let [tz-offset (get-tz-offset (:display-timezone env))]
     (for [row (jdbc/execute! db-con
                              (sql/format {:select [:w.time
                                                    [:w.temperature
@@ -378,7 +381,7 @@
                                      [:>= :recorded start]
                                      [:<= :recorded end]]
                              :order-by [[:id :asc]]})
-          tz-offset (get-tz-offset (get-conf-value :display-timezone))]
+          tz-offset (get-tz-offset (:display-timezone env))]
       (.applyPattern ^DecimalFormat nf "0.0#")
       (for [row (jdbc/execute! db-con query rs-opts)]
         (merge row

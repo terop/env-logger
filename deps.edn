@@ -1,6 +1,7 @@
 {:paths ["src" "resources" "target/classes"]
  :deps {org.clojure/clojure {:mvn/version "1.11.1"}
         org.clojure/data.zip {:mvn/version "1.0.0"}
+        yogthos/config {:mvn/version "1.2.0"}
         ring/ring {:mvn/version "1.9.5"}
         ring/ring-defaults {:mvn/version "0.3.3"}
         ring/ring-json {:mvn/version "0.5.1"}
@@ -21,6 +22,7 @@
         com.fzakaria/slf4j-timbre {:mvn/version "0.3.21"}
         io.github.terop/cljwebauthn
         {:sha "bb262552d3e79bda6b975c71d06ec3d323d5580f"}}
+ :jvm-opts ["-Dconfig=resources/config.edn"]
  :aliases
  {:run {:main-opts ["-m" "env-logger.handler"]}
   :build {:deps {io.github.seancorfield/build-clj

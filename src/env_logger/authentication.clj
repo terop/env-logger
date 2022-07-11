@@ -1,6 +1,7 @@
 (ns env-logger.authentication
   "A namespace for authentication related functions"
-  (:require [buddy.auth :refer [authenticated?]]
+  (:require [config.core :refer [env]]
+            [buddy.auth :refer [authenticated?]]
             [buddy.auth.backends
              [session :refer [session-backend]]
              [token :refer [jwe-backend]]]
@@ -16,7 +17,6 @@
             [selmer.parser :refer [render-file]]
             [taoensso.timbre :refer [error]]
             [env-logger
-             [config :refer [get-conf-value]]
              [db :as db]
              [user :refer [get-user-id get-pw-hash]]])
   (:import java.time.Instant
@@ -30,15 +30,15 @@
 
 ;; WebAuthn
 
-(let [production? (get-conf-value :in-production)]
+(let [production? (:in-production env)]
   (def site-properties
-    {:site-id (get-conf-value :hostname)
+    {:site-id (:hostname env)
      :site-name "Environment logger app"
      :protocol (if production?
                  "https" "http")
      :port (if production?
              443 80)
-     :host (get-conf-value :hostname)}))
+     :host (:hostname env)}))
 
 (def authenticator-name (atom ""))
 
@@ -160,7 +160,7 @@
         (if (webauthn/login-user payload
                                  site-properties
                                  (fn [_] authenticators))
-          (assoc (resp/response (str "/" (get-conf-value :url-path) "/"))
+          (assoc (resp/response (str "/" (:url-path env) "/"))
                  :session (assoc session :identity (keyword username)))
           (resp/status 500))))))
 
@@ -186,7 +186,7 @@
     ;; is authenticated but permission denied is raised.
     (resp/status (resp/response "403 Forbidden") 403)
     ;; In other cases, redirect it user to login
-    (resp/redirect (format (str (get-conf-value :url-path) "/login?next=%s")
+    (resp/redirect (format (str (:url-path env) "/login?next=%s")
                            (:uri request)))))
 
 (def auth-backend (session-backend
@@ -195,7 +195,7 @@
 (defn check-auth-code
   "Checks whether the authentication code is valid."
   [code-to-check]
-  (= (get-conf-value :auth-code) code-to-check))
+  (= (:auth-code env) code-to-check))
 
 (defn login-authenticate
   "Check request username and password against user data in the database.
@@ -212,7 +212,7 @@
                    {})
       (if (and pw-hash (h/check password pw-hash))
         (let [next-url (get-in request [:query-params :next]
-                               (str (get-conf-value :url-path) "/"))
+                               (str (:url-path env) "/"))
               updated-session (assoc session :identity (keyword username))]
           (assoc (resp/redirect next-url) :session updated-session))
         (render-file "templates/login.html"
@@ -222,7 +222,7 @@
 (defn token-login
   "Login method for getting an token for data access."
   [request]
-  (let [auth-data (get-conf-value :data-user-auth-data)
+  (let [auth-data (:data-user-auth-data env)
         username (get-in request [:params :username])
         password (get-in request [:params :password])
         valid? (and (and username
@@ -232,7 +232,7 @@
     (if valid?
       (let [claims {:user (keyword username)
                     :exp (. (. (. Instant now) plusSeconds
-                               (get-conf-value :jwt-token-timeout))
+                               (:jwt-token-timeout env))
                             getEpochSecond)}
             token (jwt/encrypt claims jwe-secret {:alg :a256kw :enc :a128gcm})]
         token)

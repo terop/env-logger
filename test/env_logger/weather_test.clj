@@ -2,12 +2,12 @@
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.string :as s]
             [clojure.xml :refer [parse]]
+            [config.core :refer [env]]
             [clj-http.fake :refer [with-fake-routes]]
             [cheshire.core :refer [generate-string]]
             [java-time :as t]
             [next.jdbc :as jdbc]
             [env-logger
-             [config :refer [get-conf-value]]
              [db :refer [get-tz-offset]]
              [weather :refer [-convert-to-iso8601-str
                               -convert-to-tz-iso8601-str
@@ -37,10 +37,10 @@
            (-convert-to-iso8601-str
             (ZonedDateTime/of 2022 6 6
                               (+ 15 (get-tz-offset
-                                     (get-conf-value :weather-timezone)))
+                                     (:weather-timezone env)))
                               33 50 0
                               (t/zone-id
-                               (get-conf-value :weather-timezone))))))))
+                               (:weather-timezone env))))))))
 
 (deftest test-iso8601-and-tz-str-formatting
   (testing "Date and time to ISO 8601 with timezone string conversion"
@@ -48,11 +48,10 @@
            (-convert-to-tz-iso8601-str
             (ZonedDateTime/of 2022 6 6
                               (+ 15 (get-tz-offset
-                                     (get-conf-value :weather-timezone)))
+                                     (:weather-timezone env)))
                               33 50 0
                               (t/zone-id
-                               (get-conf-value
-                                :weather-timezone))))))))
+                               (:weather-timezone env))))))))
 
 ;; FMI
 

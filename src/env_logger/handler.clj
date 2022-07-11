@@ -1,6 +1,7 @@
 (ns env-logger.handler
   "The main namespace of the application"
   (:require [clojure set]
+            [config.core :refer [env]]
             [buddy.auth :refer [authenticated?]]
             [buddy.auth.middleware :refer [wrap-authentication
                                            wrap-authorization]]
@@ -20,7 +21,6 @@
             [selmer.parser :refer [render-file]]
             [env-logger
              [authentication :as auth]
-             [config :refer [get-conf-value]]
              [db :as db]
              [weather :refer [calculate-start-time
                               get-fmi-weather-data
@@ -37,7 +37,7 @@
             (t/plus (t/zoned-date-time
                      (str (Instant/ofEpochMilli epoch-ts)))
                     (t/hours (db/get-tz-offset
-                              (get-conf-value :store-timezone))))))
+                              (:store-timezone env))))))
 
 (defn get-latest-obs-data
   "Get data for the latest observation."
@@ -47,14 +47,13 @@
     (with-open [con (jdbc/get-connection db/postgres-ds)]
       (let [data (first (reverse (db/get-obs-days con 1)))
             rt-data (sort-by :location
-                             (take (count (get-conf-value :ruuvitag-locations))
+                             (take (count (:ruuvitag-locations env))
                                    (reverse (db/get-ruuvitag-obs
                                              con
                                              (t/minus (t/local-date-time)
                                                       (t/minutes 45))
                                              (t/local-date-time)
-                                             (get-conf-value
-                                              :ruuvitag-locations)))))]
+                                             (:ruuvitag-locations env)))))]
         {:status 200
          :body {:data (assoc data :recorded
                              (convert-epoch-ms-to-string (:recorded data)))
@@ -74,7 +73,8 @@
                      (:endDate (:params request)))
           obs-dates (db/get-obs-date-interval con)
           logged-in? (authenticated? request)
-          initial-days (get-conf-value :initial-show-days)]
+          initial-days (:initial-show-days env)
+          ruuvitag-locations (:ruuvitag-locations env)]
       (if (or start-date end-date)
         {:obs-data (if logged-in?
                      (db/get-obs-interval con
@@ -88,7 +88,7 @@
                      con
                      (db/make-local-dt start-date "start")
                      (db/make-local-dt end-date "end")
-                     (get-conf-value :ruuvitag-locations)))
+                     ruuvitag-locations))
          :start-date start-date
          :end-date end-date}
         {:obs-data (if logged-in?
@@ -102,7 +102,7 @@
                      (t/minus (t/local-date-time)
                               (t/days initial-days))
                      (t/local-date-time)
-                     (get-conf-value :ruuvitag-locations)))
+                     ruuvitag-locations))
          :start-date (t/format (t/formatter :iso-local-date)
                                (t/minus (t/local-date (t/formatter
                                                        :iso-local-date)
@@ -138,10 +138,10 @@
   (GET "/login" request
     (if-not (authenticated? request)
       (render-file "templates/login.html" {})
-      (resp/redirect (str (get-conf-value :url-path) "/"))))
+      (resp/redirect (str (:url-path env) "/"))))
   (POST "/login" [] auth/login-authenticate)
   (GET "/logout" _
-    (assoc (resp/redirect (str (get-conf-value :url-path) "/"))
+    (assoc (resp/redirect (str (:url-path env) "/"))
            :session nil))
   (POST "/token-login" [] auth/token-login)
   ;; WebAuthn routes
@@ -164,14 +164,11 @@
                (:current (:fmi (get-weather-data)))
                (get-weather-data))}
             (merge {:mode (if (authenticated? request) "all" "weather")
-                    :tb-image-basepath (get-conf-value
-                                        :tb-image-basepath)}
+                    :tb-image-basepath (:tb-image-basepath env)}
                    (when (authenticated? request)
-                     {:rt-names (get-conf-value :ruuvitag-locations)
-                      :rt-default-show (get-conf-value
-                                        :ruuvitag-default-show)
-                      :rt-default-values
-                      (get-conf-value :ruuvitag-default-values)}))
+                     {:rt-names (:ruuvitag-locations env)
+                      :rt-default-show (:ruuvitag-default-show env)
+                      :rt-default-values (:ruuvitag-default-values env)}))
             (get-plot-page-data request))))
   (GET "/get-latest-obs" [] get-latest-obs-data)
   (GET "/get-weather-data" request
@@ -221,7 +218,7 @@
   []
   (let [port (Integer/parseInt (get (System/getenv)
                                     "APP_PORT" "8080"))
-        production? (get-conf-value :in-production)
+        production? (:in-production env)
         config-no-csrf (assoc-in (if production?
                                    secure-site-defaults
                                    site-defaults)
@@ -230,8 +227,8 @@
                           config-no-csrf
                           (assoc (assoc-in config-no-csrf
                                            [:security :hsts]
-                                           (get-conf-value :use-hsts))
-                                 :proxy (get-conf-value :use-proxy)))
+                                           (:use-hsts env))
+                                 :proxy (:use-proxy env)))
         handler (as-> routes $
                   (wrap-authorization $ auth/auth-backend)
                   (wrap-authentication $

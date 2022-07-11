@@ -1,5 +1,6 @@
 (ns env-logger.authentication-test
-  (:require [clojure.test :refer [deftest is testing use-fixtures]]
+  (:require [config.core :refer [env]]
+            [clojure.test :refer [deftest is testing use-fixtures]]
             [buddy.auth :refer [authenticated?]]
             [cheshire.core :refer [parse-string]]
             [next.jdbc :as jdbc]
@@ -14,7 +15,6 @@
                                      unauthorized-handler
                                      login-authenticate
                                      token-login]]
-             [config :refer [get-conf-value]]
              [db :refer [rs-opts]]
              [user :refer [get-pw-hash]]
              [db-test :refer [test-ds]]]
@@ -131,7 +131,7 @@
 
 (deftest auth-code-check
   (testing "Authentication code value check"
-    (with-redefs [get-conf-value (fn [_] "testvalue")]
+    (with-redefs [env {:auth-code "testvalue"}]
       (is (false? (check-auth-code "notmatching")))
       (is (true? (check-auth-code "testvalue"))))))
 
@@ -167,19 +167,17 @@
 
 (deftest token-login-test
   (testing "Test login with token"
-    (with-redefs [get-conf-value (fn [_]
-                                   {:username test-user
-                                    :password test-passwd})
+    (with-redefs [env (fn [_]
+                        {:username test-user
+                         :password test-passwd})
                   h/check (fn [_ _] false)]
       (is (= 401
              (:status (token-login
                        {:params {:username test-user
                                  :password test-passwd}})))))
-    (with-redefs [get-conf-value (fn [key]
-                                   (if (= key :data-user-auth-data)
-                                     {:username test-user
-                                      :password test-passwd}
-                                     10))
+    (with-redefs [env {:data-user-auth-data {:username test-user
+                                             :password test-passwd}
+                       :jwt-token-timeout 10}
                   h/check (fn [_ _] true)]
       (is (= 167 (count (token-login
                          {:params {:username test-user
