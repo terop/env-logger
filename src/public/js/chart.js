@@ -28,6 +28,9 @@ var loadPage = () => {
         var hidden = {'weather': {},
                       'other': {}};
 
+        if (!chart['weather'])
+            return;
+
         for (var i = 0; i < chart['weather'].data.datasets.length; i++)
             hidden['weather'][i.toString()] = !!chart['weather'].getDatasetMeta(i).hidden;
 
@@ -250,19 +253,20 @@ var loadPage = () => {
                 ` Sunset ${formatUnixSecondTs(data['weather']['owm']['current']['sunset'])}<br>`;
 
             const wd = (mode === 'all' ? data['weather']['fmi']['current'] : data['weather']);
-            if (wd)
+            if (wd) {
                 observationText += `Time ${luxon.DateTime.fromISO(wd['time']).toLocaleString(luxon.DateTime.TIME_SIMPLE)}` +
-                ': ';
-            for (const key of weatherKeys) {
-                if (key === 'wind-speed')
-                    observationText += `Wind: ${wd['wind-direction']['long']} ` +
-                    `${wd[key]} ${addUnitSuffix(key)}, `;
-                else if (key === 'fmi-temperature')
-                    observationText += `${labelValues['weather'][key]}: ` +
-                    `${wd['temperature']} ${addUnitSuffix(key)}, `;
-                else
-                    observationText += `${labelValues['weather'][key]}: ${wd[key]}` +
-                    `${addUnitSuffix(key)}, `;
+                    ': ';
+                for (const key of weatherKeys) {
+                    if (key === 'wind-speed')
+                        observationText += `Wind: ${wd['wind-direction']['long']} ` +
+                        `${wd[key]} ${addUnitSuffix(key)}, `;
+                    else if (key === 'fmi-temperature')
+                        observationText += `${labelValues['weather'][key]}: ` +
+                        `${wd['temperature']} ${addUnitSuffix(key)}, `;
+                    else
+                        observationText += `${labelValues['weather'][key]}: ${wd[key]}` +
+                        `${addUnitSuffix(key)}, `;
+                }
             }
             if (mode === 'all') {
                 observationText += `Description: ${data['weather']['owm']['current']['weather'][0]['description']}`;
