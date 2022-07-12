@@ -206,9 +206,10 @@
                                                (t/days 4)))
             :end (t/format date-fmt current-dt)}
            (get-obs-date-interval test-ds)))
-    (with-redefs [jdbc/execute-one! (fn [_ _] nil)]
-      (is (= {:start ""
-              :end ""}
+    (with-redefs [jdbc/execute-one! (fn [_ _] {:start nil
+                                               :end nil})]
+      (is (= {:start nil
+              :end nil}
              (get-obs-date-interval test-ds))))
     (with-redefs [jdbc/execute-one!
                   (fn [_ _]

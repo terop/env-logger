@@ -103,11 +103,12 @@
                               (t/days initial-days))
                      (t/local-date-time)
                      ruuvitag-locations))
-         :start-date (t/format (t/formatter :iso-local-date)
-                               (t/minus (t/local-date (t/formatter
-                                                       :iso-local-date)
-                                                      (:end obs-dates))
-                                        (t/days initial-days)))
+         :start-date (when (:end obs-dates)
+                       (t/format (t/formatter :iso-local-date)
+                                 (t/minus (t/local-date (t/formatter
+                                                         :iso-local-date)
+                                                        (:end obs-dates))
+                                          (t/days initial-days))))
          :end-date (:end obs-dates)}))))
 
 (defn handle-observation-insert

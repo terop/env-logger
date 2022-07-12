@@ -354,13 +354,13 @@
                                      {:select [[:%min.recorded "start"]
                                                [:%max.recorded "end"]]
                                       :from :observations}))]
-      (if result
+      (if (and (:start result)
+               (:end result))
         {:start (t/format (t/formatter :iso-local-date)
                           (t/local-date-time (:start result)))
          :end (t/format (t/formatter :iso-local-date)
                         (t/local-date-time (:end result)))}
-        {:start ""
-         :end ""}))
+        result))
     (catch PSQLException pe
       (error pe "Observation interval fetch failed")
       {:error :db-error})))
