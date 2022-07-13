@@ -30,13 +30,13 @@
 
 ;; WebAuthn
 
-(let [production? (:in-production env)]
+(let [use-https? (:force-https env)]
   (def site-properties
     {:site-id (:hostname env)
      :site-name "Environment logger app"
-     :protocol (if production?
+     :protocol (if use-https?
                  "https" "http")
-     :port (if production?
+     :port (if use-https?
              443 80)
      :host (:hostname env)}))
 

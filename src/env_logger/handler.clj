@@ -219,15 +219,14 @@
   []
   (let [port (Integer/parseInt (get (System/getenv)
                                     "APP_PORT" "8080"))
-        production? (:in-production env)
-        config-no-csrf (assoc-in (if production?
-                                   secure-site-defaults
-                                   site-defaults)
-                                 [:security :anti-forgery] false)
-        defaults-config (if-not production?
-                          config-no-csrf
-                          (assoc config-no-csrf
-                                 :proxy (:use-proxy env)))
+        force-https? (:force-https env)
+        defaults (if force-https?
+                   secure-site-defaults
+                   site-defaults)
+        ;; CSRF protection is knowingly not implemented
+        defaults-config (assoc-in (assoc defaults
+                                         :proxy (:use-proxy env))
+                                  [:security :anti-forgery] false)
         handler (as-> routes $
                   (wrap-authorization $ auth/auth-backend)
                   (wrap-authentication $
@@ -239,7 +238,7 @@
         opts {:port port}]
     ;; Load initial weather data
     (fetch-all-weather-data)
-    (run-jetty (if production?
+    (run-jetty (if force-https?
                  handler
                  (wrap-reload handler))
                opts)))

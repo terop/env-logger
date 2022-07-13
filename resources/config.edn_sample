@@ -33,8 +33,8 @@
  :beacon-name {"7C:EC:79:3F:BE:98" "Beacon 1"}
  ;; Hostname where the application is hosted
  :hostname "localhost"
- ;; Development or production setting (TLS is enforced)
- :in-production true
+ ;; Force settings for HTTPS access without prior HTTPS stripping
+ :force-https false
  ;; Use through proxy (usually needed when reverse proxies are used)
  :use-proxy true
  ;; Path of the URL through which the application is accessed
