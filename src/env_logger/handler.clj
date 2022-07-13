@@ -226,9 +226,7 @@
                                  [:security :anti-forgery] false)
         defaults-config (if-not production?
                           config-no-csrf
-                          (assoc (assoc-in config-no-csrf
-                                           [:security :hsts]
-                                           (:use-hsts env))
+                          (assoc config-no-csrf
                                  :proxy (:use-proxy env)))
         handler (as-> routes $
                   (wrap-authorization $ auth/auth-backend)
