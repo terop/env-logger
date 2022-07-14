@@ -1,4 +1,4 @@
-FROM clojure:temurin-17-tools-deps-focal as builder
+FROM clojure:temurin-17-tools-deps-alpine as builder
 LABEL maintainer="tero.paloheimo@iki.fi"
 WORKDIR /usr/home/app
 ADD . /usr/home/app
