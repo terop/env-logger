@@ -30,15 +30,15 @@
 
 ;; WebAuthn
 
-(let [use-https? (:force-https env)]
+(let [use-https? (:use-tls (:webauthn env))]
   (def site-properties
-    {:site-id (:hostname env)
+    {:site-id (:hostname (:webauthn env))
      :site-name "Environment logger app"
      :protocol (if use-https?
                  "https" "http")
      :port (if use-https?
              443 80)
-     :host (:hostname env)}))
+     :host (:hostname (:webauthn env))}))
 
 (def authenticator-name (atom ""))
 

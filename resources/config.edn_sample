@@ -31,13 +31,16 @@
  :forecast-lon 56.78
  ;; Beacon MAC and name, currently only one beacon is supported
  :beacon-name {"7C:EC:79:3F:BE:98" "Beacon 1"}
- ;; Hostname where the application is hosted
- :hostname "localhost"
+ ;; WebAuthn site property settings
+ :webauthn {;; Hostname
+            :hostname "localhost"
+            ;; Use TLS?
+            :use-tls true}
  ;; Force settings for HTTPS access without prior HTTPS stripping
  :force-https false
  ;; Use through proxy (usually needed when reverse proxies are used)
  :use-proxy true
-  ;; Full URL through which the application is accessed, MUST end with a slash
+ ;; Full URL through which the application is accessed, MUST end with a slash
  :application-url "http://example.com/env-logger/"
  ;; Base path to Testbed images
  :tb-image-basepath "https://example.com/tb-images/"
