@@ -1,21 +1,84 @@
 #!/bin/sh
 
-# This a script for restoring a local database from a backup snapshot.
+# This a script for restoring database from a backup snapshot.
 
 set -e
 
-if [ $# -ne 2 ]; then
+usage() {
     cat <<EOF
 This a script for restoring a local database from a backup snapshot.
+It supports both local as well as Kubernetes pod based installations, flags
+must be used specify which one to use.
 
-Usage: $0 <DB name> <DB snapshot name>
+For Kubernetes the following environment variables must be specified:
+DB_PASSWD:  password to the database
+DB_USER:    username of the database user
+POD_NAME:   name of the pod running PostgreSQL, the pod must have the psql command
+
+Usage: $0 [-h] [-k] [-l] <database name> <database snapshot name>
+Flags:
+-h    Print this message and exit
+-k    Restore backup to PostgreSQL running in a Kubernetes pod
+-l    Restore backup to PostgreSQL running on the host
+
 Example: $0 env_logger db_snapshot.sql
 EOF
+}
+
+while getopts 'hkl' OPTION; do
+    case "${OPTION}" in
+        h)
+            usage
+            exit 1
+            ;;
+        k)
+            kubernetes_db=1
+            ;;
+        l)
+            local_db=1
+            ;;
+        *)
+            echo "Invalid option: ${OPTION}"
+            exit 1
+    esac
+done
+shift "$((OPTIND - 1))"
+
+if [ ${local_db} ] && [ ${kubernetes_db} ]; then
+    echo "Error: both -k and -l flags cannot be specified simultaneously" >&2
     exit 1
+fi
+if [ -z ${local_db} ] && [ -z ${kubernetes_db} ]; then
+    echo "Error: either -k or -l flag must be specified" >&2
+    exit 1
+fi
+
+if [ ${kubernetes_db} ]; then
+    if [ -z "${DB_PASSWD}" ]; then
+        echo "Error: DB_PASSWD env variable must be specified" >&2
+        exit 1
+    fi
+    if [ -z "${DB_USER}" ]; then
+        echo "Error: DB_USER env variable must be specified" >&2
+        exit 1
+    fi
+    if [ -z "${POD_NAME}" ]; then
+        echo "Error: POD_NAME env variable must be specified" >&2
+        exit 1
+    fi
 fi
 
 db_name=$1
 snapshot_name=$2
+
+if [ -z "${db_name}" ]; then
+    echo "Error: database name must be specified" >&2
+    exit 1
+fi
+if [ -z "${snapshot_name}" ]; then
+    echo "Error: snapshot name must be specified" >&2
+    exit 1
+fi
 
 file_out=$(file -ib ${snapshot_name})
 if [ $(echo "${file_out}"|grep -c xz) -eq 1 ]; then
@@ -24,15 +87,9 @@ if [ $(echo "${file_out}"|grep -c xz) -eq 1 ]; then
     snapshot_name=$(echo ${snapshot_name}|sed 's/.xz//')
 fi
 
-# The environment logger database requires special steps before a backup
-# can be restored
-if [ ${db_name} = "env_logger" ]; then
-    echo "Truncating tables"
-    psql "${db_name}" <<EOF
-TRUNCATE TABLE users CASCADE;
-TRUNCATE TABLE observations CASCADE;
-EOF
-fi
-
 echo "Adding new values"
-psql "${db_name}" < "${snapshot_name}"
+if [ ${local_db} ]; then
+    psql "${db_name}" < "${snapshot_name}"
+else
+    kubectl exec -i ${POD_NAME} -- /bin/sh -c "PGPASSWORD='${DB_PASSWD}' psql -U ${DB_USER} -d ${db_name}" < "${snapshot_name}"
+fi
