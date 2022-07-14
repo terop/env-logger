@@ -186,8 +186,7 @@
     ;; is authenticated but permission denied is raised.
     (resp/status (resp/response "403 Forbidden") 403)
     ;; In other cases, redirect it user to login
-    (resp/redirect (format (str (:application-url env) "login?next=%s")
-                           (:uri request)))))
+    (resp/redirect (str (:application-url env) "login"))))
 
 (def auth-backend (session-backend
                    {:unauthorized-handler unauthorized-handler}))
@@ -200,7 +199,7 @@
 (defn login-authenticate
   "Check request username and password against user data in the database.
   On successful authentication, set appropriate user into the session and
-  redirect to the value of (:query-params (:next request)).
+  redirect to the start page.
   On failed authentication, renders the login page."
   [request]
   (let [username (get-in request [:form-params "username"])
@@ -211,10 +210,8 @@
       (render-file "templates/error.html"
                    {})
       (if (and pw-hash (h/check password pw-hash))
-        (let [next-url (get-in request [:query-params :next]
-                               (:application-url env))
-              updated-session (assoc session :identity (keyword username))]
-          (assoc (resp/redirect next-url) :session updated-session))
+        (let [updated-session (assoc session :identity (keyword username))]
+          (assoc (resp/redirect (:application-url env)) :session updated-session))
         (render-file "templates/login.html"
                      {:error
                       "Error: an invalid credential was provided"})))))
