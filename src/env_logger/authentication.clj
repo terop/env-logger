@@ -30,7 +30,7 @@
 
 ;; WebAuthn
 
-(let [use-https? (:use-tls (:webauthn env))]
+(let [use-https? (:use-https (:webauthn env))]
   (def site-properties
     {:site-id (:hostname (:webauthn env))
      :site-name "Environment logger app"

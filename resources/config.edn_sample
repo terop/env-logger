@@ -34,8 +34,8 @@
  ;; WebAuthn site property settings
  :webauthn {;; Hostname
             :hostname "localhost"
-            ;; Use TLS?
-            :use-tls true}
+            ;; Use HTTPS?
+            :use-https true}
  ;; Force settings for HTTPS access without prior HTTPS stripping
  :force-https false
  ;; Use through proxy (usually needed when reverse proxies are used)
