@@ -139,11 +139,11 @@
   (GET "/login" request
     (if-not (authenticated? request)
       (render-file "templates/login.html" {})
-      (resp/redirect (str (:url-path env) "/"))))
+      (resp/redirect (:application-url env))))
   (POST "/login" [] auth/login-authenticate)
   (GET "/logout" _
-    (assoc (resp/redirect (str (:url-path env) "/"))
-           :session nil))
+    (assoc (resp/redirect (:application-url env))
+           :session {}))
   (POST "/token-login" [] auth/token-login)
   ;; WebAuthn routes
   (GET "/register" request

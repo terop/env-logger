@@ -160,7 +160,7 @@
         (if (webauthn/login-user payload
                                  site-properties
                                  (fn [_] authenticators))
-          (assoc (resp/response (str "/" (:url-path env) "/"))
+          (assoc (resp/response (:application-url env))
                  :session (assoc session :identity (keyword username)))
           (resp/status 500))))))
 
@@ -186,7 +186,7 @@
     ;; is authenticated but permission denied is raised.
     (resp/status (resp/response "403 Forbidden") 403)
     ;; In other cases, redirect it user to login
-    (resp/redirect (format (str (:url-path env) "/login?next=%s")
+    (resp/redirect (format (str (:application-url env) "login?next=%s")
                            (:uri request)))))
 
 (def auth-backend (session-backend
@@ -212,7 +212,7 @@
                    {})
       (if (and pw-hash (h/check password pw-hash))
         (let [next-url (get-in request [:query-params :next]
-                               (str (:url-path env) "/"))
+                               (:application-url env))
               updated-session (assoc session :identity (keyword username))]
           (assoc (resp/redirect next-url) :session updated-session))
         (render-file "templates/login.html"

@@ -37,8 +37,8 @@
  :force-https false
  ;; Use through proxy (usually needed when reverse proxies are used)
  :use-proxy true
- ;; Path of the URL through which the application is accessed
- :url-path "env-logger"
+  ;; Full URL through which the application is accessed, MUST end with a slash
+ :application-url "http://example.com/env-logger/"
  ;; Base path to Testbed images
  :tb-image-basepath "https://example.com/tb-images/"
  ;; Authentication code for observation and image storage
