@@ -219,8 +219,8 @@
   []
   (let [port (Integer/parseInt (get (System/getenv)
                                     "APP_PORT" "8080"))
-        force-https? (:force-https env)
-        defaults (if force-https?
+        force-https (:force-https env)
+        defaults (if force-https
                    secure-site-defaults
                    site-defaults)
         ;; CSRF protection is knowingly not implemented
@@ -238,7 +238,7 @@
         opts {:port port}]
     ;; Load initial weather data
     (fetch-all-weather-data)
-    (run-jetty (if force-https?
+    (run-jetty (if force-https
                  handler
                  (wrap-reload handler))
                opts)))

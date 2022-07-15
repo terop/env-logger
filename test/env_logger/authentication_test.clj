@@ -167,9 +167,8 @@
 
 (deftest token-login-test
   (testing "Test login with token"
-    (with-redefs [env (fn [_]
-                        {:username test-user
-                         :password test-passwd})
+    (with-redefs [env {:username test-user
+                       :password test-passwd}
                   h/check (fn [_ _] false)]
       (is (= 401
              (:status (token-login
