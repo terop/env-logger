@@ -1,6 +1,5 @@
 ;; Database settings
 {:database {:host "localhost"
-            :port "5432"
             :name "db_name"
             :username "foobar"
             :password "testpwd1!"}

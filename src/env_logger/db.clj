@@ -27,8 +27,7 @@
                    "POSTGRESQL_DB_HOST"
                    (db-conf :host))
       db-port (get (System/getenv)
-                   "POSTGRESQL_DB_PORT"
-                   (db-conf :port))
+                   "POSTGRESQL_DB_PORT")
       db-name (get (System/getenv)
                    "POSTGRESQL_DB_NAME"
                    (db-conf :name))
@@ -38,12 +37,13 @@
       db-password (get (System/getenv)
                        "POSTGRESQL_DB_PASSWORD"
                        (db-conf :password))]
-  (def postgres {:dbtype "postgresql"
-                 :dbname db-name
-                 :host db-host
-                 :port db-port
-                 :user db-user
-                 :password db-password}))
+  (def postgres (merge {:dbtype "postgresql"
+                        :dbname db-name
+                        :host db-host
+                        :user db-user
+                        :password db-password}
+                       (when db-port
+                         {:db-port db-port}))))
 (def postgres-ds (jdbc/get-datasource postgres))
 (def rs-opts {:builder-fn rs/as-unqualified-kebab-maps})
 
