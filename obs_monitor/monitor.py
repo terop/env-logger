@@ -6,15 +6,14 @@ import argparse
 import configparser
 import json
 import smtplib
-import re
+import ssl
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime
 from email.mime.text import MIMEText
-from os.path import exists
+from os import environ
+from os.path import exists, isdir
 
-import psycopg
-import requests
-from bs4 import BeautifulSoup  # pylint: disable=import-error
+import psycopg  # pylint: disable=import-error
 
 
 class ObservationMonitor:
@@ -26,7 +25,6 @@ class ObservationMonitor:
 
     def get_obs_time(self):
         """Returns the recording time of the latest observation."""
-        # pylint: disable=not-context-manager
         with psycopg.connect(create_db_conn_string(self._config['db'])) as conn:
             with conn.cursor() as cursor:
                 cursor.execute('SELECT recorded FROM observations ORDER BY id DESC LIMIT 1')
@@ -172,9 +170,12 @@ def send_email(config, subject, message):
     msg['From'] = config['Sender']
     msg['To'] = config['Recipient']
 
+    email_password = environ['EMAIL_PASSWORD'] if 'EMAIL_PASSWORD' in environ \
+        else config['Password']
     try:
-        with smtplib.SMTP_SSL(config['Server']) as server:
-            server.login(config['User'], config['Password'])
+        with smtplib.SMTP_SSL(config['Server'],
+                              context=ssl.create_default_context()) as server:
+            server.login(config['User'], email_password)
             server.send_message(msg)
     except smtplib.SMTPException as smtp_e:
         print(f'Failed to send email with subject "{subject}": {str(smtp_e)}', file=sys.stderr)
@@ -185,14 +186,19 @@ def send_email(config, subject, message):
 
 def create_db_conn_string(db_config):
     """Create the database connection string."""
-    return f'host={db_config["Host"]} user={db_config["User"]} password={db_config["Password"]} ' \
-        f'dbname={db_config["Database"]}'
+    db_config = {
+        'host': environ['DB_HOST'] if 'DB_HOST' in environ else db_config['Host'],
+        'name': environ['DB_NAME'] if 'DB_NAME' in environ else db_config['Name'],
+        'username': environ['DB_USERNAME'] if 'DB_USERNAME' in environ else db_config['User'],
+        'password': environ['DB_PASSWORD'] if 'DB_PASSWORD' in environ else db_config['Password']
+    }
+
+    return f'host={db_config["host"]} user={db_config["username"]} ' \
+        f'password={db_config["password"]} dbname={db_config["name"]}'
 
 
 def main():
     """Module main function."""
-    state_file_name = 'monitor_state.json'
-
     parser = argparse.ArgumentParser(description='Monitors observation reception.')
     parser.add_argument('--config', type=str, help='configuration file to use')
 
@@ -205,6 +211,17 @@ def main():
 
     config = configparser.ConfigParser()
     config.read(config_file)
+
+    state_file_dir = None
+    if 'STATE_FILE_DIRECTORY' in environ:
+        state_file_dir = environ['STATE_FILE_DIRECTORY']
+        if not exists(state_file_dir) or not isdir(state_file_dir):
+            print(f'Error: state file directory "{state_file_dir}" does not exist',
+                  file=sys.stderr)
+            sys.exit(1)
+
+    state_file_name = 'monitor_state.json' if not state_file_dir \
+        else f'{state_file_dir}/monitor_state.json'
 
     try:
         with open(state_file_name, 'r', encoding='utf-8') as state_file:

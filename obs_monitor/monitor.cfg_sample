@@ -2,7 +2,7 @@
 Host = example.com
 User = theuser
 Password = b4dpassw0rd
-Database = env_logger
+Name = env_logger
 
 [observation]
 Enabled = True
