@@ -219,26 +219,28 @@
   []
   (let [port (Integer/parseInt (get (System/getenv)
                                     "APP_PORT" "8080"))
-        force-https (:force-https env)
-        defaults (if force-https
-                   secure-site-defaults
-                   site-defaults)
+        opts {:port port}
+        dev-mode (:development-mode env)
+        defaults (if dev-mode
+                   site-defaults
+                   secure-site-defaults)
         ;; CSRF protection is knowingly not implemented
-        defaults-config (assoc-in (assoc defaults
-                                         :proxy (:use-proxy env))
-                                  [:security :anti-forgery] false)
+        defaults-config (assoc-in defaults [:security :anti-forgery] false)
         handler (as-> routes $
                   (wrap-authorization $ auth/auth-backend)
-                  (wrap-authentication $
-                                       auth/jwe-auth-backend
-                                       auth/auth-backend)
-                  (wrap-defaults $ defaults-config)
+                  (wrap-authentication $ auth/auth-backend)
                   (wrap-json-response $ {:pretty false})
-                  (wrap-json-params $ {:keywords? true}))
-        opts {:port port}]
-    ;; Load initial weather data
-    (fetch-all-weather-data)
-    (run-jetty (if force-https
-                 handler
-                 (wrap-reload handler))
+                  (wrap-json-params $ {:keywords? true})
+                  (wrap-defaults $ (if dev-mode
+                                     defaults-config
+                                     (if (:force-hsts env)
+                                       (assoc defaults-config :proxy true)
+                                       (-> defaults-config
+                                           (assoc-in [:security :ssl-redirect]
+                                                     false)
+                                           (assoc-in [:security :hsts]
+                                                     false))))))]
+    (run-jetty (if dev-mode
+                 (wrap-reload handler)
+                 handler)
                opts)))

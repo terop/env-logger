@@ -7,7 +7,7 @@
         ring/ring-json {:mvn/version "0.5.1"}
         clj-http/clj-http {:mvn/version "3.12.3"}
         io.github.dm3/clojure.java-time
-        {:sha "2a86c6595f6351dcf73d3a94a27c2ef3f4595644"}
+        {:sha "6a56f6c144c296efded2872ebb127d4b2e05ec9c"}
         org.threeten/threeten-extra {:mvn/version "1.7.0"}
         compojure/compojure {:mvn/version "1.7.0"}
         selmer/selmer {:mvn/version "1.12.53"}

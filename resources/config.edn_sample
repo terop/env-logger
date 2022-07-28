@@ -35,10 +35,12 @@
             :hostname "localhost"
             ;; Use HTTPS?
             :use-https true}
- ;; Force settings for HTTPS access without prior HTTPS stripping
- :force-https false
- ;; Use through proxy (usually needed when reverse proxies are used)
- :use-proxy true
+ ;; Enable enforcing of HSTS, only use if HTTPS is not terminated by a reverse
+ ;; proxy or load balancer
+ :force-hsts false
+ ;; Enable development mode, it enables the wrap-reload middleware and
+ ;; uses the site-defaults config
+ :development-mode false
  ;; Full URL through which the application is accessed, MUST end with a slash
  :application-url "http://example.com/env-logger/"
  ;; Base path to Testbed images
