@@ -444,7 +444,8 @@ var loadPage = () => {
                 onClick: onClickFunction,
                 spanGaps: true,
                 normalized: true,
-                tension: 0.1
+                tension: 0.1,
+                animation: false
             }
         });
 
@@ -459,7 +460,8 @@ var loadPage = () => {
                     onClick: onClickFunction,
                     spanGaps: true,
                     normalized: true,
-                    tension: 0.1
+                    tension: 0.1,
+                    animation: false
                 }
             });
             document.getElementById('otherResetZoom').addEventListener(
