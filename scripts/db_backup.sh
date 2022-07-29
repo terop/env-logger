@@ -97,24 +97,32 @@ if [ ! -e ${conf_file} ]; then
 fi
 . ./${conf_file}
 
-backup_file_name="${db_name}_$(date -Iseconds).sql.xz"
-
 echo "Dumping database ${db_name} to file ${backup_file_name}"
 
 if [ ${local_db} ]; then
+    backup_file_name="${db_name}_$(date -Iseconds).sql.xz"
+
     if [ $(pg_dump -c -w "${db_name}" | xz -z -T 0 > ${backup_file_name}) ]; then
         echo "Error: pg_dump failed, deleting file" >&2
         rm "${backup_file_name}"
         return 1
     fi
 else
+    backup_file_name_no_comp="${db_name}_$(date -Iseconds).sql"
+
     if [ $(kubectl exec ${POD_NAME} -- /bin/sh -c \
                    "PGPASSWORD='${DB_PASSWD}' pg_dump -c -w -U ${DB_USER} ${db_name}" \
-               | xz -z -T 0 > ${backup_file_name}) ]; then
+                   > ${backup_file_name_no_comp}) ]; then
         echo "Error: Kubernetes pg_dump failed, deleting file" >&2
         rm "${backup_file_name}"
         return 1
     fi
+    if [ $(xz -z -T 0 ${backup_file_name_no_comp}) ]; then
+        echo "Error: Kubernetes pg_dump compression failed, deleting file" >&2
+        rm "${backup_file_name_no_comp}"
+        return 1
+    fi
+    backup_file_name="${backup_file_name_no_comp}.xz"
 fi
 
 if [ $local_backup -eq 1 ]; then
