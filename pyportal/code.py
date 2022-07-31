@@ -47,19 +47,31 @@ def connect_to_wlan():
     spi = busio.SPI(board.SCK, board.MOSI, board.MISO)
     esp = adafruit_esp32spi.ESP_SPIcontrol(spi, esp32_cs, esp32_ready, esp32_reset)
 
+    fail_count = 0
+
     requests.set_socket(socket, esp)
 
     if esp.status == adafruit_esp32spi.WL_IDLE_STATUS:
         print('ESP32 found and in idle mode')
-        print('Firmware version:', esp.firmware_version)
-        print('MAC addr:', [hex(i) for i in esp.MAC_address])
+        print(f'Firmware version: {esp.firmware_version}')
+        print(f'MAC addr: {[hex(i) for i in esp.MAC_address]}')
 
     print('Connecting to AP')
+    esp.reset()
+
     while not esp.is_connected:
         try:
             esp.connect_AP(secrets['ssid'], secrets['password'])
         except RuntimeError as rte:
-            print(f'Could not connect to AP, retrying: {rte}')
+            print(f'Error: could not connect to AP, retrying: {rte}')
+
+            fail_count += 1
+            if fail_count >= NW_FAILURE_THRESHOLD:
+                print(f'Error: AP connection failed {fail_count} times, resetting ESP')
+                fail_count = 0
+                esp.reset()
+
+            time.sleep(5)
             continue
         print('Connected to', str(esp.ssid, 'utf-8'), '\tRSSI:', esp.rssi)
         print('My IP address is', esp.pretty_ip(esp.ip_address))
@@ -68,6 +80,7 @@ def connect_to_wlan():
 def fetch_token():
     """Fetch token for getting data from env-logger backend."""
     fail_count = 0
+    backend_fail_count = 0
 
     while True:
         try:
@@ -75,8 +88,17 @@ def fetch_token():
                                  data={'username': secrets['data-read-user']['username'],
                                        'password': secrets['data-read-user']['password']})
             if resp.status_code != 200:
-                print('Error: token acquisition failed')
-                return ''
+                backend_fail_count += 1
+                print('Error: token acquisition failed, backend failure '
+                      f'count {backend_fail_count}')
+
+                if backend_fail_count > NW_FAILURE_THRESHOLD:
+                    print('Error: token fetch failed: backend problem, '
+                          f'failure count {backend_fail_count}')
+                    return None
+
+                time.sleep(20)
+                continue
 
             break
         except RuntimeError as rte:
@@ -263,7 +285,6 @@ def main():
         if not token:
             token = fetch_token()
             if not token:
-                time.sleep(5)
                 continue
 
         if BACKLIGHT_DIMMING_ENABLED:
