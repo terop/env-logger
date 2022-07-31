@@ -6,7 +6,7 @@
             [clojure.data.zip.xml :as zx]
             [config.core :refer [env]]
             [taoensso.timbre :refer [error info]]
-            [cheshire.core :refer [parse-string]]
+            [jsonista.core :as j]
             [clj-http.client :as client]
             [next.jdbc :as jdbc]
             [java-time :as t]
@@ -273,7 +273,9 @@
                      (error ex "OWM data fetch failed")
                      (reset! owm nil)))]
         (when (= 200 (:status resp))
-          (let [all-data (parse-string (:body resp) true)]
+          (let [all-data (j/read-value (:body resp)
+                                       (j/object-mapper
+                                        {:decode-key-fn true}))]
             (reset! owm
                     {:current (:current all-data)
                      :forecast (nth (:hourly all-data) 1)

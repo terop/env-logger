@@ -11,10 +11,10 @@
         org.threeten/threeten-extra {:mvn/version "1.7.0"}
         compojure/compojure {:mvn/version "1.7.0"}
         selmer/selmer {:mvn/version "1.12.53"}
-        cheshire/cheshire {:mvn/version "5.11.0"}
+        metosin/jsonista {:mvn/version "0.3.6"}
         org.postgresql/postgresql {:mvn/version "42.4.0"}
-        com.github.seancorfield/honeysql {:mvn/version "2.2.891"}
-        com.github.seancorfield/next.jdbc {:mvn/version "1.2.780"}
+        com.github.seancorfield/honeysql {:mvn/version "2.3.911"}
+        com.github.seancorfield/next.jdbc {:mvn/version "1.2.790"}
         buddy/buddy-auth {:mvn/version "3.0.323"}
         buddy/buddy-hashers {:mvn/version "1.8.158"}
         buddy/buddy-sign {:mvn/version "3.4.333"}

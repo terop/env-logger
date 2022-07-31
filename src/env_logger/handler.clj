@@ -5,7 +5,7 @@
             [buddy.auth :refer [authenticated?]]
             [buddy.auth.middleware :refer [wrap-authentication
                                            wrap-authorization]]
-            [cheshire.core :refer [generate-string parse-string]]
+            [jsonista.core :as j]
             [java-time :as t]
             [compojure
              [core :refer [context defroutes GET POST]]
@@ -29,6 +29,10 @@
                               fetch-all-weather-data]]])
   (:import java.time.Instant)
   (:gen-class))
+
+(def json-decode-opts
+  "Options for read-value"
+  (j/object-mapper {:decode-key-fn true}))
 
 (defn convert-epoch-ms-to-string
   "Converts an Unix epoch timestamp to a 'human readable' value."
@@ -125,8 +129,8 @@
                                   (store-weather-data? con))
                          (get-fmi-weather-data))]
       (db/insert-observation con
-                             (assoc (parse-string obs-string
-                                                  true)
+                             (assoc (j/read-value obs-string
+                                                  json-decode-opts)
                                     :weather-data weather-data)))))
 
 (defroutes routes
@@ -161,7 +165,7 @@
     (POST "/login" [] auth/wa-login))
   ;; Data query
   (GET "/display-data" request
-    (generate-string
+    (j/write-value-as-string
      (merge {:weather-data
              (if-not (authenticated? request)
                (:current (:fmi (get-weather-data)))
@@ -177,7 +181,7 @@
   (GET "/get-weather-data" request
     (if-not (authenticated? request)
       auth/response-unauthorized
-      (generate-string (get-weather-data))))
+      (j/write-value-as-string (get-weather-data))))
   ;; Observation storing
   (POST "/observations" request
     (fetch-all-weather-data)
@@ -196,7 +200,8 @@
           auth/response-server-error
           (if (pos? (db/insert-ruuvitag-observation
                      con
-                     (parse-string (:observation (:params request)) true)))
+                     (j/read-value (:observation (:params request))
+                                   json-decode-opts)))
             "OK" auth/response-server-error)))))
   ;; Testbed image name storage
   (POST "/tb-image" request

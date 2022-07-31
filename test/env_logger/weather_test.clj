@@ -4,7 +4,7 @@
             [clojure.xml :refer [parse]]
             [config.core :refer [env]]
             [clj-http.fake :refer [with-fake-routes]]
-            [cheshire.core :refer [generate-string]]
+            [jsonista.core :as j]
             [java-time :as t]
             [next.jdbc :as jdbc]
             [env-logger
@@ -179,7 +179,7 @@
 
 ;; OWM
 
-(def owm-json-resp (generate-string
+(def owm-json-resp (j/write-value-as-string
                     {:lat 63.25,
                      :lon 20.74,
                      :timezone "Europe/Helsinki",
