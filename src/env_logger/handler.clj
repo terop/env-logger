@@ -54,14 +54,16 @@
                                                       (t/minutes 45))
                                              (t/local-date-time)
                                              (:ruuvitag-locations env)))))]
-        {:status 200
-         :body {:data (assoc data :recorded
-                             (convert-epoch-ms-to-string (:recorded data)))
-                :rt-data (for [item rt-data]
-                           (assoc item :recorded
-                                  (convert-epoch-ms-to-string
-                                   (:recorded item))))
-                :weather-data (get-fmi-weather-data)}}))))
+        (if-not data
+          {:status 500}
+          {:status 200
+           :body {:data (assoc data :recorded
+                               (convert-epoch-ms-to-string (:recorded data)))
+                  :rt-data (for [item rt-data]
+                             (assoc item :recorded
+                                    (convert-epoch-ms-to-string
+                                     (:recorded item))))
+                  :weather-data (get-fmi-weather-data)}})))))
 
 (defn get-plot-page-data
   "Returns data needed for rendering the plot page."
@@ -228,7 +230,9 @@
         defaults-config (assoc-in defaults [:security :anti-forgery] false)
         handler (as-> routes $
                   (wrap-authorization $ auth/auth-backend)
-                  (wrap-authentication $ auth/auth-backend)
+                  (wrap-authentication $
+                                       auth/jwe-auth-backend
+                                       auth/auth-backend)
                   (wrap-json-response $ {:pretty false})
                   (wrap-json-params $ {:keywords? true})
                   (wrap-defaults $ (if dev-mode
