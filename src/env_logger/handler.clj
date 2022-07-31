@@ -16,7 +16,7 @@
                                               site-defaults
                                               secure-site-defaults]]
             [ring.middleware.reload :refer [wrap-reload]]
-            [ring.middleware.json :refer [wrap-json-params wrap-json-response]]
+            [ring.middleware.json :refer [wrap-json-params]]
             [ring.util.response :as resp]
             [selmer.parser :refer [render-file]]
             [env-logger
@@ -58,16 +58,17 @@
                                                       (t/minutes 45))
                                              (t/local-date-time)
                                              (:ruuvitag-locations env)))))]
-        (if-not data
-          {:status 500}
-          {:status 200
-           :body {:data (assoc data :recorded
-                               (convert-epoch-ms-to-string (:recorded data)))
-                  :rt-data (for [item rt-data]
-                             (assoc item :recorded
-                                    (convert-epoch-ms-to-string
-                                     (:recorded item))))
-                  :weather-data (get-fmi-weather-data)}})))))
+        (j/write-value-as-string
+         (if-not data
+           {:status 500}
+           {:status 200
+            :body {:data (assoc data :recorded
+                                (convert-epoch-ms-to-string (:recorded data)))
+                   :rt-data (for [item rt-data]
+                              (assoc item :recorded
+                                     (convert-epoch-ms-to-string
+                                      (:recorded item))))
+                   :weather-data (get-fmi-weather-data)}}))))))
 
 (defn get-plot-page-data
   "Returns data needed for rendering the plot page."
@@ -165,23 +166,30 @@
     (POST "/login" [] auth/wa-login))
   ;; Data query
   (GET "/display-data" request
-    (j/write-value-as-string
-     (merge {:weather-data
-             (if-not (authenticated? request)
-               (:current (:fmi (get-weather-data)))
-               (get-weather-data))}
-            (merge {:mode (if (authenticated? request) "all" "weather")
-                    :tb-image-basepath (:tb-image-basepath env)}
-                   (when (authenticated? request)
-                     {:rt-names (:ruuvitag-locations env)
-                      :rt-default-show (:ruuvitag-default-show env)
-                      :rt-default-values (:ruuvitag-default-values env)}))
-            (get-plot-page-data request))))
+    (resp/content-type
+     (resp/response
+      (j/write-value-as-string
+       (merge {:weather-data
+               (if-not (authenticated? request)
+                 (:current (:fmi (get-weather-data)))
+                 (get-weather-data))}
+              (merge {:mode (if (authenticated? request) "all" "weather")
+                      :tb-image-basepath (:tb-image-basepath env)}
+                     (when (authenticated? request)
+                       {:rt-names (:ruuvitag-locations env)
+                        :rt-default-show (:ruuvitag-default-show env)
+                        :rt-default-values (:ruuvitag-default-values env)}))
+              (get-plot-page-data request))))
+     "application/json"))
   (GET "/get-latest-obs" [] get-latest-obs-data)
   (GET "/get-weather-data" request
     (if-not (authenticated? request)
       auth/response-unauthorized
-      (j/write-value-as-string (get-weather-data))))
+      (resp/content-type
+       (resp/response
+        (j/write-value-as-string
+         (get-weather-data)))
+       "application/json")))
   ;; Observation storing
   (POST "/observations" request
     (fetch-all-weather-data)
@@ -238,7 +246,6 @@
                   (wrap-authentication $
                                        auth/jwe-auth-backend
                                        auth/auth-backend)
-                  (wrap-json-response $ {:pretty false})
                   (wrap-json-params $ {:keywords? true})
                   (wrap-defaults $ (if dev-mode
                                      defaults-config
