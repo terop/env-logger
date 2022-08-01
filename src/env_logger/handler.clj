@@ -58,17 +58,19 @@
                                                       (t/minutes 45))
                                              (t/local-date-time)
                                              (:ruuvitag-locations env)))))]
-        (j/write-value-as-string
-         (if-not data
-           {:status 500}
-           {:status 200
-            :body {:data (assoc data :recorded
-                                (convert-epoch-ms-to-string (:recorded data)))
-                   :rt-data (for [item rt-data]
-                              (assoc item :recorded
-                                     (convert-epoch-ms-to-string
-                                      (:recorded item))))
-                   :weather-data (get-fmi-weather-data)}}))))))
+        (if-not data
+          (resp/status 500)
+          (resp/content-type
+           (resp/response
+            (j/write-value-as-string
+             {:data (assoc data :recorded
+                           (convert-epoch-ms-to-string (:recorded data)))
+              :rt-data (for [item rt-data]
+                         (assoc item :recorded
+                                (convert-epoch-ms-to-string
+                                 (:recorded item))))
+              :weather-data (get-fmi-weather-data)}))
+           "application/json"))))))
 
 (defn get-plot-page-data
   "Returns data needed for rendering the plot page."
