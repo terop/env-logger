@@ -525,7 +525,7 @@ var loadPage = () => {
 
         persistDatasetState();
 
-        axios.get('display-data',
+        axios.get('data/display',
                   {
                       params: {
                           'startDate': startDate,
@@ -617,7 +617,7 @@ var loadPage = () => {
     }
 };
 
-axios.get('display-data')
+axios.get('data/display')
     .then(resp => {
         const rData = resp.data;
 

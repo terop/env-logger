@@ -162,7 +162,7 @@
     (if-not (db/test-db-connection db/postgres-ds)
       auth/response-server-error
       (let [observation (j/read-value (get (:params request)
-                                           "obs-string")
+                                           "observation")
                                       json-decode-opts)]
         (if-not (= (count observation) 4)
           (resp/bad-request "Bad request")
@@ -230,7 +230,7 @@
 (def app
   (ring/ring-handler
    (ring/router
-    ;; Index and login
+    ;; Index
     [["/" {:get #(if-not (db/test-db-connection db/postgres-ds)
                    (serve-template "templates/error.html"
                                    {})
@@ -239,6 +239,7 @@
                                                                  %))
                                     :obs-dates (db/get-obs-date-interval
                                                 db/postgres-ds)}))}]
+     ;; Login and logout
      ["/login" {:get #(if-not (authenticated? (:session %))
                         (serve-template "templates/login.html" {})
                         (resp/redirect (:application-url env)))
@@ -260,19 +261,22 @@
                     :post auth/wa-register}]
       ["/login" {:get auth/wa-prepare-login
                  :post auth/wa-login}]]
-     ;; Data query
-     ["/display-data" {:get get-display-data}]
-     ["/get-latest-obs" {:get get-latest-obs-data}]
-     ["/get-weather-data" {:get #(if-not (authenticated? (if (:identity %)
-                                                           % (:session %)))
-                                   auth/response-unauthorized
-                                   (serve-json (get-weather-data)))}]
+     ;; Data queries
+     ["/data"
+      ["/display" {:get get-display-data}]
+      ["/latest-obs" {:get get-latest-obs-data}]
+      ["/weather" {:get #(if-not (authenticated? (if (:identity %)
+                                                   % (:session %)))
+                           auth/response-unauthorized
+                           (serve-json (get-weather-data)))}]]
      ;; Observation storing
-     ["/observations" {:post observation-insert}]
-     ;; RuuviTag observation storage
-     ["/rt-observations" {:post rt-observation-insert}]
-     ;; Testbed image name storage
-     ["/tb-image" {:post tb-image-insert}]]
+     ["/obs"
+      ;; Standard observation
+      ["/observation" {:post observation-insert}]
+      ;; RuuviTag observation storage
+      ["/rt-observation" {:post rt-observation-insert}]
+      ;; Testbed image name storage
+      ["/tb-image" {:post tb-image-insert}]]]
     {:data {:muuntaja m/instance
             :middleware [muuntaja/format-middleware]}})
    (ring/routes

@@ -58,6 +58,7 @@ def connect_to_wlan():
 
     print('Connecting to AP')
     esp.reset()
+    time.sleep(2)
 
     while not esp.is_connected:
         try:
@@ -169,6 +170,8 @@ def set_time(timezone):
                 return utc_offset_hour
         except RuntimeError as ex:
             print(f'Error: an exception occurred in set_time: {ex}')
+            if 'ESP32' in str(ex):
+                connect_to_wlan()
             time.sleep(5)
 
 
@@ -290,8 +293,8 @@ def main():
         if BACKLIGHT_DIMMING_ENABLED:
             adjust_backlight(board.DISPLAY)
 
-        token, observation = get_backend_endpoint_content('get-latest-obs', token)
-        token, weather_data = get_backend_endpoint_content('get-weather-data', token)
+        token, observation = get_backend_endpoint_content('data/latest-obs', token)
+        token, weather_data = get_backend_endpoint_content('data/weather', token)
 
         update_screen(display, observation, weather_data, utc_offset_hour)
 

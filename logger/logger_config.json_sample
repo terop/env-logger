@@ -5,13 +5,13 @@
         "arduino_url": "http://192.168.1.123",
         "terminal_serial": "/dev/ttyACM0",
         "skip_terminal_reading": false,
-        "upload_url": "https://example.com/env-logger/observations",
+        "upload_url": "https://example.com/env-logger/obs/observation",
         "beacon_mac": "20:91:48:26:51:F1",
         "beacon_scan_time": 10,
         "beacon_scan_path": "/home/user/env-logger/logger"
     },
     "ruuvitag": {
-        "url": "https://example.com/env-logger/rt-observations",
+        "url": "https://example.com/env-logger/obs/rt-observation",
         "tags": [
             {
                 "mac": "F3:19:DD:06:E0:7A",

@@ -22,7 +22,7 @@
         (with-redefs [db/test-db-connection (fn [_] false)]
           (is (= 500 (:status (h/observation-insert {})))))
         (let [request {:params
-                       {"obs-string"
+                       {"observation"
                         (j/write-value-as-string {:timestamp ""
                                                   :insideLight 0
                                                   :beacons ""

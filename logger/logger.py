@@ -163,7 +163,7 @@ def store_to_db(timezone, config, data, auth_code):
     data['timestamp'] = get_timestamp(timezone)
     data = OrderedDict(sorted(data.items()))
     resp = requests.post(config['upload_url'],
-                         params={'obs-string': json.dumps(data),
+                         params={'observation': json.dumps(data),
                                  'code': auth_code})
 
     logging.info("Weather observation request data: '%s', response: code %s, text '%s'",

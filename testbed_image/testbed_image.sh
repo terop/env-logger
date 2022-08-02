@@ -43,5 +43,5 @@ rm "${image_name}"
 # Add image name to env-logger database
 if [ ${env_logger_integration} -ne 0 ]; then
     curl -s -S --data-urlencode "name=${image_name}" --data-urlencode "code=${auth_code}" \
-         "${env_logger_url}/tb-image" 1>/dev/null
+         "${env_logger_url}/obs/tb-image" 1>/dev/null
 fi
