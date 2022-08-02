@@ -4,6 +4,7 @@
             [env-logger
              [authentication :as auth]
              [db :as db]
+             [db-test :refer [test-ds]]
              [handler :as h]
              [weather :as w]]))
 
@@ -15,27 +16,29 @@
 
 (deftest observation-insert-test
   (testing "Observation insert function"
-    (with-redefs [w/fetch-all-weather-data (fn [] {})]
-      (is (= 401 (:status (h/observation-insert {}))))
-      (with-redefs [auth/check-auth-code (fn [_] true)]
-        (is (= 400 (:status (h/observation-insert {}))))
-        (with-redefs [db/test-db-connection (fn [_] false)]
-          (is (= 500 (:status (h/observation-insert {})))))
-        (let [request {:params
-                       {"observation"
-                        (j/write-value-as-string {:timestamp ""
-                                                  :insideLight 0
-                                                  :beacons ""
-                                                  :outsideTemperature 0})}}]
-          (with-redefs [h/handle-observation-insert (fn [_] true)]
-            (is (= "OK" (:body (h/observation-insert request)))))
-          (with-redefs [h/handle-observation-insert (fn [_] false)]
-            (is (= 500 (:status (h/observation-insert request))))))))))
+    (with-redefs [db/postgres-ds test-ds]
+      (with-redefs [w/fetch-all-weather-data (fn [] {})]
+        (is (= 401 (:status (h/observation-insert {}))))
+        (with-redefs [auth/check-auth-code (fn [_] true)]
+          (is (= 400 (:status (h/observation-insert {}))))
+          (with-redefs [db/test-db-connection (fn [_] false)]
+            (is (= 500 (:status (h/observation-insert {})))))
+          (let [request {:params
+                         {"observation"
+                          (j/write-value-as-string {:timestamp ""
+                                                    :insideLight 0
+                                                    :beacons ""
+                                                    :outsideTemperature 0})}}]
+            (with-redefs [h/handle-observation-insert (fn [_] true)]
+              (is (= "OK" (:body (h/observation-insert request)))))
+            (with-redefs [h/handle-observation-insert (fn [_] false)]
+              (is (= 500 (:status (h/observation-insert request)))))))))))
 
 (deftest rt-observation-insert-test
   (testing "RuuviTag observation insert function"
     (is (= 401 (:status (h/rt-observation-insert {}))))
-    (with-redefs [auth/check-auth-code (fn [_] true)]
+    (with-redefs [auth/check-auth-code (fn [_] true)
+                  db/postgres-ds test-ds]
       (with-redefs [db/test-db-connection (fn [_] false)]
         (is (= 500 (:status (h/rt-observation-insert {})))))
       (with-redefs [db/insert-ruuvitag-observation (fn [_ _] 1)]
@@ -46,7 +49,8 @@
 (deftest tb-image-insert-test
   (testing "FMI Testbed image insert function"
     (is (= 401 (:status (h/tb-image-insert {}))))
-    (with-redefs [auth/check-auth-code (fn [_] true)]
+    (with-redefs [auth/check-auth-code (fn [_] true)
+                  db/postgres-ds test-ds]
       (with-redefs [db/test-db-connection (fn [_] false)]
         (is (= 500 (:status (h/tb-image-insert {})))))
       (is (= 400 (:status (h/tb-image-insert {:params {"name" "foo.png"}}))))
