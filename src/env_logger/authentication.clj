@@ -17,7 +17,7 @@
             [taoensso.timbre :refer [error]]
             [env-logger
              [db :as db]
-             [render :refer [serve-template serve-text]]
+             [render :refer [serve-json serve-template serve-text]]
              [user :refer [get-user-id get-pw-hash]]])
   (:import java.time.Instant
            com.webauthn4j.authenticator.AuthenticatorImpl
@@ -127,7 +127,7 @@
 (defn wa-register
   "User registration function."
   [request]
-  (if-let [user (webauthn/register-user (:params request)
+  (if-let [user (webauthn/register-user (:body-params request)
                                         site-properties
                                         register-user!)]
     (resp/created "/login" (j/write-value-as-string user))
@@ -140,7 +140,7 @@
         authenticators (get-authenticators db-con username)]
     (if-let [resp (webauthn/prepare-login username
                                           (fn [_] authenticators))]
-      (resp/response (j/write-value-as-string resp))
+      (serve-json resp)
       (resp/status 500))))
 
 (defn wa-prepare-login
@@ -151,10 +151,9 @@
 (defn wa-login
   "User login function."
   [{session :session :as request}]
-  (let [payload (:params request)]
+  (let [payload (:body-params request)]
     (if (empty? payload)
-      (resp/status (resp/response
-                    (j/write-value-as-string {:error "invalid-authenticator"}))
+      (resp/status (serve-json {:error "invalid-authenticator"})
                    403)
       (let [username (b64/decode (:user-handle payload))
             authenticators (get-authenticators db/postgres-ds

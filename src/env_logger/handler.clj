@@ -7,16 +7,17 @@
                                            wrap-authorization]]
             [java-time :as t]
             [jsonista.core :as j]
+            [muuntaja.core :as m]
             [next.jdbc :as jdbc]
             [reitit.ring :as ring]
             [reitit.ring.middleware
+             [muuntaja :as muuntaja]
              [parameters :as parameters]]
             [ring.adapter.jetty :refer [run-jetty]]
             [ring.middleware
              [defaults :refer [wrap-defaults
                                site-defaults
                                secure-site-defaults]]
-             [json :refer [wrap-json-params]]
              [reload :refer [wrap-reload]]]
             [ring.util.response :as resp]
             [env-logger
@@ -216,8 +217,6 @@
     [[wrap-authorization auth/auth-backend]
      [wrap-authentication auth/jwe-auth-backend auth/auth-backend]
      parameters/parameters-middleware
-     ;; TODO replace with muuntaja
-     [wrap-json-params {:keywords? true}]
      [wrap-defaults (if dev-mode
                       defaults-config
                       (if (:force-hsts env)
@@ -273,7 +272,9 @@
      ;; RuuviTag observation storage
      ["/rt-observations" {:post rt-observation-insert}]
      ;; Testbed image name storage
-     ["/tb-image" {:post tb-image-insert}]])
+     ["/tb-image" {:post tb-image-insert}]]
+    {:data {:muuntaja m/instance
+            :middleware [muuntaja/format-middleware]}})
    (ring/routes
     (ring/create-resource-handler {:path "/"})
     (ring/create-default-handler))

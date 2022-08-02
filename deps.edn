@@ -4,7 +4,6 @@
         yogthos/config {:mvn/version "1.2.0"}
         ring/ring {:mvn/version "1.9.5"}
         ring/ring-defaults {:mvn/version "0.3.3"}
-        ring/ring-json {:mvn/version "0.5.1"}
         clj-http/clj-http {:mvn/version "3.12.3"}
         io.github.dm3/clojure.java-time
         {:sha "6a56f6c144c296efded2872ebb127d4b2e05ec9c"}
