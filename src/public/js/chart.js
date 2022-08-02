@@ -249,7 +249,8 @@ var loadPage = () => {
                 return;
             }
             if (mode === 'all')
-                observationText += `Sun: Sunrise ${formatUnixSecondTs(data['weather']['owm']['current']['sunrise'])},` +
+                if (data['weather']['owm'])
+                    observationText += `Sun: Sunrise ${formatUnixSecondTs(data['weather']['owm']['current']['sunrise'])},` +
                 ` Sunset ${formatUnixSecondTs(data['weather']['owm']['current']['sunset'])}<br>`;
 
             const wd = (mode === 'all' ? data['weather']['fmi']['current'] : data['weather']);
@@ -269,7 +270,8 @@ var loadPage = () => {
                 }
             }
             if (mode === 'all') {
-                observationText += `Description: ${data['weather']['owm']['current']['weather'][0]['description']}`;
+                if (data['weather']['owm'])
+                    observationText += `Description: ${data['weather']['owm']['current']['weather'][0]['description']}`;
 
                 var firstRTLabelSeen = false;
                 for (const key in labelValues['other']) {
@@ -288,7 +290,7 @@ var loadPage = () => {
                 observationText = observationText.slice(0, -2);
 
                 const forecast = data['weather']['fmi']['forecast'];
-                if (forecast && data['weather']['owm'])
+                if (forecast && data['weather']['owm']['forecast'])
                     observationText += '<br><br>Forecast for ' +
                     luxon.DateTime.fromISO(forecast['time']).toFormat('dd.MM.yyyy HH:mm') +
                     `: temperature: ${forecast['temperature']} \u2103, ` +
