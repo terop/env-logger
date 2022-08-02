@@ -115,7 +115,7 @@
 
 (deftest register-preparation
   (testing "User register preparation data generation"
-    (let [resp (wa-prepare-register {:params {:username test-user}})
+    (let [resp (wa-prepare-register {:params {"username" test-user}})
           body (j/read-value (:body resp) json-decode-opts)]
       (is (= 200 (:status resp)))
       (is (= "localhost" (get-in body [:rp :id])))
@@ -124,7 +124,7 @@
 (deftest login-preparation
   (testing "User login preparation data generation"
     (insert-authenticator)
-    (let [resp (do-prepare-login {:params {:username test-user}} test-ds)
+    (let [resp (do-prepare-login {:params {"username" test-user}} test-ds)
           body (j/read-value (:body resp) json-decode-opts)]
       (is (= 200 (:status resp)))
       (is (= "09w4snBXtbIKzw/O7krAjYTzkIWeOVDkYGvlT/v90Uc="
@@ -163,25 +163,30 @@
                      :headers))))
     (with-redefs [get-pw-hash (fn [_ _] "myhash")
                   h/check (fn [_ _] false)]
-      (is (> (count (login-authenticate
-                     {:session {}
-                      :form-params {"username" test-user
-                                    "password" test-passwd}}))
-             100)))))
+      (let [resp (login-authenticate
+                  {:session {}
+                   :form-params {"username" test-user
+                                 "password" test-passwd}})]
+        (is (= 200 (:status resp)))
+        (is (= {"Content-Type" "text/html;charset=utf-8"} (:headers resp)))
+        (is (> (count (:body resp)) 100))))))
 
 (deftest token-login-test
   (testing "Test login with token"
-    (with-redefs [env {:username test-user
-                       :password test-passwd}
+    (with-redefs [env {:data-user-auth-data {:username test-user
+                                             :password "foo"}}
                   h/check (fn [_ _] false)]
       (is (= 401
              (:status (token-login
-                       {:params {:username test-user
-                                 :password test-passwd}})))))
+                       {:params {"username" test-user
+                                 "password" test-passwd}})))))
     (with-redefs [env {:data-user-auth-data {:username test-user
                                              :password test-passwd}
                        :jwt-token-timeout 10}
                   h/check (fn [_ _] true)]
-      (is (= 167 (count (token-login
-                         {:params {:username test-user
-                                   :password test-passwd}})))))))
+      (let [token (token-login
+                   {:params {"username" test-user
+                             "password" test-passwd}})]
+        (is (= 200 (:status token)))
+        (is (= {"Content-Type" "text/plain"} (:headers token)))
+        (is (= 167 (count (:body token))))))))

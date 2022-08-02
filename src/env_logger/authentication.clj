@@ -14,10 +14,10 @@
             [next.jdbc :as jdbc]
             [next.jdbc.sql :as js]
             [ring.util.response :as resp]
-            [selmer.parser :refer [render-file]]
             [taoensso.timbre :refer [error]]
             [env-logger
              [db :as db]
+             [render :refer [serve-template serve-text]]
              [user :refer [get-user-id get-pw-hash]]])
   (:import java.time.Instant
            com.webauthn4j.authenticator.AuthenticatorImpl
@@ -118,8 +118,8 @@
 (defn wa-prepare-register
   "Function for getting user register preparation data."
   [request]
-  (reset! authenticator-name (get-in request [:params :name]))
-  (-> (get-in request [:params :username])
+  (reset! authenticator-name (get-in request [:params "name"]))
+  (-> (get-in request [:params "username"])
       (webauthn/prepare-registration site-properties)
       j/write-value-as-string
       resp/response))
@@ -136,7 +136,7 @@
 (defn do-prepare-login
   "Function doing the login preparation."
   [request db-con]
-  (let [username (get-in request [:params :username])
+  (let [username (get-in request [:params "username"])
         authenticators (get-authenticators db-con username)]
     (if-let [resp (webauthn/prepare-login username
                                           (fn [_] authenticators))]
@@ -154,7 +154,8 @@
   (let [payload (:params request)]
     (if (empty? payload)
       (resp/status (resp/response
-                    (j/write-value-as-string {:error "invalid-authenticator"})) 403)
+                    (j/write-value-as-string {:error "invalid-authenticator"}))
+                   403)
       (let [username (b64/decode (:user-handle payload))
             authenticators (get-authenticators db/postgres-ds
                                                username)]
@@ -208,21 +209,22 @@
         session (:session request)
         pw-hash (get-pw-hash db/postgres-ds username)]
     (if (:error pw-hash)
-      (render-file "templates/error.html"
-                   {})
+      (serve-template "templates/error.html"
+                      {})
       (if (and pw-hash (h/check password pw-hash))
         (let [updated-session (assoc session :identity (keyword username))]
-          (assoc (resp/redirect (:application-url env)) :session updated-session))
-        (render-file "templates/login.html"
-                     {:error
-                      "Error: an invalid credential was provided"})))))
+          (assoc (resp/redirect (:application-url env))
+                 :session updated-session))
+        (serve-template "templates/login.html"
+                        {:error
+                         "Error: an invalid credential was provided"})))))
 
 (defn token-login
   "Login method for getting an token for data access."
   [request]
   (let [auth-data (:data-user-auth-data env)
-        username (get-in request [:params :username])
-        password (get-in request [:params :password])
+        username (get-in request [:params "username"])
+        password (get-in request [:params "password"])
         valid? (and (and username
                          (= username (:username auth-data)))
                     (and password
@@ -233,5 +235,5 @@
                                (:jwt-token-timeout env))
                             getEpochSecond)}
             token (jwt/encrypt claims jwe-secret {:alg :a256kw :enc :a128gcm})]
-        token)
+        (serve-text token))
       response-unauthorized)))

@@ -5,23 +5,24 @@
             [buddy.auth :refer [authenticated?]]
             [buddy.auth.middleware :refer [wrap-authentication
                                            wrap-authorization]]
-            [jsonista.core :as j]
             [java-time :as t]
-            [compojure
-             [core :refer [context defroutes GET POST]]
-             [route :as route]]
+            [jsonista.core :as j]
             [next.jdbc :as jdbc]
+            [reitit.ring :as ring]
+            [reitit.ring.middleware
+             [parameters :as parameters]]
             [ring.adapter.jetty :refer [run-jetty]]
-            [ring.middleware.defaults :refer [wrap-defaults
-                                              site-defaults
-                                              secure-site-defaults]]
-            [ring.middleware.reload :refer [wrap-reload]]
-            [ring.middleware.json :refer [wrap-json-params]]
+            [ring.middleware
+             [defaults :refer [wrap-defaults
+                               site-defaults
+                               secure-site-defaults]]
+             [json :refer [wrap-json-params]]
+             [reload :refer [wrap-reload]]]
             [ring.util.response :as resp]
-            [selmer.parser :refer [render-file]]
             [env-logger
              [authentication :as auth]
              [db :as db]
+             [render :refer [serve-text serve-json serve-template]]
              [weather :refer [calculate-start-time
                               get-fmi-weather-data
                               store-weather-data?
@@ -46,7 +47,8 @@
 (defn get-latest-obs-data
   "Get data for the latest observation."
   [request]
-  (if-not (authenticated? request)
+  (if-not (authenticated? (if (:identity request)
+                            request (:session request)))
     auth/response-unauthorized
     (with-open [con (jdbc/get-connection db/postgres-ds)]
       (let [data (first (reverse (db/get-obs-days con 1)))
@@ -59,29 +61,28 @@
                                              (t/local-date-time)
                                              (:ruuvitag-locations env)))))]
         (if-not data
-          (resp/status 500)
-          (resp/content-type
-           (resp/response
-            (j/write-value-as-string
-             {:data (assoc data :recorded
-                           (convert-epoch-ms-to-string (:recorded data)))
-              :rt-data (for [item rt-data]
-                         (assoc item :recorded
-                                (convert-epoch-ms-to-string
-                                 (:recorded item))))
-              :weather-data (get-fmi-weather-data)}))
-           "application/json"))))))
+          (serve-json {:data []
+                       :rt-data []
+                       :weather-data []})
+          (serve-json {:data (assoc data :recorded
+                                    (convert-epoch-ms-to-string
+                                     (:recorded data)))
+                       :rt-data (for [item rt-data]
+                                  (assoc item :recorded
+                                         (convert-epoch-ms-to-string
+                                          (:recorded item))))
+                       :weather-data (get-fmi-weather-data)}))))))
 
 (defn get-plot-page-data
   "Returns data needed for rendering the plot page."
   [request]
   (with-open [con (jdbc/get-connection db/postgres-ds)]
-    (let [start-date (when (seq (:startDate (:params request)))
-                       (:startDate (:params request)))
-          end-date (when (seq (:endDate (:params request)))
-                     (:endDate (:params request)))
+    (let [start-date-val (get (:params request) "startDate")
+          start-date (when (seq start-date-val) start-date-val)
+          end-date-val (get (:params request) "endDate")
+          end-date (when (seq end-date-val) end-date-val)
           obs-dates (db/get-obs-date-interval con)
-          logged-in? (authenticated? request)
+          logged-in? (authenticated? (:session request))
           initial-days (:initial-show-days env)
           ruuvitag-locations (:ruuvitag-locations env)]
       (if (or start-date end-date)
@@ -120,9 +121,25 @@
                                           (t/days initial-days))))
          :end-date (:end obs-dates)}))))
 
+(defn get-display-data
+  "Returns the display data."
+  [request]
+  (serve-json
+   (merge {:weather-data
+           (if-not (authenticated? (:session request))
+             (:current (:fmi (get-weather-data)))
+             (get-weather-data))}
+          (merge {:mode (if (authenticated? (:session request)) "all" "weather")
+                  :tb-image-basepath (:tb-image-basepath env)}
+                 (when (authenticated? (:session request))
+                   {:rt-names (:ruuvitag-locations env)
+                    :rt-default-show (:ruuvitag-default-show env)
+                    :rt-default-values (:ruuvitag-default-values env)}))
+          (get-plot-page-data request))))
+
 (defn handle-observation-insert
   "Handles the insertion of an observation to the database."
-  [obs-string]
+  [observation]
   (with-open [con (jdbc/get-connection db/postgres-ds)]
     (let [start-time (calculate-start-time)
           start-time-int (t/interval (t/plus start-time (t/minutes 4))
@@ -132,133 +149,141 @@
                                   (store-weather-data? con))
                          (get-fmi-weather-data))]
       (db/insert-observation con
-                             (assoc (j/read-value obs-string
-                                                  json-decode-opts)
+                             (assoc observation
                                     :weather-data weather-data)))))
 
-(defroutes routes
-  ;; Index and login
-  (GET "/" request
+(defn observation-insert
+  "Function called when an observation is posted."
+  [request]
+  (fetch-all-weather-data)
+  (if-not (auth/check-auth-code (get (:params request) "code"))
+    auth/response-unauthorized
     (if-not (db/test-db-connection db/postgres-ds)
-      (render-file "templates/error.html"
-                   {})
-      (render-file "templates/chart.html"
-                   {:logged-in? (authenticated? request)
-                    :obs-dates (db/get-obs-date-interval db/postgres-ds)})))
-  (GET "/login" request
-    (if-not (authenticated? request)
-      (render-file "templates/login.html" {})
-      (resp/redirect (:application-url env))))
-  (POST "/login" [] auth/login-authenticate)
-  (GET "/logout" _
-    (assoc (resp/redirect (:application-url env))
-           :session {}))
-  (POST "/token-login" [] auth/token-login)
-  ;; WebAuthn routes
-  (GET "/register" request
-    (if-not (authenticated? request)
-      auth/response-unauthorized
-      (render-file "templates/register.html"
-                   {:username (name (get-in request
-                                            [:session :identity]))})))
-  (context "/webauthn" []
-    (GET "/register" [] auth/wa-prepare-register)
-    (POST "/register" [] auth/wa-register)
-    (GET "/login" [] auth/wa-prepare-login)
-    (POST "/login" [] auth/wa-login))
-  ;; Data query
-  (GET "/display-data" request
-    (resp/content-type
-     (resp/response
-      (j/write-value-as-string
-       (merge {:weather-data
-               (if-not (authenticated? request)
-                 (:current (:fmi (get-weather-data)))
-                 (get-weather-data))}
-              (merge {:mode (if (authenticated? request) "all" "weather")
-                      :tb-image-basepath (:tb-image-basepath env)}
-                     (when (authenticated? request)
-                       {:rt-names (:ruuvitag-locations env)
-                        :rt-default-show (:ruuvitag-default-show env)
-                        :rt-default-values (:ruuvitag-default-values env)}))
-              (get-plot-page-data request))))
-     "application/json"))
-  (GET "/get-latest-obs" [] get-latest-obs-data)
-  (GET "/get-weather-data" request
-    (if-not (authenticated? request)
-      auth/response-unauthorized
-      (resp/content-type
-       (resp/response
-        (j/write-value-as-string
-         (get-weather-data)))
-       "application/json")))
-  ;; Observation storing
-  (POST "/observations" request
-    (fetch-all-weather-data)
-    (if-not (auth/check-auth-code (:code (:params request)))
-      auth/response-unauthorized
-      (if-not (db/test-db-connection db/postgres-ds)
+      auth/response-server-error
+      (let [observation (j/read-value (get (:params request)
+                                           "obs-string")
+                                      json-decode-opts)]
+        (if-not (= (count observation) 4)
+          (resp/bad-request "Bad request")
+          (if (handle-observation-insert observation)
+            (serve-text "OK") auth/response-server-error))))))
+
+(defn rt-observation-insert
+  "Function called when an RuuviTag observation is posted."
+  [request]
+  (if-not (auth/check-auth-code (get (:params request) "code"))
+    auth/response-unauthorized
+    (with-open [con (jdbc/get-connection db/postgres-ds)]
+      (if-not (db/test-db-connection con)
         auth/response-server-error
-        (if (handle-observation-insert (:obs-string (:params request)))
-          "OK" auth/response-server-error))))
-  ;; RuuviTag observation storage
-  (POST "/rt-observations" request
-    (if-not (auth/check-auth-code (:code (:params request)))
-      auth/response-unauthorized
-      (with-open [con (jdbc/get-connection db/postgres-ds)]
-        (if-not (db/test-db-connection con)
-          auth/response-server-error
-          (if (pos? (db/insert-ruuvitag-observation
-                     con
-                     (j/read-value (:observation (:params request))
-                                   json-decode-opts)))
-            "OK" auth/response-server-error)))))
-  ;; Testbed image name storage
-  (POST "/tb-image" request
-    (if-not (auth/check-auth-code (:code (:params request)))
-      auth/response-unauthorized
-      (with-open [con (jdbc/get-connection db/postgres-ds)]
-        (if-not (db/test-db-connection con)
-          auth/response-server-error
+        (if (pos? (db/insert-ruuvitag-observation
+                   con
+                   (j/read-value (get (:params request) "observation")
+                                 json-decode-opts)))
+          (serve-text "OK") auth/response-server-error)))))
+
+(defn tb-image-insert
+  "Function called when an RuuviTag observation is posted."
+  [request]
+  (if-not (auth/check-auth-code (get (:params request) "code"))
+    auth/response-unauthorized
+    (with-open [con (jdbc/get-connection db/postgres-ds)]
+      (if-not (db/test-db-connection con)
+        auth/response-server-error
+        (let [image-name (get (:params request) "name")]
           (if (re-find #"testbed-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\+\d{4}\.png"
-                       (:name (:params request)))
+                       image-name)
             (if (db/insert-tb-image-name con
                                          (db/get-last-obs-id con)
-                                         (:name (:params request)))
-              "OK" auth/response-server-error)
-            (resp/bad-request "Bad request"))))))
-  ;; Serve static files
-  (route/files "/")
-  (route/not-found "404 Not Found"))
+                                         image-name)
+              (serve-text "OK") auth/response-server-error)
+            (resp/bad-request "Bad request")))))))
+
+(defn get-middleware
+  "Returns the middlewares to be applied."
+  []
+  (let [dev-mode (:development-mode env)
+        defaults (if dev-mode
+                   site-defaults
+                   secure-site-defaults)
+        ;; CSRF protection is knowingly not implemented
+        ;; :params and :static options are disabled as Reitit handles them
+        defaults-config (-> defaults
+                            (assoc-in [:security :anti-forgery]
+                                      false)
+                            (assoc :params false)
+                            (assoc :static false))]
+    [[wrap-authorization auth/auth-backend]
+     [wrap-authentication auth/jwe-auth-backend auth/auth-backend]
+     parameters/parameters-middleware
+     ;; TODO replace with muuntaja
+     [wrap-json-params {:keywords? true}]
+     [wrap-defaults (if dev-mode
+                      defaults-config
+                      (if (:force-hsts env)
+                        (assoc defaults-config :proxy true)
+                        (-> defaults-config
+                            (assoc-in [:security :ssl-redirect]
+                                      false)
+                            (assoc-in [:security :hsts]
+                                      false))))]]))
+
+(def app
+  (ring/ring-handler
+   (ring/router
+    ;; Index and login
+    [["/" {:get #(if-not (db/test-db-connection db/postgres-ds)
+                   (serve-template "templates/error.html"
+                                   {})
+                   (serve-template "templates/chart.html"
+                                   {:logged-in? (authenticated? (:session
+                                                                 %))
+                                    :obs-dates (db/get-obs-date-interval
+                                                db/postgres-ds)}))}]
+     ["/login" {:get #(if-not (authenticated? (:session %))
+                        (serve-template "templates/login.html" {})
+                        (resp/redirect (:application-url env)))
+                :post auth/login-authenticate}]
+     ["/logout" {:get (fn [_]
+                        (assoc (resp/redirect (:application-url env))
+                               :session {}))}]
+     ["/token-login" {:post auth/token-login}]
+     ;; WebAuthn routes
+     ["/register" {:get #(if-not (authenticated? (:session %))
+                           auth/response-unauthorized
+                           (serve-template "templates/register.html"
+                                           {:username
+                                            (name (get-in %
+                                                          [:session
+                                                           :identity]))}))}]
+     ["/webauthn"
+      ["/register" {:get auth/wa-prepare-register
+                    :post auth/wa-register}]
+      ["/login" {:get auth/wa-prepare-login
+                 :post auth/wa-login}]]
+     ;; Data query
+     ["/display-data" {:get get-display-data}]
+     ["/get-latest-obs" {:get get-latest-obs-data}]
+     ["/get-weather-data" {:get #(if-not (authenticated? (if (:identity %)
+                                                           % (:session %)))
+                                   auth/response-unauthorized
+                                   (serve-json (get-weather-data)))}]
+     ;; Observation storing
+     ["/observations" {:post observation-insert}]
+     ;; RuuviTag observation storage
+     ["/rt-observations" {:post rt-observation-insert}]
+     ;; Testbed image name storage
+     ["/tb-image" {:post tb-image-insert}]])
+   (ring/routes
+    (ring/create-resource-handler {:path "/"})
+    (ring/create-default-handler))
+   {:middleware (get-middleware)}))
 
 (defn -main
   "Starts the web server."
   []
   (let [port (Integer/parseInt (get (System/getenv)
-                                    "APP_PORT" "8080"))
-        opts {:port port}
-        dev-mode (:development-mode env)
-        defaults (if dev-mode
-                   site-defaults
-                   secure-site-defaults)
-        ;; CSRF protection is knowingly not implemented
-        defaults-config (assoc-in defaults [:security :anti-forgery] false)
-        handler (as-> routes $
-                  (wrap-authorization $ auth/auth-backend)
-                  (wrap-authentication $
-                                       auth/jwe-auth-backend
-                                       auth/auth-backend)
-                  (wrap-json-params $ {:keywords? true})
-                  (wrap-defaults $ (if dev-mode
-                                     defaults-config
-                                     (if (:force-hsts env)
-                                       (assoc defaults-config :proxy true)
-                                       (-> defaults-config
-                                           (assoc-in [:security :ssl-redirect]
-                                                     false)
-                                           (assoc-in [:security :hsts]
-                                                     false))))))]
-    (run-jetty (if dev-mode
-                 (wrap-reload handler)
-                 handler)
-               opts)))
+                                    "APP_PORT" "8080"))]
+    (run-jetty (if (:development-mode env)
+                 (wrap-reload #'app) #'app)
+               {:port port})))

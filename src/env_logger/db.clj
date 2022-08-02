@@ -207,7 +207,7 @@
           (.rollback tx)
           false)))
     (do
-      (error "Wrong number of parameters provided to insert-observation")
+      (error "Wrong number of observation parameters provided")
       false)))
 
 (defn validate-date
