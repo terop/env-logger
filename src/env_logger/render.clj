@@ -1,4 +1,5 @@
 (ns env-logger.render
+  "Namespace for various content rendering functions"
   (:require [jsonista.core :as j]
             [ring.util.response :as resp]
             [selmer.parser :refer [render-file]]))
