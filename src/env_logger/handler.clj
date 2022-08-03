@@ -33,7 +33,7 @@
   (:gen-class))
 
 (def json-decode-opts
-  "Options for read-value"
+  "Options for jsonista read-value."
   (j/object-mapper {:decode-key-fn true}))
 
 (defn convert-epoch-ms-to-string
