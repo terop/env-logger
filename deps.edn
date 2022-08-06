@@ -2,16 +2,18 @@
  :deps {org.clojure/clojure {:mvn/version "1.11.1"}
         org.clojure/data.zip {:mvn/version "1.0.0"}
         yogthos/config {:mvn/version "1.2.0"}
-        ring/ring {:mvn/version "1.9.5"}
+        ring/ring-devel {:mvn/version "1.9.5"}
+        ring/ring-jetty-adapter {:mvn/version "1.9.5"}
         ring/ring-defaults {:mvn/version "0.3.3"}
         clj-http/clj-http {:mvn/version "3.12.3"}
         io.github.dm3/clojure.java-time
         {:sha "6a56f6c144c296efded2872ebb127d4b2e05ec9c"}
         org.threeten/threeten-extra {:mvn/version "1.7.1"}
         metosin/reitit {:mvn/version "0.5.18"}
+        metosin/ring-http-response {:mvn/version "0.9.3"}
         selmer/selmer {:mvn/version "1.12.53"}
         metosin/jsonista {:mvn/version "0.3.6"}
-        org.postgresql/postgresql {:mvn/version "42.4.0"}
+        org.postgresql/postgresql {:mvn/version "42.4.1"}
         com.github.seancorfield/honeysql {:mvn/version "2.3.911"}
         com.github.seancorfield/next.jdbc {:mvn/version "1.2.796"}
         buddy/buddy-auth {:mvn/version "3.0.323"}

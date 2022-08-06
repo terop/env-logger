@@ -1,14 +1,13 @@
 (ns env-logger.render
   "Namespace for various content rendering functions"
   (:require [jsonista.core :as j]
-            [ring.util.response :as resp]
+            [ring.util.http-response :refer :all]
             [selmer.parser :refer [render-file]]))
 
 (defn serve-as
   "Serves the given content with the provided Content-Type header."
-  [content content-type]
-  (resp/content-type
-   (resp/response content) content-type))
+  [content type]
+  (content-type (ok content) type))
 
 (defn serve-json
   "Serves the given content as JSON with the application/json Content-Type."

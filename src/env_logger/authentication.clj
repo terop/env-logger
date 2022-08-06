@@ -13,7 +13,7 @@
             [jsonista.core :as j]
             [next.jdbc :as jdbc]
             [next.jdbc.sql :as js]
-            [ring.util.response :as resp]
+            [ring.util.http-response :refer :all]
             [taoensso.timbre :refer [error]]
             [env-logger
              [db :as db]
@@ -122,7 +122,7 @@
   (-> (get-in request [:params "username"])
       (webauthn/prepare-registration site-properties)
       j/write-value-as-string
-      resp/response))
+      ok))
 
 (defn wa-register
   "User registration function."
@@ -130,8 +130,8 @@
   (if-let [user (webauthn/register-user (:body-params request)
                                         site-properties
                                         register-user!)]
-    (resp/created "/login" (j/write-value-as-string user))
-    (resp/status 500)))
+    (created "/login" (j/write-value-as-string user))
+    (status 500)))
 
 (defn do-prepare-login
   "Function doing the login preparation."
@@ -141,7 +141,7 @@
     (if-let [resp (webauthn/prepare-login username
                                           (fn [_] authenticators))]
       (serve-json resp)
-      (resp/status 500))))
+      (status 500))))
 
 (defn wa-prepare-login
   "Function for getting user login preparation data."
@@ -153,17 +153,17 @@
   [{session :session :as request}]
   (let [payload (:body-params request)]
     (if (empty? payload)
-      (resp/status (serve-json {:error "invalid-authenticator"})
-                   403)
+      (status (serve-json {:error "invalid-authenticator"})
+              403)
       (let [username (b64/decode (:user-handle payload))
             authenticators (get-authenticators db/postgres-ds
                                                username)]
         (if (webauthn/login-user payload
                                  site-properties
                                  (fn [_] authenticators))
-          (assoc (resp/response (:application-url env))
+          (assoc (ok (:application-url env))
                  :session (assoc session :identity (keyword username)))
-          (resp/status 500))))))
+          (status 500))))))
 
 ;; Other functions
 
@@ -185,9 +185,9 @@
   (if (authenticated? request)
     ;; If request is authenticated, raise 403 instead of 401 as the user
     ;; is authenticated but permission denied is raised.
-    (resp/status (resp/response "403 Forbidden") 403)
+    (forbidden "403 Forbidden")
     ;; In other cases, redirect it user to login
-    (resp/redirect (str (:application-url env) "login"))))
+    (found (str (:application-url env) "login"))))
 
 (def auth-backend (session-backend
                    {:unauthorized-handler unauthorized-handler}))
@@ -212,7 +212,7 @@
                       {})
       (if (and pw-hash (h/check password pw-hash))
         (let [updated-session (assoc session :identity (keyword username))]
-          (assoc (resp/redirect (:application-url env))
+          (assoc (found (:application-url env))
                  :session updated-session))
         (serve-template "templates/login.html"
                         {:error

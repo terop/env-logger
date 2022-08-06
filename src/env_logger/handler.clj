@@ -19,7 +19,7 @@
                                site-defaults
                                secure-site-defaults]]
              [reload :refer [wrap-reload]]]
-            [ring.util.response :as resp]
+            [ring.util.http-response :refer :all]
             [env-logger
              [authentication :as auth]
              [db :as db]
@@ -165,7 +165,7 @@
                                            "observation")
                                       json-decode-opts)]
         (if-not (= (count observation) 4)
-          (resp/bad-request "Bad request")
+          (bad-request "Bad request")
           (if (handle-observation-insert observation)
             (serve-text "OK") auth/response-server-error))))))
 
@@ -198,7 +198,7 @@
                                          (db/get-last-obs-id con)
                                          image-name)
               (serve-text "OK") auth/response-server-error)
-            (resp/bad-request "Bad request")))))))
+            (bad-request "Bad request")))))))
 
 (defn get-middleware
   "Returns the middlewares to be applied."
@@ -246,10 +246,10 @@
      ;; Login and logout
      ["/login" {:get #(if-not (authenticated? (:session %))
                         (serve-template "templates/login.html" {})
-                        (resp/redirect (:application-url env)))
+                        (found (:application-url env)))
                 :post auth/login-authenticate}]
      ["/logout" {:get (fn [_]
-                        (assoc (resp/redirect (:application-url env))
+                        (assoc (found (:application-url env))
                                :session {}))}]
      ["/token-login" {:post auth/token-login}]
      ;; WebAuthn
