@@ -1,8 +1,11 @@
 DATE := $(shell date +%Y-%m-%d)
 
-build: update # build container
+build: uberjar update # build container
 	podman build -t env-logger:$(DATE) .
 
-update: # update runtime base image
-	podman pull gcr.io/distroless/java17-debian11:latest
-	podman pull clojure:temurin-17-tools-deps-alpine
+uberjar: # build the jar
+	clojure -T:build uberjar
+	mv target/env-logger-*.jar target/env-logger.jar
+
+update: # update base images
+	podman pull amazoncorretto:17-alpine alpine:latest

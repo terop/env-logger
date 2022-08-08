@@ -1,10 +1,39 @@
-FROM clojure:temurin-17-tools-deps-alpine as builder
+FROM amazoncorretto:17-alpine as corretto-jdk
 LABEL maintainer="tero.paloheimo@iki.fi"
-WORKDIR /usr/home/app
-ADD . /usr/home/app
-RUN clojure -T:build uberjar
 
-FROM gcr.io/distroless/java17-debian11
-COPY --from=builder /usr/home/app/target/env-logger*.jar env-logger.jar
+# Required for strip-debug to work
+RUN apk add --no-cache binutils
+
+# Build small JRE image
+RUN $JAVA_HOME/bin/jlink \
+    --verbose \
+    --add-modules ALL-MODULE-PATH \
+    --strip-debug \
+    --no-man-pages \
+    --no-header-files \
+    --compress=2 \
+    --output /customjre
+
+# Main app image
+FROM alpine:latest
+ENV JAVA_HOME=/jre
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+
+COPY --from=corretto-jdk /customjre ${JAVA_HOME}
+
+RUN apk add --no-cache dumb-init
+
+# Add user to run the app
+ARG APPLICATION_USER=appuser
+RUN adduser --no-create-home -u 1000 -D ${APPLICATION_USER}
+
+RUN mkdir /app && chown -R ${APPLICATION_USER} /app
+
+USER ${APPLICATION_USER}
+
+COPY --chown=${APPLICATION_USER}:${APPLICATION_USER} \
+    ./target/env-logger.jar /app/env-logger.jar
+WORKDIR /app
+
 EXPOSE 8080
-CMD ["env-logger.jar"]
+ENTRYPOINT ["dumb-init", "/jre/bin/java", "-jar", "/app/env-logger.jar"]
