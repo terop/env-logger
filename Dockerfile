@@ -33,7 +33,9 @@ USER ${APPLICATION_USER}
 
 COPY --chown=${APPLICATION_USER}:${APPLICATION_USER} \
     ./target/env-logger.jar /app/env-logger.jar
+COPY --chown=${APPLICATION_USER}:${APPLICATION_USER} \
+    ./resources/prod/config.edn /etc/config.edn
 WORKDIR /app
 
 EXPOSE 8080
-ENTRYPOINT ["dumb-init", "/jre/bin/java", "-jar", "/app/env-logger.jar"]
+ENTRYPOINT ["dumb-init", "/jre/bin/java", "-Dconfig=/etc/config.edn", "-jar", "/app/env-logger.jar"]

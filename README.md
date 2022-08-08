@@ -36,9 +36,11 @@ authenticator has been registered it can be used on the login page.
 ## Configuration
 
 A sample configuration can be found in the `resources/config.edn_sample` file.
-Copy or rename this file to `config.edn` in the `resources` directory and edit
-it to fit your configuration. Some settings can be overridden with environment
-variables. Accepted environment variables are described below.
+The configuration file used in development is `resources/dev/config.edn` and the
+one for production in `resources/prod/config.edn`. After copying the
+sample file edit either or both file(s) as needed.
+Some settings can be overridden with environment variables. Accepted environment
+variables are described below.
 
 * __APP_PORT__: The port which the application will be accessible through.
 The default port is `8080`.

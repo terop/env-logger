@@ -2,5 +2,5 @@ target/
 .clj-kondo/
 .lein-*
 .eastwood
-venv/
-resources/config.edn
+resources/dev/config.edn
+resources/prod/config.edn

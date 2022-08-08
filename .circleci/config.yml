@@ -39,7 +39,7 @@ jobs:
       - run:
           name: setup config
           command: |
-            cp resources/config.edn_sample resources/config.edn
+            cp resources/config.edn_sample resources/dev/config.edn
 
       - run: clojure -T:build ci
 
