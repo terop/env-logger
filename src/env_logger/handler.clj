@@ -19,7 +19,7 @@
                                site-defaults
                                secure-site-defaults]]
              [reload :refer [wrap-reload]]]
-            [ring.util.http-response :refer :all]
+            [ring.util.http-response :refer [bad-request found]]
             [env-logger
              [authentication :as auth]
              [db :as db]

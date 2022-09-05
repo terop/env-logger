@@ -1,7 +1,7 @@
 (ns env-logger.render
   "Namespace for various content rendering functions"
   (:require [jsonista.core :as j]
-            [ring.util.http-response :refer :all]
+            [ring.util.http-response :refer [content-type ok]]
             [selmer.parser :refer [render-file]]))
 
 (defn serve-as
