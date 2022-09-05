@@ -246,10 +246,10 @@
      ;; Login and logout
      ["/login" {:get #(if-not (authenticated? (:session %))
                         (serve-template "templates/login.html" {})
-                        (found (:application-url env)))
+                        (found (:app-url env)))
                 :post auth/login-authenticate}]
      ["/logout" {:get (fn [_]
-                        (assoc (found (:application-url env))
+                        (assoc (found (:app-url env))
                                :session {}))}]
      ["/token-login" {:post auth/token-login}]
      ;; WebAuthn

@@ -42,7 +42,7 @@
  ;; uses the site-defaults config
  :development-mode false
  ;; Full URL through which the application is accessed, MUST end with a slash
- :application-url "http://example.com/env-logger/"
+ :app-url "http://example.com/env-logger/"
  ;; Base path to Testbed images
  :tb-image-basepath "https://example.com/tb-images/"
  ;; Authentication code for observation and image storage
