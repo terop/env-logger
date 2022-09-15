@@ -4,9 +4,9 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-psycopg = {version = "==3.0.14", extras = ["c"]}
+psycopg = {version = "==3.1.1", extras = ["c"]}
 
 [dev-packages]
 
 [requires]
-python_version = "3.9"
+python_version = "3.10"
