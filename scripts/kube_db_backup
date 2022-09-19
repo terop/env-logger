@@ -1,0 +1,43 @@
+#!/bin/sh
+
+# This script is a thin wrapper for running db_backup.sh for PostgreSQL running on
+# Kubernetes. db_backup.sh must reside in the same directory as this script.
+
+# NOTE! Change the values below before running
+db_user=myuser
+pod_name=postgrespod
+
+set -e
+
+usage() {
+    cat >&2 <<EOF
+Usage: $0 [-h] <database name>
+Flags:
+-h    Print this message and exit
+EOF
+}
+
+while getopts 'h' OPTION; do
+    case "${OPTION}" in
+        h)
+            usage
+            exit 1
+            ;;
+        *)
+            echo "Invalid option: ${OPTION}"
+            exit 1
+    esac
+done
+shift "$((OPTIND - 1))"
+
+db_name=$1
+if [ -z "${db_name}" ]; then
+    echo 'Error: database name must be provided' >&2
+    exit 1
+fi
+
+export PATH="/usr/local/bin:${PATH}"
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+
+export POSTGRES_PASSWORD=$(kubectl get secret --namespace default postgresql -o jsonpath="{.data.password}" | base64 -d)
+DB_PASSWD=${POSTGRES_PASSWORD} DB_USER=${db_user} POD_NAME=${pod_name} ./db_backup.sh -k "${db_name}"
