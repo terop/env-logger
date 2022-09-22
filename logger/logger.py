@@ -18,7 +18,7 @@ import pytz
 import requests
 import serial
 from requests.exceptions import ConnectionError  # pylint: disable=redefined-builtin
-from ruuvitag_sensor.ruuvi import RuuviTagSensor
+from ruuvitag_sensor.ruuvi import RuuviTagSensor  # pylint: disable=import-error
 
 
 def get_timestamp(timezone):
@@ -31,7 +31,7 @@ def get_env_data(env_settings):
     Returns the parsed JSON object or an empty dictionary on failure."""
     # Read Arduino
     try:
-        resp = requests.get(env_settings['arduino_url'])
+        resp = requests.get(env_settings['arduino_url'], timeout=5)
     except ConnectionError as con_err:
         logging.error('Connection problem to Arduino: %s', con_err)
         return {}
@@ -97,7 +97,8 @@ def scan_ruuvitags(config, device):
 
             resp = requests.post(config['ruuvitag']['url'],
                                  params={'observation': json.dumps(data),
-                                         'code': config['authentication_code']})
+                                         'code': config['authentication_code']},
+                                 timeout=5)
 
             logging.info("RuuviTag observation request data: '%s', response: code %s, text '%s'",
                          json.dumps(data), resp.status_code, resp.text)
@@ -164,7 +165,8 @@ def store_to_db(timezone, config, data, auth_code):
     data = OrderedDict(sorted(data.items()))
     resp = requests.post(config['upload_url'],
                          params={'observation': json.dumps(data),
-                                 'code': auth_code})
+                                 'code': auth_code},
+                         timeout=5)
 
     logging.info("Weather observation request data: '%s', response: code %s, text '%s'",
                  json.dumps(data), resp.status_code, resp.text)
