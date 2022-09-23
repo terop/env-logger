@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""This is a program for sending environment data to the data logger
-web service."""
+
+"""This is a program for fetching and sending environment data to the data logger
+backend."""
 
 import argparse
+import asyncio
 import json
 import logging
+import os
 import signal
 import subprocess
 import sys
@@ -18,7 +21,10 @@ import pytz
 import requests
 import serial
 from requests.exceptions import ConnectionError  # pylint: disable=redefined-builtin
-from ruuvitag_sensor.ruuvi import RuuviTagSensor  # pylint: disable=import-error
+
+os.environ['RUUVI_BLE_ADAPTER'] = 'bleak'
+# pylint: disable=import-error,wrong-import-position
+from ruuvitag_sensor.ruuvi import RuuviTagSensor  # noqa: E402
 
 
 def get_timestamp(timezone):
@@ -62,8 +68,9 @@ def get_env_data(env_settings):
     return final_data
 
 
-def scan_ruuvitags(config, device):
-    """Scan RuuviTag(s) and upload their data."""
+async def scan_ruuvitags(config, device):
+    """Scan for RuuviTag(s)."""
+    found_tags = {}
 
     def _get_tag_location(config, mac):
         """Get RuuviTag location based on tag MAC address."""
@@ -73,50 +80,49 @@ def scan_ruuvitags(config, device):
 
         return None
 
-    def _scan_ruuvitags(mac_addresses, timestamp):
-        "Scan RuuviTag(s) and upload their data to the backend."
-        timeout = 10
-        found_macs = []
+    async def _async_scan(mac_addresses, bt_device):
+        expected_tag_count = len(mac_addresses)
 
-        tag_data = RuuviTagSensor.get_data_for_sensors(mac_addresses, timeout, bt_device=device)
-
-        for mac in mac_addresses:
-            if mac not in tag_data:
+        async for tag_data in RuuviTagSensor.get_data_async(mac_addresses, bt_device):
+            mac = tag_data[0]
+            if mac in found_tags:
                 continue
 
-            found_macs.append(mac)
-            tag = tag_data[mac]
+            found_tags[mac] = {'location': _get_tag_location(config, mac),
+                               'temperature': tag_data[1]['temperature'],
+                               'pressure': tag_data[1]['pressure'],
+                               'humidity': tag_data[1]['humidity'],
+                               'battery_voltag_data': tag_data[1]['battery'] / 1000.0,
+                               'rssi': tag_data[1]['rssi']}
 
-            data = {'timestamp': timestamp,
-                    'location': _get_tag_location(config, mac),
-                    'temperature': tag['temperature'],
-                    'pressure': tag['pressure'],
-                    'humidity': tag['humidity'],
-                    'battery_voltage': tag['battery'] / 1000.0,
-                    'rssi': tag['rssi']}
+            if len(found_tags) == expected_tag_count:
+                break
 
-            resp = requests.post(config['ruuvitag']['url'],
-                                 params={'observation': json.dumps(data),
-                                         'code': config['authentication_code']},
-                                 timeout=5)
-
-            logging.info("RuuviTag observation request data: '%s', response: code %s, text '%s'",
-                         json.dumps(data), resp.status_code, resp.text)
-
-        return found_macs
-
-    timestamp = get_timestamp(config['timezone'])
     mac_addresses = [tag['mac'] for tag in config['ruuvitag']['tags']]
-    found_macs = _scan_ruuvitags(mac_addresses, timestamp)
 
-    if len(found_macs) != len(mac_addresses):
-        # Scan again to try to find missing tags
-        for mac in found_macs:
-            mac_addresses.remove(mac)
+    try:
+        await asyncio.wait_for(_async_scan(mac_addresses, device), timeout=12)
+    except asyncio.TimeoutError:
+        logging.error('RuuviTag scan timed out')
 
-        logging.info('Running RuuviTag scan again for the following tag(s): %s', mac_addresses)
-        sleep(5)
-        _scan_ruuvitags(mac_addresses, timestamp)
+    return found_tags
+
+
+def store_ruuvitags(config, tag_data):
+    """Send provided RuuviTag data to the backend."""
+    timestamp = get_timestamp(config['timezone'])
+
+    for tag in tag_data.values():
+        tag['timestamp'] = timestamp
+        json_data = json.dumps(tag)
+
+        resp = requests.post(config['ruuvitag']['url'],
+                             params={'observation': json_data,
+                                     'code': config['authentication_code']},
+                             timeout=5)
+
+        logging.info("RuuviTag observation request data: '%s', response: code %s, text '%s'",
+                     json_data, resp.status_code, resp.text)
 
 
 def get_ble_beacons(config, device):
@@ -223,7 +229,9 @@ def main():
             env_data['beacons'] = get_ble_beacons(env_config, ble_device)
             env_config['beacon_scan_time'] = orig_scan_time
 
-    scan_ruuvitags(config, rt_device)
+    # This code only works with Python 3.10 and newer
+    tags = asyncio.run(scan_ruuvitags(config, rt_device))
+    store_ruuvitags(config, tags)
 
     store_to_db(config['timezone'], env_config, env_data, config['authentication_code'])
 

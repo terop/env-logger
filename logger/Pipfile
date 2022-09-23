@@ -8,8 +8,9 @@ pyserial = "*"
 pytz = "*"
 requests = "*"
 ruuvitag-sensor = {editable = true, git = "https://github.com/ttu/ruuvitag-sensor.git"}
+bleak = "*"
 
 [dev-packages]
 
 [requires]
-python_version = "3.9"
+python_version = "3.10"
