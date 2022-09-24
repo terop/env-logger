@@ -4,7 +4,7 @@
         yogthos/config {:mvn/version "1.2.0"}
         ring/ring-devel {:mvn/version "1.9.6"}
         ring/ring-jetty-adapter {:mvn/version "1.9.6"}
-        ring/ring-defaults {:mvn/version "0.3.3"}
+        ring/ring-defaults {:mvn/version "0.3.4"}
         clj-http/clj-http {:mvn/version "3.12.3"}
         io.github.dm3/clojure.java-time
         {:sha "6a56f6c144c296efded2872ebb127d4b2e05ec9c"}
@@ -15,7 +15,7 @@
         metosin/jsonista {:mvn/version "0.3.6"}
         org.postgresql/postgresql {:mvn/version "42.5.0"}
         com.github.seancorfield/honeysql {:mvn/version "2.3.928"}
-        com.github.seancorfield/next.jdbc {:mvn/version "1.3.828"}
+        com.github.seancorfield/next.jdbc {:mvn/version "1.3.834"}
         buddy/buddy-auth {:mvn/version "3.0.323"}
         buddy/buddy-hashers {:mvn/version "1.8.158"}
         buddy/buddy-sign {:mvn/version "3.4.333"}
