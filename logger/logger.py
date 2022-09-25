@@ -92,7 +92,7 @@ async def scan_ruuvitags(config, device):
                                'temperature': tag_data[1]['temperature'],
                                'pressure': tag_data[1]['pressure'],
                                'humidity': tag_data[1]['humidity'],
-                               'battery_voltag_data': tag_data[1]['battery'] / 1000.0,
+                               'battery_voltage': tag_data[1]['battery'] / 1000.0,
                                'rssi': tag_data[1]['rssi']}
 
             if len(found_tags) == expected_tag_count:
