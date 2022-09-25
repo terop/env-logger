@@ -5,6 +5,7 @@ if observations are not received within a specified time."""
 import argparse
 import configparser
 import json
+import logging
 import smtplib
 import ssl
 import sys
@@ -178,14 +179,14 @@ def send_email(config, subject, message):
             server.login(config['User'], email_password)
             server.send_message(msg)
     except smtplib.SMTPException as smtp_e:
-        print(f'Failed to send email with subject "{subject}": {str(smtp_e)}', file=sys.stderr)
+        logging.error('Failed to send email with subject "%s": %s', subject, str(smtp_e))
         return False
 
     return True
 
 
 def create_db_conn_string(db_config):
-    """Create the database connection string."""
+    """Creates the database connection string."""
     db_config = {
         'host': environ['DB_HOST'] if 'DB_HOST' in environ else db_config['Host'],
         'name': environ['DB_NAME'] if 'DB_NAME' in environ else db_config['Name'],
@@ -199,14 +200,17 @@ def create_db_conn_string(db_config):
 
 def main():
     """Module main function."""
+    logging.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s', level=logging.INFO)
+
     parser = argparse.ArgumentParser(description='Monitors observation reception.')
-    parser.add_argument('--config', type=str, help='configuration file to use')
+    parser.add_argument('--config', type=str, help='configuration file to use '
+                        '(default: monitor.cfg)')
 
     args = parser.parse_args()
     config_file = args.config if args.config else 'monitor.cfg'
 
     if not exists(config_file):
-        print(f'Error: could not find configuration file {args.config_file}', file=sys.stderr)
+        logging.error('Could not find configuration file "%s"', args.config_file)
         sys.exit(1)
 
     config = configparser.ConfigParser()
@@ -216,8 +220,7 @@ def main():
     if 'STATE_FILE_DIRECTORY' in environ:
         state_file_dir = environ['STATE_FILE_DIRECTORY']
         if not exists(state_file_dir) or not isdir(state_file_dir):
-            print(f'Error: state file directory "{state_file_dir}" does not exist',
-                  file=sys.stderr)
+            logging.error('State file directory "%s" does not exist', state_file_dir)
             sys.exit(1)
 
     state_file_name = 'monitor_state.json' if not state_file_dir \
