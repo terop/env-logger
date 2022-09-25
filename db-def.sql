@@ -28,7 +28,7 @@ CREATE TABLE weather_data (
 );
 
 -- RuuviTag beacon observation data
-CREATE TABLE ruuvitag_observations(
+CREATE TABLE ruuvitag_observations (
        id SERIAL PRIMARY KEY,
        recorded TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
        location VARCHAR(15) NOT NULL,
@@ -56,4 +56,11 @@ CREATE TABLE webauthn_authenticators (
        counter INTEGER NOT NULL,
        attested_credential VARCHAR(500) NOT NULL,
        attestation_statement VARCHAR(2000) NOT NULL
+);
+
+-- Electricity price table
+CREATE TABLE electricity_price (
+       id SERIAL PRIMARY KEY,
+       start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+       price REAL NOT NULL
 );
