@@ -4,6 +4,6 @@
         "username": "myuser",
         "password": "myawesomepassword",
         "dbname": "env_logger",
-        "store_tz": "UTC"
+        "source_tz": "UTC"
     }
 }

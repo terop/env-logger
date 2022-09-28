@@ -7,12 +7,13 @@ import json
 import logging
 import subprocess
 import sys
-from datetime import date, datetime, timedelta
+from datetime import datetime
 from os import environ
 from os.path import exists
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+import iso8601  # pylint: disable=import-error
 import psycopg  # pylint: disable=import-error
 
 
@@ -34,17 +35,13 @@ def store_prices(db_config, price_file):
         sys.exit(1)
 
     insert_query = 'INSERT INTO electricity_price (start_time, price) VALUES (%s, %s)'
-    midnight = datetime.combine(date.today(), datetime.min.time())
+    offset = ZoneInfo(db_config['source_tz']).utcoffset(datetime.now())
 
     try:
         with psycopg.connect(create_db_conn_string(db_config)) as conn:
             with conn.cursor() as cursor:
                 for price in prices:
-                    hour = int(price['hour'].split('-')[0])
-                    timestamp = midnight + timedelta(hours=hour)
-                    timestamp_utc = timestamp.astimezone(ZoneInfo(db_config['store_tz']))
-
-                    cursor.execute(insert_query, (timestamp_utc,
+                    cursor.execute(insert_query, (iso8601.parse_date(price['time']) - offset,
                                                   round(float(price['price']), 2)))
     except psycopg.Error as pge:
         logging.error('Price insert failed: %s', pge)

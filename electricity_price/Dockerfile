@@ -1,6 +1,8 @@
 FROM python:3.10-alpine
 LABEL maintainer="tero.paloheimo@iki.fi"
 
+RUN apk update && apk upgrade
+
 WORKDIR /usr/src/app
 COPY config.json store_price.py spot_price Pipfile Pipfile.lock .
 

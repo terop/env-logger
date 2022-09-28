@@ -1,6 +1,7 @@
 """This a Scrapy spider for scraping Nordpool Finland spot electricity prices."""
 
 import logging
+from datetime import date, datetime, time
 
 import scrapy
 
@@ -19,8 +20,10 @@ class SpotPriceSpider(scrapy.Spider):
             logging.error('Could not find data table')
             return
 
+        today = date.today()
         for row in table[0].css('tr')[2:28]:
             yield {
-                'hour': row.css('td::text')[0].get().strip(),
+                'time': datetime.combine(today, time(hour=int(row.css('td::text')[0].get()
+                                                              .strip().split('-')[0]))).isoformat(),
                 'price': row.css('td::text')[1].get().strip()
             }
