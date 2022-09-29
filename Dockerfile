@@ -21,6 +21,8 @@ ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 COPY --from=corretto-jdk /customjre ${JAVA_HOME}
 
+RUN apk update && apk upgrade
+
 RUN apk add --no-cache dumb-init
 
 # Add user to run the app

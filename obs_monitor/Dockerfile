@@ -1,6 +1,8 @@
 FROM python:3.10-alpine
 LABEL maintainer="tero.paloheimo@iki.fi"
 
+RUN apk update && apk upgrade
+
 WORKDIR /usr/src/app
 COPY monitor.cfg monitor.py Pipfile Pipfile.lock .
 
