@@ -162,11 +162,13 @@ def set_time(timezone):
     """Get and set local time for the board. Returns the offset to UTC in hours."""
     while True:
         try:
-            with requests.get('http://worldtimeapi.org/api/timezone/' + timezone) as resp:
+            with requests.get(f'{BACKEND_URL}/misc/time', data={'timezone': timezone}) as resp:
                 time_info = resp.json()
-                rtc.RTC().datetime = time.localtime(time_info['unixtime'] + time_info['raw_offset']
-                                                    + time_info['dst_offset'])
-                utc_offset_hour = int((time_info['raw_offset'] + time_info['dst_offset']) / 3600)
+                utc_offset_hour = time_info['offset-hour']
+
+                rtc.RTC().datetime = time.localtime(time_info['timestamp'] +
+                                                    utc_offset_hour * 3600)
+
                 return utc_offset_hour
         except RuntimeError as ex:
             print(f'Error: an exception occurred in set_time: {ex}')
@@ -272,9 +274,9 @@ def main():
     """Module main function."""
     connect_to_wlan()
 
-    print('Getting current time from worldtimeapi.org')
+    print('Getting current time from backend')
     utc_offset_hour = set_time(secrets['timezone'])
-    print('Set current time')
+    print('Current time set')
 
     display = SimpleTextDisplay(title=' ', colors=[SimpleTextDisplay.WHITE], font=FONT)
     token = None

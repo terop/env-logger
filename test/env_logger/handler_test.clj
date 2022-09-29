@@ -60,3 +60,20 @@
           (is (= "OK" (:body (h/tb-image-insert request)))))
         (with-redefs [db/insert-tb-image-name (fn [_ _ _] false)]
           (is (= 500 (:status (h/tb-image-insert request)))))))))
+
+(deftest time-data-test
+  (testing "Time data function"
+    (is (= {"error" "Unspecified error"}
+           (j/read-value (:body (h/time-data {:params {}})))))
+    (is (= {"error" "Timezone ID has invalid format"}
+           (j/read-value (:body (h/time-data {:params {"timezone" ""}})))))
+    (is (= {"error" "Cannot find timezone ID"}
+           (j/read-value (:body (h/time-data {:params {"timezone" "Foo"}})))))
+    (let [resp (j/read-value (:body (h/time-data
+                                     {:params {"timezone" "UTC"}})))]
+      (is (zero? (get resp "offset-hour"))))
+    (with-redefs [db/get-tz-offset (fn [_] 3)]
+      (let [resp (j/read-value (:body (h/time-data
+                                       {:params {"timezone"
+                                                 "Europe/Helsinki"}})))]
+        (is (= 3 (get resp "offset-hour")))))))

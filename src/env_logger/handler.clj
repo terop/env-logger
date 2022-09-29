@@ -20,6 +20,7 @@
                                secure-site-defaults]]
              [reload :refer [wrap-reload]]]
             [ring.util.http-response :refer [bad-request found]]
+            [taoensso.timbre :refer [error]]
             [env-logger
              [authentication :as auth]
              [db :as db]
@@ -29,7 +30,10 @@
                               store-weather-data?
                               get-weather-data
                               fetch-all-weather-data]]])
-  (:import java.time.Instant)
+  (:import (java.time Instant
+                      ZoneId)
+           java.time.DateTimeException
+           java.time.zone.ZoneRulesException)
   (:gen-class))
 
 (def json-decode-opts
@@ -200,6 +204,24 @@
               (serve-text "OK") auth/response-server-error)
             (bad-request "Bad request")))))))
 
+(defn time-data
+  "Returns the Unix timestamp and the UTC offset of the provided timezone."
+  [request]
+  (serve-json
+   (try
+     (let [tz (get (:params request) "timezone")]
+       (if (and tz
+                (ZoneId/of tz))
+         {:timestamp (.getEpochSecond (Instant/now))
+          :offset-hour (db/get-tz-offset tz)}
+         {:error "Unspecified error"}))
+     (catch ZoneRulesException zre
+       (error zre "Cannot find timezone ID")
+       {:error "Cannot find timezone ID"})
+     (catch DateTimeException dte
+       (error dte "Timezone ID has invalid format")
+       {:error "Timezone ID has invalid format"}))))
+
 (defn get-middleware
   "Returns the middlewares to be applied."
   []
@@ -280,7 +302,11 @@
       ;; RuuviTag observation storage
       ["/rt-observation" {:post rt-observation-insert}]
       ;; Testbed image name storage
-      ["/tb-image" {:post tb-image-insert}]]]
+      ["/tb-image" {:post tb-image-insert}]]
+     ;; Miscellaneous
+     ["/misc"
+      ;; Time data (timestamp and UTC offset)
+      ["/time" {:get time-data}]]]
     {:data {:muuntaja m/instance
             :middleware [muuntaja/format-middleware]}})
    (ring/routes
