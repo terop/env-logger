@@ -7,7 +7,7 @@ import json
 import logging
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from os import environ
 from os.path import exists
 from pathlib import Path
@@ -36,12 +36,24 @@ def store_prices(db_config, price_file):
 
     insert_query = 'INSERT INTO electricity_price (start_time, price) VALUES (%s, %s)'
     offset = ZoneInfo(db_config['source_tz']).utcoffset(datetime.now())
+    fix_date = False
+
+    if offset.total_seconds() > 0 and \
+       datetime.now().astimezone(ZoneInfo(db_config['source_tz'])).day != datetime.now().day:
+        fix_date = True
 
     try:
         with psycopg.connect(create_db_conn_string(db_config)) as conn:
             with conn.cursor() as cursor:
                 for price in prices:
-                    cursor.execute(insert_query, (iso8601.parse_date(price['time']) - offset,
+                    timestamp = iso8601.parse_date(price['time']) - offset
+                    if fix_date:
+                        # Fix situation where the timestamp date is incorrect due to timezone
+                        # differences between the input timezone and timezone of the
+                        # system running this script
+                        timestamp += timedelta(days=1)
+
+                    cursor.execute(insert_query, (timestamp,
                                                   round(float(price['price']), 2)))
     except psycopg.Error as pge:
         logging.error('Price insert failed: %s', pge)
