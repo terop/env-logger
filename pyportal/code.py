@@ -164,6 +164,10 @@ def set_time(timezone):
         try:
             with requests.get(f'{BACKEND_URL}/misc/time', data={'timezone': timezone}) as resp:
                 time_info = resp.json()
+                if 'error' in time_info:
+                    print(f'Error: time fetching failed: "{time_info["error"]}", retrying')
+                    time.sleep(10)
+                    continue
                 utc_offset_hour = time_info['offset-hour']
 
                 rtc.RTC().datetime = time.localtime(time_info['timestamp'] +
