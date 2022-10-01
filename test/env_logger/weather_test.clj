@@ -128,15 +128,30 @@
 
 (deftest test-store-weather-data
   (testing "Tests if FMI weather data needs to be stored"
-    (with-redefs [jdbc/execute-one! (fn [_ _ _] {:count 0})]
-      (is (true? (store-weather-data? {}))))
-    (with-redefs [jdbc/execute-one! (fn [_ _ _] {:count 1})]
-      (is (false? (store-weather-data? {}))))
+    (is (false? (store-weather-data? {} nil)))
+    (with-redefs [jdbc/execute-one!
+                  (fn [_ _ _]
+                    {:time (t/sql-timestamp
+                            (t/local-date-time 2022 10 1 11 20 0))})]
+      (is (false? (store-weather-data?
+                   {}
+                   (t/sql-timestamp (t/local-date-time 2022 10 1 11 20 0)))))
+      (is (false? (store-weather-data?
+                   {}
+                   (t/sql-timestamp (t/local-date-time 2022 10 1 11 15 0)))))
+      (is (true? (store-weather-data?
+                  {}
+                  (t/sql-timestamp (t/local-date-time 2022 10 1 11 21 0))))))
+    (with-redefs [jdbc/execute-one!
+                  (fn [_ _ _] {:time nil})]
+      (is (true? (store-weather-data?
+                  {}
+                  (t/sql-timestamp (t/local-date-time 2022 10 1 11 20 0))))))
     (with-redefs [jdbc/execute-one!
                   (fn [_ _ _] (throw (PSQLException.
                                       "Test exception"
                                       (PSQLState/COMMUNICATION_ERROR))))]
-      (is (false? (store-weather-data? {}))))))
+      (is (false? (store-weather-data? {} (t/sql-timestamp)))))))
 
 (deftest test-get-wd-str
   (testing "Test wind direction to string conversion"

@@ -25,8 +25,7 @@
              [authentication :as auth]
              [db :as db]
              [render :refer [serve-text serve-json serve-template]]
-             [weather :refer [calculate-start-time
-                              get-fmi-weather-data
+             [weather :refer [get-fmi-weather-data
                               store-weather-data?
                               get-weather-data
                               fetch-all-weather-data]]])
@@ -146,13 +145,9 @@
   "Handles the insertion of an observation to the database."
   [observation]
   (with-open [con (jdbc/get-connection db/postgres-ds)]
-    (let [start-time (calculate-start-time)
-          start-time-int (t/interval (t/plus start-time (t/minutes 4))
-                                     (t/plus start-time (t/minutes 7)))
-          weather-data (when (and (t/contains? start-time-int
-                                               (t/zoned-date-time))
-                                  (store-weather-data? con))
-                         (get-fmi-weather-data))]
+    (let [fmi-weather-data (get-fmi-weather-data)
+          weather-data (when (store-weather-data? con (:time fmi-weather-data))
+                         fmi-weather-data)]
       (db/insert-observation con
                              (assoc observation
                                     :weather-data weather-data)))))
@@ -161,6 +156,9 @@
   "Function called when an observation is posted."
   [request]
   (fetch-all-weather-data)
+  ;; Sleep a bit before continuing so that the possible weather data update
+  ;; has the possibility to complete
+  (Thread/sleep 1300)
   (if-not (auth/check-auth-code (get (:params request) "code"))
     auth/response-unauthorized
     (if-not (db/test-db-connection db/postgres-ds)
@@ -303,7 +301,7 @@
       ["/rt-observation" {:post rt-observation-insert}]
       ;; Testbed image name storage
       ["/tb-image" {:post tb-image-insert}]]
-     ;; Miscellaneous
+     ;; Miscellaneous endpoints
      ["/misc"
       ;; Time data (timestamp and UTC offset)
       ["/time" {:get time-data}]]]

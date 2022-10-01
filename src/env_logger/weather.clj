@@ -55,19 +55,25 @@
                              (:weather-timezone env))))
 
 (defn store-weather-data?
-  "Tells whether to FMI weather data.
-  The criteria for storing is that there is no recorded data in the
-  [(last even 10 minutes), (current time)] window."
-  [db-con]
+  "Tells whether to store FMI weather data.
+  The criteria for storing is that the candidate datetime to be stored comes
+  after the latest stored weather observation. Storing is also allowed if there
+  is no latest stored observation."
+  [db-con cand-dt]
   (try
-    (zero? (:count (jdbc/execute-one!
-                    db-con
-                    (sql/format {:select :%count.id
-                                 :from :weather_data
-                                 :where [:>= :time
-                                         (t/local-date-time
-                                          (calculate-start-time))]})
-                    rs-opts)))
+    (if-not cand-dt
+      false
+      (let [latest-stored (:time (jdbc/execute-one!
+                                  db-con
+                                  (sql/format {:select :time
+                                               :from :weather_data
+                                               :order-by [[:id :desc]]
+                                               :limit 1})
+                                  rs-opts))]
+        (if latest-stored
+          (t/after? (t/local-date-time cand-dt)
+                    (t/local-date-time latest-stored))
+          true)))
     (catch PSQLException pe
       (error pe "Weather data storage check failed")
       false)))
@@ -176,7 +182,7 @@
       (try
         ;; The first check is to prevent pointless fetch attempts when data
         ;; is not yet available
-        (while (and (>= (rem (.getMinute (t/local-date-time)) 10) 3)
+        (while (and (>= (rem (.getMinute (t/local-date-time)) 10) 4)
                     (pos? @index)
                     (nil? (get @fmi-current start-time-str)))
           (let [wd (extract-weather-data (parse url))]
