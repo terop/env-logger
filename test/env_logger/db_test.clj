@@ -1,7 +1,7 @@
 (ns env-logger.db-test
   (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [clojure.string :as s]
-            [java-time :as t]
+            [java-time.api :as t]
             [next.jdbc :as jdbc]
             [next.jdbc
              [result-set :as rs]

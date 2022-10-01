@@ -9,7 +9,7 @@
             [jsonista.core :as j]
             [clj-http.client :as client]
             [next.jdbc :as jdbc]
-            [java-time :as t]
+            [java-time.api :as t]
             [env-logger
              [db :refer [rs-opts]]])
   (:import org.postgresql.util.PSQLException))

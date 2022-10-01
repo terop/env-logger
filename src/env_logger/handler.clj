@@ -5,7 +5,7 @@
             [buddy.auth :refer [authenticated?]]
             [buddy.auth.middleware :refer [wrap-authentication
                                            wrap-authorization]]
-            [java-time :as t]
+            [java-time.api :as t]
             [jsonista.core :as j]
             [muuntaja.core :as m]
             [next.jdbc :as jdbc]

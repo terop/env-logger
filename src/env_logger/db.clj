@@ -6,7 +6,7 @@
             [next.jdbc
              [result-set :as rs]
              [sql :as js]]
-            [java-time :as t])
+            [java-time.api :as t])
   (:import (java.text NumberFormat
                       DecimalFormat)
            (java.time DateTimeException

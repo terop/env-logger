@@ -5,7 +5,7 @@
             [config.core :refer [env]]
             [clj-http.fake :refer [with-fake-routes]]
             [jsonista.core :as j]
-            [java-time :as t]
+            [java-time.api :as t]
             [next.jdbc :as jdbc]
             [env-logger
              [db :refer [get-tz-offset]]
