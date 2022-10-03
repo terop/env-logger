@@ -163,7 +163,9 @@
                                                      (nth values 1))))
        :cloudiness (Math/round (Float/parseFloat (nth values 2)))
        :wind-direction (get-wd-str (Float/parseFloat
-                                    (nth values 3)))})))
+                                    (nth values 3)))
+       :precipitation (Float/parseFloat (format "%.1f" (Float/parseFloat
+                                                        (nth values 4))))})))
 
 (defn -update-fmi-weather-data
   "Updates the latest FMI weather data from the FMI WFS for the given weather
@@ -220,8 +222,8 @@
                            "2.0.0&request=getFeature&storedquery_id=fmi::"
                            "forecast::harmonie::surface::point::simple&latlon="
                            "%s&parameters=Temperature,WindSpeedMS,"
-                           "TotalCloudCover,WindDirection&starttime=%s&"
-                           "endtime=%s")
+                           "TotalCloudCover,WindDirection,PrecipitationAmount"
+                           "&starttime=%s&endtime=%s")
                       (str latitude "," longitude)
                       ;; Start time must always be ahead of the current time so
                       ;; that forecast for the next hour is fetched

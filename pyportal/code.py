@@ -20,7 +20,7 @@ from digitalio import DigitalInOut
 # URL for the backend
 BACKEND_URL = secrets['backend-url']
 # Path to the bitmap font to use, must include the degree symbol (U+00B0)
-FONT = bitmap_font.load_font("fonts/DejaVuSansMono-17.pcf")
+FONT = bitmap_font.load_font("fonts/DejaVuSansMono-16.pcf")
 # Sleep time (in seconds) between data refreshes
 SLEEP_TIME = 80
 
@@ -235,9 +235,10 @@ def update_screen(display, observation, weather_data, utc_offset_hour):
                 display[3].text += f': temp {forecast["temperature"]} \u00b0C, ' + \
                     f'clouds {forecast["cloudiness"]} %,'
                 display[4].text = f'wind {forecast["wind-direction"]["short"]} ' + \
-                    f'{forecast["wind-speed"]} m/s, ' + \
+                    f'{forecast["wind-speed"]} m/s, precipitation {forecast["precipitation"]} mm,'
+                display[5].text = \
                     f'desc \"{weather_data["owm"]["forecast"]["weather"][0]["description"]}\"'
-                row = 5
+                row = 6
     else:
         row = 2
 

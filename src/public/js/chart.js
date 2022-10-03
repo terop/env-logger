@@ -296,6 +296,7 @@ var loadPage = () => {
                     `: temperature: ${forecast['temperature']} \u2103, ` +
                     `cloudiness: ${forecast['cloudiness']} %, ` +
                     `wind: ${forecast['wind-direction']['long']} ${forecast['wind-speed']} m/s, ` +
+                    `precipitation: ${forecast['precipitation']} mm, ` +
                     `description: ${data['weather']['owm']['forecast']['weather'][0]['description']}`;
             } else {
                 observationText = observationText.slice(0, -2);

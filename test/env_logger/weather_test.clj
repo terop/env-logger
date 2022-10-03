@@ -75,6 +75,7 @@
             :wind-speed 4.0
             :cloudiness 0
             :wind-direction {:long "south east", :short "SE"}
+            :precipitation 1.0
             :time #inst "2022-06-07T16:00:00.000000000-00:00"}
            (extract-forecast-data
             (load-file "test/env_logger/wfs_forecast_data.txt"))))))
@@ -298,6 +299,7 @@
                 :wind-speed 4.0
                 :cloudiness 0
                 :wind-direction {:short "SE"
-                                 :long "south east"}}
+                                 :long "south east"}
+                :precipitation 1.0}
                (:forecast (:fmi weather-data))))
         (is (empty? (:not-found weather-data)))))))
