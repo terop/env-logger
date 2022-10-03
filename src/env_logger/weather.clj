@@ -214,15 +214,15 @@
 (defn -update-fmi-weather-forecast
   "Updates the latest FMI HARMONIE weather forecast from the FMI WFS for the
   given weather observation station."
-  [station-id]
+  [latitude longitude]
   (future
     (let [url (format (str "https://opendata.fmi.fi/wfs?service=WFS&version="
                            "2.0.0&request=getFeature&storedquery_id=fmi::"
-                           "forecast::harmonie::surface::point::simple&fmisid="
-                           "%d&parameters=Temperature,WindSpeedMS,"
+                           "forecast::harmonie::surface::point::simple&latlon="
+                           "%s&parameters=Temperature,WindSpeedMS,"
                            "TotalCloudCover,WindDirection&starttime=%s&"
                            "endtime=%s")
-                      station-id
+                      (str latitude "," longitude)
                       ;; Start time must always be ahead of the current time so
                       ;; that forecast for the next hour is fetched
                       (-convert-to-tz-iso8601-str (t/plus
@@ -293,10 +293,11 @@
   "Fetches all (FMI current and forecast as well as OWM) weather data."
   []
   (-update-fmi-weather-data (:fmi-station-id env))
-  (-update-fmi-weather-forecast (:fmi-station-id env))
+  (-update-fmi-weather-forecast (:weather-lat env)
+                                (:weather-lon env))
   (-fetch-owm-data (:owm-app-id env)
-                   (:forecast-lat env)
-                   (:forecast-lon env)))
+                   (:weather-lat env)
+                   (:weather-lon env)))
 
 (defn get-weather-data
   "Get weather (FMI and OpenWeatherMap) weather data from cache if it is

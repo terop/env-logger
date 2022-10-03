@@ -25,9 +25,9 @@
  ;; OpenWeatherMap application ID (access key)
  :owm-app-id "myappid"
  ;; Position latitude for weather data
- :forecast-lat 12.34
+ :weather-lat 12.34
  ;; Position longitude for weather data
- :forecast-lon 56.78
+ :weather-lon 56.78
  ;; Beacon MAC and name, currently only one beacon is supported
  :beacon-name {"7C:EC:79:3F:BE:98" "Beacon 1"}
  ;; WebAuthn site property settings

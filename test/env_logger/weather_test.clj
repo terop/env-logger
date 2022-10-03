@@ -107,11 +107,11 @@
                                                         19 0 0 0
                                                         (t/zone-id
                                                          "Europe/Helsinki")))]
-      (let [res (-update-fmi-weather-forecast 87874)]
+      (let [res (-update-fmi-weather-forecast 12.34 56.78)]
         (is (nil? @res))))
     (with-redefs [parse (fn [_]
                           {:content "garbage"})]
-      (let [res (-update-fmi-weather-forecast 87874)]
+      (let [res (-update-fmi-weather-forecast 12.34 56.78)]
         (is (nil? @res))))))
 
 (deftest test-weather-data-update
