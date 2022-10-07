@@ -68,13 +68,13 @@ def get_env_data(env_settings):
     return final_data
 
 
-async def scan_ruuvitags(config, device):
+async def scan_ruuvitags(rt_config, device):
     """Scan for RuuviTag(s)."""
     found_tags = {}
 
-    def _get_tag_location(config, mac):
+    def _get_tag_location(rt_config, mac):
         """Get RuuviTag location based on tag MAC address."""
-        for tag in config['ruuvitag']['tags']:
+        for tag in rt_config['tags']:
             if mac == tag['mac']:
                 return tag['location']
 
@@ -88,7 +88,7 @@ async def scan_ruuvitags(config, device):
             if mac in found_tags:
                 continue
 
-            found_tags[mac] = {'location': _get_tag_location(config, mac),
+            found_tags[mac] = {'location': _get_tag_location(rt_config, mac),
                                'temperature': tag_data[1]['temperature'],
                                'pressure': tag_data[1]['pressure'],
                                'humidity': tag_data[1]['humidity'],
@@ -98,7 +98,7 @@ async def scan_ruuvitags(config, device):
             if len(found_tags) == expected_tag_count:
                 break
 
-    mac_addresses = [tag['mac'] for tag in config['ruuvitag']['tags']]
+    mac_addresses = [tag['mac'] for tag in rt_config['tags']]
 
     try:
         await asyncio.wait_for(_async_scan(mac_addresses, device), timeout=12)
@@ -230,8 +230,8 @@ def main():
             env_config['beacon_scan_time'] = orig_scan_time
 
     # This code only works with Python 3.10 and newer
-    tags = asyncio.run(scan_ruuvitags(config, rt_device))
-    store_ruuvitags(config, tags)
+    ruuvitags = asyncio.run(scan_ruuvitags(config['ruuvitag'], rt_device))
+    store_ruuvitags(config, ruuvitags)
 
     store_to_db(config['timezone'], env_config, env_data, config['authentication_code'])
 
