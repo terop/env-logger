@@ -13,6 +13,7 @@ from datetime import datetime
 from email.mime.text import MIMEText
 from os import environ
 from os.path import exists, isdir
+from zoneinfo import ZoneInfo
 
 import psycopg  # pylint: disable=import-error
 
@@ -36,6 +37,8 @@ class ObservationMonitor:
         """Checks when the last observation has been received and sends an email
         if the threshold is exceeded."""
         last_obs_time = self.get_obs_time()
+        last_obs_time_tz = last_obs_time.astimezone(
+                    ZoneInfo(self._config['db']['DisplayTimezone']))
         time_diff = datetime.now(tz=last_obs_time.tzinfo) - last_obs_time
 
         if int(time_diff.total_seconds() / 60) > int(self._config['observation']['Timeout']):
@@ -45,7 +48,7 @@ class ObservationMonitor:
                               'env-logger: observation inactivity warning',
                               'No observations have been received in the env-logger '
                               'backend after {} (timeout {} minutes). Please check for '
-                              'possible problems.'.format(last_obs_time.isoformat(),
+                              'possible problems.'.format(last_obs_time_tz.isoformat(),
                                                           self._config['observation']['Timeout'])):
                     self._state['email_sent'] = 'True'
                 else:
@@ -54,7 +57,7 @@ class ObservationMonitor:
             if self._state['email_sent'] == 'True':
                 send_email(self._config['email'],
                            'env-logger: observation received',
-                           f'An observation has been received at {last_obs_time.isoformat()}.')
+                           f'An observation has been received at {last_obs_time_tz.isoformat()}.')
                 self._state['email_sent'] = 'False'
 
     def get_state(self):
@@ -82,6 +85,7 @@ class BeaconMonitor:
         """Checks the latest BLE beacon scan time and sends an email if the
         threshold is exceeded."""
         last_obs_time = self.get_beacon_scan_time()
+        last_obs_time_tz = last_obs_time.astimezone(ZoneInfo(self._config['db']['DisplayTimezone']))
         time_diff = datetime.now(tz=last_obs_time.tzinfo) - last_obs_time
 
         # Timeout is in hours
@@ -92,14 +96,14 @@ class BeaconMonitor:
                               'env-logger: BLE beacon inactivity warning',
                               'No BLE beacon has been scanned in env-logger '
                               'after {} (timeout {} hours). Please check for '
-                              'possible problems.'.format(last_obs_time.isoformat(),
+                              'possible problems.'.format(last_obs_time_tz.isoformat(),
                                                           self._config['blebeacon']['Timeout'])):
                     self._state['email_sent'] = 'True'
         else:
             if self._state['email_sent'] == 'True':
                 send_email(self._config['email'],
                            'env-logger: BLE beacon scanned',
-                           f'BLE beacon scanned was at {last_obs_time.isoformat()}.')
+                           f'BLE beacon scanned was at {last_obs_time_tz.isoformat()}.')
                 self._state['email_sent'] = 'False'
 
     def get_state(self):
@@ -136,6 +140,8 @@ class RuuvitagMonitor:
 
         for location in self._config['ruuvitag']['Location'].split(','):
             time_diff = datetime.now(tz=last_obs_time[location].tzinfo) - last_obs_time[location]
+            last_obs_time_tz = last_obs_time[location].astimezone(
+                ZoneInfo(self._config['db']['DisplayTimezone']))
 
             # Timeout is in minutes
             if int(time_diff.total_seconds()) > int(self._config['ruuvitag']['Timeout']) * 60:
@@ -146,7 +152,7 @@ class RuuvitagMonitor:
                                   'No RuuviTag observation for location "{}" has been '
                                   'scanned in env-logger after {} (timeout {} minutes). '
                                   'Please check for possible problems.'
-                                  .format(location, last_obs_time[location].isoformat(),
+                                  .format(location, last_obs_time_tz.isoformat(),
                                           self._config['ruuvitag']['Timeout'])):
                         self._state[location]['email_sent'] = 'True'
                     else:
@@ -156,7 +162,7 @@ class RuuvitagMonitor:
                     send_email(self._config['email'],
                                f'env-logger: Ruuvitag beacon "{location}" scanned',
                                f'A RuuviTag observation for location "{location}" '
-                               f'was scanned at {last_obs_time[location].isoformat()}.')
+                               f'was scanned at {last_obs_time_tz.isoformat()}.')
                     self._state[location]['email_sent'] = 'False'
 
     def get_state(self):

@@ -3,6 +3,7 @@ Host = example.com
 User = theuser
 Password = b4dpassw0rd
 Name = env_logger
+DisplayTimezone = UTC
 
 [observation]
 Enabled = True
