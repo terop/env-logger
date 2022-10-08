@@ -30,6 +30,8 @@
  :weather-lon 56.78
  ;; Beacon MAC and name, currently only one beacon is supported
  :beacon-name {"7C:EC:79:3F:BE:98" "Beacon 1"}
+ ;; Enable / disable electricity price showing
+ :show-elec-price false
  ;; WebAuthn site property settings
  :webauthn {;; Hostname
             :hostname "localhost"

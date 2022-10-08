@@ -291,7 +291,8 @@ var loadPage = () => {
 
                 const forecast = data['weather']['fmi']['forecast'];
                 if (forecast && data['weather']['owm']['forecast'])
-                    observationText += '<br><br>Forecast for ' +
+                    document.getElementById('forecast').innerHTML =
+                    '<br><br>Forecast for ' +
                     luxon.DateTime.fromISO(forecast['time']).toFormat('dd.MM.yyyy HH:mm') +
                     `: temperature: ${forecast['temperature']} \u2103, ` +
                     `cloudiness: ${forecast['cloudiness']} %, ` +
@@ -303,9 +304,63 @@ var loadPage = () => {
             }
 
             document.getElementById('lastObservation').innerHTML = observationText;
-            document.getElementById('lastObservation').classList.remove('display-none');
+            document.getElementById('lastDiv').classList.remove('display-none');
         };
         showLastObservation();
+
+        // Fetch and display current electricity price data
+        var showElectricityPrice = () => {
+            axios.get('data/elec-price')
+                .then(resp => {
+                    const elecData = resp.data,
+                          now = luxon.DateTime.now();
+
+                    if (!elecData) {
+                        return;
+                    }
+                    if (elecData['error']) {
+                        if (elecData['error'] !== 'not-enabled') {
+                            console.log(`Electricity price data fetch error: ${elecData['error']}`);
+                        }
+                        return;
+                    }
+                    if (now > luxon.DateTime.fromMillis(elecData[elecData.length - 1]['start-time'])) {
+                        console.log('No recent electricity price data to show');
+                        return;
+                    }
+
+                    var smallest = 1000000000,
+                        smallestIdx = -1;
+
+                    for (i = 0; i < elecData.length; i++) {
+                        var diff = Math.abs(luxon.DateTime.fromMillis(elecData[i]['start-time']).diff(now).milliseconds);
+                        if (diff < smallest) {
+                            smallest = diff;
+                            smallestIdx = i;
+                        }
+                    }
+                    // Special case handling for the situation when the next hour is closer than the current is
+                    if (now.hour < luxon.DateTime.fromMillis(elecData[smallestIdx]['start-time']).hour) {
+                        smallestIdx -= 1;
+                    }
+
+                    const currentHourData = elecData[smallestIdx];
+                    if (currentHourData) {
+                        const currentPriceTime = luxon.DateTime.fromMillis(currentHourData['start-time']).toFormat('HH:mm');
+                        document.getElementById('lastObservation').innerHTML += `<br>Electricity price at ` +
+                            `${currentPriceTime}: ${currentHourData['price']} c / kWh`;
+                    }
+
+                    const nextHourData = elecData[smallestIdx + 1];
+                    if (nextHourData) {
+                        const nextPriceTime = luxon.DateTime.fromMillis(nextHourData['start-time']).toFormat('HH:mm');
+                        document.getElementById('forecast').innerHTML += `<br>Electricity price at ` +
+                            `${nextPriceTime}: ${nextHourData['price']} c / kWh`;
+                    }
+                }).catch(error => {
+                    console.log(`Electricity data fetch error: ${error}`);
+                });
+        };
 
         var showTestbedImage = (dataIndex) => {
             var imageName = testbedImageNames[dataIndex];
@@ -573,7 +628,19 @@ var loadPage = () => {
                                                            },
                                                            false);
 
+    document.getElementById('weatherHideAll')
+        .addEventListener('click',
+                          () => {
+                              for (var i = 0; i < chart['weather'].data.datasets.length; i++)
+                                  chart['weather'].getDatasetMeta(i).hidden = true;
+                              chart['weather'].update();
+                          },
+                          false);
+
+
     if (mode === 'all') {
+        showElectricityPrice();
+
         document.getElementById('showWeatherChart').addEventListener('click',
                                                                      () => {
                                                                          toggleVisibility('weatherDiv');
@@ -586,18 +653,7 @@ var loadPage = () => {
                                                                        toggleVisibility('otherDiv');
                                                                    },
                                                                    false);
-    }
 
-    document.getElementById('weatherHideAll')
-        .addEventListener('click',
-                          () => {
-                              for (var i = 0; i < chart['weather'].data.datasets.length; i++)
-                                  chart['weather'].getDatasetMeta(i).hidden = true;
-                              chart['weather'].update();
-                          },
-                          false);
-
-    if (mode === 'all') {
         document.getElementById('otherHideAll')
             .addEventListener('click',
                               () => {

@@ -39,7 +39,7 @@
             #updateBtn {
                 margin-left: 30px;
             }
-            #lastObservation {
+            #lastDiv {
                 margin-top: 20px;
                 margin-bottom: 20px;
             }
@@ -57,13 +57,17 @@
                 margin-top: 10px;
                 margin-bottom: 8px;
             }
-            #lastObservation {
+            #lastObservation,#forecast {
                 font-size: 0.9em;
             }
             #loadingSpinner {
                 backdrop-filter: blur(10px);
                 width: 3.5em;
                 height: 3.5em;
+            }
+            #imageButtonDiv {
+                margin-top: 30px;
+                margin-bottom: 20px;
             }
         </style>
 
@@ -102,7 +106,10 @@
                 </form>
             </div>
 
-            <div class="left-margin display-none" id="lastObservation"></div>
+            <div class="left-margin display-none" id="lastDiv">
+                <span id="lastObservation"></span>
+                <span id="forecast"></span>
+            </div>
             {% if logged-in? %}
                 <div class="left-margin display-none" id="weatherInfo"></div>
             {% endif %}

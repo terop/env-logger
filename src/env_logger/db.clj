@@ -366,7 +366,7 @@
       {:error :db-error})))
 
 (defn get-ruuvitag-obs
-  "Returns RuuviTag observations lying between the provided timestamps
+  "Returns RuuviTag observations being between the provided timestamps
   and having the given location(s)."
   [db-con start end locations]
   (try
@@ -394,6 +394,31 @@
     (catch PSQLException pe
       (error pe "RuuviTag observation fetching failed")
       {})))
+
+(defn get-elec-price
+  "Returns the electricity price values inside the given time interval.
+  If the end parameter is nil all the values after start will be returned."
+  [db-con start end]
+  (try
+    (let [query (sql/format {:select [:start_time
+                                      :price]
+                             :from :electricity_price
+                             :where (if end
+                                      [:and
+                                       [:>= :start_time start]
+                                       [:<= :start_time end]]
+                                      [:>= :start_time start])
+                             :order-by [[:id :asc]]})
+          tz-offset (get-tz-offset (:display-timezone env))
+          rows (jdbc/execute! db-con query rs-opts)]
+      (when (pos? (count rows))
+        (for [row rows]
+          (merge row
+                 {:start-time (convert-to-epoch-ms tz-offset
+                                                   (:start-time row))}))))
+    (catch PSQLException pe
+      (error pe "Electricity price fetching failed")
+      nil)))
 
 (defn get-last-obs-id
   "Returns the ID of the last observation."
