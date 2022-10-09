@@ -40,6 +40,8 @@ jobs:
           name: setup config
           command: |
             cp resources/config.edn_sample resources/dev/config.edn
+            # Enable electricity price showing during testing
+            sed -i 's/:show-elec-price false/:show-elec-price true/' resources/dev/config.edn
 
       - run: clojure -T:build ci
 
