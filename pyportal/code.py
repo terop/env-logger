@@ -1,6 +1,8 @@
 """Code for showing various data on a PyPortal Titano display."""
 
 import time
+from collections import OrderedDict
+
 # pylint: disable=no-name-in-module
 from secrets import secrets
 
@@ -12,7 +14,7 @@ import busio
 import rtc
 import supervisor
 from adafruit_bitmap_font import bitmap_font
-from adafruit_datetime import datetime
+from adafruit_datetime import datetime, timedelta
 from adafruit_esp32spi import adafruit_esp32spi
 from adafruit_simple_text_display import SimpleTextDisplay
 from digitalio import DigitalInOut
@@ -123,15 +125,18 @@ def clear_display(display):
         display[i].text = ''
 
 
-def get_backend_endpoint_content(endpoint, token):
+def get_backend_endpoint_content(endpoint, token, no_token=False):
     """Fetches the JSON content of the given backend endpoint.
     Returns a (token, JSON value) tuple."""
     fail_count = 0
 
     while fail_count < NW_FAILURE_THRESHOLD:
         try:
-            resp = requests.get(f'{BACKEND_URL}/{endpoint}',
-                                headers={'Authorization': f'Token {token}'})
+            if no_token:
+                resp = requests.get(f'{BACKEND_URL}/{endpoint}')
+            else:
+                resp = requests.get(f'{BACKEND_URL}/{endpoint}',
+                                    headers={'Authorization': f'Token {token}'})
             if resp.status_code != 200:
                 if resp.status_code == 401:
                     print('Error: request was unauthorized, getting new token')
@@ -155,7 +160,7 @@ def get_backend_endpoint_content(endpoint, token):
             time.sleep(5)
             supervisor.reload()
 
-    return (token, resp.json())
+    return resp.json() if no_token else (token, resp.json())
 
 
 def set_time(timezone):
@@ -191,8 +196,51 @@ def adjust_backlight(display):
         display.brightness = BACKLIGHT_DEFAULT_VALUE
 
 
-# pylint: disable=too-many-locals,too-many-statements
-def update_screen(display, observation, weather_data, utc_offset_hour):
+def prepare_elec_price_data(elec_price_data, utc_offset_hours):
+    """Fetches and prepares electricity price data for display."""
+    if not elec_price_data:
+        return None
+
+    if 'error' in elec_price_data:
+        if elec_price_data['error'] != 'not-enabled':
+            print(f'Electricity price data fetch failed: {elec_price_data["error"]}')
+            return None
+
+    prices = OrderedDict()
+    tz_delta = timedelta(hours=utc_offset_hours)
+    for item in elec_price_data:
+        prices[datetime.fromisoformat(item['start-time'].replace('Z', '')) + tz_delta] = \
+            item['price']
+
+    if datetime.now() > max(prices):
+        # No suitable values to show
+        return None
+
+    now = datetime.now()
+    smallest_diff = 1000000000
+    smallest = None
+
+    for start_time in prices:
+        diff = abs((start_time - now).total_seconds())
+        if diff < smallest_diff:
+            smallest_diff = diff
+            smallest = start_time
+
+    # Special case handling for the situation when the next hour is closer than the current is
+    if now.hour < smallest.hour:
+        smallest -= timedelta(hours=1)
+
+    values = {'current': [smallest, prices[smallest]]}
+
+    next_hour = smallest + timedelta(hours=1)
+    if prices[next_hour]:
+        values['next'] = [next_hour, prices[next_hour]]
+
+    return values
+
+
+# pylint: disable=too-many-branches,too-many-locals,too-many-statements
+def update_screen(display, observation, weather_data, elec_price_data, utc_offset_hour):
     """Update screen contents."""
     w_recorded = observation['data']['recorded']
 
@@ -242,6 +290,16 @@ def update_screen(display, observation, weather_data, utc_offset_hour):
     else:
         row = 2
 
+    if elec_price_data:
+        current_val = elec_price_data['current']
+        display[row].text = f'Elec price: {current_val[0].hour}:{current_val[0].minute:02}:' + \
+            f' {current_val[1]} c'
+        if 'next' in elec_price_data:
+            next_val = elec_price_data['next']
+            display[row].text += f', {next_val[0].hour}:{next_val[0].minute:02}: ' + \
+                f'{next_val[1]} c'
+        row += 1
+
     display[row].text = ''
     row += 1
 
@@ -286,6 +344,8 @@ def main():
     display = SimpleTextDisplay(title=' ', colors=[SimpleTextDisplay.WHITE], font=FONT)
     token = None
     weather_data = None
+    elec_price_metadata = {'raw_data': None,
+                           'fetched': None}
 
     # Dim the backlight because the default backlight is very bright
     board.DISPLAY.auto_brightness = False
@@ -300,10 +360,18 @@ def main():
         if BACKLIGHT_DIMMING_ENABLED:
             adjust_backlight(board.DISPLAY)
 
+        if not elec_price_metadata['fetched'] or \
+           (datetime.now() - elec_price_metadata['fetched']).total_seconds() > 1800:
+            elec_price_metadata['raw_data'] = get_backend_endpoint_content(
+                'data/elec-price', None, no_token=True)
+            elec_price_metadata['fetched'] = datetime.now()
+
+        elec_price_data = prepare_elec_price_data(elec_price_metadata['raw_data'],
+                                                  utc_offset_hour)
         token, observation = get_backend_endpoint_content('data/latest-obs', token)
         token, weather_data = get_backend_endpoint_content('data/weather', token)
 
-        update_screen(display, observation, weather_data, utc_offset_hour)
+        update_screen(display, observation, weather_data, elec_price_data, utc_offset_hour)
 
         time.sleep(SLEEP_TIME)
 
