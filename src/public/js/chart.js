@@ -20,7 +20,8 @@ var labelValues = {'weather': {},
     rtDefaultValues = [],
     rtNames = [],
     chart = {'weather': null,
-             'other': null};
+             'other': null,
+             'elecPrice': null};
 
 var loadPage = () => {
     // Persist state of chart data sets
@@ -308,54 +309,159 @@ var loadPage = () => {
         };
         showLastObservation();
 
+        // Show the electricity price data in a chart
+        var plotElectricityPrice = (priceData) => {
+            var labels = [],
+                data = [];
+
+            for (const item of priceData) {
+                labels.push(luxon.DateTime.fromISO(item['start-time']).toJSDate());
+                data.push(item['price']);
+            }
+
+            if (!chart['elecPrice']) {
+                chart['elecPrice'] = new Chart(document.getElementById('elecPriceChart').getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Price',
+                            borderColor: colors[6],
+                            data: data,
+                            hidden: false,
+                            fill: false,
+                            pointRadius: 1,
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    unit: 'hour',
+                                    tooltipFormat: 'd.L.yyyy HH:mm',
+                                    displayFormats: {
+                                        hour: 'HH',
+                                        minute: 'HH:mm'
+                                    }
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Time'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Price (c / kWh)'
+                                },
+                                ticks: {
+                                    beginAtZero: true
+                                }
+                            }
+                        },
+                        interaction: {
+                            mode: 'index'
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Electricity price'
+                            },
+                            zoom: {
+                                zoom: {
+                                    drag: {
+                                        enabled: true
+                                    },
+                                    mode: 'x'
+                                }
+                            }
+                        },
+                        spanGaps: true,
+                        normalized: true,
+                        tension: 0.1,
+                        animation: false
+                    }
+                });
+
+                document.getElementById('elecPriceResetZoom').addEventListener(
+                    'click',
+                    () => {
+                        chart['elecPrice'].resetZoom();
+                    },
+                    false);
+
+                document.getElementById('showElecPriceChart').addEventListener(
+                    'click',
+                    () => {
+                        toggleVisibility('elecPriceDiv');
+                    },
+                    false);
+            } else {
+                chart['elecPrice'].data.labels = labels;
+                chart['elecPrice'].data.datasets[0].data = data;
+                chart['elecPrice'].update();
+            }
+        };
+
         // Fetch and display current electricity price data
         var showElectricityPrice = () => {
+            // Displays the latest price as text
+            var showLatestPrice = (priceData) => {
+                const now = luxon.DateTime.now();
+
+                if (now > luxon.DateTime.fromISO(priceData[priceData.length - 1]['start-time'])) {
+                    console.log('No recent electricity price data to show');
+                    return;
+                }
+
+                var smallest = 1000000000,
+                    smallestIdx = -1;
+
+                for (i = 0; i < priceData.length; i++) {
+                    var diff = Math.abs(luxon.DateTime.fromISO(priceData[i]['start-time']).diff(now).milliseconds);
+                    if (diff < smallest) {
+                        smallest = diff;
+                        smallestIdx = i;
+                    }
+                }
+                // Special case handling for the situation when the next hour is closer than the current is
+                if (now.hour < luxon.DateTime.fromISO(priceData[smallestIdx]['start-time']).hour) {
+                    smallestIdx -= 1;
+                }
+
+                const currentHourData = priceData[smallestIdx];
+                if (currentHourData) {
+                    const currentPriceTime = luxon.DateTime.fromISO(currentHourData['start-time']).toFormat('HH:mm');
+                    document.getElementById('lastObservation').innerHTML += `<br>Electricity price at ` +
+                        `${currentPriceTime}: ${currentHourData['price']} c / kWh`;
+                }
+
+                const nextHourData = priceData[smallestIdx + 1];
+                if (nextHourData) {
+                    const nextPriceTime = luxon.DateTime.fromISO(nextHourData['start-time']).toFormat('HH:mm');
+                    document.getElementById('forecast').innerHTML += `<br>Electricity price at ` +
+                        `${nextPriceTime}: ${nextHourData['price']} c / kWh`;
+                }
+            };
+
             axios.get('data/elec-price')
                 .then(resp => {
-                    const elecData = resp.data,
-                          now = luxon.DateTime.now();
+                    const priceData = resp.data;
 
-                    if (!elecData) {
-                        return;
-                    }
-                    if (elecData['error']) {
-                        if (elecData['error'] !== 'not-enabled') {
-                            console.log(`Electricity price data fetch error: ${elecData['error']}`);
+                    if (priceData) {
+                        if (priceData['error']) {
+                            if (priceData['error'] !== 'not-enabled') {
+                                console.log(`Electricity price data fetch error: ${priceData['error']}`);
+                            }
+                            toggleClassForElement('elecPriceCheckboxDiv', 'display-none');
+
+                            return;
                         }
-                        return;
-                    }
-                    if (now > luxon.DateTime.fromISO(elecData[elecData.length - 1]['start-time'])) {
-                        console.log('No recent electricity price data to show');
-                        return;
-                    }
 
-                    var smallest = 1000000000,
-                        smallestIdx = -1;
-
-                    for (i = 0; i < elecData.length; i++) {
-                        var diff = Math.abs(luxon.DateTime.fromISO(elecData[i]['start-time']).diff(now).milliseconds);
-                        if (diff < smallest) {
-                            smallest = diff;
-                            smallestIdx = i;
-                        }
-                    }
-                    // Special case handling for the situation when the next hour is closer than the current is
-                    if (now.hour < luxon.DateTime.fromISO(elecData[smallestIdx]['start-time']).hour) {
-                        smallestIdx -= 1;
-                    }
-
-                    const currentHourData = elecData[smallestIdx];
-                    if (currentHourData) {
-                        const currentPriceTime = luxon.DateTime.fromISO(currentHourData['start-time']).toFormat('HH:mm');
-                        document.getElementById('lastObservation').innerHTML += `<br>Electricity price at ` +
-                            `${currentPriceTime}: ${currentHourData['price']} c / kWh`;
-                    }
-
-                    const nextHourData = elecData[smallestIdx + 1];
-                    if (nextHourData) {
-                        const nextPriceTime = luxon.DateTime.fromISO(nextHourData['start-time']).toFormat('HH:mm');
-                        document.getElementById('forecast').innerHTML += `<br>Electricity price at ` +
-                            `${nextPriceTime}: ${nextHourData['price']} c / kWh`;
+                        showLatestPrice(priceData);
+                        plotElectricityPrice(priceData);
                     }
                 }).catch(error => {
                     console.log(`Electricity data fetch error: ${error}`);
@@ -615,6 +721,31 @@ var loadPage = () => {
             .then(() => {
                 if (isSpinnerShown)
                     toggleLoadingSpinner();
+            });
+
+        axios.get('data/elec-price',
+                  {
+                      params: {
+                          'startDate': startDate,
+                          'endDate': endDate,
+                      }})
+            .then(resp => {
+                const priceData = resp.data;
+
+                if (priceData) {
+                    if (priceData['error']) {
+                        if (priceData['error'] !== 'not-enabled') {
+                            console.log(`Electricity price data fetch error: ${priceData['error']}`);
+                        }
+
+                        return;
+                    }
+
+                    plotElectricityPrice(priceData);
+                }
+            })
+            .catch(error => {
+                console.log(`Electricity data fetch error: ${error}`);
             });
     };
 
