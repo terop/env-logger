@@ -1,6 +1,7 @@
 (ns env-logger.db
   "Namespace containing the application's database function"
-  (:require [config.core :refer [env]]
+  (:require [clojure.string :as s]
+            [config.core :refer [env]]
             [taoensso.timbre :refer [error info]]
             [next.jdbc :as jdbc]
             [next.jdbc
@@ -110,6 +111,16 @@
     (* (.toEpochSecond subs-dt
                        (ZoneOffset/UTC))
        1000)))
+
+(defn -convert-to-iso8601-str
+  "Converts a ZonedDateTime or a java.sql.Timestamp object to a ISO 8601
+  formatted datetime string."
+  [datetime]
+  (s/replace (str (first (s/split (str (t/instant datetime))
+                                  #"\.\d+"))
+                  (if (not= java.sql.Timestamp (type datetime))
+                    "Z" ""))
+             "ZZ" "Z"))
 
 (defn insert-plain-observation
   "Insert a row into observations table."
@@ -409,13 +420,11 @@
                                        [:<= :start_time end]]
                                       [:>= :start_time start])
                              :order-by [[:id :asc]]})
-          tz-offset (get-tz-offset (:display-timezone env))
           rows (jdbc/execute! db-con query rs-opts)]
       (when (pos? (count rows))
         (for [row rows]
           (merge row
-                 {:start-time (convert-to-epoch-ms tz-offset
-                                                   (:start-time row))}))))
+                 {:start-time (-convert-to-iso8601-str (:start-time row))}))))
     (catch PSQLException pe
       (error pe "Electricity price fetching failed")
       nil)))

@@ -9,8 +9,7 @@
             [next.jdbc :as jdbc]
             [env-logger
              [db :refer [get-tz-offset]]
-             [weather :refer [-convert-to-iso8601-str
-                              -convert-to-tz-iso8601-str
+             [weather :refer [-convert-to-tz-iso8601-str
                               calculate-start-time
                               extract-forecast-data
                               extract-weather-data
@@ -30,17 +29,6 @@
 (def owm (atom nil))
 
 ;; Utilities
-
-(deftest test-iso8601-str-generation
-  (testing "ZonedDateTime to ISO 8601 string conversion"
-    (is (= "2022-06-06T15:33:50Z"
-           (-convert-to-iso8601-str
-            (ZonedDateTime/of 2022 6 6
-                              (+ 15 (get-tz-offset
-                                     (:weather-timezone env)))
-                              33 50 0
-                              (t/zone-id
-                               (:weather-timezone env))))))))
 
 (deftest test-iso8601-and-tz-str-formatting
   (testing "Date and time to ISO 8601 with timezone string conversion"

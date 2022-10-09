@@ -324,7 +324,7 @@ var loadPage = () => {
                         }
                         return;
                     }
-                    if (now > luxon.DateTime.fromMillis(elecData[elecData.length - 1]['start-time'])) {
+                    if (now > luxon.DateTime.fromISO(elecData[elecData.length - 1]['start-time'])) {
                         console.log('No recent electricity price data to show');
                         return;
                     }
@@ -333,27 +333,27 @@ var loadPage = () => {
                         smallestIdx = -1;
 
                     for (i = 0; i < elecData.length; i++) {
-                        var diff = Math.abs(luxon.DateTime.fromMillis(elecData[i]['start-time']).diff(now).milliseconds);
+                        var diff = Math.abs(luxon.DateTime.fromISO(elecData[i]['start-time']).diff(now).milliseconds);
                         if (diff < smallest) {
                             smallest = diff;
                             smallestIdx = i;
                         }
                     }
                     // Special case handling for the situation when the next hour is closer than the current is
-                    if (now.hour < luxon.DateTime.fromMillis(elecData[smallestIdx]['start-time']).hour) {
+                    if (now.hour < luxon.DateTime.fromISO(elecData[smallestIdx]['start-time']).hour) {
                         smallestIdx -= 1;
                     }
 
                     const currentHourData = elecData[smallestIdx];
                     if (currentHourData) {
-                        const currentPriceTime = luxon.DateTime.fromMillis(currentHourData['start-time']).toFormat('HH:mm');
+                        const currentPriceTime = luxon.DateTime.fromISO(currentHourData['start-time']).toFormat('HH:mm');
                         document.getElementById('lastObservation').innerHTML += `<br>Electricity price at ` +
                             `${currentPriceTime}: ${currentHourData['price']} c / kWh`;
                     }
 
                     const nextHourData = elecData[smallestIdx + 1];
                     if (nextHourData) {
-                        const nextPriceTime = luxon.DateTime.fromMillis(nextHourData['start-time']).toFormat('HH:mm');
+                        const nextPriceTime = luxon.DateTime.fromISO(nextHourData['start-time']).toFormat('HH:mm');
                         document.getElementById('forecast').innerHTML += `<br>Electricity price at ` +
                             `${nextPriceTime}: ${nextHourData['price']} c / kWh`;
                     }

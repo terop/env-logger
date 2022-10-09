@@ -1,6 +1,7 @@
 (ns env-logger.db-test
   (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [clojure.string :as s]
+            [config.core :refer [env]]
             [java-time.api :as t]
             [next.jdbc :as jdbc]
             [next.jdbc
@@ -8,6 +9,7 @@
              [sql :as js]]
             [env-logger.db :refer [db-conf
                                    convert-to-epoch-ms
+                                   -convert-to-iso8601-str
                                    get-elec-price
                                    get-last-obs-id
                                    get-obs-date-interval
@@ -31,6 +33,7 @@
                                    validate-date]])
   (:import (org.postgresql.util PSQLException
                                 PSQLState)
+           java.time.ZonedDateTime
            (java.util Date
                       TimeZone)))
 (refer-clojure :exclude '[filter for group-by into partition-by set update])
@@ -470,3 +473,14 @@
              (convert-to-epoch-ms tz-offset
                                   (t/to-sql-timestamp
                                    (t/local-date-time 2021 1 2 13 13))))))))
+
+(deftest test-iso8601-str-generation
+  (testing "ZonedDateTime to ISO 8601 string conversion"
+    (is (= "2022-06-06T15:33:50Z"
+           (-convert-to-iso8601-str
+            (ZonedDateTime/of 2022 6 6
+                              (+ 15 (get-tz-offset
+                                     (:weather-timezone env)))
+                              33 50 0
+                              (t/zone-id
+                               (:weather-timezone env))))))))

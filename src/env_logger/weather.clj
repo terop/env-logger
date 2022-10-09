@@ -1,7 +1,6 @@
 (ns env-logger.weather
   "Namespace for weather fetching code"
-  (:require [clojure.string :as s]
-            [clojure.xml :refer [parse]]
+  (:require [clojure.xml :refer [parse]]
             [clojure.zip :refer [xml-zip]]
             [clojure.data.zip.xml :as zx]
             [config.core :refer [env]]
@@ -11,7 +10,7 @@
             [next.jdbc :as jdbc]
             [java-time.api :as t]
             [env-logger
-             [db :refer [rs-opts]]])
+             [db :refer [rs-opts -convert-to-iso8601-str]]])
   (:import org.postgresql.util.PSQLException))
 (refer-clojure :exclude '[filter for group-by into partition-by set update])
 (require '[honey.sql :as sql])
@@ -36,16 +35,6 @@
                                              (mod curr-minute 10))))
                             (t/seconds (.getSecond (t/zoned-date-time))))]
     start-time))
-
-(defn -convert-to-iso8601-str
-  "Converts a ZonedDateTime or a java.sql.Timestamp object to a ISO 8601
-  formatted datetime string."
-  [datetime]
-  (s/replace (str (first (s/split (str (t/instant datetime))
-                                  #"\.\d+"))
-                  (if (not= java.sql.Timestamp (type datetime))
-                    "Z" ""))
-             "ZZ" "Z"))
 
 (defn -convert-to-tz-iso8601-str
   "Formats and returns a datetime as an ISO 8601 formatted start time string."
