@@ -39,9 +39,13 @@
             #updateBtn {
                 margin-left: 30px;
             }
-            #lastDiv {
-                margin-top: 20px;
-                margin-bottom: 20px;
+            #latestDiv {
+                margin-top: 15px;
+                margin-bottom: 10px;
+            }
+            #latestCheckboxDiv {
+                margin-bottom: 15px;
+                font-size: 0.8em;
             }
             #startDate,#endDate {
                 width: 140px;
@@ -111,18 +115,20 @@
                 </form>
             </div>
 
-            <div class="left-margin display-none" id="lastDiv">
+            <div class="left-margin display-none" id="latestDiv">
                 <span id="lastObservation"></span>
                 <span id="forecast"></span>
             </div>
-            {% if logged-in? %}
-                <div class="left-margin display-none" id="weatherInfo"></div>
-            {% endif %}
 
             <div class="left-margin display-none alert alert-danger" id="noDataError" role="alert">
                 No observations found
             </div>
             {% if logged-in? %}
+                <div class="left-margin" id="latestCheckboxDiv">
+                    <input type="checkbox" id="showLatestObs" checked>
+                    <label for="showLatestObs">Show above info</label>
+                </div>
+
                 <div class="left-margin" id="weatherCheckboxDiv">
                     <input type="checkbox" id="showWeatherChart" checked>
                     <label for="showWeatherChart">Show weather chart</label>

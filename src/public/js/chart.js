@@ -305,7 +305,7 @@ var loadPage = () => {
             }
 
             document.getElementById('lastObservation').innerHTML = observationText;
-            document.getElementById('lastDiv').classList.remove('display-none');
+            document.getElementById('latestDiv').classList.remove('display-none');
         };
         showLastObservation();
 
@@ -771,6 +771,12 @@ var loadPage = () => {
 
     if (mode === 'all') {
         showElectricityPrice();
+
+        document.getElementById('showLatestObs').addEventListener('click',
+                                                                     () => {
+                                                                         toggleVisibility('latestDiv');
+                                                                     },
+                                                                     false);
 
         document.getElementById('showWeatherChart').addEventListener('click',
                                                                      () => {
