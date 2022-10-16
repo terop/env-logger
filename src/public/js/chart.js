@@ -319,6 +319,8 @@ var loadPage = () => {
                 data.push(item['price']);
             }
 
+            const currentIdx = getClosestElecPriceDataIndex(priceData);
+
             if (!chart['elecPrice']) {
                 chart['elecPrice'] = new Chart(document.getElementById('elecPriceChart').getContext('2d'), {
                     type: 'line',
@@ -376,6 +378,17 @@ var loadPage = () => {
                                     },
                                     mode: 'x'
                                 }
+                            },
+                            annotation: {
+                                annotations: {
+                                    line1: {
+                                        type: 'line',
+                                        xMin: labels[currentIdx],
+                                        xMax: labels[currentIdx],
+                                        borderColor: 'rgb(0, 0, 0)',
+                                        borderWidth: 2,
+                                    }
+                                }
                             }
                         },
                         spanGaps: true,
@@ -405,6 +418,29 @@ var loadPage = () => {
             }
         };
 
+        // Determine the index of electricity price data value which is closest to the current hour
+        var getClosestElecPriceDataIndex = (priceData) => {
+            const now = luxon.DateTime.now();
+
+            var smallest = 1000000000,
+                smallestIdx = -1;
+
+            for (i = 0; i < priceData.length; i++) {
+                var diff = Math.abs(luxon.DateTime.fromISO(priceData[i]['start-time']).diff(now).milliseconds);
+                if (diff < smallest) {
+                    smallest = diff;
+                    smallestIdx = i;
+                }
+            }
+
+            // Special case handling for the situation when the next hour is closer than the current
+            if (now.hour < luxon.DateTime.fromISO(priceData[smallestIdx]['start-time']).hour) {
+                smallestIdx -= 1;
+            }
+
+            return smallestIdx;
+        };
+
         // Fetch and display current electricity price data
         var showElectricityPrice = () => {
             // Displays the latest price as text
@@ -416,29 +452,16 @@ var loadPage = () => {
                     return;
                 }
 
-                var smallest = 1000000000,
-                    smallestIdx = -1;
+                const currentIdx = getClosestElecPriceDataIndex(priceData);
 
-                for (i = 0; i < priceData.length; i++) {
-                    var diff = Math.abs(luxon.DateTime.fromISO(priceData[i]['start-time']).diff(now).milliseconds);
-                    if (diff < smallest) {
-                        smallest = diff;
-                        smallestIdx = i;
-                    }
-                }
-                // Special case handling for the situation when the next hour is closer than the current is
-                if (now.hour < luxon.DateTime.fromISO(priceData[smallestIdx]['start-time']).hour) {
-                    smallestIdx -= 1;
-                }
-
-                const currentHourData = priceData[smallestIdx];
+                const currentHourData = priceData[currentIdx];
                 if (currentHourData) {
                     const currentPriceTime = luxon.DateTime.fromISO(currentHourData['start-time']).toFormat('HH:mm');
                     document.getElementById('lastObservation').innerHTML += `<br>Electricity price at ` +
                         `${currentPriceTime}: ${currentHourData['price']} c / kWh`;
                 }
 
-                const nextHourData = priceData[smallestIdx + 1];
+                const nextHourData = priceData[currentIdx + 1];
                 if (nextHourData) {
                     const nextPriceTime = luxon.DateTime.fromISO(nextHourData['start-time']).toFormat('HH:mm');
                     document.getElementById('forecast').innerHTML += `<br>Electricity price at ` +
