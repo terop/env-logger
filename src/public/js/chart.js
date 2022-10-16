@@ -19,7 +19,7 @@ var labelValues = {'weather': {},
     rtDefaultShow = null,
     rtDefaultValues = [],
     rtNames = [],
-    chart = {'weather': null,
+    charts = {'weather': null,
              'other': null,
              'elecPrice': null};
 
@@ -29,15 +29,15 @@ var loadPage = () => {
         var hidden = {'weather': {},
                       'other': {}};
 
-        if (!chart['weather'])
+        if (!charts['weather'])
             return;
 
-        for (var i = 0; i < chart['weather'].data.datasets.length; i++)
-            hidden['weather'][i.toString()] = !!chart['weather'].getDatasetMeta(i).hidden;
+        for (var i = 0; i < charts['weather'].data.datasets.length; i++)
+            hidden['weather'][i.toString()] = !!charts['weather'].getDatasetMeta(i).hidden;
 
         if (mode === 'all')
-            for (var j = 0; j < chart['other'].data.datasets.length; j++)
-                hidden['other'][j.toString()] = !!chart['other'].getDatasetMeta(j).hidden;
+            for (var j = 0; j < charts['other'].data.datasets.length; j++)
+                hidden['other'][j.toString()] = !!charts['other'].getDatasetMeta(j).hidden;
 
         localStorage.setItem('hiddenDatasets', JSON.stringify(hidden));
     };
@@ -50,18 +50,18 @@ var loadPage = () => {
         const hidden = JSON.parse(localStorage.getItem('hiddenDatasets'));
         localStorage.removeItem('checkedBoxes');
 
-        if (!chart['weather'])
+        if (!charts['weather'])
             // Do not attempt restore if there is no data
             return;
 
-        for (var i = 0; i < chart['weather'].data.datasets.length; i++)
-            chart['weather'].getDatasetMeta(i).hidden = hidden['weather'][i.toString()] ? true : null;
-        chart['weather'].update();
+        for (var i = 0; i < charts['weather'].data.datasets.length; i++)
+            charts['weather'].getDatasetMeta(i).hidden = hidden['weather'][i.toString()] ? true : null;
+        charts['weather'].update();
 
         if (mode === 'all') {
-            for (var j = 0; j < chart['other'].data.datasets.length; j++)
-                chart['other'].getDatasetMeta(j).hidden = hidden['other'][j.toString()] ? true : null;
-            chart['other'].update();
+            for (var j = 0; j < charts['other'].data.datasets.length; j++)
+                charts['other'].getDatasetMeta(j).hidden = hidden['other'][j.toString()] ? true : null;
+            charts['other'].update();
         }
     };
 
@@ -321,8 +321,8 @@ var loadPage = () => {
 
             const currentIdx = getClosestElecPriceDataIndex(priceData);
 
-            if (!chart['elecPrice']) {
-                chart['elecPrice'] = new Chart(document.getElementById('elecPriceChart').getContext('2d'), {
+            if (!charts['elecPrice']) {
+                charts['elecPrice'] = new Chart(document.getElementById('elecPriceChart').getContext('2d'), {
                     type: 'line',
                     data: {
                         labels: labels,
@@ -401,7 +401,7 @@ var loadPage = () => {
                 document.getElementById('elecPriceResetZoom').addEventListener(
                     'click',
                     () => {
-                        chart['elecPrice'].resetZoom();
+                        charts['elecPrice'].resetZoom();
                     },
                     false);
 
@@ -412,9 +412,9 @@ var loadPage = () => {
                     },
                     false);
             } else {
-                chart['elecPrice'].data.labels = labels;
-                chart['elecPrice'].data.datasets[0].data = data;
-                chart['elecPrice'].update();
+                charts['elecPrice'].data.labels = labels;
+                charts['elecPrice'].data.datasets[0].data = data;
+                charts['elecPrice'].update();
             }
         };
 
@@ -621,7 +621,7 @@ var loadPage = () => {
 
         Chart.defaults.animation.duration = 400;
 
-        chart['weather'] = new Chart(document.getElementById('weatherChart').getContext('2d'), {
+        charts['weather'] = new Chart(document.getElementById('weatherChart').getContext('2d'), {
             type: 'line',
             data: generateDataConfig('weather'),
             options: {
@@ -637,7 +637,7 @@ var loadPage = () => {
         });
 
         if (mode === 'all') {
-            chart['other'] = new Chart(document.getElementById('otherChart').getContext('2d'), {
+            charts['other'] = new Chart(document.getElementById('otherChart').getContext('2d'), {
                 type: 'line',
                 data: generateDataConfig('other'),
                 options: {
@@ -654,14 +654,14 @@ var loadPage = () => {
             document.getElementById('otherResetZoom').addEventListener(
                 'click',
                 () => {
-                    chart['other'].resetZoom();
+                    charts['other'].resetZoom();
                 },
                 false);
         }
         document.getElementById('weatherResetZoom').addEventListener(
             'click',
             () => {
-                chart['weather'].resetZoom();
+                charts['weather'].resetZoom();
             },
             false);
     }
@@ -728,12 +728,12 @@ var loadPage = () => {
 
                 transformData();
 
-                chart['weather'].data = generateDataConfig('weather');
-                chart['weather'].update();
+                charts['weather'].data = generateDataConfig('weather');
+                charts['weather'].update();
 
                 if (mode === 'all') {
-                    chart['other'].data = generateDataConfig('other');
-                    chart['other'].update();
+                    charts['other'].data = generateDataConfig('other');
+                    charts['other'].update();
                 }
 
                 restoreDatasetState();
@@ -785,9 +785,9 @@ var loadPage = () => {
     document.getElementById('weatherHideAll')
         .addEventListener('click',
                           () => {
-                              for (var i = 0; i < chart['weather'].data.datasets.length; i++)
-                                  chart['weather'].getDatasetMeta(i).hidden = true;
-                              chart['weather'].update();
+                              for (var i = 0; i < charts['weather'].data.datasets.length; i++)
+                                  charts['weather'].getDatasetMeta(i).hidden = true;
+                              charts['weather'].update();
                           },
                           false);
 
@@ -817,18 +817,18 @@ var loadPage = () => {
         document.getElementById('otherHideAll')
             .addEventListener('click',
                               () => {
-                                  for (var i = 0; i < chart['other'].data.datasets.length; i++)
-                                      chart['other'].getDatasetMeta(i).hidden = true;
-                                  chart['other'].update();
+                                  for (var i = 0; i < charts['other'].data.datasets.length; i++)
+                                      charts['other'].getDatasetMeta(i).hidden = true;
+                                  charts['other'].update();
                               },
                               false);
         document.getElementById('ruuvitagMode')
             .addEventListener('click',
                               () => {
-                                  for (var i = 0; i < chart['other'].data.datasets.length; i++)
-                                      if (chart['other'].data.datasets[i].label.indexOf('RT ') === -1)
-                                          chart['other'].getDatasetMeta(i).hidden = true;
-                                  chart['other'].update();
+                                  for (var i = 0; i < charts['other'].data.datasets.length; i++)
+                                      if (charts['other'].data.datasets[i].label.indexOf('RT ') === -1)
+                                          charts['other'].getDatasetMeta(i).hidden = true;
+                                  charts['other'].update();
                               },
                               false);
     }
