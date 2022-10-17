@@ -24,6 +24,7 @@
             [env-logger
              [authentication :as auth]
              [db :as db]
+             [electricity :refer [electricity-price]]
              [render :refer [serve-text serve-json serve-template]]
              [weather :refer [get-fmi-weather-data
                               store-weather-data?
@@ -219,30 +220,6 @@
      (catch DateTimeException dte
        (error dte "Timezone ID has an invalid format")
        {:error "Timezone ID has an invalid format"}))))
-
-(defn electricity-price
-  "Returns data for the electricity price endpoint."
-  [request]
-  (with-open [con (jdbc/get-connection db/postgres-ds)]
-    (let [start-date-val (get (:params request) "startDate")
-          start-date (when (seq start-date-val) start-date-val)
-          end-date-val (get (:params request) "endDate")
-          end-date (when (seq end-date-val) end-date-val)]
-      (if-not (:show-elec-price env)
-        (serve-json {:error "not-enabled"})
-        (if (or start-date end-date)
-          (if-not start-date
-            (bad-request "Missing parameter")
-            (serve-json (db/get-elec-price con
-                                           (db/make-local-dt start-date "start")
-                                           (when end-date
-                                             (db/make-local-dt end-date
-                                                               "end")))))
-          (serve-json (db/get-elec-price con
-                                         (t/minus (t/local-date-time)
-                                                  (t/days (:initial-show-days
-                                                           env)))
-                                         nil)))))))
 
 (defn get-middleware
   "Returns the middlewares to be applied."
