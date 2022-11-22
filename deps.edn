@@ -13,12 +13,12 @@
         selmer/selmer {:mvn/version "1.12.55"}
         metosin/jsonista {:mvn/version "0.3.6"}
         org.postgresql/postgresql {:mvn/version "42.5.0"}
-        com.github.seancorfield/honeysql {:mvn/version "2.3.928"}
-        com.github.seancorfield/next.jdbc {:mvn/version "1.3.834"}
+        com.github.seancorfield/honeysql {:mvn/version "2.4.947"}
+        com.github.seancorfield/next.jdbc {:mvn/version "1.3.847"}
         buddy/buddy-auth {:mvn/version "3.0.323"}
         buddy/buddy-hashers {:mvn/version "1.8.158"}
         buddy/buddy-sign {:mvn/version "3.4.333"}
-        com.taoensso/timbre {:mvn/version "5.2.1"}
+        com.taoensso/timbre {:mvn/version "6.0.2"}
         com.fzakaria/slf4j-timbre {:mvn/version "0.3.21"}
         io.github.terop/cljwebauthn
         {:sha "bb262552d3e79bda6b975c71d06ec3d323d5580f"}}

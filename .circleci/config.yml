@@ -9,7 +9,7 @@ jobs:
           password: $DOCKERHUB_PASSWORD
         environment:
           TEST_DATABASE_URL: postgresql://postgres@localhost/env_logger_test
-      - image: cimg/postgres:14.5
+      - image: cimg/postgres:15.0
         auth:
           username: mydockerhub-user
           password: $DOCKERHUB_PASSWORD
