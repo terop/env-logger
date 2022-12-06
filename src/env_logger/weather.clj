@@ -37,7 +37,8 @@
     start-time))
 
 (defn -convert-to-tz-iso8601-str
-  "Formats and returns a datetime as an ISO 8601 formatted start time string."
+  "Formats and returns a datetime as an ISO 8601 formatted start time string
+  having the :weather-zone value timezone before ISO 8601 conversion."
   [datetime]
   (-convert-to-iso8601-str (t/with-zone
                              datetime

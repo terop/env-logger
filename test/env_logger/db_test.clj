@@ -1,7 +1,6 @@
 (ns env-logger.db-test
   (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [clojure.string :as s]
-            [config.core :refer [env]]
             [java-time.api :as t]
             [next.jdbc :as jdbc]
             [next.jdbc
@@ -476,11 +475,6 @@
 
 (deftest test-iso8601-str-generation
   (testing "ZonedDateTime to ISO 8601 string conversion"
-    (is (= "2022-06-06T15:33:50Z"
-           (-convert-to-iso8601-str
-            (ZonedDateTime/of 2022 6 6
-                              (+ 15 (get-tz-offset
-                                     (:weather-timezone env)))
-                              33 50 0
-                              (t/zone-id
-                               (:weather-timezone env))))))))
+    (let [now (ZonedDateTime/now (t/zone-id "UTC"))]
+      (is (= (str (first (s/split (str now) #"\.")) "Z")
+             (-convert-to-iso8601-str now))))))
