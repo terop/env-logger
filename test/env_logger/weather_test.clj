@@ -32,14 +32,16 @@
 
 (deftest test-iso8601-and-tz-str-formatting
   (testing "Date and time to ISO 8601 with timezone string conversion"
-    (is (= "2022-06-06T15:33:50Z"
-           (-convert-to-tz-iso8601-str
-            (ZonedDateTime/of 2022 6 6
-                              (+ 15 (get-tz-offset
-                                     (:weather-timezone env)))
-                              33 50 0
-                              (t/zone-id
-                               (:weather-timezone env))))))))
+    (let [now (ZonedDateTime/now (t/zone-id "Europe/Helsinki"))]
+      (is (= (str (first (s/split
+                          (str (.minusHours now
+                                            (if (= "UTC" (:weather-timezone
+                                                          env))
+                                              0
+                                              (get-tz-offset
+                                               "Europe/Helsinki"))))
+                          #"\.")) "Z")
+             (-convert-to-tz-iso8601-str now))))))
 
 ;; FMI
 
