@@ -1,7 +1,7 @@
 """This a Scrapy spider for scraping Nordpool Finland spot electricity prices."""
 
 import logging
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 
 import scrapy
 
@@ -18,16 +18,17 @@ class SpotPriceSpider(scrapy.Spider):
                              callback=self.parse)
 
     def parse(self, response):  # pylint: disable=arguments-differ
-        price_list = response.xpath('//ul[@class="spotprice-list mt-3"]')[1].css('li')
+        price_list = response.xpath('//div[@id="tomorrow-wrapper"]/'
+                                    'ul[@class="spotprice-list mt-3"]').css('li')
 
         if not price_list:
             logging.error('Could not find price list')
             return
 
-        today = date.today()
-        vat_decrease_end = date(2023, 4, 30)
+        today = date.today() + timedelta(days=1)
+        vat_decrease_end = date(2023, 5, 1)
 
-        # Use temporarily decrease electricity VAT (10 %) until 30th of April 2023
+        # Use temporarily decrease electricity VAT (10 %) until 1st of May 2023
         vat_multiplier = VAT_MULTIPLIER_DECREASED if today < vat_decrease_end else \
             VAT_MULTIPLIER
 
