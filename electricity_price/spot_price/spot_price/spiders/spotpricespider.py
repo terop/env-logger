@@ -6,6 +6,7 @@ from datetime import date, datetime, time
 import scrapy
 
 VAT_MULTIPLIER = 1.24
+VAT_MULTIPLIER_DECREASED = 1.10
 
 
 class SpotPriceSpider(scrapy.Spider):
@@ -24,6 +25,12 @@ class SpotPriceSpider(scrapy.Spider):
             return
 
         today = date.today()
+        vat_decrease_end = date(2023, 4, 30)
+
+        # Use temporarily decrease electricity VAT (10 %) until 30th of April 2023
+        vat_multiplier = VAT_MULTIPLIER_DECREASED if today < vat_decrease_end else \
+            VAT_MULTIPLIER
+
         for item in price_list[1:25]:
             yield {
                 'time': datetime.combine(today,
@@ -31,5 +38,5 @@ class SpotPriceSpider(scrapy.Spider):
                                                        get().strip().split(' ')[0]))).isoformat(),
                 # Price is without VAT so it is manually added
                 'price': round(float(item.css('li').css('span')[1].css('pricedata').
-                                     attrib['data-price']) * VAT_MULTIPLIER, 2)
+                                     attrib['data-price']) * vat_multiplier, 2)
             }
