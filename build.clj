@@ -19,6 +19,7 @@
 (defn ci "Run the CI pipeline of tests." [opts]
   (-> opts
       (assoc :lib lib :version version :main main)
+      (bb/clean)
       (build-java)
       (bb/run-tests)))
 
