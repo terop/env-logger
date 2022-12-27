@@ -3,6 +3,7 @@
   (:require [clojure.xml :refer [parse]]
             [clojure.zip :refer [xml-zip]]
             [clojure.data.zip.xml :as zx]
+            [clojure.string :as s]
             [config.core :refer [env]]
             [taoensso.timbre :refer [error info]]
             [jsonista.core :as j]
@@ -11,7 +12,8 @@
             [java-time.api :as t]
             [env-logger
              [db :refer [rs-opts -convert-to-iso8601-str]]])
-  (:import org.postgresql.util.PSQLException))
+  (:import java.time.temporal.ChronoUnit
+           org.postgresql.util.PSQLException))
 (refer-clojure :exclude '[filter for group-by into partition-by set update])
 (require '[honey.sql :as sql])
 
@@ -193,6 +195,50 @@
           (error ex "FMI weather data fetch failed")
           nil)))))
 
+(defn -update-fmi-weather-data-json
+  "Updates the latest FMI weather data from the FMI JSON for the given weather
+  observation station."
+  [station-id]
+  (try
+    ;; The first check is to prevent pointless fetch attempts when data
+    ;; is not yet available
+    (when (and (>= (rem (.getMinute (t/local-date-time)) 10) 4)
+               (nil? (get @fmi-current (-convert-to-tz-iso8601-str
+                                        (calculate-start-time)))))
+      (let [url (format (str "https://www.ilmatieteenlaitos.fi/api/weather/"
+                             "observations?fmisid=%s&observations=true")
+                        station-id)
+            parsed-json (j/read-value (:body (client/get url))
+                                      (j/object-mapper
+                                       {:decode-key-fn true}))]
+        (when (:observations parsed-json)
+          (let [obs (last (:observations parsed-json))
+                local-dt (t/local-date-time "yMMddHHmmss"
+                                            (s/replace (:localtime obs)
+                                                       "T" ""))
+                offset (.between ChronoUnit/HOURS
+                                 (.atZone local-dt (t/zone-id (:localtz obs)))
+                                 (.atZone local-dt (t/zone-id (:weather-timezone
+                                                               env))))
+                wd {:time (t/sql-timestamp
+                           (t/minus
+                            (t/zoned-date-time "yMMddHHmmss"
+                                               (s/replace (:localtime obs)
+                                                          "T" "")
+                                               (:localtz obs))
+                            (t/hours offset)))
+                    :temperature (:t2m obs)
+                    :cloudiness (:TotalCloudCover obs)
+                    :wind-speed (:WindSpeedMS obs)
+                    :wind-direction (get-wd-str (:WindDirection obs))}]
+            (when (and wd
+                       (not (nil? (:temperature wd))))
+              (swap! fmi-current conj
+                     {(-convert-to-iso8601-str (:time wd)) wd}))))))
+    (catch Exception ex
+      (error ex "FMI weather data (JSON) fetch failed")
+      nil)))
+
 (defn get-fmi-weather-data
   "Fetches the latest FMI weather data from the cache.
   If there is no data for the current or the previous check times nil
@@ -284,7 +330,8 @@
 (defn fetch-all-weather-data
   "Fetches all (FMI current and forecast as well as OWM) weather data."
   []
-  (-update-fmi-weather-data (:fmi-station-id env))
+  (when-not (-update-fmi-weather-data-json (:fmi-station-id env))
+    (-update-fmi-weather-data (:fmi-station-id env)))
   (-update-fmi-weather-forecast (:weather-lat env)
                                 (:weather-lon env))
   (-fetch-owm-data (:owm-app-id env)
