@@ -5,8 +5,7 @@ CREATE TABLE observations (
        id SERIAL PRIMARY KEY,
        recorded TIMESTAMP WITH TIME ZONE NOT NULL,
        brightness SMALLINT NOT NULL,
-       tb_image_name VARCHAR(40),
-       outside_temperature REAL
+       tb_image_name VARCHAR(40)
 );
 
 -- Beacons table

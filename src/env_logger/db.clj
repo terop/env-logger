@@ -133,7 +133,6 @@
                                         (t/hours (get-tz-offset
                                                   (:store-timezone env)))))
                     :brightness (:insideLight observation)
-                    :outside_temperature (:outsideTemperature observation)
                     :tb_image_name (get-tb-image db-con)}
                    rs-opts)))
 
@@ -190,7 +189,7 @@
 (defn insert-observation
   "Inserts a observation to the database."
   [db-con observation]
-  (if (= 5 (count observation))
+  (if (= 4 (count observation))
     (jdbc/with-transaction [tx db-con]
       (try
         (let [obs-id (insert-plain-observation tx
@@ -267,7 +266,6 @@
                              [:w.temperature "fmi_temperature"]
                              :w.cloudiness
                              :w.wind_speed
-                             [:o.outside_temperature "o_temperature"]
                              :b.mac_address
                              :b.rssi
                              :o.tb_image_name]
@@ -293,14 +291,7 @@
                                                      (:recorded row))
                       :name (get beacon-names
                                  (:mac-address row)
-                                 (:mac-address row))
-                      :temp-delta (when (and (:fmi-temperature row)
-                                             (:o-temperature row))
-                                    (Float/parseFloat
-                                     (format "%.2f"
-                                             (- (:o-temperature row)
-                                                (:fmi-temperature
-                                                 row)))))})
+                                 (:mac-address row))})
               :mac-address))))
 
 (defn get-obs-days

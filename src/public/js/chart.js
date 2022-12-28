@@ -124,8 +124,7 @@ var loadPage = () => {
     // Parses an observation.
     // observation - observation as JSON
     var parseData = (observation) => {
-        const weatherFields = ['o-temperature', 'fmi-temperature', 'temp-delta',
-                               'cloudiness', 'wind-speed'],
+        const weatherFields = ['fmi-temperature', 'cloudiness', 'wind-speed'],
               otherFields = ['brightness', 'rssi'];
 
         // dataMode - string, which mode to process data in, values: weather, other
@@ -197,9 +196,7 @@ var loadPage = () => {
                 labelValues['other'][key] = rtLabels[key];
             }
         }
-        labelValues['weather'] = {'o-temperature': 'Temperature (outside)',
-                                  'fmi-temperature': 'Temperature (FMI)',
-                                  'temp-delta': 'Temperature delta',
+        labelValues['weather'] = {'fmi-temperature': 'Temperature (FMI)',
                                   'cloudiness': 'Cloudiness',
                                   'wind-speed': 'Wind speed'};
 
@@ -536,10 +533,6 @@ var loadPage = () => {
                 weatherFields = ['fmi-temperature', 'cloudiness', 'wind-speed'],
                 otherFields = ['brightness', 'rssi'];
 
-            if (mode === 'all' && dataMode === 'weather') {
-                weatherFields.unshift('temp-delta');
-                weatherFields.unshift('o-temperature');
-            }
             if (dataMode === 'other')
                 for (const key in labelValues['other']) {
                     if (key.indexOf('rt') !== -1)

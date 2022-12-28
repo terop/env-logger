@@ -167,7 +167,7 @@
       (let [observation (j/read-value (get (:params request)
                                            "observation")
                                       json-decode-opts)]
-        (if-not (= (count observation) 4)
+        (if-not (= (count observation) 3)
           (bad-request "Bad request")
           (if (handle-observation-insert observation)
             (serve-text "OK") auth/response-server-error))))))

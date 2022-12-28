@@ -45,7 +45,7 @@ DynamicJsonDocument readSensors()
 
   doc["insideTemperature"] = readThermistor(A3, 9750.0, 3950.0);
   doc["insideLight"] = analogRead(photoresistorPin);
-  doc["outsideTemperature"] = readThermistor(A2, 9800.0, 3380.0);
+  doc["extTempSensor"] = readThermistor(A2, 9800.0, 3380.0);
 
   return doc;
 }

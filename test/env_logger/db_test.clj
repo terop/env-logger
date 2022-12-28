@@ -106,12 +106,10 @@
                         :wind-speed 5.0}]
       (is (true? (insert-observation test-ds
                                      (merge observation
-                                            {:outsideTemperature 5
-                                             :weather-data weather-data}))))
+                                            {:weather-data weather-data}))))
       (is (true? (insert-observation test-ds
                                      (merge observation
-                                            {:outsideTemperature nil
-                                             :weather-data nil}))))
+                                            {:weather-data nil}))))
       (is (false? (insert-observation test-ds {})))
       (with-redefs [insert-wd (fn [_ _ _] -1)]
         (let [obs-count (:count (jdbc/execute-one! test-ds
@@ -120,8 +118,7 @@
                                                      :from :observations})))]
           (is (false? (insert-observation test-ds
                                           (merge observation
-                                                 {:outsideTemperature 5
-                                                  :weather-data
+                                                 {:weather-data
                                                   weather-data}))))
           (is (= obs-count
                  (:count (jdbc/execute-one! test-ds
@@ -131,8 +128,7 @@
       (with-redefs [insert-beacons (fn [_ _ _] '(-1))]
         (is (false? (insert-observation test-ds
                                         (merge observation
-                                               {:outsideTemperature nil
-                                                :weather-data nil})))))
+                                               {:weather-data nil})))))
       (with-redefs [insert-plain-observation
                     (fn [_ _ _ _] (throw (PSQLException.
                                           "Test exception")))]
@@ -144,11 +140,9 @@
             :cloudiness 2
             :wind-speed 5.0
             :fmi-temperature 20.0
-            :o-temperature 5.0
             :name "7C:EC:79:3F:BE:97"
             :rssi -68
-            :tb-image-name nil
-            :temp-delta -15.0}
+            :tb-image-name nil}
            (dissoc (nth (get-obs-days test-ds 3) 1) :recorded)))))
 
 (deftest obs-interval-select
@@ -342,8 +336,7 @@
   (testing "Insert of a row into the observations table"
     (is (pos? (insert-plain-observation test-ds
                                         {:timestamp current-dt-zoned
-                                         :insideLight 0
-                                         :outsideTemperature 5})))))
+                                         :insideLight 0})))))
 
 (deftest db-connection-test
   (testing "Connection to the DB"
