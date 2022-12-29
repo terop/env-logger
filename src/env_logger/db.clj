@@ -263,6 +263,7 @@
                   limit nil}}]
   (let [base-query {:select [:o.recorded
                              :o.brightness
+                             [:w.time "weather_recorded"]
                              [:w.temperature "fmi_temperature"]
                              :w.cloudiness
                              :w.wind_speed
@@ -289,6 +290,10 @@
       (dissoc (merge row
                      {:recorded (convert-to-epoch-ms tz-offset
                                                      (:recorded row))
+                      :weather-recorded (when (:weather-recorded row)
+                                          (convert-to-epoch-ms
+                                           tz-offset
+                                           (:weather-recorded row)))
                       :name (get beacon-names
                                  (:mac-address row)
                                  (:mac-address row))})

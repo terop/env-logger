@@ -143,7 +143,9 @@
             :name "7C:EC:79:3F:BE:97"
             :rssi -68
             :tb-image-name nil}
-           (dissoc (nth (get-obs-days test-ds 3) 1) :recorded)))))
+           (-> (nth (get-obs-days test-ds 3) 1)
+               (dissoc :recorded)
+               (dissoc :weather-recorded))))))
 
 (deftest obs-interval-select
   (testing "Select observations between one or two dates"

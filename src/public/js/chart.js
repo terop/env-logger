@@ -11,7 +11,8 @@ var labelValues = {'weather': {},
     data = {'obs': [],
             'rt': [],
             'weather': []},
-    dataLabels = [],
+    dataLabels = {'weather': [],
+                  'other': []},
     beaconName = '',
     mode = null,
     testbedImageBasepath = '',
@@ -20,8 +21,8 @@ var labelValues = {'weather': {},
     rtDefaultValues = [],
     rtNames = [],
     charts = {'weather': null,
-             'other': null,
-             'elecPrice': null};
+              'other': null,
+              'elecPrice': null};
 
 var loadPage = () => {
     // Persist state of chart data sets
@@ -68,8 +69,7 @@ var loadPage = () => {
     // Parse RuuviTag observations
     // rtObservations - observations as JSON
     // rtLabels - RuuviTag labels
-    // observationCount - number of non-RuuviTag observations
-    var parseRTData = (rtObservations, rtLabels, observationCount) => {
+    var parseRTData = (rtObservations, rtLabels) => {
         const labelCount = rtLabels.length,
               timeDiffThreshold = 10;
         var location = null,
@@ -130,9 +130,13 @@ var loadPage = () => {
         // dataMode - string, which mode to process data in, values: weather, other
         // observation - object, observation to process
         // selectKeys - array, which data keys to select
-        var processFields = (dataMode, observation, selectKeys) => {
+        // skipWeatherKeyNulls - whether to skip null values for weather keys
+        var processFields = (dataMode, observation, selectKeys, skipWeatherKeyNulls) => {
             for (key in observation) {
                 if (selectKeys.includes(key)) {
+                    if (dataMode === 'weather' && skipWeatherKeyNulls && observation[key] === null)
+                        continue;
+
                     if (dataSets[dataMode][key] !== undefined)
                         dataSets[dataMode][key].push(observation[key]);
                     else
@@ -142,21 +146,23 @@ var loadPage = () => {
         };
 
         if (mode === 'all') {
-            dataLabels.push(new Date(observation['recorded']));
+            dataLabels['other'].push(new Date(observation['recorded']));
+            if (observation['weather-recorded'])
+                dataLabels['weather'].push(new Date(observation['weather-recorded']));
 
             // Weather
-            processFields('weather', observation, weatherFields);
+            processFields('weather', observation, weatherFields, true);
 
             // Other
-            processFields('other', observation, otherFields);
+            processFields('other', observation, otherFields, false);
 
             if (beaconName === '' && observation['name']) {
                 beaconName = observation['name'];
             }
         } else {
-            dataLabels.push(new Date(observation['time']));
+            dataLabels['weather'].push(new Date(observation['time']));
 
-            processFields('weather', observation, weatherFields);
+            processFields('weather', observation, weatherFields, false);
         }
         testbedImageNames.push(observation['tb-image-name']);
     };
@@ -177,7 +183,8 @@ var loadPage = () => {
     var transformData = () => {
         dataSets['weather'] = [],
         dataSets['other'] = [],
-        dataLabels = [];
+        dataLabels = {'weather': [],
+                      'other': []};
 
         data['obs'].map((element) => {
             parseData(element);
@@ -188,7 +195,7 @@ var loadPage = () => {
             // Get labels for RuuviTag data
             const rtLabels = getRTLabels(rtNames);
 
-            parseRTData(data['rt'], rtNames, data['obs'].length);
+            parseRTData(data['rt'], rtNames);
 
             labelValues['other'] = {'brightness': 'Brightness',
                                     'rssi': beaconName !== '' ? `Beacon "${beaconName}" RSSI` : 'Beacon RSSI'};
@@ -230,15 +237,10 @@ var loadPage = () => {
             return luxon.DateTime.fromSeconds(unixTs).toFormat('HH:mm');
         };
 
-        // Formats the given date as 'dd.mm.yyyy hh:MM'
-        var formatDate = (date) => {
-            return luxon.DateTime.fromJSDate(date).toFormat('dd.MM.yyyy HH:mm');
-        };
-
         // Show last observation and some other data for quick viewing
         var showLastObservation = () => {
             var obsIndex = data['obs'].length - 1,
-                observationText = `Date: ${formatDate(dataLabels[obsIndex])}<br>`,
+                observationText = '',
                 itemsAdded = 0,
                 weatherKeys = ['fmi-temperature', 'cloudiness', 'wind-speed'];
 
@@ -246,15 +248,11 @@ var loadPage = () => {
                 console.log('Error: no weather data');
                 return;
             }
-            if (mode === 'all')
-                if (data['weather']['owm'])
-                    observationText += `Sun: Sunrise ${formatUnixSecondTs(data['weather']['owm']['current']['sunrise'])},` +
-                ` Sunset ${formatUnixSecondTs(data['weather']['owm']['current']['sunset'])}<br>`;
 
             const wd = (mode === 'all' ? data['weather']['fmi']['current'] : data['weather']);
             if (wd) {
-                observationText += `Time ${luxon.DateTime.fromISO(wd['time']).toLocaleString(luxon.DateTime.TIME_SIMPLE)}` +
-                    ': ';
+                observationText += `${luxon.DateTime.now().setLocale('fi').toLocaleString()}` +
+                    ` ${luxon.DateTime.fromISO(wd['time']).toLocaleString(luxon.DateTime.TIME_SIMPLE)}: `;
                 for (const key of weatherKeys) {
                     if (key === 'wind-speed')
                         observationText += `Wind: ${wd['wind-direction']['long']} ` +
@@ -269,7 +267,9 @@ var loadPage = () => {
             }
             if (mode === 'all') {
                 if (data['weather']['owm'])
-                    observationText += `Description: ${data['weather']['owm']['current']['weather'][0]['description']}`;
+                    observationText += `Description: ${data['weather']['owm']['current']['weather'][0]['description']}<br>` +
+                    `Sun: Sunrise ${formatUnixSecondTs(data['weather']['owm']['current']['sunrise'])},` +
+                    ` Sunset ${formatUnixSecondTs(data['weather']['owm']['current']['sunset'])}`;
 
                 // Update obsIndex for RuuviTags as the number of "normal" and RuuviTags observations
                 // may be different
@@ -534,7 +534,7 @@ var loadPage = () => {
 
         var generateDataConfig = (dataMode) => {
             var config = {
-                labels: dataLabels,
+                labels: dataMode === 'weather' ? dataLabels['weather'] : dataLabels['other'],
                 datasets: []
             },
                 index = 0,
@@ -797,10 +797,10 @@ var loadPage = () => {
         showElectricityPrice();
 
         document.getElementById('showLatestObs').addEventListener('click',
-                                                                     () => {
-                                                                         toggleVisibility('latestDiv');
-                                                                     },
-                                                                     false);
+                                                                  () => {
+                                                                      toggleVisibility('latestDiv');
+                                                                  },
+                                                                  false);
 
         document.getElementById('showWeatherChart').addEventListener('click',
                                                                      () => {
