@@ -271,6 +271,14 @@ var loadPage = () => {
                 if (data['weather']['owm'])
                     observationText += `Description: ${data['weather']['owm']['current']['weather'][0]['description']}`;
 
+                // Update obsIndex for RuuviTags as the number of "normal" and RuuviTags observations
+                // may be different
+                for(const key in dataSets['other'])
+                    if (key.indexOf('rt_') >= 0) {
+                        obsIndex = dataSets['other'][key].length - 1;
+                        break;
+                    }
+
                 var firstRTLabelSeen = false;
                 for (const key in labelValues['other']) {
                     if ((!firstRTLabelSeen && (itemsAdded % 5) === 0) ||
