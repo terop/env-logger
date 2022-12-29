@@ -15,6 +15,8 @@
                               extract-weather-data
                               -update-fmi-weather-forecast
                               -update-fmi-weather-data
+                              -update-fmi-weather-data-json
+                              -update-fmi-weather-data-ts
                               -fetch-owm-data
                               get-fmi-weather-data
                               get-wd-str
@@ -111,6 +113,37 @@
                           (load-file "test/env_logger/wfs_data.txt"))]
       (let [res (-update-fmi-weather-data 87874)]
         (is (nil? @res))))))
+
+(deftest test-weather-data-ts-update
+  (testing "Tests FMI weather data (time series) updating"
+    (with-redefs [j/read-value (fn [_ _] [])]
+      (is (nil? (-update-fmi-weather-data-ts 87874))))
+    (with-redefs [j/read-value (fn [_ _]
+                                 [{:cloudiness 5.0
+                                   :tz "Europe/Helsinki"
+                                   :time "20221221T215000"
+                                   :winddirection 68.0,
+                                   :windspeed 2.6
+                                   :temperature -7.6}])]
+      (is (not (nil? (-update-fmi-weather-data-ts 87874)))))))
+
+(deftest test-weather-data-json-update
+  (testing "Tests FMI weather data (JSON) updating"
+    (with-redefs [j/read-value (fn [_ _]
+                                 {:observations []})]
+      (is (nil? (-update-fmi-weather-data-json 87874))))
+    (with-redefs [j/read-value (fn [_ _]
+                                 {:observations nil})]
+      (is (nil? (-update-fmi-weather-data-json 87874))))
+    (with-redefs [j/read-value (fn [_ _]
+                                 {:observations
+                                  [{:localtime "20221228T221000"
+                                    :WindDirection 70
+                                    :WindSpeedMS 2.8
+                                    :TotalCloudCover 7
+                                    :t2m -7.1
+                                    :localtz "Europe/Helsinki"}]})]
+      (is (not (nil? (-update-fmi-weather-data-json 87874)))))))
 
 (deftest fmi-weather-data-fetch
   (testing "Tests FMI weather data fetch"
