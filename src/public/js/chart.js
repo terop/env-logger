@@ -119,6 +119,14 @@ var loadPage = () => {
                 }
             }
         }
+
+        // "null pad" RuuviTag observations to align latest observations with non-RuuviTag observations
+        for (const key of Object.keys(dataSets['other']))
+            if (key.indexOf('rt_') >= 0) {
+                let lenDiff = dataSets['other']['brightness'].length - dataSets['other'][key].length;
+                for (var j = 0; j < lenDiff; j++)
+                    dataSets['other'][key].unshift(null);
+            }
     };
 
     // Parses an observation.
@@ -239,8 +247,7 @@ var loadPage = () => {
 
         // Show last observation and some other data for quick viewing
         var showLastObservation = () => {
-            var obsIndex = data['obs'].length - 1,
-                observationText = '',
+            var observationText = '',
                 itemsAdded = 0,
                 weatherKeys = ['fmi-temperature', 'cloudiness', 'wind-speed'];
 
@@ -271,8 +278,9 @@ var loadPage = () => {
                     `Sun: Sunrise ${formatUnixSecondTs(data['weather']['owm']['current']['sunrise'])},` +
                     ` Sunset ${formatUnixSecondTs(data['weather']['owm']['current']['sunset'])}`;
 
+                let obsIndex = 0;
                 // Update obsIndex for RuuviTags as the number of "normal" and RuuviTags observations
-                // may be different
+                // may differ
                 for(const key in dataSets['other'])
                     if (key.indexOf('rt_') >= 0) {
                         obsIndex = dataSets['other'][key].length - 1;
