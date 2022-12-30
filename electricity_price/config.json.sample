@@ -5,5 +5,9 @@
         "password": "myawesomepassword",
         "dbname": "env_logger",
         "source_tz": "UTC"
+    },
+    "fetch": {
+        "entsoe_api_token": "mytoken",
+        "price_area": "'10YFI-1--------U"
     }
 }

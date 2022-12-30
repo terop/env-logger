@@ -4,7 +4,7 @@ LABEL maintainer="tero.paloheimo@iki.fi"
 RUN apk update && apk upgrade
 
 WORKDIR /usr/src/app
-COPY config.json store_price.py spot_price Pipfile Pipfile.lock .
+COPY config.json store_price.py Pipfile Pipfile.lock .
 
 RUN pip install --upgrade pip && \
     pip install pipenv && pipenv install --system --deploy

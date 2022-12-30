@@ -5,8 +5,7 @@ name = "pypi"
 
 [packages]
 psycopg = {extras = ["binary"], version = "*"}
-scrapy = "==2.7.1"
-iso8601 = "*"
+requests = "*"
 
 [dev-packages]
 

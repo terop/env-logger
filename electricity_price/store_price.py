@@ -5,32 +5,70 @@
 import argparse
 import json
 import logging
-import subprocess
 import sys
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta, time
 from os import environ
 from os.path import exists
-from pathlib import Path
 from zoneinfo import ZoneInfo
+import xml.etree.ElementTree as ET
 
-import iso8601  # pylint: disable=import-error
 import psycopg  # pylint: disable=import-error
+import requests
+
+VAT_MULTIPLIER = 1.24
+VAT_MULTIPLIER_DECREASED = 1.10
 
 
-def store_prices(db_config, price_file):
-    """Stores the prices to a database pointed by the DB config."""
-    if not exists(price_file):
-        logging.error('Cannot find price file "%s"', price_file)
+# pylint: disable=too-many-locals
+def fetch_prices(config):
+    """Fetches electricity spot prices from the ENTSO-E transparency platform
+    for the given price are for the next day."""
+    api_token = config['entsoe_api_token']
+    price_area = config['price_area']
+
+    today = datetime.utcnow().date()
+    start = datetime(today.year, today.month, today.day) + timedelta(days=1)
+    end = start + timedelta(hours=23)
+    interval = f"{start.isoformat()}Z/{end.isoformat()}Z"
+
+    prices = []
+    vat_decrease_end = date(2023, 5, 1)
+
+    # Use temporarily decrease electricity VAT (10 %) until 1st of May 2023
+    vat_multiplier = VAT_MULTIPLIER_DECREASED if today < vat_decrease_end else \
+        VAT_MULTIPLIER
+
+    url = f"https://transparency.entsoe.eu/api?documentType=A44&in_Domain={price_area}" \
+        f"&out_Domain={price_area}&TimeInterval={interval}&securityToken={api_token}"
+
+    logging.info('Fetching price data for area %s over interval %s', price_area, interval)
+
+    resp = requests.get(url, timeout=10)
+    if not resp.ok:
+        logging.error("Electricity price fetch failed with status code %s", resp.status_code)
         sys.exit(1)
 
-    with open(price_file, 'r', encoding='utf-8') as price_f:
-        try:
-            prices = json.load(price_f)
-        except json.JSONDecodeError:
-            logging.error('Cannot decode price file "%s"', price_file)
-            sys.exit(1)
+    # Remove XML namespace data from response to make parsing easier
+    root = ET.fromstring(
+        resp.content.decode('utf-8').
+        replace(' xmlns="urn:iec62325.351:tc57wg16:451-3:publicationdocument:7:0"', ''))
+    for child in root.findall('./TimeSeries/Period/Point'):
+        hour = int(child[0].text)
+        if hour < 24:
+            p_time = datetime.combine(start, time(hour=hour))
+        else:
+            p_time = datetime.combine(start + timedelta(days=1), time(hour=hour - 24))
 
-    if len(prices) < 20:
+        prices.append({'time': p_time,
+                       # Price is without VAT so it is manually added
+                       'price': round((float(child[1].text) / 10) * vat_multiplier, 2)})
+
+    return prices
+
+
+def store_prices(db_config, price_data):
+    """Stores the prices to a database pointed by the DB config."""
+    if len(price_data) < 20:
         logging.error('Prices array does not contain enough data')
         sys.exit(1)
 
@@ -45,8 +83,8 @@ def store_prices(db_config, price_file):
     try:
         with psycopg.connect(create_db_conn_string(db_config)) as conn:
             with conn.cursor() as cursor:
-                for price in prices:
-                    timestamp = iso8601.parse_date(price['time']) - offset
+                for price in price_data:
+                    timestamp = price['time'] - offset
                     if fix_date:
                         # Fix situation where the timestamp date is incorrect due to timezone
                         # differences between the input timezone and timezone of the
@@ -73,23 +111,6 @@ def create_db_conn_string(db_config):
         f'password={db_config["password"]} dbname={db_config["name"]}'
 
 
-def run_scraper(output_file):
-    """Runs the Web scraper. Returns True on success and False otherwise."""
-    scrapy_path = Path('.') / 'spot_price'
-
-    try:
-        res = subprocess.run(f'scrapy crawl spot_price -O {output_file}',
-                             shell=True, check=True, cwd=scrapy_path)
-        if res.returncode != 0:
-            logging.error('scrapy call failed with return code %s', res.returncode)
-            return False
-    except subprocess.CalledProcessError as cpe:
-        logging.error('scrapy call failed: %s', cpe)
-        return False
-
-    return True
-
-
 def main():
     """Module main function."""
     logging.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s', level=logging.INFO)
@@ -107,12 +128,9 @@ def main():
     with open(config_file, 'r', encoding='utf-8') as cfg_file:
         config = json.load(cfg_file)
 
-    price_json_file = 'prices.json'
+    store_prices(config['db'], fetch_prices(config['fetch']))
 
-    if not run_scraper(price_json_file):
-        sys.exit(1)
-
-    store_prices(config['db'], Path('.') / 'spot_price' / price_json_file)
+    logging.info('Successfully stored new electricity prices')
 
 
 if __name__ == '__main__':
