@@ -5,9 +5,11 @@ const colors = [
     '#4c7e3d', '#a0496c', '#d79d48', '#6abe77', '#8c6f33'];
 
 var labelValues = {'weather': {},
-                   'other': {}},
-    dataSets = {'weather': [],
-                'other': []},
+                   'other': {},
+                   'rt': {}},
+    dataSets = {'weather': {},
+                'other': {},
+                'rt': {}},
     data = {'obs': [],
             'rt': [],
             'weather': []},
@@ -37,7 +39,8 @@ var loadPage = () => {
             hidden['weather'][i.toString()] = !!charts['weather'].getDatasetMeta(i).hidden;
 
         if (mode === 'all')
-            for (var j = 0; j < charts['other'].data.datasets.length; j++)
+            // State persistence and restore are broken for RuuviTag series
+            for (var j = 0; j < 2; j++)
                 hidden['other'][j.toString()] = !!charts['other'].getDatasetMeta(j).hidden;
 
         localStorage.setItem('hiddenDatasets', JSON.stringify(hidden));
@@ -49,7 +52,6 @@ var loadPage = () => {
             return;
 
         const hidden = JSON.parse(localStorage.getItem('hiddenDatasets'));
-        localStorage.removeItem('checkedBoxes');
 
         if (!charts['weather'])
             // Do not attempt restore if there is no data
@@ -60,10 +62,12 @@ var loadPage = () => {
         charts['weather'].update();
 
         if (mode === 'all') {
-            for (var j = 0; j < charts['other'].data.datasets.length; j++)
+            for (var j = 0; j < 2; j++)
                 charts['other'].getDatasetMeta(j).hidden = hidden['other'][j.toString()] ? true : null;
             charts['other'].update();
         }
+
+        localStorage.removeItem('hiddenDatasets');
     };
 
     // Parse RuuviTag observations
@@ -76,10 +80,9 @@ var loadPage = () => {
             dateRef = null,
             obsByDate = {};
 
-        for (const label of rtLabels) {
-            dataSets['other'][`rt_${label}_temperature`] = [];
-            dataSets['other'][`rt_${label}_humidity`] = [];
-        }
+        for (const label of rtLabels)
+            dataSets['rt'][label] = {'temperature': [],
+                                     'humidity': []};
 
         for (var i = 0; i < rtObservations.length; i++) {
             const obs = rtObservations[i];
@@ -111,22 +114,23 @@ var loadPage = () => {
         for (const key of Object.keys(obsByDate)) {
             for (const label of rtLabels) {
                 if (obsByDate[key][label] !== undefined) {
-                    dataSets['other'][`rt_${label}_temperature`].push(obsByDate[key][label]['temperature']);
-                    dataSets['other'][`rt_${label}_humidity`].push(obsByDate[key][label]['humidity']);
+                    dataSets['rt'][label]['temperature'].push(obsByDate[key][label]['temperature']);
+                    dataSets['rt'][label]['humidity'].push(obsByDate[key][label]['humidity']);
                 } else {
-                    dataSets['other'][`rt_${label}_temperature`].push(null);
-                    dataSets['other'][`rt_${label}_humidity`].push(null);
+                    dataSets['rt'][label]['temperature'].push(null);
+                    dataSets['rt'][label]['humidity'].push(null);
                 }
             }
         }
 
         // "null pad" RuuviTag observations to align latest observations with non-RuuviTag observations
-        for (const key of Object.keys(dataSets['other']))
-            if (key.indexOf('rt_') >= 0) {
-                let lenDiff = dataSets['other']['brightness'].length - dataSets['other'][key].length;
-                for (var j = 0; j < lenDiff; j++)
-                    dataSets['other'][key].unshift(null);
+        for (const key of Object.keys(dataSets['rt'])) {
+            let lenDiff = dataSets['other']['brightness'].length - dataSets['rt'][key]['temperature'].length;
+            for (var j = 0; j < lenDiff; j++) {
+                dataSets['rt'][key]['temperature'].unshift(null);
+                dataSets['rt'][key]['humidity'].unshift(null);
             }
+        }
     };
 
     // Parses an observation.
@@ -175,22 +179,11 @@ var loadPage = () => {
         testbedImageNames.push(observation['tb-image-name']);
     };
 
-
-    var getRTLabels = (rtNames) => {
-        var labels = {};
-
-        for (const name of rtNames) {
-            labels[`rt_${name}_temperature`] = `RT "${name}" temperature`;
-            labels[`rt_${name}_humidity`] = `RT "${name}" humidity`;
-        }
-
-        return labels;
-    };
-
     // Transform data to Chart.js compatible format. Returns the data series labels.
     var transformData = () => {
-        dataSets['weather'] = [],
-        dataSets['other'] = [],
+        dataSets = {'weather': {},
+                    'other': {},
+                    'rt': {}},
         dataLabels = {'weather': [],
                       'other': []};
 
@@ -200,16 +193,13 @@ var loadPage = () => {
 
         // Data labels
         if (mode === 'all') {
-            // Get labels for RuuviTag data
-            const rtLabels = getRTLabels(rtNames);
-
             parseRTData(data['rt'], rtNames);
 
             labelValues['other'] = {'brightness': 'Brightness',
                                     'rssi': beaconName !== '' ? `Beacon "${beaconName}" RSSI` : 'Beacon RSSI'};
-            for (const key in rtLabels) {
-                labelValues['other'][key] = rtLabels[key];
-            }
+            for (const name of rtNames)
+                labelValues['rt'][name] = {'temperature': `RT "${name}" temperature`,
+                                           'humidity': `RT "${name}" humidity`};
         }
         labelValues['weather'] = {'fmi-temperature': 'Temperature (FMI)',
                                   'cloudiness': 'Cloudiness',
@@ -237,7 +227,8 @@ var loadPage = () => {
         var addUnitSuffix = (keyName) => {
             return `${keyName.indexOf('temperature') >= 0 ? ' \u2103' : ''}` +
                 `${keyName.indexOf('wind') >= 0 ? ' m/s' : ''}` +
-                `${keyName.indexOf('humidity') >= 0 ? ' %H' : ''}`;
+                `${keyName.indexOf('humidity') >= 0 ? ' %H' : ''}` +
+                `${keyName.indexOf('rssi') >= 0 ? ' dB' : ''}`;
         };
 
         // Format a given Unix second timestamp in hour:minute format
@@ -248,7 +239,6 @@ var loadPage = () => {
         // Show last observation and some other data for quick viewing
         var showLastObservation = () => {
             var observationText = '',
-                itemsAdded = 0,
                 weatherKeys = ['fmi-temperature', 'cloudiness', 'wind-speed'];
 
             if (!data['weather']) {
@@ -279,27 +269,25 @@ var loadPage = () => {
                     ` Sunset ${formatUnixSecondTs(data['weather']['owm']['current']['sunset'])}`;
 
                 let obsIndex = 0;
-                // Update obsIndex for RuuviTags as the number of "normal" and RuuviTags observations
-                // may differ
-                for(const key in dataSets['other'])
-                    if (key.indexOf('rt_') >= 0) {
-                        obsIndex = dataSets['other'][key].length - 1;
-                        break;
-                    }
+                for(const key in dataSets['rt']) {
+                    obsIndex = dataSets['rt'][key]['temperature'].length - 1;
+                    break;
+                }
 
-                var firstRTLabelSeen = false;
-                for (const key in labelValues['other']) {
-                    if ((!firstRTLabelSeen && (itemsAdded % 5) === 0) ||
-                        (firstRTLabelSeen && (itemsAdded % 4) === 0))
+                observationText += `${labelValues['other']['brightness']}: ${dataSets['other']['brightness'][obsIndex]}` +
+                    `${addUnitSuffix('brightness')}, ` +
+                    `${labelValues['other']['rssi']}: ${dataSets['other']['rssi'][obsIndex]}${addUnitSuffix('rssi')},`;
+
+                let itemsAdded = 0;
+                for (const tag in labelValues['rt']) {
+                    if ((itemsAdded % 4) === 0)
                         observationText += '<br>';
-                    if (!firstRTLabelSeen && key.indexOf('rt') >= 0) {
-                        firstRTLabelSeen = true;
-                        observationText += '<br>';
-                        itemsAdded = 0;
-                    }
-                    observationText += `${labelValues['other'][key]}: ${dataSets['other'][key][obsIndex]}` +
-                        `${addUnitSuffix(key)}, `;
-                    itemsAdded++;
+
+                    observationText += `${labelValues['rt'][tag]['temperature']}: ${dataSets['rt'][tag]['temperature'][obsIndex]}` +
+                        `${addUnitSuffix('temperature')}, ` +
+                        `${labelValues['rt'][tag]['humidity']}: ${dataSets['rt'][tag]['humidity'][obsIndex]}` +
+                        `${addUnitSuffix('humidity')}, `;
+                    itemsAdded += 2;
                 }
                 observationText = observationText.slice(0, -2);
 
@@ -522,22 +510,16 @@ var loadPage = () => {
             }
         };
 
-        // Infer if dataset should be shown or hidden by default
-        var checkDatasetDisplayStatus = (keyName) => {
-            if (keyName.indexOf('rt_') === -1) {
+        // Decide if RuuviTag dataset should be shown or hidden by default
+        var checkRTDatasetDisplayStatus = (location, measurable) => {
+            if (rtDefaultShow.length === 1 && rtDefaultShow[0] === 'all' &&
+                rtDefaultValues.includes(measurable))
                 return true;
-            } else {
-                const keyParts = keyName.split('_');
-                if (rtDefaultShow.length === 1 && rtDefaultShow[0] === 'all' &&
-                    rtDefaultValues.includes(keyParts[2])) {
-                    return true;
-                } else if (rtDefaultShow.includes(keyParts[1]) &&
-                           rtDefaultValues.includes(keyParts[2])) {
-                    return true;
-                } else {
-                    return false;
-                }
-            }
+            else if (rtDefaultShow.includes(location) &&
+                     rtDefaultValues.includes(measurable))
+                return true;
+            else
+                return false;
         };
 
         var generateDataConfig = (dataMode) => {
@@ -549,23 +531,33 @@ var loadPage = () => {
                 weatherFields = ['fmi-temperature', 'cloudiness', 'wind-speed'],
                 otherFields = ['brightness', 'rssi'];
 
-            if (dataMode === 'other')
-                for (const key in labelValues['other']) {
-                    if (key.indexOf('rt') !== -1)
-                        otherFields.push(key);
-                }
-
             for (const key of (dataMode === 'weather' ? weatherFields : otherFields)) {
                 config.datasets.push({
                     label: labelValues[dataMode][key],
                     borderColor: colors[index],
                     data: dataSets[dataMode][key],
-                    hidden: !checkDatasetDisplayStatus(key),
+                    hidden: false,
                     fill: false,
                     pointRadius: 1,
                     borderWidth: 1
                 });
                 index++;
+            }
+            if (dataMode === 'other') {
+                const rtMeasurables = ['temperature', 'humidity'];
+                for (const name of rtNames)
+                    for (const meas of rtMeasurables) {
+                        config.datasets.push({
+                            label: labelValues['rt'][name][meas],
+                            borderColor: colors[index],
+                            data: dataSets['rt'][name][meas],
+                            hidden: !checkRTDatasetDisplayStatus(name, meas),
+                            fill: false,
+                            pointRadius: 1,
+                            borderWidth: 1
+                        });
+                        index++;
+                    }
             }
 
             return config;
