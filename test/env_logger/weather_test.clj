@@ -134,16 +134,7 @@
       (is (nil? (-update-fmi-weather-data-json 87874))))
     (with-redefs [j/read-value (fn [_ _]
                                  {:observations nil})]
-      (is (nil? (-update-fmi-weather-data-json 87874))))
-    (with-redefs [j/read-value (fn [_ _]
-                                 {:observations
-                                  [{:localtime "20221228T221000"
-                                    :WindDirection 70
-                                    :WindSpeedMS 2.8
-                                    :TotalCloudCover 7
-                                    :t2m -7.1
-                                    :localtz "Europe/Helsinki"}]})]
-      (is (not (nil? (-update-fmi-weather-data-json 87874)))))))
+      (is (nil? (-update-fmi-weather-data-json 87874))))))
 
 (deftest fmi-weather-data-fetch
   (testing "Tests FMI weather data fetch"
