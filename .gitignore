@@ -4,3 +4,4 @@ target/
 .eastwood
 resources/dev/config.edn
 resources/prod/config.edn
+wioterminal/

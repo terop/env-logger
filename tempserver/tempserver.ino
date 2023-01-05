@@ -1,33 +1,37 @@
-#include <SPI.h>
-#include <Ethernet.h>
-
+#include <WiFiNINA.h>
 #include <ArduinoJson.h>
+
+#include "arduino_secrets.h"
 
 /*
  * Required libraries:
  * ArduinoJson
+ * WiFiNINA
  */
 
+// Target Arduino board: MKR WiFi 1010
+
+// Network SSID
+char ssid[] = SECRET_SSID;
+// Network password
+char pass[] = SECRET_PASS;
+// WiFi radio status
+int status = WL_IDLE_STATUS;
+// Network server
+WiFiServer server(80);
+
 // Input pins
-const int photoresistorPin = A1;
-
-// Enter a MAC address and IP address for your controller below.
-// The IP address will be dependent on your local network:
-byte mac[] = { 0x90, 0xA2, 0xDA, 0x0E, 0x9A, 0xFC };
-IPAddress ip(192, 168, 1, 10);
-
-// Initialize the Ethernet server library
-// with the IP address and port you want to use
-EthernetServer server(80);
+const int photoresistorPin = A4;
+const int thermistorPin = A6;
 
 /* A reading from the ADC might give one value at one sample and then a little
    different the next time around. To eliminate noisy readings, we can sample
    the ADC pin a few times and then average the samples to get something more
    solid. This constant is utilized in the readThermistor function.
-   */
+*/
 const int SAMPLE_NUMBER = 10;
 
-// This helps calculate the thermistor's resistance (check article for details).
+// This helps calculate the thermistor's resistance
 const double MAX_ADC = 1023.0;
 
 /* This is also needed for the conversion equation as "typical" room temperature
@@ -38,40 +42,45 @@ const double ROOM_TEMP = 298.15;   // room temperature in Kelvin
    down here. Again, needed for conversion equations. */
 const double RESISTOR_ROOM_TEMP = 10000.0;
 
-// Reads the sensors and returns them in a JSON object
-DynamicJsonDocument readSensors()
-{
-  DynamicJsonDocument doc(96);
-
-  doc["insideTemperature"] = readThermistor(A3, 9750.0, 3950.0);
-  doc["insideLight"] = analogRead(photoresistorPin);
-  doc["extTempSensor"] = readThermistor(A2, 9800.0, 3380.0);
-
-  return doc;
-}
-
 void setup() {
-  // Open serial communications and wait for port to open:
+  // Initialise LED
+  pinMode(LED_BUILTIN, OUTPUT);
+
+  // Open serial communications and wait for port to open
   Serial.begin(9600);
 
-  // start the Ethernet connection and the server:
-  Ethernet.begin(mac, ip);
+  // Attempt to connect to Wifi network
+  while (status != WL_CONNECTED) {
+    Serial.print("Attempting to connect to network: ");
+    Serial.println(ssid);
+    // Connect to WPA/WPA2 network
+    status = WiFi.begin(ssid, pass);
+
+    // Wait 5 seconds for connection
+    delay(5000);
+  }
+
+  Serial.println("Connected to the network:");
+  printNetworkData();
+
   server.begin();
 }
 
 void loop() {
   // Listen for incoming clients
-  EthernetClient client = server.available();
+  WiFiClient client = server.available();
 
   if (client) {
-    // An HTTP request ends with a blank line
+    // A HTTP request ends with a blank line
     boolean currentLineIsBlank = true;
 
     while (client.connected()) {
       if (client.available()) {
+        digitalWrite(LED_BUILTIN, HIGH);
+
         char c = client.read();
         // If you've gotten to the end of the line (received a newline
-        // character) and the line is blank, the http request has ended,
+        // character) and the line is blank, the HTTP request has ended,
         // so you can send a reply
         if (c == '\n' && currentLineIsBlank) {
           DynamicJsonDocument doc = readSensors();
@@ -97,30 +106,56 @@ void loop() {
         }
       }
     }
-    // Give the web browser time to receive the data
-    delay(1);
     // Close the connection
     client.stop();
+
+    digitalWrite(LED_BUILTIN, LOW);
   }
+}
+
+void printNetworkData() {
+  Serial.println("Board information:");
+  IPAddress ip = WiFi.localIP();
+  Serial.print("IP Address: ");
+  Serial.println(ip);
+
+  Serial.println();
+  Serial.println("Network information:");
+  Serial.print("SSID: ");
+  Serial.println(WiFi.SSID());
+
+  long rssi = WiFi.RSSI();
+  Serial.print("Signal strength (RSSI): ");
+  Serial.println(rssi);
+}
+
+// Reads the sensors and returns them in a JSON object
+DynamicJsonDocument readSensors() {
+  DynamicJsonDocument doc(96);
+
+  doc["insideLight"] = analogRead(photoresistorPin);
+  doc["extTempSensor"] = readThermistor(thermistorPin, 9800.0, 3380.0);
+
+  return doc;
 }
 
 // The code below is from https://www.allaboutcircuits.com/projects/measuring-temperature-with-an-ntc-thermistor/
 /**
-This function reads the analog pin as shown below. Converts voltage signal
-to a digital representation with analog to digital conversion. However, this is
-done multiple times so that we can average it to eliminate measurement errors.
-This averaged number is then used to calculate the resistance of the thermistor.
-After this, the resistance is used to calculate the temperature of the
-thermistor. Finally, the temperature is converted to celsius. Please refer to
-the allaboutcircuits.com article for the specifics and general theory of this
-process.
+   This function reads the analog pin as shown below. Converts voltage signal
+   to a digital representation with analog to digital conversion. However, this is
+   done multiple times so that we can average it to eliminate measurement errors.
+   This averaged number is then used to calculate the resistance of the thermistor.
+   After this, the resistance is used to calculate the temperature of the
+   thermistor. Finally, the temperature is converted to celsius. Please refer to
+   the allaboutcircuits.com article for the specifics and general theory of this
+   process.
 
-Quick Schematic in case you are too lazy to look at the site :P
+   Quick Schematic in case you are too lazy to look at the site :P
 
-          (Ground) ----\/\/\/-------|-------\/\/\/---- V_supply
-                     R_balance      |     R_thermistor
-                                    |
-                               Analog Pin
+   (Ground) ----\/\/\/-------|-------\/\/\/---- V_supply
+   R_balance      |     R_thermistor
+   |
+   Analog Pin
 */
 double readThermistor(int thermistorPin, double balanceResistor, double beta) {
   // variables that live in this function
@@ -159,7 +194,7 @@ double readThermistor(int thermistorPin, double balanceResistor, double beta) {
      for granted or input the formula directly from the article, exactly
      as it is shown. Either way will work! */
   tKelvin = (beta * ROOM_TEMP) /
-            (beta + (ROOM_TEMP * log(rThermistor / RESISTOR_ROOM_TEMP)));
+    (beta + (ROOM_TEMP * log(rThermistor / RESISTOR_ROOM_TEMP)));
 
   /* I will use the units of Celsius to indicate temperature. I did this
      just so I can see the typical room temperature, which is 25 degrees
@@ -168,5 +203,5 @@ double readThermistor(int thermistorPin, double balanceResistor, double beta) {
      another function which converts between the two units. */
   tCelsius = tKelvin - 273.15;  // convert kelvin to celsius
 
-  return tCelsius;    // Return the temperature in Celsius
+  return tCelsius;
 }
