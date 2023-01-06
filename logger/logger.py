@@ -20,6 +20,7 @@ from time import sleep
 import pytz
 import requests
 import serial
+from requests.exceptions import ConnectionError  # pylint: disable=redefined-builtin
 
 os.environ['RUUVI_BLE_ADAPTER'] = 'bleak'
 # pylint: disable=import-error,wrong-import-position
@@ -32,8 +33,22 @@ def get_timestamp(timezone):
 
 
 def get_env_data(env_settings):
-    """Fetches the environment data from the Wio Terminal.
+    """Fetches the environment data from the Arduino and Wio Terminal.
     Returns the parsed JSON object or an empty dictionary on failure."""
+    # Read Arduino
+    arduino_ok = True
+    try:
+        resp = requests.get(env_settings['arduino_url'], timeout=5)
+    except ConnectionError as con_err:
+        logging.error('Connection problem to Arduino: %s', con_err)
+        arduino_ok = False
+    if not resp.ok:
+        logging.error('Cannot read Arduino data, status code: %s', resp.status_code)
+        arduino_ok = False
+
+    if arduino_ok:
+        arduino_data = resp.json()
+
     # Read Wio Terminal
     try:
         with serial.Serial(env_settings['terminal_serial'], 115200, timeout=10) as ser:
@@ -46,7 +61,9 @@ def get_env_data(env_settings):
         logging.error('Cannot read Wio Terminal serial: %s', exc)
         return {}
 
-    final_data = {'insideLight': terminal_data['light']}
+    final_data = {'outsideTemperature': round(arduino_data['extTempSensor'], 2)
+                  if arduino_ok else None,
+                  'insideLight': terminal_data['light']}
 
     return final_data
 
@@ -196,6 +213,7 @@ def main():
     env_config = config['environment']
     if args.dummy:
         env_data = {'insideLight': 10,
+                    'outsideTemperature': 5,
                     'beacons': []}
     else:
         env_data = get_env_data(env_config)

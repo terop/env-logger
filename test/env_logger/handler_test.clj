@@ -27,7 +27,8 @@
                          {"observation"
                           (j/write-value-as-string {:timestamp ""
                                                     :insideLight 0
-                                                    :beacons ""})}}]
+                                                    :beacons ""
+                                                    :outsideTemperature 0})}}]
             (with-redefs [h/handle-observation-insert (fn [_] true)]
               (is (= "OK" (:body (h/observation-insert request)))))
             (with-redefs [h/handle-observation-insert (fn [_] false)]
