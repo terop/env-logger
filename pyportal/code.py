@@ -306,10 +306,11 @@ def update_screen(display, observation, weather_data, elec_price_data, utc_offse
     display[row].text = rt_recorded
     row += 1
     display[row].text = f'Brightness {observation["data"]["brightness"]}, '
-    display[row].text += f'outside temperature {observation["data"]["o-temperature"]} \u00b0C'
-    row += 1
+    display[row].text += f'outside temp {observation["data"]["o-temperature"]} \u00b0C'
     if observation['data']['rssi']:
-        display[row].text += f', beacon "{observation["data"]["name"]}" ' + \
+        display[row].text += ','
+        row += 1
+        display[row].text = f'beacon "{observation["data"]["name"]}" ' + \
             f'RSSI {observation["data"]["rssi"]}'
     row += 1
 
