@@ -2,7 +2,10 @@
 const colors = [
     '#7864cb', '#5ab642', '#bf51b6', '#cf615e', '#dc437e',
     '#49b9a9', '#cc572c', '#628bcb', '#a5b043', '#d089c5',
-    '#4c7e3d', '#a0496c', '#d79d48', '#6abe77', '#8c6f33'];
+    '#4c7e3d', '#a0496c', '#d79d48', '#6abe77', '#8c6f33'],
+      // Data field names
+      fieldNames = {'weather': ['fmi-temperature', 'cloudiness', 'wind-speed'],
+                    'other': ['brightness', 'rssi', 'o-temperature']};
 
 var labelValues = {'weather': {},
                    'other': {},
@@ -136,9 +139,6 @@ var loadPage = () => {
     // Parses an observation.
     // observation - observation as JSON
     var parseData = (observation) => {
-        const weatherFields = ['fmi-temperature', 'cloudiness', 'wind-speed'],
-              otherFields = ['brightness', 'rssi'];
-
         // dataMode - string, which mode to process data in, values: weather, other
         // observation - object, observation to process
         // selectKeys - array, which data keys to select
@@ -163,10 +163,10 @@ var loadPage = () => {
                 dataLabels['weather'].push(new Date(observation['weather-recorded']));
 
             // Weather
-            processFields('weather', observation, weatherFields, true);
+            processFields('weather', observation, fieldNames['weather'], true);
 
             // Other
-            processFields('other', observation, otherFields, false);
+            processFields('other', observation, fieldNames['other'], false);
 
             if (beaconName === '' && observation['name']) {
                 beaconName = observation['name'];
@@ -174,7 +174,7 @@ var loadPage = () => {
         } else {
             dataLabels['weather'].push(new Date(observation['time']));
 
-            processFields('weather', observation, weatherFields, false);
+            processFields('weather', observation, fieldNames['weather'], false);
         }
         testbedImageNames.push(observation['tb-image-name']);
     };
@@ -196,6 +196,7 @@ var loadPage = () => {
             parseRTData(data['rt'], rtNames);
 
             labelValues['other'] = {'brightness': 'Brightness',
+                                    'o-temperature': 'Outside temperature',
                                     'rssi': beaconName !== '' ? `Beacon "${beaconName}" RSSI` : 'Beacon RSSI'};
             for (const name of rtNames)
                 labelValues['rt'][name] = {'temperature': `RT "${name}" temperature`,
@@ -276,7 +277,9 @@ var loadPage = () => {
 
                 observationText += `${labelValues['other']['brightness']}: ${dataSets['other']['brightness'][obsIndex]}` +
                     `${addUnitSuffix('brightness')}, ` +
-                    `${labelValues['other']['rssi']}: ${dataSets['other']['rssi'][obsIndex]}${addUnitSuffix('rssi')},`;
+                    `${labelValues['other']['rssi']}: ${dataSets['other']['rssi'][obsIndex]}${addUnitSuffix('rssi')}, ` +
+                    `${labelValues['other']['o-temperature']}: ${dataSets['other']['o-temperature'][obsIndex]}` +
+                    `${addUnitSuffix('temperature')},`;
 
                 let itemsAdded = 0;
                 for (const tag in labelValues['rt']) {
@@ -527,11 +530,9 @@ var loadPage = () => {
                 labels: dataMode === 'weather' ? dataLabels['weather'] : dataLabels['other'],
                 datasets: []
             },
-                index = 0,
-                weatherFields = ['fmi-temperature', 'cloudiness', 'wind-speed'],
-                otherFields = ['brightness', 'rssi'];
+                index = 0;
 
-            for (const key of (dataMode === 'weather' ? weatherFields : otherFields)) {
+            for (const key of (dataMode === 'weather' ? fieldNames['weather'] : fieldNames['other'])) {
                 config.datasets.push({
                     label: labelValues[dataMode][key],
                     borderColor: colors[index],
