@@ -747,12 +747,13 @@ var loadPage = () => {
                     toggleLoadingSpinner();
             });
 
-        axios.get('data/elec-price',
-                  {
-                      params: {
-                          'startDate': startDate,
-                          'endDate': endDate,
-                      }})
+        if (mode === 'all')
+            axios.get('data/elec-price',
+                      {
+                          params: {
+                              'startDate': startDate,
+                              'endDate': endDate,
+                          }})
             .then(resp => {
                 const priceData = resp.data;
 
