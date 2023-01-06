@@ -267,13 +267,9 @@ var loadPage = () => {
                 if (data['weather']['owm'])
                     observationText += `Description: ${data['weather']['owm']['current']['weather'][0]['description']}<br>` +
                     `Sun: Sunrise ${formatUnixSecondTs(data['weather']['owm']['current']['sunrise'])},` +
-                    ` Sunset ${formatUnixSecondTs(data['weather']['owm']['current']['sunset'])}`;
+                    ` Sunset ${formatUnixSecondTs(data['weather']['owm']['current']['sunset'])}<br>`;
 
-                let obsIndex = 0;
-                for(const key in dataSets['rt']) {
-                    obsIndex = dataSets['rt'][key]['temperature'].length - 1;
-                    break;
-                }
+                let obsIndex = dataSets['other']['brightness'].length - 1;
 
                 observationText += `${labelValues['other']['brightness']}: ${dataSets['other']['brightness'][obsIndex]}` +
                     `${addUnitSuffix('brightness')}, ` +
@@ -282,6 +278,10 @@ var loadPage = () => {
                     `${addUnitSuffix('temperature')},`;
 
                 let itemsAdded = 0;
+                for(const key in dataSets['rt']) {
+                    obsIndex = dataSets['rt'][key]['temperature'].length - 1;
+                    break;
+                }
                 for (const tag in labelValues['rt']) {
                     if ((itemsAdded % 4) === 0)
                         observationText += '<br>';
