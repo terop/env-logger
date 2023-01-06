@@ -495,21 +495,36 @@ var loadPage = () => {
                 });
         };
 
-        var showTestbedImage = (dataIndex) => {
-            var imageName = testbedImageNames[dataIndex];
-            if (imageName) {
-                var pattern = /testbed-([\d-]+)T.+/,
-                    result = pattern.exec(imageName);
-                if (result) {
-                    document.getElementById('testbedImage').src =
-                        `${testbedImageBasepath}${result[1]}/${imageName}`;
-                    // Scroll page to bottom after loading the image for improved viewing
-                    window.setTimeout(() => {
-                        window.scroll(0, document.body.scrollHeight);
-                    }, 500);
+        var showTestbedImage = (pointDt) => {
+            const pattern = /testbed-(.+).png/,
+                  imageCountIdx = testbedImageNames.length - 1,
+                  refDt = luxon.DateTime.fromMillis(pointDt);
+            let smallest = 100000,
+                smallestIdx = imageCountIdx;
+
+            for (let i = imageCountIdx; i >= 0; i--) {
+                const match = pattern.exec(testbedImageNames[i]);
+                if (match) {
+                    const diff = Math.abs(refDt.diff(luxon.DateTime.fromISO(match[1]), 'minutes').minutes);
+                    if (diff <= smallest) {
+                        smallest = diff;
+                        smallestIdx = i;
+                    } else {
+                        break;
+                    }
                 }
-            } else {
-                document.getElementById('testbedImage').src = '';
+            }
+
+            const imageName = testbedImageNames[smallestIdx],
+                  datePattern = /testbed-([\d-]+)T.+/,
+                  result = datePattern.exec(imageName);
+            if (result) {
+                document.getElementById('testbedImage').src =
+                    `${testbedImageBasepath}${result[1]}/${imageName}`;
+                // Scroll page to bottom after loading the image for improved viewing
+                window.setTimeout(() => {
+                    window.scroll(0, document.body.scrollHeight);
+                }, 500);
             }
         };
 
@@ -618,7 +633,10 @@ var loadPage = () => {
                   document.getElementById('showImages').checked = true;
                   document.getElementById('imageDiv').classList.remove('display-none');
 
-                  showTestbedImage(elements[0].index);
+                  const chart = event.chart.canvas.id.includes('weather') ? charts['weather'] : charts['other'],
+                        canvasPosition = Chart.helpers.getRelativePosition(event, chart);
+
+                  showTestbedImage(chart.scales.x.getValueForPixel(canvasPosition.x));
               };
 
         Chart.defaults.animation.duration = 400;
