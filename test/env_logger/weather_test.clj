@@ -12,9 +12,7 @@
              [weather :refer [-convert-to-tz-iso8601-str
                               calculate-start-time
                               extract-forecast-data
-                              extract-weather-data
                               -update-fmi-weather-forecast
-                              -update-fmi-weather-data
                               -update-fmi-weather-data-json
                               -update-fmi-weather-data-ts
                               -fetch-owm-data
@@ -46,20 +44,6 @@
              (-convert-to-tz-iso8601-str now))))))
 
 ;; FMI
-
-(deftest test-data-extraction
-  (testing "Data extraction function tests"
-    (is (= {:wind-speed 5.0,
-            :wind-direction {:short "N"
-                             :long "north"}
-            :cloudiness 3,
-            :temperature -9.0,
-            :time #inst "2021-12-02T18:10:00.000000000-00:00"}
-           (extract-weather-data
-            (load-file "test/env_logger/wfs_extraction_data.txt"))))
-    (is (nil? (extract-weather-data
-               (load-file
-                "test/env_logger/wfs_extraction_data_invalid.txt"))))))
 
 (deftest test-forecast-data-extraction
   (testing "Forecast data extraction function tests"
@@ -105,13 +89,6 @@
     (with-redefs [parse (fn [_]
                           {:content "garbage"})]
       (let [res (-update-fmi-weather-forecast 12.34 56.78)]
-        (is (nil? @res))))))
-
-(deftest test-weather-data-update
-  (testing "Tests FMI weather data (WFS) updating"
-    (with-redefs [parse (fn [_]
-                          (load-file "test/env_logger/wfs_data.txt"))]
-      (let [res (-update-fmi-weather-data 87874)]
         (is (nil? @res))))))
 
 (deftest test-weather-data-ts-update

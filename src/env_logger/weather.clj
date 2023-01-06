@@ -108,30 +108,6 @@
            (<= wind-direction 360.0)) {:short "N"
                                        :long "north"})))
 
-(defn extract-weather-data
-  "Parses and returns various weather data values from the given XML
-  data. It is assumed that there only one set of values in the XML data."
-  [parsed-xml]
-  (when (>= (count (:content parsed-xml)) 4)
-    (let [root (xml-zip parsed-xml)
-          values (for [m (zx/xml-> root
-                                   :wfs:member
-                                   :BsWfs:BsWfsElement
-                                   :BsWfs:ParameterValue)]
-                   (zx/text m))
-          date-text (zx/text (zx/xml1-> root
-                                        :wfs:member
-                                        :BsWfs:BsWfsElement
-                                        :BsWfs:Time))]
-      {:time (t/sql-timestamp
-              (t/local-date-time (t/instant date-text)
-                                 (:weather-timezone env)))
-       :temperature (Float/parseFloat (nth values 0))
-       :cloudiness (Math/round (Float/parseFloat (nth values 1)))
-       :wind-speed (Float/parseFloat (nth values 2))
-       :wind-direction (get-wd-str (Float/parseFloat
-                                    (nth values 3)))})))
-
 (defn extract-forecast-data
   "Parses and returns forecast data values from the given XML data."
   [parsed-xml]
@@ -158,42 +134,6 @@
                                     (nth values 3)))
        :precipitation (Float/parseFloat (format "%.1f" (Float/parseFloat
                                                         (nth values 4))))})))
-
-(defn -update-fmi-weather-data
-  "Updates the latest FMI weather data from the FMI WFS for the given weather
-  observation station."
-  [station-id]
-  (future
-    (let [start-time-str (-convert-to-tz-iso8601-str (calculate-start-time))
-          url (format (str "https://opendata.fmi.fi/wfs?service=WFS&version="
-                           "2.0.0&request=getFeature&storedquery_id="
-                           "fmi::observations::weather::simple&fmisid=%d&"
-                           "parameters=t2m,n_man,ws_10min,wd_10min&"
-                           "starttime=%s")
-                      station-id
-                      start-time-str)
-          index (atom retry-count)]
-      (try
-        ;; The first check is to prevent pointless fetch attempts when data
-        ;; is not yet available
-        (while (and (>= (rem (.getMinute (t/local-date-time)) 10) 3)
-                    (pos? @index)
-                    (nil? (get @fmi-current start-time-str)))
-          (let [wd (extract-weather-data (parse url))]
-            (if wd
-              (swap! fmi-current conj
-                     {(-convert-to-iso8601-str (:time wd)) wd})
-              (do
-                (info (str "Retrying data fetch, attempt "
-                           (- retry-count (dec @index)) " of " retry-count))
-                (Thread/sleep 5000))))
-          (swap! index dec))
-        (catch org.xml.sax.SAXParseException spe
-          (error spe "FMI weather data XML parsing failed")
-          nil)
-        (catch Exception ex
-          (error ex "FMI weather data fetch failed")
-          nil)))))
 
 (defn -update-fmi-weather-data-json
   "Updates the latest FMI weather data from the FMI JSON for the given weather
@@ -370,8 +310,7 @@
   "Fetches all (FMI current and forecast as well as OWM) weather data."
   []
   (when-not (-update-fmi-weather-data-ts (:fmi-station-id env))
-    (when-not (-update-fmi-weather-data-json (:fmi-station-id env))
-      (-update-fmi-weather-data (:fmi-station-id env))))
+    (-update-fmi-weather-data-json (:fmi-station-id env)))
   (-update-fmi-weather-forecast (:weather-lat env)
                                 (:weather-lon env))
   (-fetch-owm-data (:owm-app-id env)
