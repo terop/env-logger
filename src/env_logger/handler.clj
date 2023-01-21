@@ -1,6 +1,7 @@
 (ns env-logger.handler
   "The main namespace of the application"
   (:require [clojure set]
+            [clojure.string :refer [ends-with?]]
             [config.core :refer [env]]
             [buddy.auth :refer [authenticated?]]
             [buddy.auth.middleware :refer [wrap-authentication
@@ -24,7 +25,8 @@
             [env-logger
              [authentication :as auth]
              [db :as db]
-             [electricity :refer [electricity-price]]
+             [electricity :refer [electricity-price
+                                  parse-usage-data-file]]
              [render :refer [serve-text serve-json serve-template]]
              [weather :refer [get-fmi-weather-data
                               store-weather-data?
@@ -186,6 +188,26 @@
                                  json-decode-opts)))
           (serve-text "OK") auth/response-server-error)))))
 
+(defn elec-usage-data-upload
+  "Function called on electricity usage data upload."
+  [request]
+  (if (ends-with? (:filename
+                   (get (:params request)
+                        "usage-file"))
+                  ".csv")
+    (let [parsed-data (parse-usage-data-file (:tempfile
+                                              (get (:params request)
+                                                   "usage-file")))]
+      (if (:error parsed-data)
+        {:status "error"
+         :cause (:error parsed-data)}
+        (if (db/insert-elec-usage-data (jdbc/get-connection db/postgres-ds)
+                                       parsed-data)
+          {:status "success"}
+          {:status "error"})))
+    {:status "error"
+     :cause "invalid-filename"}))
+
 (defn tb-image-insert
   "Function called when an RuuviTag observation is posted."
   [request]
@@ -237,7 +259,9 @@
                                       false)
                             (assoc-in [:security :xss-protection]
                                       false)
-                            (assoc :params false)
+                            (assoc-in [:params :keywordize] false)
+                            (assoc-in [:params :nested] false)
+                            (assoc-in [:params :urlencoded] false)
                             (assoc :static false))]
     [[wrap-authorization auth/auth-backend]
      [wrap-authentication auth/jwe-auth-backend auth/auth-backend]
@@ -306,7 +330,16 @@
      ;; Miscellaneous endpoints
      ["/misc"
       ;; Time data (timestamp and UTC offset)
-      ["/time" {:get time-data}]]]
+      ["/time" {:get time-data}]
+      ;; Electricity usage data upload
+      ["/elec-usage" {:get #(if (authenticated? (:session %))
+                              (serve-template "templates/elec-usage-upload.html"
+                                              {:app-url (:app-url env)})
+                              (found (:app-url env)))
+                      :post #(if (authenticated? (:session %))
+                               (serve-json (elec-usage-data-upload %))
+                               auth/response-unauthorized)}]
+      ]]
     {:data {:muuntaja m/instance
             :middleware [muuntaja/format-middleware]}})
    (ring/routes

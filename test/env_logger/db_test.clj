@@ -22,6 +22,7 @@
                                    get-weather-observations
                                    image-age-check
                                    insert-beacons
+                                   insert-elec-usage-data
                                    insert-observation
                                    insert-plain-observation
                                    insert-ruuvitag-observation
@@ -71,12 +72,16 @@
   observation before running tests."
   [test-fn]
   (jdbc/execute! test-ds (sql/format {:delete-from :observations}))
+  (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))
+  (jdbc/execute! test-ds (sql/format {:delete-from :electricity_usage}))
   (js/insert! test-ds
               :observations
               {:recorded (t/minus current-dt (t/days 4))
                :brightness 5})
   (test-fn)
-  (jdbc/execute! test-ds (sql/format {:delete-from :observations})))
+  (jdbc/execute! test-ds (sql/format {:delete-from :observations}))
+  (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))
+  (jdbc/execute! test-ds (sql/format {:delete-from :electricity_usage})))
 
 ;; Fixture run at the start and end of tests
 (use-fixtures :once clean-test-database)
@@ -479,3 +484,23 @@
     (let [now (ZonedDateTime/now (t/zone-id "UTC"))]
       (is (= (str (first (s/split (str now) #"\.")) "Z")
              (-convert-to-iso8601-str now))))))
+
+(deftest test-elec-usage-data-insert
+  (testing "Insert of electricity usage data"
+    (let [usage-data [[current-dt 0.1]
+                      [(t/plus current-dt (t/hours 1)) 0.12]]]
+      (is (true? (insert-elec-usage-data test-ds usage-data)))
+      (is (= (count usage-data)
+             (:count (jdbc/execute-one! test-ds
+                                        (sql/format
+                                         {:select [:%count.id]
+                                          :from :electricity_usage})))))
+      (with-redefs [js/insert-multi! (fn [_ _ _ _ _]
+                                       [{:id 1}])]
+        (is (false? (insert-elec-usage-data test-ds usage-data))))
+      (with-redefs [js/insert-multi!
+                    (fn [_ _ _ _ _]
+                      (throw (PSQLException.
+                              "Test exception"
+                              (PSQLState/COMMUNICATION_ERROR))))]
+        (is (false? (insert-elec-usage-data test-ds usage-data)))))))

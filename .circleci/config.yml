@@ -43,7 +43,7 @@ jobs:
             # Enable electricity price showing during testing
             sed -i 's/:show-elec-price false/:show-elec-price true/' resources/dev/config.edn
 
-      - run: clojure -T:build ci
+      - run: clojure -T:build build && clojure -M:test
 
       - run: clojure -M:eastwood
 

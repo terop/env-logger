@@ -64,3 +64,10 @@ CREATE TABLE electricity_price (
        start_time TIMESTAMP WITH TIME ZONE NOT NULL,
        price REAL NOT NULL
 );
+
+-- Electricity usage table
+CREATE TABLE electricity_usage (
+       id SERIAL PRIMARY KEY,
+       time TIMESTAMP WITH TIME ZONE NOT NULL,
+       usage REAL NOT NULL
+);

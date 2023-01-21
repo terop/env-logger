@@ -1,6 +1,10 @@
 (ns env-logger.electricity
   "Namespace for electricity related functions"
-  (:require [config.core :refer [env]]
+  (:require [clojure.data.csv :as csv]
+            [clojure.java.io :as io]
+            [clojure.instant :refer [read-instant-timestamp]]
+            [clojure.string :as s]
+            [config.core :refer [env]]
             [java-time.api :as t]
             [next.jdbc :as jdbc]
             [ring.util.http-response :refer [bad-request]]
@@ -31,3 +35,16 @@
                                                   (t/days (:initial-show-days
                                                            env)))
                                          nil)))))))
+
+(defn parse-usage-data-file
+  "Parses CSV file with electricity usage data."
+  [data-file]
+  (with-open [reader (io/reader data-file)]
+    (let [rows (doall (csv/read-csv reader {:separator \;}))]
+      (if (< (count rows) 2)
+        {:error "no-data"}
+        (if (not= (count (first rows)) 7)
+          {:error "invalid-format"}
+          (for [row (rest rows)]
+            [(read-instant-timestamp (nth row 4))
+             (Float/parseFloat (s/replace (nth row 5) "," "."))]))))))

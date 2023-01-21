@@ -29,3 +29,17 @@
                  "price" 10.0}]
                (j/read-value (:body (e/electricity-price
                                      {:params {}})))))))))
+
+(deftest parse-usage-data-file-test
+  (testing "Electricity usage data file parsing"
+    (is (= {:error "no-data"} (e/parse-usage-data-file
+                               "test/env_logger/elec_usage_short.csv")))
+    (is (= {:error "invalid-format"}
+           (e/parse-usage-data-file
+            "test/env_logger/elec_usage_invalid.csv")))
+    (let [data (e/parse-usage-data-file "test/env_logger/elec_usage_ok.csv")]
+      (is (= 4 (count data)))
+      (is (= java.sql.Timestamp (type (nth (first data) 0))))
+      (is (= (float 0.1) (nth (first data) 1)))
+      (is (= java.sql.Timestamp (type (nth (nth data 3) 0))))
+      (is (= (float 0.13) (nth (nth data 3) 1))))))

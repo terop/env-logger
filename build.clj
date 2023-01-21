@@ -1,31 +1,35 @@
 (ns build
-  (:refer-clojure :exclude [test])
-  (:require [org.corfield.build :as bb]
-            [badigeon.javac :as javac]))
+  (:require [clojure.tools.build.api :as b]))
 
-(def lib 'com.github.terop/env-logger)
+(def lib 'env-logger)
 (def version "0.2.11-SNAPSHOT")
 (def main 'env-logger.handler)
 
-(defn clean "Do cleanup." [opts]
-  (bb/clean opts))
+(def class-dir "target/classes")
+(def basis (b/create-basis {:project "deps.edn"}))
+(def uber-file (format "target/%s-%s-standalone.jar" (name lib) version))
 
-(defn test "Run the tests." [opts]
-  (bb/run-tests opts))
+(defn clean [_]
+  (b/delete {:path "target"}))
 
-(defn build-java "Build Java sources." [_]
-  (javac/javac "src/java"))
+(defn compile-java [_]
+  (b/javac {:src-dirs ["src/java"]
+            :class-dir class-dir
+            :basis basis
+            :javac-opts ["-source" "17" "-target" "17"]}))
 
-(defn ci "Run the CI pipeline of tests." [opts]
-  (-> opts
-      (assoc :lib lib :version version :main main)
-      (bb/clean)
-      (build-java)
-      (bb/run-tests)))
+(defn build [_]
+  (compile-java nil)
+  (b/copy-dir {:src-dirs ["src" "resources"]
+               :target-dir class-dir})
+  (b/compile-clj {:basis basis
+                  :src-dirs ["src"]
+                  :class-dir class-dir}))
 
-(defn uberjar "Build uberjar." [opts]
-  (-> opts
-      (bb/clean)
-      (build-java)
-      (assoc :lib lib :version version :main main)
-      (bb/uber)))
+(defn uber [_]
+  (clean nil)
+  (build nil)
+  (b/uber {:class-dir class-dir
+           :uber-file uber-file
+           :basis basis
+           :main main}))

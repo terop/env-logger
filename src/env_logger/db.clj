@@ -444,3 +444,23 @@
                                             {:tb_image_name image-name}
                                             ["id = ?" obs-id]
                                             rs-opts))))
+
+(defn insert-elec-usage-data
+  "Inserts given electricity usage data."
+  [db-con usage-data]
+  (jdbc/with-transaction [tx db-con]
+    (try
+      (let [res (js/insert-multi! tx
+                                  :electricity_usage
+                                  [:time :usage]
+                                  usage-data
+                                  rs-opts)]
+        (if (= (count usage-data) (count res))
+          true
+          (do
+            (.rollback tx)
+            false)))
+      (catch PSQLException pe
+        (error pe "Electricity usage data insert failed")
+        (.rollback tx)
+        false))))

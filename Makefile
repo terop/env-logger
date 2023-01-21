@@ -4,7 +4,7 @@ build: uberjar update # build container
 	podman build -t env-logger:$(DATE) .
 
 uberjar: # build the jar
-	clojure -T:build uberjar
+	clojure -T:build uber
 	mv target/env-logger-*.jar target/env-logger.jar
 
 update: # update base images
