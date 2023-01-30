@@ -21,8 +21,8 @@ int status = WL_IDLE_STATUS;
 WiFiServer server(80);
 
 // Input pins
-const int photoresistorPin = A4;
-const int thermistorPin = A6;
+const int PHOTORESISTOR_PIN = A4;
+const int THERMISTOR_PIN = A6;
 
 /* A reading from the ADC might give one value at one sample and then a little
    different the next time around. To eliminate noisy readings, we can sample
@@ -41,6 +41,10 @@ const double ROOM_TEMP = 298.15;   // room temperature in Kelvin
 /* Thermistors will have a typical resistance at room temperature so write this
    down here. Again, needed for conversion equations. */
 const double RESISTOR_ROOM_TEMP = 10000.0;
+
+// Temperature reading related variables
+double previousTemperature = 1000;
+boolean temperatureInitDone = false;
 
 void setup() {
   // Initialise LED
@@ -131,12 +135,49 @@ void printNetworkData() {
 
 // Reads the sensors and returns them in a JSON object
 DynamicJsonDocument readSensors() {
+  const int temperatureCount = 3;
+  double temperatureSum = 0;
   DynamicJsonDocument doc(96);
 
-  doc["insideLight"] = analogRead(photoresistorPin);
-  doc["extTempSensor"] = readThermistor(thermistorPin, 9800.0, 3380.0);
+  for (int i = 0; i < temperatureCount; i++)
+    temperatureSum += getTemperatureSensorValue();
+
+  doc["extTempSensor"] = temperatureSum / temperatureCount;
+  doc["insideLight"] = analogRead(PHOTORESISTOR_PIN);
 
   return doc;
+}
+
+// Reads the temperature sensor and returns its value
+double getTemperatureSensorValue() {
+  const int diffThreshold = 2;
+  const int attemptsThreshold = 4;
+  int attempts = 0;
+  double temperature;
+
+  if (!temperatureInitDone) {
+    previousTemperature = readThermistor(THERMISTOR_PIN, 9800.0, 3380.0);
+    temperatureInitDone = true;
+    delay(100);
+  }
+
+  temperature = readThermistor(THERMISTOR_PIN, 9800.0, 3380.0);
+  // Retry temperature reading if needed to prevent sudden changes in
+  // reported values
+  while (attempts <= attemptsThreshold &&
+         (abs(previousTemperature - temperature) >= diffThreshold)) {
+    delay(50);
+    attempts++;
+    temperature = readThermistor(THERMISTOR_PIN, 9800.0, 3380.0);
+
+    if ((abs(previousTemperature - temperature) < diffThreshold) ||
+        attempts == attemptsThreshold) {
+      previousTemperature = temperature;
+      break;
+    }
+  }
+
+  return temperature;
 }
 
 // The code below is from https://www.allaboutcircuits.com/projects/measuring-temperature-with-an-ntc-thermistor/
