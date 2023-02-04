@@ -92,10 +92,12 @@
                 :cause "myerror"}
                (h/elec-usage-data-upload request))))
       (with-redefs [e/parse-usage-data-file (fn [_] {})
+                    db/postgres-ds test-ds
                     db/insert-elec-usage-data (fn [_ _] false)]
         (is (= {:status "error"}
                (h/elec-usage-data-upload request))))
       (with-redefs [e/parse-usage-data-file (fn [_] {})
+                    db/postgres-ds test-ds
                     db/insert-elec-usage-data (fn [_ _] true)]
         (is (= {:status "success"}
                (h/elec-usage-data-upload request)))))))
