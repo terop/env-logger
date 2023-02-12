@@ -11,6 +11,7 @@
                                    -convert-to-iso8601-str
                                    get-elec-price
                                    get-last-obs-id
+                                   get-latest-elec-usage-record-time
                                    get-obs-date-interval
                                    get-obs-days
                                    get-obs-interval
@@ -504,3 +505,12 @@
                               "Test exception"
                               (PSQLState/COMMUNICATION_ERROR))))]
         (is (false? (insert-elec-usage-data test-ds usage-data)))))))
+
+(deftest test-get-latest-elec-usage-record-time
+  (testing "Fetching of latest electricity usage time"
+    (is (nil? (get-latest-elec-usage-record-time test-ds)))
+    (let [usage-data [[(t/local-date-time 2023 2 7 19 50) 0.1]]]
+      (insert-elec-usage-data test-ds usage-data)
+      (with-redefs [get-tz-offset (fn [_] 0)]
+        (is (= "7.2.2023 19:50" (get-latest-elec-usage-record-time test-ds))))
+      (jdbc/execute! test-ds (sql/format {:delete-from :electricity_usage})))))

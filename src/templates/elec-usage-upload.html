@@ -50,6 +50,9 @@
             </div>
 
             <h3>Upload electricity usage file</h3>
+            {% if latest-dt %}
+                <p>Date and time of the latest stored value is {{ latest-dt }}.</p>
+            {% endif %}
             <br>
 
             <form>

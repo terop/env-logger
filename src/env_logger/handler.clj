@@ -201,10 +201,10 @@
       (if (:error parsed-data)
         {:status "error"
          :cause (:error parsed-data)}
-        (if (db/insert-elec-usage-data (jdbc/get-connection db/postgres-ds)
-                                       parsed-data)
-          {:status "success"}
-          {:status "error"})))
+        (with-open [con (jdbc/get-connection db/postgres-ds)]
+          (if (db/insert-elec-usage-data con parsed-data)
+            {:status "success"}
+            {:status "error"}))))
     {:status "error"
      :cause "invalid-filename"}))
 
@@ -333,8 +333,16 @@
       ["/time" {:get time-data}]
       ;; Electricity usage data upload
       ["/elec-usage" {:get #(if (authenticated? (:session %))
-                              (serve-template "templates/elec-usage-upload.html"
-                                              {:app-url (:app-url env)})
+                              (let [latest-dt
+                                    (with-open [con
+                                                (jdbc/get-connection
+                                                 db/postgres-ds)]
+                                      (db/get-latest-elec-usage-record-time
+                                       con))]
+                                (serve-template
+                                 "templates/elec-usage-upload.html"
+                                 {:app-url (:app-url env)
+                                  :latest-dt latest-dt}))
                               (found (:app-url env)))
                       :post #(if (authenticated? (:session %))
                                (serve-json (elec-usage-data-upload %))

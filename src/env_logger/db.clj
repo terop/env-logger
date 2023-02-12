@@ -464,3 +464,16 @@
         (error pe "Electricity usage data insert failed")
         (.rollback tx)
         false))))
+
+(defn get-latest-elec-usage-record-time
+  "Returns the time of the latest electricity usage record."
+  [db-con]
+  (let [time (:time (jdbc/execute-one! db-con
+                                       (sql/format {:select
+                                                    [[:%max.time "time"]]
+                                                    :from :electricity_usage})
+                                       rs-opts))]
+    (when time
+      (t/format "d.L.Y HH:mm"
+                (t/plus (t/local-date-time time)
+                        (t/hours (get-tz-offset (:store-timezone env))))))))
