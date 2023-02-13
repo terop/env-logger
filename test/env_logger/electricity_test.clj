@@ -40,6 +40,6 @@
     (let [data (e/parse-usage-data-file "test/env_logger/elec_usage_ok.csv")]
       (is (= 4 (count data)))
       (is (= java.sql.Timestamp (type (nth (first data) 0))))
-      (is (= (float 0.1) (nth (first data) 1)))
+      (is (= (float 0.12) (nth (first data) 1)))
       (is (= java.sql.Timestamp (type (nth (nth data 3) 0))))
-      (is (= (float 0.13) (nth (nth data 3) 1))))))
+      (is (= (float 0.15) (nth (nth data 3) 1))))))
