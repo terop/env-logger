@@ -43,8 +43,8 @@
     (let [rows (doall (csv/read-csv reader {:separator \;}))]
       (if (< (count rows) 2)
         {:error "no-data"}
-        (if (not= (count (first rows)) 7)
+        (if (not= (count (first rows)) 8)
           {:error "invalid-format"}
           (for [row (rest rows)]
-            [(read-instant-timestamp (nth row 4))
-             (Float/parseFloat (s/replace (nth row 5) "," "."))]))))))
+            [(read-instant-timestamp (nth row 5))
+             (Float/parseFloat (s/replace (nth row 6) "," "."))]))))))

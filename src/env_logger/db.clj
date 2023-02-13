@@ -12,6 +12,7 @@
                       DecimalFormat)
            (java.time DateTimeException
                       LocalDateTime
+                      ZoneId
                       ZoneOffset)
            (java.util Date
                       TimeZone)
@@ -475,5 +476,8 @@
                                        rs-opts))]
     (when time
       (t/format "d.L.Y HH:mm"
-                (t/plus (t/local-date-time time)
-                        (t/hours (get-tz-offset (:store-timezone env))))))))
+                (if-not (= (ZoneId/systemDefault)
+                           (t/zone-id (:store-timezone env)))
+                  (t/plus (t/local-date-time time)
+                          (t/hours (get-tz-offset (:store-timezone env))))
+                  (t/local-date-time time))))))

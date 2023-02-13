@@ -1,5 +1,5 @@
-Mittauspisteen tunnus;Tuotteen tyyppi;Resoluutio;Yksikkötyyppi;Alkuaika;Määrä;Laatu
-123;456;PT1H;kWh;2022-07-15T21:00:00Z;0,1;OK
-123;456;PT1H;kWh;2022-07-15T22:00:00Z;0,12;OK
-123;456;PT1H;kWh;2022-07-15T23:00:00Z;0,08;OK
-123;456;PT1H;kWh;2022-07-16T00:00:00Z;0,13;OK
+Mittauspisteen tunnus;Tuotteen tyyppi;Resoluutio;Yksikkötyyppi;Lukeman tyyppi;Alkuaika;Määrä;Laatu
+123;456;PT1H;kWh;BN01;2021-12-31T22:00:00Z;0,120000;OK
+123;456;PT1H;kWh;BN01;2021-12-31T23:00:00Z;0,240000;OK
+123;456;PT1H;kWh;BN01;2022-01-01T00:00:00Z;0,120000;OK
+123;456;PT1H;kWh;BN01;2022-01-01T01:00:00Z;0,150000;OK
