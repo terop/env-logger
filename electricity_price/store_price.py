@@ -9,6 +9,7 @@ import sys
 from datetime import date, datetime, timedelta, time
 from os import environ
 from os.path import exists
+from time import sleep
 from zoneinfo import ZoneInfo
 import xml.etree.ElementTree as ET
 
@@ -38,7 +39,7 @@ def fetch_prices(config):
     vat_multiplier = VAT_MULTIPLIER_DECREASED if today < vat_decrease_end else \
         VAT_MULTIPLIER
 
-    url = f"https://transparency.entsoe.eu/api?documentType=A44&in_Domain={price_area}" \
+    url = f"https://web-api.tp.entsoe.eu/api?documentType=A44&in_Domain={price_area}" \
         f"&out_Domain={price_area}&TimeInterval={interval}&securityToken={api_token}"
 
     logging.info('Fetching price data for area %s over interval %s', price_area, interval)
@@ -68,10 +69,6 @@ def fetch_prices(config):
 
 def store_prices(db_config, price_data):
     """Stores the prices to a database pointed by the DB config."""
-    if len(price_data) < 20:
-        logging.error('Prices array does not contain enough data')
-        sys.exit(1)
-
     insert_query = 'INSERT INTO electricity_price (start_time, price) VALUES (%s, %s)'
     offset = ZoneInfo(db_config['source_tz']).utcoffset(datetime.now())
     fix_date = False
@@ -128,9 +125,30 @@ def main():
     with open(config_file, 'r', encoding='utf-8') as cfg_file:
         config = json.load(cfg_file)
 
-    store_prices(config['db'], fetch_prices(config['fetch']))
+    max_attemps = 3
+    i = 0
+    success = False
 
-    logging.info('Successfully stored new electricity prices')
+    while i < max_attemps:
+        logging.info('Fetch attempt %s', i)
+        prices = fetch_prices(config['fetch'])
+
+        if len(prices) < 20:
+            logging.error('Prices array does not contain enough data')
+
+            i += 1
+            sleep(30)
+            continue
+
+        store_prices(config['db'], prices)
+        success = True
+        break
+
+    if success:
+        logging.info('Successfully stored electricity prices')
+    else:
+        logging.error('Price fetching failed, %s attempts done', max_attemps)
+        sys.exit(1)
 
 
 if __name__ == '__main__':
