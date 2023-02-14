@@ -27,7 +27,7 @@ var labelValues = {'weather': {},
     rtNames = [],
     charts = {'weather': null,
               'other': null,
-              'elecPrice': null};
+              'elecData': null};
 
 var loadPage = () => {
     // Persist state of chart data sets
@@ -313,32 +313,43 @@ var loadPage = () => {
         };
         showLastObservation();
 
-        // Show the electricity price data in a chart
-        var plotElectricityPrice = (priceData) => {
+        // Show the electricity price and usage data in a chart
+        var plotElectricityData = (elecUsageData) => {
             var labels = [],
-                data = [];
+                data = {'price': [],
+                        'usage': []};
 
-            for (const item of priceData) {
+            for (const item of elecUsageData) {
                 labels.push(luxon.DateTime.fromISO(item['start-time']).toJSDate());
-                data.push(item['price']);
+                data['price'].push(item['price']);
+                data['usage'].push(item['usage']);
             }
 
-            const currentIdx = getClosestElecPriceDataIndex(priceData);
+            const currentIdx = getClosestElecPriceDataIndex(elecUsageData);
 
-            if (!charts['elecPrice']) {
-                charts['elecPrice'] = new Chart(document.getElementById('elecPriceChart').getContext('2d'), {
-                    type: 'line',
+            if (!charts['elecData']) {
+                charts['elecData'] = new Chart(document.getElementById('elecDataChart').getContext('2d'), {
                     data: {
                         labels: labels,
-                        datasets: [{
-                            label: 'Price',
-                            borderColor: colors[6],
-                            data: data,
-                            hidden: false,
-                            fill: false,
-                            pointRadius: 1,
-                            borderWidth: 1
-                        }]
+                        datasets: [
+                            {
+                                type: 'line',
+                                label: 'Price',
+                                yAxisID: 'yPrice',
+                                borderColor: colors[6],
+                                data: data['price'],
+                                fill: false,
+                                pointRadius: 1,
+                                borderWidth: 1
+                            },
+                            {
+                                type: 'bar',
+                                label: 'Usage',
+                                yAxisID: 'yUsage',
+                                backgroundColor: colors[7],
+                                data: data['usage']
+                            }
+                        ]
                     },
                     options: {
                         scales: {
@@ -357,10 +368,20 @@ var loadPage = () => {
                                     text: 'Time'
                                 }
                             },
-                            y: {
+                            yPrice: {
                                 title: {
                                     display: true,
                                     text: 'Price (c / kWh)'
+                                },
+                                ticks: {
+                                    beginAtZero: true
+                                }
+                            },
+                            yUsage: {
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: 'Usage (kWh)'
                                 },
                                 ticks: {
                                     beginAtZero: true
@@ -373,7 +394,7 @@ var loadPage = () => {
                         plugins: {
                             title: {
                                 display: true,
-                                text: 'Electricity price'
+                                text: 'Electricity price and usage'
                             },
                             zoom: {
                                 zoom: {
@@ -402,23 +423,24 @@ var loadPage = () => {
                     }
                 });
 
-                document.getElementById('elecPriceResetZoom').addEventListener(
+                document.getElementById('elecDataResetZoom').addEventListener(
                     'click',
                     () => {
-                        charts['elecPrice'].resetZoom();
+                        charts['elecData'].resetZoom();
                     },
                     false);
 
-                document.getElementById('showElecPriceChart').addEventListener(
+                document.getElementById('showElecDataChart').addEventListener(
                     'click',
                     () => {
-                        toggleVisibility('elecPriceDiv');
+                        toggleVisibility('elecDataDiv');
                     },
                     false);
             } else {
-                charts['elecPrice'].data.labels = labels;
-                charts['elecPrice'].data.datasets[0].data = data;
-                charts['elecPrice'].update();
+                charts['elecData'].data.labels = labels;
+                charts['elecData'].data.datasets[0].data = data['price'];
+                charts['elecData'].data.datasets[1].data = data['usage'];
+                charts['elecData'].update();
             }
         };
 
@@ -473,22 +495,22 @@ var loadPage = () => {
                 }
             };
 
-            axios.get('data/elec-price')
+            axios.get('data/elec-data')
                 .then(resp => {
-                    const priceData = resp.data;
+                    const elecData = resp.data;
 
-                    if (priceData) {
-                        if (priceData['error']) {
-                            if (priceData['error'] !== 'not-enabled') {
-                                console.log(`Electricity price data fetch error: ${priceData['error']}`);
+                    if (elecData) {
+                        if (elecData['error']) {
+                            if (elecData['error'] !== 'not-enabled') {
+                                console.log(`Electricity data fetch error: ${elecData['error']}`);
                             }
-                            toggleClassForElement('elecPriceCheckboxDiv', 'display-none');
+                            toggleClassForElement('elecDataCheckboxDiv', 'display-none');
 
                             return;
                         }
 
-                        showLatestPrice(priceData);
-                        plotElectricityPrice(priceData);
+                        showLatestPrice(elecData);
+                        plotElectricityData(elecData);
                     }
                 }).catch(error => {
                     console.log(`Electricity data fetch error: ${error}`);
@@ -767,25 +789,25 @@ var loadPage = () => {
             });
 
         if (mode === 'all')
-            axios.get('data/elec-price',
+            axios.get('data/elec-data',
                       {
                           params: {
                               'startDate': startDate,
                               'endDate': endDate,
                           }})
             .then(resp => {
-                const priceData = resp.data;
+                const elecData = resp.data;
 
-                if (priceData) {
-                    if (priceData['error']) {
-                        if (priceData['error'] !== 'not-enabled') {
-                            console.log(`Electricity price data fetch error: ${priceData['error']}`);
+                if (elecData) {
+                    if (elecData['error']) {
+                        if (elecData['error'] !== 'not-enabled') {
+                            console.log(`Electricity data fetch error: ${elecData['error']}`);
                         }
 
                         return;
                     }
 
-                    plotElectricityPrice(priceData);
+                    plotElectricityData(elecData);
                 }
             })
             .catch(error => {

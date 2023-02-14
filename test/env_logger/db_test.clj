@@ -9,7 +9,7 @@
             [env-logger.db :refer [db-conf
                                    convert-to-epoch-ms
                                    -convert-to-iso8601-str
-                                   get-elec-price
+                                   get-elec-data
                                    get-last-obs-id
                                    get-latest-elec-usage-record-time
                                    get-obs-date-interval
@@ -420,12 +420,12 @@
                                       (t/local-date-time)
                                       ["indoor"]))))))
 
-(deftest get-elec-price-test
+(deftest get-elec-data-test
   (testing "Electricity price fetching"
     (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))
-    (is (nil? (get-elec-price test-ds
-                              (make-local-dt "2022-10-08" "start")
-                              (make-local-dt "2022-10-08" "end"))))
+    (is (nil? (get-elec-data test-ds
+                             (make-local-dt "2022-10-08" "start")
+                             (make-local-dt "2022-10-08" "end"))))
     (js/insert! test-ds
                 :electricity_price
                 {:start_time (t/sql-timestamp (t/zoned-date-time 2022 10 8
@@ -436,29 +436,37 @@
                 {:start_time (t/sql-timestamp (t/zoned-date-time 2022 10 7
                                                                  22 0 0))
                  :price 4.0})
-    (let [res (get-elec-price test-ds
-                              (make-local-dt "2022-10-08" "start")
-                              (make-local-dt "2022-10-08" "end"))]
+    (js/insert! test-ds
+                :electricity_usage
+                {:time (t/sql-timestamp (t/zoned-date-time 2022 10 7
+                                                           22 0 0))
+                 :usage 1.0})
+    (let [res (get-elec-data test-ds
+                             (make-local-dt "2022-10-08" "start")
+                             (make-local-dt "2022-10-08" "end"))]
       (is (= 1 (count res)))
-      (is (= {:price 10.0} (dissoc (first res) :start-time))))
-    (let [res (get-elec-price test-ds
-                              (make-local-dt "2022-10-07" "start")
-                              (make-local-dt "2022-10-08" "end"))]
+      (is (= {:price 10.0 :usage nil}
+             (dissoc (first res) :start-time))))
+    (let [res (get-elec-data test-ds
+                             (make-local-dt "2022-10-07" "start")
+                             (make-local-dt "2022-10-08" "end"))]
       (is (= 2 (count res)))
-      (is (= {:price 4.0} (dissoc (nth res 1) :start-time))))
-    (is (= 2 (count (get-elec-price test-ds
-                                    (make-local-dt "2022-10-07" "start")
-                                    nil))))
-    (is (nil? (get-elec-price test-ds
-                              (make-local-dt "2022-10-10" "start")
-                              (make-local-dt "2022-10-10" "end"))))
+      (is (= {:price 4.0 :usage 1.0}
+             (dissoc (nth res 1) :start-time))))
+    (is (= 2 (count (get-elec-data test-ds
+                                   (make-local-dt "2022-10-07" "start")
+                                   nil))))
+    (is (nil? (get-elec-data test-ds
+                             (make-local-dt "2022-10-10" "start")
+                             (make-local-dt "2022-10-10" "end"))))
     (with-redefs [jdbc/execute! (fn [_ _ _]
                                   (throw (PSQLException.
                                           "Test exception"
                                           (PSQLState/COMMUNICATION_ERROR))))]
-      (is (nil? (get-elec-price test-ds
-                                (make-local-dt "2022-10-08" "start")
-                                (make-local-dt "2022-10-08" "end")))))))
+      (is (nil? (get-elec-data test-ds
+                               (make-local-dt "2022-10-08" "start")
+                               (make-local-dt "2022-10-08" "end")))))
+    (jdbc/execute! test-ds (sql/format {:delete-from :electricity_usage}))))
 
 (deftest get-tz-offset-test
   (testing "Timezone offset calculation"

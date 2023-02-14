@@ -58,11 +58,11 @@
                 width: 1300px;
                 height: 730px;
             }
-            #elecPriceDiv {
+            #elecDataDiv {
                 width: 1200px;
                 height: 480px;
             }
-            #otherCheckboxDiv,#elecPriceCheckboxDiv,#imageButtonDiv {
+            #otherCheckboxDiv,#elecDataCheckboxDiv,#imageButtonDiv {
                 margin-top: 20px;
                 margin-bottom: 10px;
             }
@@ -157,14 +157,14 @@
                     <input type="button" id="otherHideAll" class="btn btn-danger hide-all" value="Hide all series" />
                 </div>
 
-                <div class="left-margin" id="elecPriceCheckboxDiv">
-                    <input type="checkbox" id="showElecPriceChart">
-                    <label for="showElecPriceChart">Show electricity price chart</label>
+                <div class="left-margin" id="elecDataCheckboxDiv">
+                    <input type="checkbox" id="showElecDataChart">
+                    <label for="showElecDataChart">Show electricity price and usage chart</label>
                 </div>
-                <div class="display-none left-margin" id="elecPriceDiv">
-                    <canvas id="elecPriceChart" width="1200" height="450"></canvas>
+                <div class="display-none left-margin" id="elecDataDiv">
+                    <canvas id="elecDataChart" width="1200" height="450"></canvas>
 
-                    <input type="button" id="elecPriceResetZoom" class="btn btn-light" value="Reset chart zoom" />
+                    <input type="button" id="elecDataResetZoom" class="btn btn-light" value="Reset chart zoom" />
                 </div>
             {% endif %}
 

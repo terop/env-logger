@@ -405,20 +405,24 @@
       (error pe "RuuviTag observation fetching failed")
       {})))
 
-(defn get-elec-price
-  "Returns the electricity price values inside the given time interval.
-  If the end parameter is nil all the values after start will be returned."
+(defn get-elec-data
+  "Returns the electricity price and usage values inside the given time
+  interval. If the end parameter is nil all the values after start will
+  be returned."
   [db-con start end]
   (try
-    (let [query (sql/format {:select [:start_time
-                                      :price]
-                             :from :electricity_price
+    (let [query (sql/format {:select [:p.start_time
+                                      :p.price
+                                      :u.usage]
+                             :from [[:electricity_price :p]]
+                             :left-join [[:electricity_usage :u]
+                                         [:= :p.start_time :u.time]]
                              :where (if end
                                       [:and
-                                       [:>= :start_time start]
-                                       [:<= :start_time end]]
-                                      [:>= :start_time start])
-                             :order-by [[:id :asc]]})
+                                       [:>= :p.start_time start]
+                                       [:<= :p.start_time end]]
+                                      [:>= :p.start_time start])
+                             :order-by [[:p.id :asc]]})
           rows (jdbc/execute! db-con query rs-opts)]
       (when (pos? (count rows))
         (for [row rows]

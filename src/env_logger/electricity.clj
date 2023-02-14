@@ -12,8 +12,8 @@
              [db :as db]
              [render :refer [serve-json]]]))
 
-(defn electricity-price
-  "Returns data for the electricity price endpoint."
+(defn electricity-data
+  "Returns data for the electricity data endpoint."
   [request]
   (with-open [con (jdbc/get-connection db/postgres-ds)]
     (let [start-date-val (get (:params request) "startDate")
@@ -25,16 +25,16 @@
         (if (or start-date end-date)
           (if-not start-date
             (bad-request "Missing parameter")
-            (serve-json (db/get-elec-price con
-                                           (db/make-local-dt start-date "start")
-                                           (when end-date
-                                             (db/make-local-dt end-date
-                                                               "end")))))
-          (serve-json (db/get-elec-price con
-                                         (t/minus (t/local-date-time)
-                                                  (t/days (:initial-show-days
-                                                           env)))
-                                         nil)))))))
+            (serve-json (db/get-elec-data con
+                                          (db/make-local-dt start-date "start")
+                                          (when end-date
+                                            (db/make-local-dt end-date
+                                                              "end")))))
+          (serve-json (db/get-elec-data con
+                                        (t/minus (t/local-date-time)
+                                                 (t/days (:initial-show-days
+                                                          env)))
+                                        nil)))))))
 
 (defn parse-usage-data-file
   "Parses CSV file with electricity usage data."

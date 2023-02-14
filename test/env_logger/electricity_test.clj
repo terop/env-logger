@@ -12,22 +12,22 @@
     (with-redefs [db/postgres-ds test-ds]
       (with-redefs [env {:show-elec-price false}]
         (is (= {"error" "not-enabled"}
-               (j/read-value (:body (e/electricity-price {}))))))
-      (with-redefs [db/get-elec-price (fn [_ _ _]
-                                        [{:start-time 123
-                                          :price 10.0}])]
-        (let [resp (e/electricity-price
+               (j/read-value (:body (e/electricity-data {}))))))
+      (with-redefs [db/get-elec-data (fn [_ _ _]
+                                       [{:start-time 123
+                                         :price 10.0}])]
+        (let [resp (e/electricity-data
                     {:params {"endDate" "2022-10-08"}})]
           (is (= 400 (:status resp)))
           (is (= "Missing parameter" (:body resp))))
         (is (= [{"start-time" 123
                  "price" 10.0}]
-               (j/read-value (:body (e/electricity-price
+               (j/read-value (:body (e/electricity-data
                                      {:params {"startDate" "2022-10-08"
                                                "endDate" "2022-10-08"}})))))
         (is (= [{"start-time" 123
                  "price" 10.0}]
-               (j/read-value (:body (e/electricity-price
+               (j/read-value (:body (e/electricity-data
                                      {:params {}})))))))))
 
 (deftest parse-usage-data-file-test
