@@ -19,7 +19,7 @@ if [ -z "$(command -v pipenv)" ]; then
     exit 1
 fi
 
-image_name=$(pipenv run python3 testbed_image.py)
+image_name=$(pipenv run python testbed_image.py)
 if [ -z "${image_name}" ]; then
     echo "$(date -Iminutes): failed to download Testbed image" >&2
     exit 1
