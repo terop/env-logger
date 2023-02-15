@@ -125,12 +125,12 @@ def main():
     with open(config_file, 'r', encoding='utf-8') as cfg_file:
         config = json.load(cfg_file)
 
-    max_attemps = 3
+    max_attemps = 2
     i = 0
     success = False
 
     while i < max_attemps:
-        logging.info('Fetch attempt %s', i)
+        logging.info('Fetch attempt %s', i + 1)
         prices = fetch_prices(config['fetch'])
 
         if len(prices) < 20:
