@@ -348,8 +348,6 @@ def main():
     elec_price_metadata = {'raw_data': None,
                            'fetched': None}
 
-    # Dim the backlight because the default backlight is very bright
-    board.DISPLAY.auto_brightness = False
     board.DISPLAY.brightness = BACKLIGHT_DEFAULT_VALUE
 
     while True:
