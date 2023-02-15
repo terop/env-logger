@@ -49,7 +49,7 @@ def connect_to_wlan():
     spi = busio.SPI(board.SCK, board.MOSI, board.MISO)
     esp = adafruit_esp32spi.ESP_SPIcontrol(spi, esp32_cs, esp32_ready, esp32_reset)
 
-    fail_count = 0
+    failure_count = 0
 
     requests.set_socket(socket, esp)
 
@@ -68,22 +68,22 @@ def connect_to_wlan():
         except RuntimeError as rte:
             print(f'Error: could not connect to AP, retrying: {rte}')
 
-            fail_count += 1
-            if fail_count >= NW_FAILURE_THRESHOLD:
-                print(f'Error: AP connection failed {fail_count} times, resetting ESP')
-                fail_count = 0
+            failure_count += 1
+            if failure_count >= NW_FAILURE_THRESHOLD:
+                print(f'Error: AP connection failed {failure_count} times, resetting ESP')
+                failure_count = 0
                 esp.reset()
 
             time.sleep(5)
             continue
-        print('Connected to', str(esp.ssid, 'utf-8'), '\tRSSI:', esp.rssi)
-        print('My IP address is', esp.pretty_ip(esp.ip_address))
+        print(f'Connected to {str(esp.ssid, "utf-8")}\tRSSI: {esp.rssi}')
+        print(f'My IP address is {esp.pretty_ip(esp.ip_address)}')
 
 
 def fetch_token():
     """Fetch token for getting data from env-logger backend."""
-    fail_count = 0
-    backend_fail_count = 0
+    failure_count = 0
+    backend_failure_count = 0
 
     while True:
         try:
@@ -91,13 +91,13 @@ def fetch_token():
                                  data={'username': secrets['data-read-user']['username'],
                                        'password': secrets['data-read-user']['password']})
             if resp.status_code != 200:
-                backend_fail_count += 1
+                backend_failure_count += 1
                 print('Error: token acquisition failed, backend failure '
-                      f'count {backend_fail_count}')
+                      f'count {backend_failure_count}')
 
-                if backend_fail_count > NW_FAILURE_THRESHOLD:
+                if backend_failure_count > NW_FAILURE_THRESHOLD:
                     print('Error: token fetch failed: backend problem, '
-                          f'failure count {backend_fail_count}')
+                          f'failure count {backend_failure_count}')
                     return None
 
                 time.sleep(20)
@@ -105,12 +105,12 @@ def fetch_token():
 
             break
         except RuntimeError as rte:
-            fail_count += 1
-            print(f'Error: token fetch failed: "{rte}", failure count {fail_count}')
+            failure_count += 1
+            print(f'Error: token fetch failed: "{rte}", failure count {failure_count}')
             time.sleep(5)
 
-            if fail_count > NW_FAILURE_THRESHOLD:
-                print(f'Error: token fetch failed {fail_count} times, reloading board')
+            if failure_count > NW_FAILURE_THRESHOLD:
+                print(f'Error: token fetch failed {failure_count} times, reloading board')
                 time.sleep(5)
                 supervisor.reload()
 
@@ -128,9 +128,9 @@ def clear_display(display):
 def get_backend_endpoint_content(endpoint, token, no_token=False):
     """Fetches the JSON content of the given backend endpoint.
     Returns a (token, JSON value) tuple."""
-    fail_count = 0
+    failure_count = 0
 
-    while fail_count < NW_FAILURE_THRESHOLD:
+    while failure_count < NW_FAILURE_THRESHOLD:
         try:
             if no_token:
                 resp = requests.get(f'{BACKEND_URL}/{endpoint}')
@@ -142,16 +142,16 @@ def get_backend_endpoint_content(endpoint, token, no_token=False):
                     print('Error: request was unauthorized, getting new token')
                     token = fetch_token()
                 else:
-                    print('Error: failed to fetch content from "{endpoint}"')
+                    print(f'Error: failed to fetch content from "{endpoint}"')
                 continue
             break
         except RuntimeError as rte:
-            fail_count += 1
-            print(f'Error: got exception "{rte}", failure count {fail_count}')
+            failure_count += 1
+            print(f'Error: got exception "{rte}", failure count {failure_count}')
             time.sleep(5)
 
-            if fail_count >= NW_FAILURE_THRESHOLD:
-                print(f'Error: endpoint "{endpoint}" fetch failed {fail_count} times, ',
+            if failure_count >= NW_FAILURE_THRESHOLD:
+                print(f'Error: endpoint "{endpoint}" fetch failed {failure_count} times, ',
                       'reloading board')
                 time.sleep(5)
                 supervisor.reload()
@@ -363,8 +363,8 @@ def main():
 
         if not elec_price_metadata['fetched'] or \
            (datetime.now() - elec_price_metadata['fetched']).total_seconds() > 1800:
-            elec_price_metadata['raw_data'] = get_backend_endpoint_content(
-                'data/elec-price', None, no_token=True)
+            token, elec_price_metadata['raw_data'] = get_backend_endpoint_content(
+                'data/elec-data', token)
             elec_price_metadata['fetched'] = datetime.now()
 
         elec_price_data = prepare_elec_price_data(elec_price_metadata['raw_data'],
