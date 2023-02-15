@@ -1,5 +1,6 @@
 (ns env-logger.electricity-test
   (:require [clojure.test :refer [deftest is testing]]
+            [buddy.auth :refer [authenticated?]]
             [config.core :refer [env]]
             [jsonista.core :as j]
             [env-logger
@@ -10,23 +11,30 @@
 (deftest electricity-price-test
   (testing "Electricity price fetch function"
     (with-redefs [db/postgres-ds test-ds]
-      (with-redefs [env {:show-elec-price false}]
+      (with-redefs [authenticated? (fn [_] false)]
+        (is (= 401 (:status (e/electricity-data {})))))
+      (with-redefs [env {:show-elec-price false}
+                    authenticated? (fn [_] true)]
         (is (= {"error" "not-enabled"}
                (j/read-value (:body (e/electricity-data {}))))))
-      (with-redefs [db/get-elec-data (fn [_ _ _]
+      (with-redefs [authenticated? (fn [_] true)
+                    db/get-elec-data (fn [_ _ _]
                                        [{:start-time 123
-                                         :price 10.0}])]
+                                         :price 10.0
+                                         :usage 0.5}])]
         (let [resp (e/electricity-data
                     {:params {"endDate" "2022-10-08"}})]
           (is (= 400 (:status resp)))
           (is (= "Missing parameter" (:body resp))))
         (is (= [{"start-time" 123
-                 "price" 10.0}]
+                 "price" 10.0
+                 "usage" 0.5}]
                (j/read-value (:body (e/electricity-data
                                      {:params {"startDate" "2022-10-08"
                                                "endDate" "2022-10-08"}})))))
         (is (= [{"start-time" 123
-                 "price" 10.0}]
+                 "price" 10.0
+                 "usage" 0.5}]
                (j/read-value (:body (e/electricity-data
                                      {:params {}})))))))))
 
