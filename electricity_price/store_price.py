@@ -9,7 +9,6 @@ import sys
 from datetime import date, datetime, timedelta
 from os import environ
 from os.path import exists
-from time import sleep
 from zoneinfo import ZoneInfo
 
 import pandas as pd  # pylint: disable=import-error
@@ -117,31 +116,15 @@ def main():
     with open(config_file, 'r', encoding='utf-8') as cfg_file:
         config = json.load(cfg_file)
 
-    max_attemps = 2
-    i = 0
-    success = False
+    prices = fetch_prices(config['fetch'], args.current_date)
 
-    while i < max_attemps:
-        logging.info('Fetch attempt %s', i + 1)
-        prices = fetch_prices(config['fetch'], args.current_date)
-
-        if len(prices) < 20:
-            logging.error('Prices array does not contain enough data')
-
-            if (i + 1) < max_attemps:
-                sleep(30)
-            i += 1
-            continue
-
-        store_prices(config['db'], prices)
-        success = True
-        break
-
-    if success:
-        logging.info('Successfully stored electricity prices')
-    else:
-        logging.error('Price fetching failed, %s attempts done', max_attemps)
+    if len(prices) < 20:
+        logging.error('Price fetching failed, not enough data was received')
         sys.exit(1)
+
+    store_prices(config['db'], prices)
+
+    logging.info('Successfully stored electricity prices')
 
 
 if __name__ == '__main__':
