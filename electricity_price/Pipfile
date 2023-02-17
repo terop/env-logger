@@ -5,7 +5,7 @@ name = "pypi"
 
 [packages]
 psycopg = {extras = ["binary"], version = "*"}
-requests = "*"
+entsoe-py = "*"
 
 [dev-packages]
 

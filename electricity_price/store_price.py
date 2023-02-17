@@ -6,15 +6,15 @@ import argparse
 import json
 import logging
 import sys
-from datetime import date, datetime, timedelta, time
+from datetime import date, datetime, timedelta
 from os import environ
 from os.path import exists
 from time import sleep
 from zoneinfo import ZoneInfo
-import xml.etree.ElementTree as ET
 
+import pandas as pd  # pylint: disable=import-error
 import psycopg  # pylint: disable=import-error
-import requests
+from entsoe import EntsoePandasClient  # pylint: disable=import-error
 
 VAT_MULTIPLIER = 1.24
 VAT_MULTIPLIER_DECREASED = 1.10
@@ -24,15 +24,14 @@ VAT_MULTIPLIER_DECREASED = 1.10
 def fetch_prices(config, current_date=False):
     """Fetches electricity spot prices from the ENTSO-E transparency platform
     for the given price are for the next day."""
-    api_token = config['entsoe_api_token']
-    price_area = config['price_area']
+    country_code = config['country_code']
+    timezone = config['tz']
 
     today = datetime.utcnow().date()
     start = datetime(today.year, today.month, today.day)
     if not current_date:
         start += timedelta(days=1)
     end = start + timedelta(hours=23)
-    interval = f"{start.isoformat()}Z/{end.isoformat()}Z"
 
     prices = []
     vat_decrease_end = date(2023, 5, 1)
@@ -41,30 +40,19 @@ def fetch_prices(config, current_date=False):
     vat_multiplier = VAT_MULTIPLIER_DECREASED if today < vat_decrease_end else \
         VAT_MULTIPLIER
 
-    url = f"https://web-api.tp.entsoe.eu/api?documentType=A44&in_Domain={price_area}" \
-        f"&out_Domain={price_area}&TimeInterval={interval}&securityToken={api_token}"
+    client = EntsoePandasClient(api_key=config['entsoe_api_key'])
 
-    logging.info('Fetching price data for area %s over interval %s', price_area, interval)
+    logging.info('Fetching price data for country code %s for interval [%s, %s]',
+                 country_code, str(start), str(end))
 
-    resp = requests.get(url, timeout=10)
-    if not resp.ok:
-        logging.error("Electricity price fetch failed with status code %s", resp.status_code)
-        sys.exit(1)
+    data = client.query_day_ahead_prices(country_code,
+                                         start=pd.Timestamp(start, tz=timezone),
+                                         end=pd.Timestamp(end, tz=timezone))
 
-    # Remove XML namespace data from response to make parsing easier
-    root = ET.fromstring(
-        resp.content.decode('utf-8').
-        replace(' xmlns="urn:iec62325.351:tc57wg16:451-3:publicationdocument:7:0"', ''))
-    for child in root.findall('./TimeSeries/Period/Point'):
-        hour = int(child[0].text)
-        if hour < 24:
-            p_time = datetime.combine(start, time(hour=hour))
-        else:
-            p_time = datetime.combine(start + timedelta(days=1), time(hour=hour - 24))
-
-        prices.append({'time': p_time,
+    for i in range(data.size):
+        prices.append({'time': data.index[i].to_pydatetime(),
                        # Price is without VAT so it is manually added
-                       'price': round((float(child[1].text) / 10) * vat_multiplier, 2)})
+                       'price': round((data[i] / 10) * vat_multiplier, 2)})
 
     return prices
 
@@ -140,8 +128,9 @@ def main():
         if len(prices) < 20:
             logging.error('Prices array does not contain enough data')
 
+            if (i + 1) < max_attemps:
+                sleep(30)
             i += 1
-            sleep(30)
             continue
 
         store_prices(config['db'], prices)

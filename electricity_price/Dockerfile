@@ -1,7 +1,8 @@
-FROM python:3.10-alpine
+FROM python:3.10-slim
 LABEL maintainer="tero.paloheimo@iki.fi"
 
-RUN apk update && apk upgrade
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y upgrade \
+    && apt-get clean
 
 WORKDIR /usr/src/app
 COPY config.json store_price.py Pipfile Pipfile.lock .
