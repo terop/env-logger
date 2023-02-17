@@ -21,14 +21,16 @@ VAT_MULTIPLIER_DECREASED = 1.10
 
 
 # pylint: disable=too-many-locals
-def fetch_prices(config):
+def fetch_prices(config, current_date=False):
     """Fetches electricity spot prices from the ENTSO-E transparency platform
     for the given price are for the next day."""
     api_token = config['entsoe_api_token']
     price_area = config['price_area']
 
     today = datetime.utcnow().date()
-    start = datetime(today.year, today.month, today.day) + timedelta(days=1)
+    start = datetime(today.year, today.month, today.day)
+    if not current_date:
+        start += timedelta(days=1)
     end = start + timedelta(hours=23)
     interval = f"{start.isoformat()}Z/{end.isoformat()}Z"
 
@@ -114,6 +116,8 @@ def main():
 
     parser = argparse.ArgumentParser(description='Stores electricity prices into a database.')
     parser.add_argument('--config', type=str, help='configuration file to use')
+    parser.add_argument('--current-date', action='store_true',
+                        help='use current date as date during fetching')
 
     args = parser.parse_args()
     config_file = args.config if args.config else 'config.json'
@@ -131,7 +135,7 @@ def main():
 
     while i < max_attemps:
         logging.info('Fetch attempt %s', i + 1)
-        prices = fetch_prices(config['fetch'])
+        prices = fetch_prices(config['fetch'], args.current_date)
 
         if len(prices) < 20:
             logging.error('Prices array does not contain enough data')

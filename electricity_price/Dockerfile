@@ -8,4 +8,4 @@ COPY config.json store_price.py Pipfile Pipfile.lock .
 
 RUN pip install --upgrade pip && \
     pip install pipenv && pipenv install --system --deploy
-CMD [ "python", "./store_price.py" ]
+ENTRYPOINT [ "python", "./store_price.py" ]
