@@ -7,7 +7,7 @@ import argparse
 import json
 import logging
 import sys
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from os import environ
 from os.path import exists
 
@@ -15,10 +15,20 @@ import psycopg  # pylint: disable=import-error
 from pycaruna import Authenticator, CarunaPlus, TimeSpan  # pylint: disable=import-error
 
 
-def fetch_consumption_data(config):
+# pylint: disable=too-many-locals
+def fetch_consumption_data(config, manual_fetch_date):
     """Fetches electricity consumption data from the Caruna API. By default data
     for the previous day is fetched."""
-    fetch_date = date.today() - timedelta(days=1)
+    if not manual_fetch_date:
+        fetch_date = date.today() - timedelta(days=1)
+    else:
+        try:
+            fetch_dt = datetime.strptime(manual_fetch_date, '%Y-%m-%d')
+        except ValueError as err:
+            logging.error('Invalid date provided: %s', err)
+            sys.exit(1)
+
+        fetch_date = fetch_dt.date()
 
     logging.info('Fetching consumption data for %s', str(fetch_date))
 
@@ -87,6 +97,8 @@ def main():
     parser = argparse.ArgumentParser(description='Stores electricity consumption data '
                                      'into a database.')
     parser.add_argument('--config', type=str, help='configuration file to use')
+    parser.add_argument('--date', type=str, help='date (in YYYY-MM-DD format) for which '
+                        'to fetch data')
 
     args = parser.parse_args()
     config_file = args.config if args.config else 'config.json'
@@ -98,7 +110,7 @@ def main():
     with open(config_file, 'r', encoding='utf-8') as cfg_file:
         config = json.load(cfg_file)
 
-    consumption_data = fetch_consumption_data(config['fetch'])
+    consumption_data = fetch_consumption_data(config['fetch'], args.date)
 
     if len(consumption_data) < 20:
         logging.error('Data fetching failed, not enough data was received')
