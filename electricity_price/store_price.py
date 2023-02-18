@@ -18,8 +18,7 @@ VAT_MULTIPLIER = 1.24
 VAT_MULTIPLIER_DECREASED = 1.10
 
 
-# pylint: disable=too-many-locals
-def fetch_prices(config, current_date=False):
+def fetch_prices(config, current_day=False):
     """Fetches electricity spot prices from the ENTSO-E transparency platform
     for the given price are for the next day."""
     country_code = config['country_code']
@@ -27,7 +26,7 @@ def fetch_prices(config, current_date=False):
 
     today = datetime.now().date()
     start = datetime(today.year, today.month, today.day)
-    if not current_date:
+    if not current_day:
         start += timedelta(days=1)
     end = start + timedelta(hours=23)
 
@@ -89,20 +88,20 @@ def main():
 
     parser = argparse.ArgumentParser(description='Stores electricity prices into a database.')
     parser.add_argument('--config', type=str, help='configuration file to use')
-    parser.add_argument('--current-date', action='store_true',
-                        help='use current date as date during fetching')
+    parser.add_argument('--current-day', action='store_true',
+                        help='fetch data for the current day')
 
     args = parser.parse_args()
     config_file = args.config if args.config else 'config.json'
 
     if not exists(config_file):
-        logging.error('Could not find configuration file "%s"', args.config_file)
+        logging.error('Could not find configuration file "%s"', config_file)
         sys.exit(1)
 
     with open(config_file, 'r', encoding='utf-8') as cfg_file:
         config = json.load(cfg_file)
 
-    prices = fetch_prices(config['fetch'], args.current_date)
+    prices = fetch_prices(config['fetch'], args.current_day)
 
     if len(prices) < 20:
         logging.error('Price fetching failed, not enough data was received')
