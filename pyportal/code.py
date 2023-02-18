@@ -233,7 +233,7 @@ def prepare_elec_price_data(elec_price_data, utc_offset_hours):
     values = {'current': [smallest, prices[smallest]]}
 
     next_hour = smallest + timedelta(hours=1)
-    if prices[next_hour]:
+    if next_hour in prices:
         values['next'] = [next_hour, prices[next_hour]]
 
     return values
@@ -291,9 +291,10 @@ def update_screen(display, observation, weather_data, elec_price_data, utc_offse
         row = 2
 
     if elec_price_data:
-        current_val = elec_price_data['current']
-        display[row].text = f'Elec price: {current_val[0].hour}:{current_val[0].minute:02}:' + \
-            f' {current_val[1]} c'
+        if 'current' in elec_price_data:
+            current_val = elec_price_data['current']
+            display[row].text = f'Elec price: {current_val[0].hour}:{current_val[0].minute:02}:' + \
+                f' {current_val[1]} c'
         if 'next' in elec_price_data:
             next_val = elec_price_data['next']
             display[row].text += f', {next_val[0].hour}:{next_val[0].minute:02}: ' + \
