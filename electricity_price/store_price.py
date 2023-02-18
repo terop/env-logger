@@ -9,7 +9,6 @@ import sys
 from datetime import date, datetime, timedelta
 from os import environ
 from os.path import exists
-from zoneinfo import ZoneInfo
 
 import pandas as pd  # pylint: disable=import-error
 import psycopg  # pylint: disable=import-error
@@ -26,7 +25,7 @@ def fetch_prices(config, current_date=False):
     country_code = config['country_code']
     timezone = config['tz']
 
-    today = datetime.utcnow().date()
+    today = datetime.now().date()
     start = datetime(today.year, today.month, today.day)
     if not current_date:
         start += timedelta(days=1)
@@ -59,25 +58,12 @@ def fetch_prices(config, current_date=False):
 def store_prices(db_config, price_data):
     """Stores the prices to a database pointed by the DB config."""
     insert_query = 'INSERT INTO electricity_price (start_time, price) VALUES (%s, %s)'
-    offset = ZoneInfo(db_config['source_tz']).utcoffset(datetime.now())
-    fix_date = False
-
-    if offset.total_seconds() > 0 and \
-       datetime.now().astimezone(ZoneInfo(db_config['source_tz'])).day != datetime.now().day:
-        fix_date = True
 
     try:
         with psycopg.connect(create_db_conn_string(db_config)) as conn:
             with conn.cursor() as cursor:
                 for price in price_data:
-                    timestamp = price['time'] - offset
-                    if fix_date:
-                        # Fix situation where the timestamp date is incorrect due to timezone
-                        # differences between the input timezone and timezone of the
-                        # system running this script
-                        timestamp += timedelta(days=1)
-
-                    cursor.execute(insert_query, (timestamp,
+                    cursor.execute(insert_query, (price['time'],
                                                   round(float(price['price']), 2)))
     except psycopg.Error as pge:
         logging.error('Price insert failed: %s', pge)

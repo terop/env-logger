@@ -3,8 +3,7 @@
         "host": "myhost",
         "username": "myuser",
         "password": "myawesomepassword",
-        "dbname": "env_logger",
-        "source_tz": "UTC"
+        "dbname": "env_logger"
     },
     "fetch": {
         "entsoe_api_key": "mytoken",
