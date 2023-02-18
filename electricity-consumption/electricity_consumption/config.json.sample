@@ -1,0 +1,12 @@
+{
+    "db": {
+        "host": "myhost",
+        "username": "myuser",
+        "password": "myawesomepassword",
+        "dbname": "env_logger"
+    },
+    "fetch": {
+        "username": "myuser",
+        "password": "mypassword"
+    }
+}

@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "electricity-consumption"
+version = "0.1.0"
+description = ""
+authors = ["Tero Paloheimo <tero.paloheimo@iki.fi>"]
+readme = "README.md"
+packages = [{include = "electricity_consumption"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+psycopg = {extras = ["binary"], version = "^3.1.8"}
+pycaruna = {git = "https://github.com/Jalle19/pycaruna.git", rev = "64a4cb4a9559f6985f8f2b422ef62591bcc799ee"}
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
