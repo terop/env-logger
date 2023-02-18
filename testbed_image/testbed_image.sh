@@ -14,12 +14,12 @@ fi
 
 ssh_con_string="${target_user}@${target_host}"
 
-if [ -z "$(command -v pipenv)" ]; then
-    echo "pipenv is not in PATH, exiting" >&2
+if [ -z "$(command -v poetry)" ]; then
+    echo "poetry is not in PATH, exiting" >&2
     exit 1
 fi
 
-image_name=$(pipenv run python testbed_image.py)
+image_name=$(poetry run python testbed_image.py)
 if [ -z "${image_name}" ]; then
     echo "$(date -Iminutes): failed to download Testbed image" >&2
     exit 1
