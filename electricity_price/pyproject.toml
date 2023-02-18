@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "electricity-price"
+version = "0.1.0"
+description = "Tool for fetching electricity price"
+authors = ["Tero Paloheimo <tero.paloheimo@iki.fi>"]
+readme = "README.md"
+packages = [{include = "store_price.py"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+entsoe-py = "^0.5.9"
+psycopg = {extras = ["binary"], version = "^3.1.8"}
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
