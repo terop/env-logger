@@ -7,7 +7,7 @@ RUN apt-get update && \
     apt-get clean
 
 WORKDIR /usr/src/app
-COPY config.json store_price.py pyproject.toml poetry.lock .
+COPY config.json store_price.py poetry.lock .
 
 FROM python as poetry
 ENV POETRY_HOME=/opt/poetry

@@ -5,7 +5,7 @@ ENV PYTHONUNBUFFERED=true
 RUN apk update && apk upgrade
 
 WORKDIR /usr/src/app
-COPY pyproject.toml poetry.lock .
+COPY poetry.lock .
 COPY electricity_consumption/config.json electricity_consumption/store_consumption.py \
     ./electricity_consumption
 
