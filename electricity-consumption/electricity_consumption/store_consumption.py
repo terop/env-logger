@@ -48,6 +48,9 @@ def fetch_consumption_data(config, manual_fetch_date):
     if len(metering_points) == 0:
         logging.error('No metering points found')
         sys.exit(1)
+    if 'assetId' not in metering_points[0]:
+        logging.error('Asset ID not found in metering point')
+        sys.exit(1)
 
     asset_id = metering_points[0]['assetId']
     raw_consumption = client.get_energy(customer_id, asset_id, TimeSpan.DAILY,
