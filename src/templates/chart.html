@@ -56,11 +56,11 @@
             }
             #weatherDiv,#otherDiv {
                 width: 1300px;
-                height: 730px;
+                height: 680px;
             }
             #elecDataDiv {
-                width: 1200px;
-                height: 480px;
+                width: 1300px;
+                height: 680px;
             }
             #otherCheckboxDiv,#elecDataCheckboxDiv,#imageButtonDiv {
                 margin-top: 20px;
@@ -138,7 +138,7 @@
                 </div>
             {% endif %}
             <div class="left-margin" id="weatherDiv">
-                <canvas id="weatherChart" width="1300" height="700"></canvas>
+                <canvas id="weatherChart" width="1300" height="650"></canvas>
 
                 <input type="button" id="weatherResetZoom" class="btn btn-light" value="Reset chart zoom" />
                 <input type="button" id="weatherHideAll" class="btn btn-danger hide-all" value="Hide all series" />
@@ -150,7 +150,7 @@
                     <label for="showOtherChart">Show other chart</label>
                 </div>
                 <div class="left-margin" id="otherDiv">
-                    <canvas id="otherChart" width="1300" height="700"></canvas>
+                    <canvas id="otherChart" width="1300" height="650"></canvas>
 
                     <input type="button" id="ruuvitagMode" class="btn btn-secondary" value="Show only RuuviTags" />
                     <input type="button" id="otherResetZoom" class="btn btn-light" value="Reset chart zoom" />
@@ -162,7 +162,7 @@
                     <label for="showElecDataChart">Show electricity price and consumption chart</label>
                 </div>
                 <div class="display-none left-margin" id="elecDataDiv">
-                    <canvas id="elecDataChart" width="1200" height="450"></canvas>
+                    <canvas id="elecDataChart" width="1300" height="650"></canvas>
 
                     <input type="button" id="elecDataResetZoom" class="btn btn-light" value="Reset chart zoom" />
                 </div>

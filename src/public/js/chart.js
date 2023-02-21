@@ -434,6 +434,10 @@ var loadPage = () => {
                     'click',
                     () => {
                         toggleVisibility('elecDataDiv');
+                        // Scroll page to bottom after loading the image for improved viewing
+                        window.setTimeout(() => {
+                            window.scroll(0, document.body.scrollHeight);
+                        }, 100);
                     },
                     false);
             } else {
