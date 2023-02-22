@@ -116,8 +116,7 @@
          :rt-data (when logged-in?
                     (db/get-ruuvitag-obs
                      con
-                     (t/minus (t/local-date-time)
-                              (t/days initial-days))
+                     (db/get-midnight-dt initial-days)
                      (t/local-date-time)
                      ruuvitag-locations))
          :obs-dates {:current {:start
