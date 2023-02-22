@@ -106,8 +106,8 @@
                      (db/make-local-dt start-date "start")
                      (db/make-local-dt end-date "end")
                      ruuvitag-locations))
-         :start-date start-date
-         :end-date end-date}
+         :obs-dates {:current {:start start-date
+                               :end end-date}}}
         {:obs-data (if logged-in?
                      (db/get-obs-days con
                                       initial-days)
@@ -120,13 +120,17 @@
                               (t/days initial-days))
                      (t/local-date-time)
                      ruuvitag-locations))
-         :start-date (when (:end obs-dates)
-                       (t/format (t/formatter :iso-local-date)
-                                 (t/minus (t/local-date (t/formatter
-                                                         :iso-local-date)
-                                                        (:end obs-dates))
-                                          (t/days initial-days))))
-         :end-date (:end obs-dates)}))))
+         :obs-dates {:current {:start
+                               (when (:end obs-dates)
+                                 (t/format (t/formatter :iso-local-date)
+                                           (t/minus (t/local-date
+                                                     (t/formatter
+                                                      :iso-local-date)
+                                                     (:end obs-dates))
+                                                    (t/days initial-days))))
+                               :end (:end obs-dates)}
+                     :min-max {:start (:start obs-dates)
+                               :end (:end obs-dates)}}}))))
 
 (defn get-display-data
   "Returns the data to be displayed in the front-end."
@@ -285,9 +289,7 @@
                                    {})
                    (serve-template "templates/chart.html"
                                    {:logged-in? (authenticated? (:session
-                                                                 %))
-                                    :obs-dates (db/get-obs-date-interval
-                                                db/postgres-ds)}))}]
+                                                                 %))}))}]
      ;; Login and logout
      ["/login" {:get #(if-not (authenticated? (:session %))
                         (serve-template "templates/login.html" {})

@@ -356,7 +356,7 @@
                    :time))
 
 (defn get-obs-date-interval
-  "Fetches the interval (start and end) of all observations."
+  "Fetches the date interval (start and end) of all observations."
   [db-con]
   (try
     (let [result (jdbc/execute-one! db-con
@@ -372,7 +372,7 @@
                         (t/local-date-time (:end result)))}
         result))
     (catch PSQLException pe
-      (error pe "Observation interval fetch failed")
+      (error pe "Observation date interval fetch failed")
       {:error :db-error})))
 
 (defn get-ruuvitag-obs
@@ -473,15 +473,34 @@
 (defn get-latest-elec-usage-record-time
   "Returns the time of the latest electricity usage record."
   [db-con]
-  (let [time (:time (jdbc/execute-one! db-con
-                                       (sql/format {:select
-                                                    [[:%max.time "time"]]
-                                                    :from :electricity_usage})
-                                       rs-opts))]
-    (when time
-      (t/format "d.L.Y HH:mm"
-                (if-not (= (ZoneId/systemDefault)
-                           (t/zone-id (:store-timezone env)))
-                  (t/plus (t/local-date-time time)
-                          (t/hours (get-tz-offset (:store-timezone env))))
-                  (t/local-date-time time))))))
+  (try
+    (let [time (:time (jdbc/execute-one! db-con
+                                         (sql/format {:select
+                                                      [[:%max.time "time"]]
+                                                      :from :electricity_usage})
+                                         rs-opts))]
+      (when time
+        (t/format "d.L.Y HH:mm"
+                  (if-not (= (ZoneId/systemDefault)
+                             (t/zone-id (:store-timezone env)))
+                    (t/plus (t/local-date-time time)
+                            (t/hours (get-tz-offset (:store-timezone env))))
+                    (t/local-date-time time)))))
+    (catch PSQLException pe
+      (error pe "Electricity usage latest usage date fetch failed")
+      nil)))
+
+(defn get-elec-usage-interval-start
+  "Fetches the date interval start of electricity usage data."
+  [db-con]
+  (try
+    (let [result (jdbc/execute-one! db-con
+                                    (sql/format
+                                     {:select [[:%min.time "start"]]
+                                      :from :electricity_usage}))]
+      (when (:start result)
+        (t/format (t/formatter :iso-local-date)
+                  (t/local-date-time (:start result)))))
+    (catch PSQLException pe
+      (error pe "Electricity usage date interval start fetch failed")
+      nil)))

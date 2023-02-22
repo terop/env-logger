@@ -11,6 +11,9 @@
             input[type="text"] {
                 width: 100px;
             }
+            input[type="date"] {
+                width: 140px;
+            }
             .left-margin {
                 margin-left: 30px;
             }
@@ -36,7 +39,7 @@
             #plotControls > div > label {
                 margin-right: 10px;
             }
-            #updateBtn {
+            #updateBtn,#elecUpdateBtn {
                 margin-left: 30px;
             }
             #latestDiv {
@@ -46,9 +49,6 @@
             #latestCheckboxDiv {
                 margin-bottom: 15px;
                 font-size: 0.8em;
-            }
-            #startDate,#endDate {
-                width: 140px;
             }
             #noDataError {
                 width: 50%;
@@ -60,7 +60,7 @@
             }
             #elecDataDiv {
                 width: 1300px;
-                height: 680px;
+                height: 730px;
             }
             #otherCheckboxDiv,#elecDataCheckboxDiv,#imageButtonDiv {
                 margin-top: 20px;
@@ -107,13 +107,9 @@
             <div class="left-margin clear-both">
                 <h4>Date interval to show</h4>
                 <form method="get" action="">
-                    <input type="date" name="startDate" id="startDate" value="{{ start-date }}"
-                           {% if not obs-dates.start|empty? %}min="{{ obs-dates.start }}"{% endif %}
-                           {% if not obs-dates.end|empty? %}max="{{ obs-dates.end }}"{% endif %}>
+                    <input type="date" name="startDate" id="startDate">
                     &nbsp;-&nbsp;
-                    <input type="date" name="endDate" id="endDate" value="{{ end-date }}"
-                           {% if not obs-dates.start|empty? %}min="{{ obs-dates.start }}"{% endif %}
-                           {% if not obs-dates.end|empty? %}max="{{ obs-dates.end }}"{% endif %}>
+                    <input type="date" name="endDate" id="endDate">
                     <input type="button" class="btn btn-primary" id="updateBtn" value="Update">
                 </form>
             </div>
@@ -162,6 +158,14 @@
                     <label for="showElecDataChart">Show electricity price and consumption chart</label>
                 </div>
                 <div class="display-none left-margin" id="elecDataDiv">
+                    <form method="get" action="">
+                        <input type="date" name="elecStartDate" id="elecStartDate">
+                        &nbsp;-&nbsp;
+
+                        <input type="date" name="elecEndDate" id="elecEndDate">
+                        <input type="button" class="btn btn-primary" id="elecUpdateBtn" value="Update">
+                    </form>
+
                     <canvas id="elecDataChart" width="1300" height="650"></canvas>
 
                     <input type="button" id="elecDataResetZoom" class="btn btn-light" value="Reset chart zoom" />

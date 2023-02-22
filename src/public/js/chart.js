@@ -314,8 +314,28 @@ var loadPage = () => {
         showLastObservation();
 
         // Show the electricity price and usage data in a chart
-        var plotElectricityData = (elecUsageData) => {
-            var labels = [],
+        var plotElectricityData = (elecUsageData, updateDate) => {
+            let drawAnnotation = (plotData) => {
+                const currentIdx = getClosestElecPriceDataIndex(plotData);
+
+                if (luxon.DateTime.fromISO(document.getElementById('elecEndDate').value) >=
+                    luxon.DateTime.fromISO(luxon.DateTime.now().toISODate()))
+                    return {
+                        annotations: {
+                            line1: {
+                                type: 'line',
+                                xMin: labels[currentIdx],
+                                xMax: labels[currentIdx],
+                                borderColor: 'rgb(0, 0, 0)',
+                                borderWidth: 2,
+                            }
+                        }
+                    };
+                else
+                    return null;
+            };
+
+            let labels = [],
                 data = {'price': [],
                         'usage': []};
 
@@ -325,7 +345,10 @@ var loadPage = () => {
                 data['usage'].push(item['usage']);
             }
 
-            const currentIdx = getClosestElecPriceDataIndex(elecUsageData);
+            if (updateDate)
+                document.getElementById('elecEndDate').value = labels.length ?
+                    luxon.DateTime.fromJSDate(labels[labels.length - 1]).toISODate() :
+                    luxon.DateTime.now().toISODate();
 
             if (!charts['elecData']) {
                 charts['elecData'] = new Chart(document.getElementById('elecDataChart').getContext('2d'), {
@@ -404,17 +427,7 @@ var loadPage = () => {
                                     mode: 'x'
                                 }
                             },
-                            annotation: {
-                                annotations: {
-                                    line1: {
-                                        type: 'line',
-                                        xMin: labels[currentIdx],
-                                        xMax: labels[currentIdx],
-                                        borderColor: 'rgb(0, 0, 0)',
-                                        borderWidth: 2,
-                                    }
-                                }
-                            }
+                            annotation: drawAnnotation(elecUsageData)
                         },
                         spanGaps: true,
                         normalized: true,
@@ -444,6 +457,8 @@ var loadPage = () => {
                 charts['elecData'].data.labels = labels;
                 charts['elecData'].data.datasets[0].data = data['price'];
                 charts['elecData'].data.datasets[1].data = data['usage'];
+
+                charts['elecData'].options.plugins.annotation = drawAnnotation(elecUsageData);
                 charts['elecData'].update();
             }
         };
@@ -513,8 +528,18 @@ var loadPage = () => {
                             return;
                         }
 
-                        showLatestPrice(elecData);
-                        plotElectricityData(elecData);
+                        if (elecData['dates']['min']) {
+                            const dateMin = elecData['dates']['min'];
+
+                            document.getElementById('elecStartDate').min = dateMin;
+                            document.getElementById('elecEndDate').min = dateMin;
+                        }
+
+                        if (elecData['dates']['current']['start'])
+                            document.getElementById('elecStartDate').value = elecData['dates']['current']['start'];
+
+                        showLatestPrice(elecData['data']);
+                        plotElectricityData(elecData['data'], true);
                     }
                 }).catch(error => {
                     console.log(`Electricity data fetch error: ${error}`);
@@ -729,9 +754,9 @@ var loadPage = () => {
     };
 
     var updateButtonClickHandler = (event) => {
-        var startDate = document.getElementById('startDate').value,
-            endDate = document.getElementById('endDate').value,
-            isSpinnerShown = false;
+        const startDate = document.getElementById('startDate').value,
+              endDate = document.getElementById('endDate').value;
+        var isSpinnerShown = false;
 
         if ((startDate && luxon.DateTime.fromISO(startDate).invalid) ||
             (endDate && luxon.DateTime.fromISO(endDate).invalid)) {
@@ -769,8 +794,8 @@ var loadPage = () => {
                 data['obs'] = rData['obs-data'],
                 data['rt'] = rData['rt-data'];
 
-                document.getElementById('startDate').value = rData['start-date'];
-                document.getElementById('endDate').value = rData['end-date'];
+                document.getElementById('startDate').value = rData['obs-dates']['current']['start'];
+                document.getElementById('endDate').value = rData['obs-dates']['current']['end'];
 
                 transformData();
 
@@ -791,14 +816,31 @@ var loadPage = () => {
                 if (isSpinnerShown)
                     toggleLoadingSpinner();
             });
+    };
 
-        if (mode === 'all')
-            axios.get('data/elec-data',
-                      {
-                          params: {
-                              'startDate': startDate,
-                              'endDate': endDate,
-                          }})
+    var elecUpdateButtonClickHandler = (event) => {
+        const startDate = document.getElementById('elecStartDate').value,
+              endDate = document.getElementById('elecEndDate').value;
+
+        if ((startDate && luxon.DateTime.fromISO(startDate).invalid) ||
+            (endDate && luxon.DateTime.fromISO(endDate).invalid)) {
+            alert('Error: either the start or end date is invalid');
+            event.preventDefault();
+            return;
+        }
+
+        if (luxon.DateTime.fromISO(startDate) > luxon.DateTime.fromISO(endDate)) {
+            alert('Error: start date must be smaller than the end date');
+            event.preventDefault();
+            return;
+        }
+
+        axios.get('data/elec-data',
+                  {
+                      params: {
+                          'startDate': startDate,
+                          'endDate': endDate,
+                      }})
             .then(resp => {
                 const elecData = resp.data;
 
@@ -811,7 +853,10 @@ var loadPage = () => {
                         return;
                     }
 
-                    plotElectricityData(elecData);
+                    document.getElementById('elecStartDate').value = elecData['dates']['current']['start'];
+                    document.getElementById('elecEndDate').value = elecData['dates']['current']['end'];
+
+                    plotElectricityData(elecData['data'], false);
                 }
             })
             .catch(error => {
@@ -822,6 +867,11 @@ var loadPage = () => {
     document.getElementById('updateBtn').addEventListener('click',
                                                           updateButtonClickHandler,
                                                           false);
+
+    if (mode === 'all')
+        document.getElementById('elecUpdateBtn').addEventListener('click',
+                                                                  elecUpdateButtonClickHandler,
+                                                                  false);
 
     document.getElementById('showImages').addEventListener('click',
                                                            () => {
@@ -896,8 +946,20 @@ axios.get('data/display')
             data['rt'] = rData['rt-data'];
         }
 
-        document.getElementById('startDate').value = rData['start-date'];
-        document.getElementById('endDate').value = rData['end-date'];
+        if (rData['obs-dates']['min-max']) {
+            const intMinMax = rData['obs-dates']['min-max'];
+
+            document.getElementById('startDate').min = intMinMax['start'];
+            document.getElementById('startDate').max = intMinMax['end'];
+
+            document.getElementById('endDate').min = intMinMax['start'];
+            document.getElementById('endDate').max = intMinMax['end'];
+        }
+
+        if (rData['obs-dates']['current']) {
+            document.getElementById('startDate').value = rData['obs-dates']['current']['start'];
+            document.getElementById('endDate').value = rData['obs-dates']['current']['end'];
+        }
 
         loadPage();
     })

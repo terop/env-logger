@@ -10,6 +10,7 @@
                                    convert-to-epoch-ms
                                    -convert-to-iso8601-str
                                    get-elec-data
+                                   get-elec-usage-interval-start
                                    get-last-obs-id
                                    get-latest-elec-usage-record-time
                                    get-obs-date-interval
@@ -516,9 +517,29 @@
 
 (deftest test-get-latest-elec-usage-record-time
   (testing "Fetching of latest electricity usage time"
+    (with-redefs [jdbc/execute-one!
+                  (fn [_ _ _]
+                    (throw (PSQLException.
+                            "Test exception"
+                            (PSQLState/COMMUNICATION_ERROR))))]
+      (is (nil? (get-latest-elec-usage-record-time test-ds))))
     (is (nil? (get-latest-elec-usage-record-time test-ds)))
     (let [usage-data [[(t/local-date-time 2023 2 7 19 50) 0.1]]]
       (insert-elec-usage-data test-ds usage-data)
       (with-redefs [get-tz-offset (fn [_] 0)]
         (is (= "7.2.2023 19:50" (get-latest-elec-usage-record-time test-ds))))
       (jdbc/execute! test-ds (sql/format {:delete-from :electricity_usage})))))
+
+(deftest test-get-elec-usage-interval-start
+  (testing "Fetching of electricity usage interval start"
+    (with-redefs [jdbc/execute-one!
+                  (fn [_ _]
+                    (throw (PSQLException.
+                            "Test exception"
+                            (PSQLState/COMMUNICATION_ERROR))))]
+      (is (nil? (get-elec-usage-interval-start test-ds))))
+    (is (nil? (get-elec-usage-interval-start test-ds)))
+    (let [usage-data [[(t/local-date-time 2023 2 22 19 50) 0.1]]]
+      (insert-elec-usage-data test-ds usage-data))
+    (is (= "2023-02-22" (get-elec-usage-interval-start test-ds)))
+    (jdbc/execute! test-ds (sql/format {:delete-from :electricity_usage}))))

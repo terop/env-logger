@@ -30,16 +30,25 @@
           (if (or start-date end-date)
             (if-not start-date
               (bad-request "Missing parameter")
-              (serve-json (db/get-elec-data con
-                                            (db/make-local-dt start-date "start")
-                                            (when end-date
-                                              (db/make-local-dt end-date
-                                                                "end")))))
-            (serve-json (db/get-elec-data con
-                                          (t/minus (t/local-date-time)
-                                                   (t/days (:initial-show-days
-                                                            env)))
-                                          nil))))))))
+              (serve-json {:data (db/get-elec-data con
+                                                   (db/make-local-dt start-date
+                                                                     "start")
+                                                   (when end-date
+                                                     (db/make-local-dt end-date
+                                                                       "end")))
+                           :dates {:current {:start start-date
+                                             :end end-date}}}))
+            (let [start-date (t/minus (t/local-date-time)
+                                      (t/days (:initial-show-days
+                                               env)))]
+              (serve-json {:data (db/get-elec-data con
+                                                   start-date
+                                                   nil)
+                           :dates {:current {:start (t/format (t/formatter
+                                                               :iso-local-date)
+                                                              start-date)}
+                                   :min (db/get-elec-usage-interval-start
+                                         con)}}))))))))
 
 (defn parse-usage-data-file
   "Parses CSV file with electricity usage data."
