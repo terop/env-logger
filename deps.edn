@@ -11,7 +11,7 @@
         clj-http/clj-http {:mvn/version "3.12.3"}
         clojure.java-time/clojure.java-time {:mvn/version "1.2.0"}
         org.threeten/threeten-extra {:mvn/version "1.7.2"}
-        metosin/reitit {:mvn/version "0.5.18"}
+        metosin/reitit {:mvn/version "0.6.0"}
         metosin/ring-http-response {:mvn/version "0.9.3"}
         selmer/selmer {:mvn/version "1.12.55"}
         metosin/jsonista {:mvn/version "0.3.7"}

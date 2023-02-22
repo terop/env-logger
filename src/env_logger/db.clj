@@ -75,7 +75,7 @@
       (<= (t/as (t/interval image-dt ref-dt) :minutes)
           diff-minutes)
       (catch DateTimeException _
-        ;; ref-dt < image-dt results in DateTimeException
+        ;; ref-dt < image-dt results in a DateTimeException
         true))))
 
 (defn get-tb-image
@@ -103,6 +103,18 @@
   [tz]
   (/ (/ (/ (.getOffset (TimeZone/getTimeZone ^String tz)
                        (.getTime (new Date))) 1000) 60) 60))
+
+(defn get-midnight-dt
+  "Returns a LocalDateTime at midnight with N days subtracted from the current
+  date and time."
+  [n-days]
+  (let [ldt (t/local-date-time)]
+    (t/minus ldt
+             (t/days n-days)
+             (t/hours (.getHour ldt))
+             (t/minutes (.getMinute ldt))
+             (t/seconds (.getSecond ldt))
+             (t/nanos (.getNano ldt)))))
 
 (defn convert-to-epoch-ms
   "Converts the given datetime value to Unix epoch time in milliseconds."
@@ -307,8 +319,7 @@
   [db-con n]
   (get-observations db-con
                     :where [:>= :recorded
-                            (t/minus (t/local-date-time)
-                                     (t/days n))]))
+                            (get-midnight-dt n)]))
 
 (defn get-obs-interval
   "Fetches observations in an interval between the provided dates."
@@ -344,8 +355,7 @@
   [db-con n]
   (get-weather-observations db-con
                             :where [:>= :time
-                                    (t/minus (t/local-date-time)
-                                             (t/days n))]))
+                                    (get-midnight-dt n)]))
 
 (defn get-weather-obs-interval
   "Fetches weather observations in an interval between the provided dates."

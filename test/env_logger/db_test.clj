@@ -13,6 +13,7 @@
                                    get-elec-usage-interval-start
                                    get-last-obs-id
                                    get-latest-elec-usage-record-time
+                                   get-midnight-dt
                                    get-obs-date-interval
                                    get-obs-days
                                    get-obs-interval
@@ -35,7 +36,8 @@
                                    validate-date]])
   (:import (org.postgresql.util PSQLException
                                 PSQLState)
-           java.time.ZonedDateTime
+           (java.time LocalDateTime
+                      ZonedDateTime)
            (java.util Date
                       TimeZone)))
 (refer-clojure :exclude '[filter for group-by into partition-by set update])
@@ -476,6 +478,13 @@
                                         (new Date))]
       (is (= (if in-daylight? 3 2) (get-tz-offset "Europe/Helsinki")))
       (is (zero? (get-tz-offset "UTC"))))))
+
+(deftest get-midnight-dt-test
+  (testing "Datetime at midnight calculation"
+    (let [ref (t/local-date-time 2023 2 21 0 0 0)]
+      (with-redefs [t/local-date-time (fn [] (LocalDateTime/of 2023 2 22
+                                                               21 15 16))]
+        (is (= ref (get-midnight-dt 1)))))))
 
 (deftest convert-to-epoch-ms-test
   (testing "Unix epoch time calculation"

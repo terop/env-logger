@@ -38,9 +38,7 @@
                                                                        "end")))
                            :dates {:current {:start start-date
                                              :end end-date}}}))
-            (let [start-date (t/minus (t/local-date-time)
-                                      (t/days (:initial-show-days
-                                               env)))]
+            (let [start-date (db/get-midnight-dt (:initial-show-days env))]
               (serve-json {:data (db/get-elec-data con
                                                    start-date
                                                    nil)
