@@ -106,10 +106,10 @@
 
             <div class="left-margin clear-both">
                 <h4>Date interval to show</h4>
-                <form method="get" action="">
-                    <input type="date" name="startDate" id="startDate">
+                <form>
+                    <input type="date" id="startDate">
                     &nbsp;-&nbsp;
-                    <input type="date" name="endDate" id="endDate">
+                    <input type="date" id="endDate">
                     <input type="button" class="btn btn-primary" id="updateBtn" value="Update">
                 </form>
             </div>
@@ -136,8 +136,8 @@
             <div class="left-margin" id="weatherDiv">
                 <canvas id="weatherChart" width="1300" height="650"></canvas>
 
-                <input type="button" id="weatherResetZoom" class="btn btn-light" value="Reset chart zoom" />
-                <input type="button" id="weatherHideAll" class="btn btn-danger hide-all" value="Hide all series" />
+                <input type="button" id="weatherResetZoom" class="btn btn-light" value="Reset chart zoom">
+                <input type="button" id="weatherHideAll" class="btn btn-danger hide-all" value="Hide all series">
             </div>
 
             {% if logged-in? %}
@@ -148,9 +148,9 @@
                 <div class="left-margin" id="otherDiv">
                     <canvas id="otherChart" width="1300" height="650"></canvas>
 
-                    <input type="button" id="ruuvitagMode" class="btn btn-secondary" value="Show only RuuviTags" />
-                    <input type="button" id="otherResetZoom" class="btn btn-light" value="Reset chart zoom" />
-                    <input type="button" id="otherHideAll" class="btn btn-danger hide-all" value="Hide all series" />
+                    <input type="button" id="ruuvitagMode" class="btn btn-secondary" value="Show only RuuviTags">
+                    <input type="button" id="otherResetZoom" class="btn btn-light" value="Reset chart zoom">
+                    <input type="button" id="otherHideAll" class="btn btn-danger hide-all" value="Hide all series">
                 </div>
 
                 <div class="left-margin" id="elecDataCheckboxDiv">
@@ -158,17 +158,17 @@
                     <label for="showElecDataChart">Show electricity price and consumption chart</label>
                 </div>
                 <div class="display-none left-margin" id="elecDataDiv">
-                    <form method="get" action="">
-                        <input type="date" name="elecStartDate" id="elecStartDate">
+                    <form>
+                        <input type="date" id="elecStartDate">
                         &nbsp;-&nbsp;
 
-                        <input type="date" name="elecEndDate" id="elecEndDate">
+                        <input type="date" id="elecEndDate">
                         <input type="button" class="btn btn-primary" id="elecUpdateBtn" value="Update">
                     </form>
 
                     <canvas id="elecDataChart" width="1300" height="650"></canvas>
 
-                    <input type="button" id="elecDataResetZoom" class="btn btn-light" value="Reset chart zoom" />
+                    <input type="button" id="elecDataResetZoom" class="btn btn-light" value="Reset chart zoom">
                 </div>
             {% endif %}
 
