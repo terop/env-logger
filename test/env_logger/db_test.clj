@@ -242,10 +242,11 @@
 
 (deftest date-to-datetime
   (testing "Testing date to datetime conversion"
-    (is (= "2020-09-27T00:00"
-           (str (make-local-dt "2020-09-27" "start"))))
-    (is (= "2020-09-27T23:59:59"
-           (str (make-local-dt "2020-09-27" "end"))))))
+    (with-redefs [get-tz-offset (fn [_] 0)]
+      (is (= "2020-09-27T00:00"
+             (str (make-local-dt "2020-09-27" "start"))))
+      (is (= "2020-09-27T23:59:59"
+             (str (make-local-dt "2020-09-27" "end")))))))
 
 (deftest weather-obs-interval-select
   (testing "Select weather observations between one or two dates"
@@ -444,12 +445,13 @@
                 {:time (t/sql-timestamp (t/zoned-date-time 2022 10 7
                                                            22 0 0))
                  :usage 1.0})
-    (let [res (get-elec-data test-ds
-                             (make-local-dt "2022-10-08" "start")
-                             (make-local-dt "2022-10-08" "end"))]
-      (is (= 1 (count res)))
-      (is (= {:price 10.0 :usage nil}
-             (dissoc (first res) :start-time))))
+    (with-redefs [get-tz-offset (fn [_] 0)]
+      (let [res (get-elec-data test-ds
+                               (make-local-dt "2022-10-08" "start")
+                               (make-local-dt "2022-10-08" "end"))]
+        (is (= 1 (count res)))
+        (is (= {:price 10.0 :usage nil}
+               (dissoc (first res) :start-time)))))
     (let [res (get-elec-data test-ds
                              (make-local-dt "2022-10-07" "start")
                              (make-local-dt "2022-10-08" "end"))]
@@ -483,7 +485,8 @@
   (testing "Datetime at midnight calculation"
     (let [ref (t/local-date-time 2023 2 21 0 0 0)]
       (with-redefs [t/local-date-time (fn [] (LocalDateTime/of 2023 2 22
-                                                               21 15 16))]
+                                                               21 15 16))
+                    get-tz-offset (fn [_] 0)]
         (is (= ref (get-midnight-dt 1)))))))
 
 (deftest convert-to-epoch-ms-test

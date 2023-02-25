@@ -109,12 +109,14 @@
   date and time."
   [n-days]
   (let [ldt (t/local-date-time)]
-    (t/minus ldt
-             (t/days n-days)
-             (t/hours (.getHour ldt))
-             (t/minutes (.getMinute ldt))
-             (t/seconds (.getSecond ldt))
-             (t/nanos (.getNano ldt)))))
+    (t/minus (t/minus ldt
+                      (t/days n-days)
+                      (t/hours (.getHour ldt))
+                      (t/minutes (.getMinute ldt))
+                      (t/seconds (.getSecond ldt))
+                      (t/nanos (.getNano ldt)))
+             (t/hours (get-tz-offset
+                       (:store-timezone env))))))
 
 (defn convert-to-epoch-ms
   "Converts the given datetime value to Unix epoch time in milliseconds."
@@ -246,9 +248,13 @@
   "Creates SQL datetime in local time from the provided date string.
   Mode is either start or end."
   [date mode]
-  (t/local-date-time (format "%sT%s" date (if (= mode "start")
-                                            "00:00:00"
-                                            "23:59:59"))))
+  (t/minus (t/local-date-time (format "%sT%s"
+                                      date
+                                      (if (= mode "start")
+                                        "00:00:00"
+                                        "23:59:59")))
+           (t/hours (get-tz-offset
+                     (:store-timezone env)))))
 
 (defmacro get-by-interval
   "Fetches observations in an interval using the provided function."
