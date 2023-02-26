@@ -115,8 +115,11 @@
                       (t/minutes (.getMinute ldt))
                       (t/seconds (.getSecond ldt))
                       (t/nanos (.getNano ldt)))
-             (t/hours (get-tz-offset
-                       (:store-timezone env))))))
+             ;; Correct generated datetime value when UTC is used as display
+             ;; timezone
+             (t/hours (if (= (:display-timezone env) "UTC")
+                        (get-tz-offset (:store-timezone env))
+                        0)))))
 
 (defn convert-to-epoch-ms
   "Converts the given datetime value to Unix epoch time in milliseconds."
@@ -246,15 +249,18 @@
 
 (defn make-local-dt
   "Creates SQL datetime in local time from the provided date string.
-  Mode is either start or end."
+  Allowed values for the 'mode' parameter: start,end."
   [date mode]
   (t/minus (t/local-date-time (format "%sT%s"
                                       date
                                       (if (= mode "start")
                                         "00:00:00"
                                         "23:59:59")))
-           (t/hours (get-tz-offset
-                     (:store-timezone env)))))
+           ;; Correct generated datetime value when UTC is used as display
+           ;; timezone
+           (t/hours (if (= (:display-timezone env) "UTC")
+                      (get-tz-offset (:store-timezone env))
+                      0))))
 
 (defmacro get-by-interval
   "Fetches observations in an interval using the provided function."
