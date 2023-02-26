@@ -155,6 +155,11 @@ def get_backend_endpoint_content(endpoint, token, no_token=False):
                       'reloading board')
                 time.sleep(5)
                 supervisor.reload()
+        except TimeoutError:
+            print(f'Error: endpoint "{endpoint}" fetch failed {failure_count}, ',
+                  'reloading board')
+            time.sleep(5)
+            supervisor.reload()
         except requests.OutOfRetries as oor:
             print(f'Too many retries exception: {oor}\nReloading board')
             time.sleep(5)
