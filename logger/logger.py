@@ -42,7 +42,7 @@ def get_env_data(env_settings):
     except ConnectionError as con_err:
         logging.error('Connection problem to Arduino: %s', con_err)
         arduino_ok = False
-    if not resp.ok:
+    if arduino_ok and not resp.ok:
         logging.error('Cannot read Arduino data, status code: %s', resp.status_code)
         arduino_ok = False
 
