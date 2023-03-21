@@ -18,16 +18,24 @@ VAT_MULTIPLIER = 1.24
 VAT_MULTIPLIER_DECREASED = 1.10
 
 
-def fetch_prices(config, current_day=False):
+def fetch_prices(config, fetch_date):
     """Fetches electricity spot prices from the ENTSO-E transparency platform
-    for the given price are for the next day."""
+    for the given price area for the next day by default or some given date."""
     country_code = config['country_code']
     timezone = config['tz']
 
     today = datetime.now().date()
     start = datetime(today.year, today.month, today.day)
-    if not current_day:
+
+    if fetch_date:
+        try:
+            start = datetime.strptime(fetch_date, '%Y-%m-%d')
+        except ValueError as err:
+            logging.error('Invalid date provided: %s', err)
+            sys.exit(1)
+    else:
         start += timedelta(days=1)
+
     end = start + timedelta(hours=23)
 
     prices = []
@@ -88,8 +96,8 @@ def main():
 
     parser = argparse.ArgumentParser(description='Stores electricity prices into a database.')
     parser.add_argument('--config', type=str, help='configuration file to use')
-    parser.add_argument('--current-day', action='store_true',
-                        help='fetch data for the current day')
+    parser.add_argument('--date', type=str, help='date (in YYYY-MM-DD format) for which '
+                        'to fetch data')
 
     args = parser.parse_args()
     config_file = args.config if args.config else 'config.json'
@@ -101,7 +109,7 @@ def main():
     with open(config_file, 'r', encoding='utf-8') as cfg_file:
         config = json.load(cfg_file)
 
-    prices = fetch_prices(config['fetch'], args.current_day)
+    prices = fetch_prices(config['fetch'], args.date)
 
     if len(prices) < 20:
         logging.error('Price fetching failed, not enough data was received')
