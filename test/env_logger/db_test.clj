@@ -455,7 +455,7 @@
                              (make-local-dt "2022-10-08" "end"))]
       (is (= 2 (count res)))
       (is (= {:price 4.0 :usage 1.0}
-             (dissoc (nth res 1) :start-time))))
+             (dissoc (first res) :start-time))))
     (is (= 2 (count (get-elec-data test-ds
                                    (make-local-dt "2022-10-07" "start")
                                    nil))))
