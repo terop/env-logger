@@ -444,7 +444,7 @@
                                        [:>= :p.start_time start]
                                        [:<= :p.start_time end]]
                                       [:>= :p.start_time start])
-                             :order-by [[:p.id :asc]]})
+                             :order-by [[:p.start_time :asc]]})
           rows (jdbc/execute! db-con query rs-opts)]
       (when (pos? (count rows))
         (for [row rows]
