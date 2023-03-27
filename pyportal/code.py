@@ -24,7 +24,9 @@ BACKEND_URL = secrets['backend-url']
 # Path to the bitmap font to use, must include the degree symbol (U+00B0)
 FONT = bitmap_font.load_font("fonts/DejaVuSansMono-16.pcf")
 # Sleep time (in seconds) between data refreshes
-SLEEP_TIME = 80
+SLEEP_TIME = 85
+# Sleep time (in seconds) between clock setting
+TIME_SET_SLEEP_TIME = 360
 
 # Default backlight value
 BACKLIGHT_DEFAULT_VALUE = 0.7
@@ -76,7 +78,7 @@ def connect_to_wlan():
 
             time.sleep(5)
             continue
-        print(f'Connected to {str(esp.ssid, "utf-8")}\tRSSI: {esp.rssi}')
+        print(f'Connected to {str(esp.ssid, "utf-8")}    RSSI: {esp.rssi}')
         print(f'My IP address is {esp.pretty_ip(esp.ip_address)}')
 
 
@@ -119,24 +121,21 @@ def fetch_token():
 
 def clear_display(display):
     """Clears, i.e. removes all rows, from the given display."""
-    max_row = 20
+    max_row = 25
 
     for i in range(max_row):
         display[i].text = ''
 
 
-def get_backend_endpoint_content(endpoint, token, no_token=False):
+def get_backend_endpoint_content(endpoint, token):
     """Fetches the JSON content of the given backend endpoint.
     Returns a (token, JSON value) tuple."""
     failure_count = 0
 
     while failure_count < NW_FAILURE_THRESHOLD:
         try:
-            if no_token:
-                resp = requests.get(f'{BACKEND_URL}/{endpoint}')
-            else:
-                resp = requests.get(f'{BACKEND_URL}/{endpoint}',
-                                    headers={'Authorization': f'Token {token}'})
+            resp = requests.get(f'{BACKEND_URL}/{endpoint}',
+                                headers={'Authorization': f'Token {token}'})
             if resp.status_code != 200:
                 if resp.status_code == 401:
                     print('Error: request was unauthorized, getting new token')
@@ -165,7 +164,7 @@ def get_backend_endpoint_content(endpoint, token, no_token=False):
             time.sleep(5)
             supervisor.reload()
 
-    return resp.json() if no_token else (token, resp.json())
+    return (token, resp.json())
 
 
 def set_time(timezone):
@@ -244,19 +243,27 @@ def prepare_elec_price_data(elec_price_data, utc_offset_hours):
     return values
 
 
-# pylint: disable=too-many-branches,too-many-locals,too-many-statements
-def update_screen(display, observation, weather_data, elec_price_data, utc_offset_hour):
+# pylint: disable=too-many-branches,too-many-locals,too-many-statements,too-many-arguments
+def update_screen(display, observation, weather_data, elec_price_data, utc_offset_hour,
+                  time_update_only=False):
     """Update screen contents."""
-    w_recorded = observation['data']['recorded']
+    c_time = time.localtime()
+    time_str = f'{c_time.tm_mday}.{c_time.tm_mon}.{c_time.tm_year} ' + \
+        f'{c_time.tm_hour:02}:{c_time.tm_min:02}:{c_time.tm_sec:02}'
 
-    if observation['rt-data']:
-        rt_recorded = max(tag['recorded'] for tag in observation['rt-data'])
-    else:
-        rt_recorded = w_recorded
+    if time_update_only:
+        sr_text = display[0].text[display[0].text.index('sr'):]
+
+        display[0].text = f'{time_str}           {sr_text}'
+        return
+
+    rt_recorded = max(tag['recorded'] for tag in observation['rt-data']) \
+        if observation['rt-data'] else None
 
     clear_display(display)
 
-    display[0].text = w_recorded
+    display[0].text = time_str
+
     if observation['weather-data']:
         sunrise = time.localtime(weather_data['owm']['current']['sunrise'])
         sunrise = f'{sunrise.tm_hour + utc_offset_hour:02}:{sunrise.tm_min:02}'
@@ -349,6 +356,8 @@ def main():
     print('Current time set')
 
     display = SimpleTextDisplay(title=' ', colors=[SimpleTextDisplay.WHITE], font=FONT)
+    seconds_slept = -1
+    time_set_seconds_slept = 0
     token = None
     weather_data = None
     elec_price_metadata = {'raw_data': None,
@@ -371,14 +380,25 @@ def main():
                 'data/elec-data', token)
             elec_price_metadata['fetched'] = datetime.now()
 
-        elec_price_data = prepare_elec_price_data(elec_price_metadata['raw_data'],
-                                                  utc_offset_hour)
-        token, observation = get_backend_endpoint_content('data/latest-obs', token)
-        token, weather_data = get_backend_endpoint_content('data/weather', token)
+        if seconds_slept in [-1, 1]:
+            elec_price_data = prepare_elec_price_data(elec_price_metadata['raw_data'],
+                                                      utc_offset_hour)
+            token, observation = get_backend_endpoint_content('data/latest-obs', token)
+            token, weather_data = get_backend_endpoint_content('data/weather', token)
 
-        update_screen(display, observation, weather_data, elec_price_data, utc_offset_hour)
+        update_screen(display, observation, weather_data, elec_price_data, utc_offset_hour,
+                      0 < seconds_slept < SLEEP_TIME)
 
-        time.sleep(SLEEP_TIME)
+        if seconds_slept == -1 or seconds_slept >= SLEEP_TIME:
+            seconds_slept = 0
+
+        if time_set_seconds_slept >= TIME_SET_SLEEP_TIME:
+            set_time(secrets['timezone'])
+            time_set_seconds_slept = 0
+
+        seconds_slept += 1
+        time_set_seconds_slept += 1
+        time.sleep(1)
 
 
 main()
