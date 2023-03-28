@@ -1,9 +1,8 @@
 # Electricity price storage
 
-This directory contains scripts to store the Nordpool spot price for Finland
-into a PostgreSQL database. The price is fetched from the
-[ENTSO-E](https://transparency.entsoe.eu/) transparency platform using their API
-so an ENTSO-E API key is needed.
+This directory contains a script to store the Nord Pool spot prices for supported
+price areas into a PostgreSQL database. The prices is fetched from the Nord Pool
+API.
 
 ## Running
 
@@ -14,5 +13,5 @@ file is available at `config.json.sample`, copy it to `config.json` and modify
 accordingly. Finally run the script itself with `poetry run python store_price.py`.
 The configuration file can also be provided by using the `--config` flag.
 
-By default the script fetches the price for next day. However the price for the
-current day can be fetched with the `--current-day` flag.
+By default the script fetches the prices for next day. However prices for an
+arbitrary day can be fetched with the `--date` flag.

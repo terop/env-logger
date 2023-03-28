@@ -7,22 +7,21 @@ import json
 import logging
 import sys
 from datetime import date, datetime, timedelta
+from math import isinf
 from os import environ
 from os.path import exists
 
-import pandas as pd  # pylint: disable=import-error
+from nordpool import elspot  # pylint: disable=import-error
 import psycopg  # pylint: disable=import-error
-from entsoe import EntsoePandasClient  # pylint: disable=import-error
 
 VAT_MULTIPLIER = 1.24
 VAT_MULTIPLIER_DECREASED = 1.10
 
 
 def fetch_prices(config, fetch_date):
-    """Fetches electricity spot prices from the ENTSO-E transparency platform
-    for the given price area for the next day by default or some given date."""
-    country_code = config['country_code']
-    timezone = config['tz']
+    """Fetches electricity spot prices from the Nord Pool API for the given price area
+    for the next day by default or some given date."""
+    area_code = config['area_code']
 
     today = datetime.now().date()
     start = datetime(today.year, today.month, today.day)
@@ -45,19 +44,23 @@ def fetch_prices(config, fetch_date):
     vat_multiplier = VAT_MULTIPLIER_DECREASED if today < vat_decrease_end else \
         VAT_MULTIPLIER
 
-    client = EntsoePandasClient(api_key=config['entsoe_api_key'])
+    logging.info('Fetching price data for area code %s for interval [%s, %s]',
+                 area_code, str(start), str(end))
 
-    logging.info('Fetching price data for country code %s for interval [%s, %s]',
-                 country_code, str(start), str(end))
+    prices_spot = elspot.Prices()
+    price_data = prices_spot.hourly(areas=[area_code], end_date=end)
 
-    data = client.query_day_ahead_prices(country_code,
-                                         start=pd.Timestamp(start, tz=timezone),
-                                         end=pd.Timestamp(end, tz=timezone))
+    if not price_data or area_code not in price_data['areas']:
+        logging.error('Price data fetch failed')
+        sys.exit(1)
 
-    for i in range(data.size):
-        prices.append({'time': data.index[i].to_pydatetime(),
+    for value in price_data['areas'][area_code]['values']:
+        if isinf(value['value']):
+            continue
+
+        prices.append({'time': value['start'],
                        # Price is without VAT so it is manually added
-                       'price': round((data[i] / 10) * vat_multiplier, 2)})
+                       'price': round((value['value'] / 10) * vat_multiplier, 2)})
 
     return prices
 

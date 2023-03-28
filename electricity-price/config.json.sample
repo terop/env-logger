@@ -6,8 +6,6 @@
         "dbname": "env_logger"
     },
     "fetch": {
-        "entsoe_api_key": "mytoken",
-        "country_code": "FI",
-        "tz": "Europe/Helsinki"
+        "area_code": "FI"
     }
 }
