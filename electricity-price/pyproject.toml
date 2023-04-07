@@ -7,7 +7,7 @@ readme = "README.md"
 packages = [{include = "store_price.py"}]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.11"
 psycopg = {extras = ["binary"], version = "^3.1.8"}
 nordpool = "^0.3.3"
 

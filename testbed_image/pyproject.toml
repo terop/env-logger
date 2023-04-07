@@ -6,7 +6,7 @@ authors = ["Tero Paloheimo <tero.paloheimo@iki.fi>"]
 packages = [{include = "testbed_image.py"}]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.11"
 requests = "^2.28.2"
 beautifulsoup4 = "^4.11.2"
 pytz = "^2023.2"

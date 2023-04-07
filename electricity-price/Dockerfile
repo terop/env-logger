@@ -1,10 +1,8 @@
 LABEL maintainer="tero.paloheimo@iki.fi"
 
-FROM python:3.10-slim as python
+FROM python:3.11-alpine as python
 ENV PYTHONUNBUFFERED=true
-RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get -y upgrade && \
-    apt-get clean
+RUN apk update && apk upgrade
 
 WORKDIR /usr/src/app
 COPY config.json store_price.py poetry.lock .

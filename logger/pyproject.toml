@@ -7,7 +7,7 @@ readme = "README.md"
 packages = [{include = "logger.py"}]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.11"
 pyserial = "^3.5"
 pytz = "^2023.2"
 requests = "^2.28.2"

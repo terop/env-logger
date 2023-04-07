@@ -7,7 +7,7 @@ readme = "README.md"
 packages = [{include = "electricity_consumption"}]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.11"
 psycopg = {extras = ["binary"], version = "^3.1.8"}
 pycaruna = {git = "https://github.com/Jalle19/pycaruna.git", rev = "dfee8bdd16fa895374273886f3de8cdd194e8b1e"}
 
