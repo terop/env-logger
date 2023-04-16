@@ -42,9 +42,18 @@
               (serve-json {:data (db/get-elec-data con
                                                    start-date
                                                    nil)
-                           :dates {:current {:start (t/format (t/formatter
-                                                               :iso-local-date)
-                                                              start-date)}
+                           :dates {:current {:start
+                                             (t/format
+                                              (t/formatter
+                                               :iso-local-date)
+                                              (if (= (:display-timezone
+                                                      env) "UTC")
+                                                (t/plus start-date
+                                                        (t/hours
+                                                         (db/get-tz-offset
+                                                          (:store-timezone
+                                                           env))))
+                                                start-date))}
                                    :min (db/get-elec-usage-interval-start
                                          con)}}))))))))
 

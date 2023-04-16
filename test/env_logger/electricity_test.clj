@@ -9,8 +9,8 @@
              [db-test :refer [test-ds]]
              [electricity :as e]]))
 
-(deftest electricity-price-test
-  (testing "Electricity price fetch function"
+(deftest electricity-data-test
+  (testing "Electricity data fetch function"
     (with-redefs [db/postgres-ds test-ds]
       (with-redefs [authenticated? (fn [_] false)]
         (is (= 401 (:status (e/electricity-data {})))))
