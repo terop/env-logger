@@ -9,7 +9,7 @@ packages = [{include = "testbed_image.py"}]
 python = "^3.11"
 requests = "^2.28.2"
 beautifulsoup4 = "^4.11.2"
-pytz = "^2023.2"
+pytz = "^2023.3"
 lxml = "^4.9.2"
 
 
