@@ -97,19 +97,19 @@ void loop() {
           client.println(measureJsonPretty(doc));
           client.println();
 
-          serializeJson(doc, client);
+          serializeJsonPretty(doc, client);
           break;
         }
         if (c == '\n') {
           // You're starting a new line
           currentLineIsBlank = true;
-        }
-        else if (c != '\r') {
+        } else if (c != '\r') {
           // You've gotten a character on the current line
           currentLineIsBlank = false;
         }
       }
     }
+
     // Close the connection
     client.stop();
 
