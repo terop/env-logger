@@ -6,7 +6,7 @@ import argparse
 import json
 import logging
 import sys
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from math import isinf
 from os import environ
 from os.path import exists
@@ -15,7 +15,6 @@ from nordpool import elspot  # pylint: disable=import-error
 import psycopg  # pylint: disable=import-error
 
 VAT_MULTIPLIER = 1.24
-VAT_MULTIPLIER_DECREASED = 1.10
 
 
 def fetch_prices(config, fetch_date):
@@ -38,11 +37,6 @@ def fetch_prices(config, fetch_date):
     end = start + timedelta(hours=23)
 
     prices = []
-    vat_decrease_end = date(2023, 5, 1)
-
-    # Use temporarily decrease electricity VAT (10 %) until 1st of May 2023
-    vat_multiplier = VAT_MULTIPLIER_DECREASED if today < vat_decrease_end else \
-        VAT_MULTIPLIER
 
     logging.info('Fetching price data for area code %s for interval [%s, %s]',
                  area_code, str(start), str(end))
@@ -60,7 +54,7 @@ def fetch_prices(config, fetch_date):
 
         prices.append({'time': value['start'],
                        # Price is without VAT so it is manually added
-                       'price': round((value['value'] / 10) * vat_multiplier, 2)})
+                       'price': round((value['value'] / 10) * VAT_MULTIPLIER, 2)})
 
     return prices
 
