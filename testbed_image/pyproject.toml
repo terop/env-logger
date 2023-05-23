@@ -7,7 +7,7 @@ packages = [{include = "testbed_image.py"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-requests = "^2.28.2"
+requests = "^2.31.0"
 beautifulsoup4 = "^4.11.2"
 pytz = "^2023.3"
 lxml = "^4.9.2"
