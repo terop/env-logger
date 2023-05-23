@@ -10,7 +10,7 @@ packages = [{include = "logger.py"}]
 python = "^3.11"
 pyserial = "^3.5"
 pytz = "^2023.3"
-requests = "^2.30.0"
+requests = "^2.31.0"
 bleak = "^0.20.2"
 ruuvitag-sensor = { git = "https://github.com/ttu/ruuvitag-sensor.git" }
 
