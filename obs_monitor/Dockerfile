@@ -1,6 +1,6 @@
 LABEL maintainer="tero.paloheimo@iki.fi"
 
-FROM python:3.10-alpine as python
+FROM python:3.11-alpine as python
 ENV PYTHONUNBUFFERED=true
 RUN apk update && apk upgrade
 
