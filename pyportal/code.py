@@ -2,11 +2,8 @@
 
 import time
 from collections import OrderedDict
-
-# pylint: disable=no-name-in-module
 from secrets import secrets
 
-# pylint: disable=import-error
 import adafruit_esp32spi.adafruit_esp32spi_socket as socket
 import adafruit_requests as requests
 import board
@@ -18,6 +15,9 @@ from adafruit_datetime import datetime, timedelta
 from adafruit_esp32spi import adafruit_esp32spi
 from adafruit_simple_text_display import SimpleTextDisplay
 from digitalio import DigitalInOut
+
+HTTP_STATUS_CODE_OK = 200
+HTTP_STATUS_CODE_UNAUTHORIZED = 401
 
 # URL for the backend
 BACKEND_URL = secrets['backend-url']
@@ -72,7 +72,8 @@ def connect_to_wlan():
 
             failure_count += 1
             if failure_count >= NW_FAILURE_THRESHOLD:
-                print(f'Error: AP connection failed {failure_count} times, resetting ESP')
+                print(f'Error: AP connection failed {failure_count} times, '
+                      'resetting ESP')
                 failure_count = 0
                 esp.reset()
 
@@ -90,9 +91,11 @@ def fetch_token():
     while True:
         try:
             resp = requests.post(f'{BACKEND_URL}/token-login',
-                                 data={'username': secrets['data-read-user']['username'],
-                                       'password': secrets['data-read-user']['password']})
-            if resp.status_code != 200:
+                                 data={'username': \
+                                       secrets['data-read-user']['username'],
+                                       'password': \
+                                       secrets['data-read-user']['password']})
+            if resp.status_code != HTTP_STATUS_CODE_OK:
                 backend_failure_count += 1
                 print('Error: token acquisition failed, backend failure '
                       f'count {backend_failure_count}')
@@ -112,7 +115,8 @@ def fetch_token():
             time.sleep(5)
 
             if failure_count > NW_FAILURE_THRESHOLD:
-                print(f'Error: token fetch failed {failure_count} times, reloading board')
+                print(f'Error: token fetch failed {failure_count} times, '
+                      'reloading board')
                 time.sleep(5)
                 supervisor.reload()
 
@@ -120,7 +124,7 @@ def fetch_token():
 
 
 def clear_display(display):
-    """Clears, i.e. removes all rows, from the given display."""
+    """Clear, i.e. removes all rows, from the given display."""
     max_row = 25
 
     for i in range(max_row):
@@ -128,16 +132,18 @@ def clear_display(display):
 
 
 def get_backend_endpoint_content(endpoint, token):
-    """Fetches the JSON content of the given backend endpoint.
-    Returns a (token, JSON value) tuple."""
+    """Fetch the JSON content of the given backend endpoint.
+
+    Returns a (token, JSON value) tuple.
+    """
     failure_count = 0
 
     while failure_count < NW_FAILURE_THRESHOLD:
         try:
             resp = requests.get(f'{BACKEND_URL}/{endpoint}',
                                 headers={'Authorization': f'Token {token}'})
-            if resp.status_code != 200:
-                if resp.status_code == 401:
+            if resp.status_code != HTTP_STATUS_CODE_OK:
+                if resp.status_code == HTTP_STATUS_CODE_UNAUTHORIZED:
                     print('Error: request was unauthorized, getting new token')
                     token = fetch_token()
                 else:
@@ -150,8 +156,8 @@ def get_backend_endpoint_content(endpoint, token):
             time.sleep(5)
 
             if failure_count >= NW_FAILURE_THRESHOLD:
-                print(f'Error: endpoint "{endpoint}" fetch failed {failure_count} times, ',
-                      'reloading board')
+                print(f'Error: endpoint "{endpoint}" fetch failed {failure_count} '
+                      'times, reloading board')
                 time.sleep(5)
                 supervisor.reload()
         except TimeoutError:
@@ -171,10 +177,12 @@ def set_time(timezone):
     """Get and set local time for the board. Returns the offset to UTC in hours."""
     while True:
         try:
-            with requests.get(f'{BACKEND_URL}/misc/time', data={'timezone': timezone}) as resp:
+            with requests.get(f'{BACKEND_URL}/misc/time',
+                              data={'timezone': timezone}) as resp:
                 time_info = resp.json()
                 if 'error' in time_info:
-                    print(f'Error: time fetching failed: "{time_info["error"]}", retrying')
+                    print(f'Error: time fetching failed: "{time_info["error"]}", '
+                          'retrying')
                     time.sleep(10)
                     continue
                 utc_offset_hour = time_info['offset-hour']
@@ -201,7 +209,7 @@ def adjust_backlight(display):
 
 
 def prepare_elec_price_data(elec_price_data, utc_offset_hours):
-    """Fetches and prepares electricity price data for display."""
+    """Fetch and prepare electricity price data for display."""
     if not elec_price_data:
         return None
 
@@ -213,8 +221,8 @@ def prepare_elec_price_data(elec_price_data, utc_offset_hours):
     prices = OrderedDict()
     tz_delta = timedelta(hours=utc_offset_hours)
     for item in elec_price_data['data']:
-        prices[datetime.fromisoformat(item['start-time'].replace('Z', '')) + tz_delta] = \
-            item['price']
+        prices[datetime.fromisoformat(item['start-time'].replace('Z', '')) + \
+               tz_delta] = item['price']
 
     if datetime.now() > max(prices):
         # No suitable values to show
@@ -230,7 +238,8 @@ def prepare_elec_price_data(elec_price_data, utc_offset_hours):
             smallest_diff = diff
             smallest = start_time
 
-    # Special case handling for the situation when the next hour is closer than the current is
+    # Special case handling for the situation when the next hour is closer than
+    # the current is
     if now.hour < smallest.hour:
         smallest -= timedelta(hours=1)
 
@@ -243,8 +252,7 @@ def prepare_elec_price_data(elec_price_data, utc_offset_hours):
     return values
 
 
-# pylint: disable=too-many-branches,too-many-locals,too-many-statements,too-many-arguments
-def update_screen(display, observation, weather_data, elec_price_data, utc_offset_hour,
+def update_screen(display, observation, weather_data, elec_price_data, utc_offset_hour, # noqa: E501,PLR0912,PLR0913,PLR0915
                   time_update_only=False):
     """Update screen contents."""
     c_time = time.localtime()
@@ -298,9 +306,10 @@ def update_screen(display, observation, weather_data, elec_price_data, utc_offse
                 display[3].text += f': temp {forecast["temperature"]} \u00b0C, ' + \
                     f'clouds {forecast["cloudiness"]} %,'
                 display[4].text = f'wind {forecast["wind-direction"]["short"]} ' + \
-                    f'{forecast["wind-speed"]} m/s, precipitation {forecast["precipitation"]} mm,'
+                    f'{forecast["wind-speed"]} m/s, precipitation ' + \
+                    f'{forecast["precipitation"]} mm,'
                 display[5].text = \
-                    f'desc \"{weather_data["owm"]["forecast"]["weather"][0]["description"]}\"'
+                    f'desc \"{weather_data["owm"]["forecast"]["weather"][0]["description"]}\"' # noqa: E501
                 row = 6
     else:
         row = 2
@@ -308,8 +317,8 @@ def update_screen(display, observation, weather_data, elec_price_data, utc_offse
     if elec_price_data:
         if 'current' in elec_price_data:
             current_val = elec_price_data['current']
-            display[row].text = f'Elec price: {current_val[0].hour}:{current_val[0].minute:02}:' + \
-                f' {current_val[1]} c'
+            display[row].text = 'Elec price: ' + \
+                f'{current_val[0].hour}:{current_val[0].minute:02}: {current_val[1]} c'
         if 'next' in elec_price_data:
             next_val = elec_price_data['next']
             display[row].text += f', {next_val[0].hour}:{next_val[0].minute:02}: ' + \
@@ -351,7 +360,7 @@ def update_screen(display, observation, weather_data, elec_price_data, utc_offse
 
 
 def main():
-    """Module main function."""
+    """Run the main module loop."""
     connect_to_wlan()
 
     print('Getting current time from backend')
@@ -365,6 +374,7 @@ def main():
     weather_data = None
     elec_price_metadata = {'raw_data': None,
                            'fetched': None}
+    elec_price_fetch_threshold = 1800
 
     board.DISPLAY.brightness = BACKLIGHT_DEFAULT_VALUE
 
@@ -378,7 +388,8 @@ def main():
             adjust_backlight(board.DISPLAY)
 
         if not elec_price_metadata['fetched'] or \
-           (datetime.now() - elec_price_metadata['fetched']).total_seconds() > 1800:
+           (datetime.now() - elec_price_metadata['fetched']).total_seconds() > \
+           elec_price_fetch_threshold:
             token, elec_price_metadata['raw_data'] = get_backend_endpoint_content(
                 'data/elec-data', token)
             elec_price_metadata['fetched'] = datetime.now()
@@ -389,8 +400,8 @@ def main():
             token, observation = get_backend_endpoint_content('data/latest-obs', token)
             token, weather_data = get_backend_endpoint_content('data/weather', token)
 
-        update_screen(display, observation, weather_data, elec_price_data, utc_offset_hour,
-                      0 < seconds_slept < SLEEP_TIME)
+        update_screen(display, observation, weather_data, elec_price_data,
+                      utc_offset_hour, 0 < seconds_slept < SLEEP_TIME)
 
         if seconds_slept == -1 or seconds_slept >= SLEEP_TIME:
             seconds_slept = 0

@@ -1,0 +1,2 @@
+select = ["B", "D", "E", "F", "G", "I", "N", "PL", "RUF", "W"]
+target-version = "py311"
