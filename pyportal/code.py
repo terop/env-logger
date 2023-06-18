@@ -252,9 +252,12 @@ def update_screen(display, observation, weather_data, elec_price_data, utc_offse
         f'{c_time.tm_hour:02}:{c_time.tm_min:02}:{c_time.tm_sec:02}'
 
     if time_update_only:
-        sr_text = display[0].text[display[0].text.index('sr'):]
+        if 'sr' in display[0].text:
+            sr_text = display[0].text[display[0].text.index('sr'):]
 
-        display[0].text = f'{time_str}           {sr_text}'
+            display[0].text = f'{time_str}           {sr_text}'
+        else:
+            display[0].text = time_str
         return
 
     rt_recorded = max(tag['recorded'] for tag in observation['rt-data']) \
