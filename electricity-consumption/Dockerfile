@@ -1,5 +1,3 @@
-LABEL maintainer="tero.paloheimo@iki.fi"
-
 FROM python:3.11-alpine as python
 ENV PYTHONUNBUFFERED=true
 RUN apk update && apk upgrade
@@ -7,13 +5,16 @@ RUN apk update && apk upgrade
 WORKDIR /usr/src/app
 COPY poetry.lock .
 COPY electricity_consumption/config.json electricity_consumption/store_consumption.py \
-    ./electricity_consumption
+    ./electricity_consumption/
+
+LABEL org.opencontainers.image.authors="tero.paloheimo@iki.fi"
 
 FROM python as poetry
-ENV POETRY_HOME=/opt/poetry
 ENV POETRY_VIRTUALENVS_IN_PROJECT=true
-ENV PATH="${POETRY_HOME}/bin:${PATH}"
-RUN python -c 'from urllib.request import urlopen; print(urlopen("https://install.python-poetry.org").read().decode())' | python -
+ENV PATH="/root/.local/bin:${PATH}"
+RUN apk add --no-cache curl
+
+RUN curl -sSL https://install.python-poetry.org | python3 -
 COPY . ./
 RUN poetry install --no-interaction --no-ansi -vv
 

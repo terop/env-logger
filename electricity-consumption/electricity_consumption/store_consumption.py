@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
-"""This script fetches electricity consumption data from Caruna's API and stores
-it into a PostgreSQL database."""
+"""A script for fetching electricity consumption data from the Caruna API.
+
+The fetched data is stored into a PostgreSQL database.
+"""
 
 import argparse
 import json
@@ -11,14 +13,15 @@ from datetime import date, datetime, timedelta
 from os import environ
 from os.path import exists
 
-import psycopg  # pylint: disable=import-error
-from pycaruna import Authenticator, CarunaPlus, TimeSpan  # pylint: disable=import-error
+import psycopg
+from pycaruna import Authenticator, CarunaPlus, TimeSpan
 
 
-# pylint: disable=too-many-locals
 def fetch_consumption_data(config, manual_fetch_date):
-    """Fetches electricity consumption data from the Caruna API. By default data
-    for the previous day is fetched."""
+    """Fetch electricity consumption data from the Caruna API.
+
+    By default data for the previous day is fetched.
+    """
     if not manual_fetch_date:
         fetch_date = date.today() - timedelta(days=1)
     else:
@@ -35,7 +38,7 @@ def fetch_consumption_data(config, manual_fetch_date):
     authenticator = Authenticator(config['username'], config['password'])
     try:
         login_result = authenticator.login()
-    except Exception as ex:  # pylint: disable=broad-exception-caught
+    except Exception as ex:
         logging.error('Login failed: %s', str(ex))
         sys.exit(1)
 
@@ -54,7 +57,8 @@ def fetch_consumption_data(config, manual_fetch_date):
 
     asset_id = metering_points[0]['assetId']
     raw_consumption = client.get_energy(customer_id, asset_id, TimeSpan.DAILY,
-                                        fetch_date.year, fetch_date.month, fetch_date.day)
+                                        fetch_date.year, fetch_date.month,
+                                        fetch_date.day)
 
     consumption = []
     for point in raw_consumption:
@@ -66,7 +70,7 @@ def fetch_consumption_data(config, manual_fetch_date):
 
 
 def store_consumption(db_config, consumption_data):
-    """Stores consumption data to a database pointed by the DB config."""
+    """Store consumption data to a database pointed by the DB config."""
     insert_query = 'INSERT INTO electricity_usage (time, usage) VALUES (%s, %s)'
 
     try:
@@ -81,12 +85,14 @@ def store_consumption(db_config, consumption_data):
 
 
 def create_db_conn_string(db_config):
-    """Creates the database connection string."""
+    """Create the database connection string."""
     db_config = {
         'host': environ['DB_HOST'] if 'DB_HOST' in environ else db_config['host'],
         'name': environ['DB_NAME'] if 'DB_NAME' in environ else db_config['dbname'],
-        'username': environ['DB_USERNAME'] if 'DB_USERNAME' in environ else db_config['username'],
-        'password': environ['DB_PASSWORD'] if 'DB_PASSWORD' in environ else db_config['password']
+        'username': environ['DB_USERNAME'] if 'DB_USERNAME' in environ \
+        else db_config['username'],
+        'password': environ['DB_PASSWORD'] if 'DB_PASSWORD' in environ \
+        else db_config['password']
     }
 
     return f'host={db_config["host"]} user={db_config["username"]} ' \
@@ -94,17 +100,19 @@ def create_db_conn_string(db_config):
 
 
 def main():
-    """Module main function."""
-    logging.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s', level=logging.INFO)
+    """Run the module code."""
+    logging.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s',
+                        level=logging.INFO)
 
     parser = argparse.ArgumentParser(description='Stores electricity consumption data '
                                      'into a database.')
     parser.add_argument('--config', type=str, help='configuration file to use')
-    parser.add_argument('--date', type=str, help='date (in YYYY-MM-DD format) for which '
-                        'to fetch data')
+    parser.add_argument('--date', type=str, help='date (in YYYY-MM-DD format) for '
+                        'which to fetch data')
 
     args = parser.parse_args()
     config_file = args.config if args.config else 'config.json'
+    data_array_min_length = 20
 
     if not exists(config_file):
         logging.error('Could not find configuration file "%s"', config_file)
@@ -115,7 +123,7 @@ def main():
 
     consumption_data = fetch_consumption_data(config['fetch'], args.date)
 
-    if len(consumption_data) < 20:
+    if len(consumption_data) < data_array_min_length:
         logging.error('Data fetching failed, not enough data was received')
         sys.exit(1)
 
