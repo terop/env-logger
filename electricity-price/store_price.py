@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""This script inserts electricity prices into a PostgreSQL database."""
+"""A script for inserting electricity prices into a PostgreSQL database."""
 
 import argparse
 import json
@@ -11,15 +11,17 @@ from math import isinf
 from os import environ
 from os.path import exists
 
-from nordpool import elspot  # pylint: disable=import-error
-import psycopg  # pylint: disable=import-error
+import psycopg
+from nordpool import elspot
 
 VAT_MULTIPLIER = 1.24
 
 
 def fetch_prices(config, fetch_date):
-    """Fetches electricity spot prices from the Nord Pool API for the given price area
-    for the next day by default or some given date."""
+    """Fetch electricity spot prices from the Nord Pool API for the given price area.
+
+    By default the next day is used or desired date can be provided.
+    """
     area_code = config['area_code']
 
     today = datetime.now().date()
@@ -60,7 +62,7 @@ def fetch_prices(config, fetch_date):
 
 
 def store_prices(db_config, price_data):
-    """Stores the prices to a database pointed by the DB config."""
+    """Store the prices to a database pointed by the DB config."""
     insert_query = 'INSERT INTO electricity_price (start_time, price) VALUES (%s, %s)'
 
     try:
@@ -75,12 +77,14 @@ def store_prices(db_config, price_data):
 
 
 def create_db_conn_string(db_config):
-    """Creates the database connection string."""
+    """Create the database connection string."""
     db_config = {
         'host': environ['DB_HOST'] if 'DB_HOST' in environ else db_config['host'],
         'name': environ['DB_NAME'] if 'DB_NAME' in environ else db_config['dbname'],
-        'username': environ['DB_USERNAME'] if 'DB_USERNAME' in environ else db_config['username'],
-        'password': environ['DB_PASSWORD'] if 'DB_PASSWORD' in environ else db_config['password']
+        'username': environ['DB_USERNAME'] if 'DB_USERNAME' in environ \
+        else db_config['username'],
+        'password': environ['DB_PASSWORD'] if 'DB_PASSWORD' in environ \
+        else db_config['password']
     }
 
     return f'host={db_config["host"]} user={db_config["username"]} ' \
@@ -88,16 +92,19 @@ def create_db_conn_string(db_config):
 
 
 def main():
-    """Module main function."""
-    logging.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s', level=logging.INFO)
+    """Run the module code."""
+    logging.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s',
+                        level=logging.INFO)
 
-    parser = argparse.ArgumentParser(description='Stores electricity prices into a database.')
+    parser = argparse.ArgumentParser(description='Stores electricity prices into a '
+                                     'database.')
     parser.add_argument('--config', type=str, help='configuration file to use')
-    parser.add_argument('--date', type=str, help='date (in YYYY-MM-DD format) for which '
-                        'to fetch data')
+    parser.add_argument('--date', type=str, help='date (in YYYY-MM-DD format) for '
+                        'which to fetch data')
 
     args = parser.parse_args()
     config_file = args.config if args.config else 'config.json'
+    price_array_min_length = 20
 
     if not exists(config_file):
         logging.error('Could not find configuration file "%s"', config_file)
@@ -108,7 +115,7 @@ def main():
 
     prices = fetch_prices(config['fetch'], args.date)
 
-    if len(prices) < 20:
+    if len(prices) < price_array_min_length:
         logging.error('Price fetching failed, not enough data was received')
         sys.exit(1)
 

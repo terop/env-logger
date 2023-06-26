@@ -8,10 +8,15 @@ packages = [{include = "store_price.py"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-psycopg = {extras = ["binary"], version = "^3.1.8"}
+psycopg = {extras = ["binary"], version = "^3.1.9"}
 nordpool = "^0.3.3"
 
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+select = ["B", "D", "E", "F", "G", "I", "N", "PL", "RUF", "W"]
+ignore = ["D203", "D213"]
+target-version = "py311"
