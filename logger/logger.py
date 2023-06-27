@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-"""This is a program for fetching and sending environment data to the data logger
-backend."""
+"""A program for fetching and sending environment data to the data logger backend."""
 
 import argparse
 import asyncio
@@ -20,21 +19,22 @@ from time import sleep
 import pytz
 import requests
 import serial
-from requests.exceptions import ConnectionError  # pylint: disable=redefined-builtin
+from requests.exceptions import ConnectionError
 
 os.environ['RUUVI_BLE_ADAPTER'] = 'bleak'
-# pylint: disable=import-error,wrong-import-position
 from ruuvitag_sensor.ruuvi import RuuviTagSensor  # noqa: E402
 
 
 def get_timestamp(timezone):
-    """Returns the current timestamp in ISO 8601 format."""
+    """Return the current timestamp in ISO 8601 format."""
     return datetime.now(pytz.timezone(timezone)).isoformat()
 
 
 def get_env_data(env_settings):
-    """Fetches the environment data from the Arduino and Wio Terminal.
-    Returns the parsed JSON object or an empty dictionary on failure."""
+    """Fetch the environment data from the Arduino and Wio Terminal.
+
+    Returns the parsed JSON object or an empty dictionary on failure.
+    """
     # Read Arduino
     arduino_ok = True
     try:
@@ -121,15 +121,16 @@ def store_ruuvitags(config, tag_data):
                                      'code': config['authentication_code']},
                              timeout=5)
 
-        logging.info("RuuviTag observation request data: '%s', response: code %s, text '%s'",
+        logging.info("RuuviTag observation request data: '%s', response: code %s, "
+                     "text '%s'",
                      json_data, resp.status_code, resp.text)
 
 
 def get_ble_beacons(config, device):
-    """Returns the MAC addresses and RSSI values of predefined Bluetooth BLE
-    beacons in the vicinity in a dict."""
+    """Return the MAC addresses and RSSI values of predefined Bluetooth BLE beacons."""
+    min_ble_line_length = 15
+
     try:
-        # pylint: disable=consider-using-with
         proc = subprocess.Popen([f'{config["beacon_scan_path"]}/ble_beacon_scan',
                                  '-t', str(config['beacon_scan_time']), '-d', device],
                                 stdout=subprocess.PIPE)
@@ -148,7 +149,7 @@ def get_ble_beacons(config, device):
     rssis = []
     split_output = output.split('\n')
     for line in split_output:
-        if len(line) < 15:
+        if len(line) < min_ble_line_length:
             continue
         address, rssi = line.split(' ')
         if address == config['beacon_mac']:
@@ -162,7 +163,7 @@ def get_ble_beacons(config, device):
 
 
 def store_to_db(timezone, config, data, auth_code):
-    """Stores the data in the backend database with a HTTP POST request."""
+    """Store the data in the backend database with a HTTP POST request."""
     if data == {}:
         logging.error('Received no data, stopping')
         return
@@ -179,8 +180,9 @@ def store_to_db(timezone, config, data, auth_code):
 
 
 def main():
-    """Module main function."""
-    logging.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s', level=logging.INFO)
+    """Run the module code."""
+    logging.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s',
+                        level=logging.INFO)
 
     parser = argparse.ArgumentParser(description='Scans environment data and sends it '
                                      'to the env-logger backend. A configuration file '
