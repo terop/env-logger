@@ -13,7 +13,7 @@ ENV PATH="/root/.local/bin:${PATH}"
 RUN apk add --no-cache curl
 
 RUN curl -sSL https://install.python-poetry.org | python3 -
-COPY . ./
+COPY pyproject.toml poetry.lock README.md ./
 RUN poetry install --no-interaction --no-ansi -vv
 
 FROM python as runtime
