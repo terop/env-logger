@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
-"""This is a small program for monitoring observations and alerting a maintainer
-if observations are not received within a specified time."""
+"""A program for monitoring observations and maintainer alerting.
+
+A notification (email) is sent if observations are not received within a
+specified time.
+"""
 
 import argparse
 import configparser
@@ -15,35 +18,39 @@ from os import environ
 from os.path import exists, isdir
 from zoneinfo import ZoneInfo
 
-import psycopg  # pylint: disable=import-error
+import psycopg
 
 
 class ObservationMonitor:
     """Class for monitoring environment observations."""
 
     def __init__(self, config, state):
+        """Class constructor."""
         self._config = config
         self._state = state
 
     def get_obs_time(self):
-        """Returns the recording time of the latest observation."""
+        """Return the recording time of the latest observation."""
         with psycopg.connect(create_db_conn_string(self._config['db'])) as conn:
             with conn.cursor() as cursor:
-                cursor.execute('SELECT recorded FROM observations ORDER BY id DESC LIMIT 1')
+                cursor.execute('SELECT recorded FROM observations '
+                               'ORDER BY id DESC LIMIT 1')
                 result = cursor.fetchone()
                 return result[0] if result else datetime.now()
 
     def check_observation(self):
-        """Checks when the last observation has been received and sends an email
-        if the threshold is exceeded."""
+        """Check when the last observation has been received.
+
+        Sends an email if the threshold is exceeded.
+        """
         last_obs_time = self.get_obs_time()
         last_obs_time_tz = last_obs_time.astimezone(
                     ZoneInfo(self._config['db']['DisplayTimezone']))
         time_diff = datetime.now(tz=last_obs_time.tzinfo) - last_obs_time
 
-        if int(time_diff.total_seconds() / 60) > int(self._config['observation']['Timeout']):
+        if int(time_diff.total_seconds() / 60) > \
+           int(self._config['observation']['Timeout']):
             if self._state['email_sent'] == 'False':
-                # pylint: disable=consider-using-f-string
                 if send_email(self._config['email'],
                               'env-logger: observation inactivity warning',
                               'No observations have been received in the env-logger '
@@ -54,26 +61,28 @@ class ObservationMonitor:
                 else:
                     self._state['email_sent'] = 'False'
         else:
-            if self._state['email_sent'] == 'True':
+            if self._state['email_sent'] == 'True': # noqa: PLR5501
                 send_email(self._config['email'],
                            'env-logger: observation received',
-                           f'An observation has been received at {last_obs_time_tz.isoformat()}.')
+                           'An observation has been received at '
+                           f'{last_obs_time_tz.isoformat()}.')
                 self._state['email_sent'] = 'False'
 
     def get_state(self):
-        """Returns the observation state."""
+        """Return the observation state."""
         return self._state
 
 
 class BeaconMonitor:
     """Class for monitoring BLE beacon scans."""
+
     def __init__(self, config, state):
+        """Class constructor."""
         self._config = config
         self._state = state
 
     def get_beacon_scan_time(self):
-        """Returns the recording time of the latest BLE beacon scan."""
-        # pylint: disable=not-context-manager
+        """Return the recording time of the latest BLE beacon scan."""
         with psycopg.connect(create_db_conn_string(self._config['db'])) as conn:
             with conn.cursor() as cursor:
                 cursor.execute('SELECT recorded FROM observations WHERE id = '
@@ -82,16 +91,19 @@ class BeaconMonitor:
                 return result[0] if result else datetime.now()
 
     def check_beacon(self):
-        """Checks the latest BLE beacon scan time and sends an email if the
-        threshold is exceeded."""
+        """Check the latest BLE beacon scan time.
+
+        Sends an email if the threshold is exceeded.
+        """
         last_obs_time = self.get_beacon_scan_time()
-        last_obs_time_tz = last_obs_time.astimezone(ZoneInfo(self._config['db']['DisplayTimezone']))
+        last_obs_time_tz = last_obs_time.astimezone(ZoneInfo( \
+            self._config['db']['DisplayTimezone']))
         time_diff = datetime.now(tz=last_obs_time.tzinfo) - last_obs_time
 
         # Timeout is in hours
-        if int(time_diff.total_seconds()) > int(self._config['blebeacon']['Timeout']) * 60 * 60:
+        if int(time_diff.total_seconds()) > \
+           int(self._config['blebeacon']['Timeout']) * 60 * 60:
             if self._state['email_sent'] == 'False':
-                # pylint: disable=consider-using-f-string
                 if send_email(self._config['email'],
                               'env-logger: BLE beacon inactivity warning',
                               'No BLE beacon has been scanned in env-logger '
@@ -100,28 +112,29 @@ class BeaconMonitor:
                                                           self._config['blebeacon']['Timeout'])):
                     self._state['email_sent'] = 'True'
         else:
-            if self._state['email_sent'] == 'True':
+            if self._state['email_sent'] == 'True': # noqa: PLR5501
                 send_email(self._config['email'],
                            'env-logger: BLE beacon scanned',
                            f'BLE beacon scanned was at {last_obs_time_tz.isoformat()}.')
                 self._state['email_sent'] = 'False'
 
     def get_state(self):
-        """Returns the BLE beacon scan state."""
+        """Return the BLE beacon scan state."""
         return self._state
 
 
 class RuuvitagMonitor:
     """Class for monitoring RuuviTag beacon observations."""
+
     def __init__(self, config, state):
+        """Class constructor."""
         self._config = config
         self._state = state
 
     def get_ruuvitag_scan_time(self):
-        """Returns recording time of the latest RuuviTag beacon observation."""
+        """Return recording time of the latest RuuviTag beacon observation."""
         results = {}
 
-        # pylint: disable=not-context-manager
         with psycopg.connect(create_db_conn_string(self._config['db'])) as conn:
             with conn.cursor() as cursor:
                 for location in self._config['ruuvitag']['Location'].split(','):
@@ -134,31 +147,36 @@ class RuuvitagMonitor:
         return results
 
     def check_ruuvitag(self):
-        """Checks the latest RuuviTag beacon scan time and sends an email if the
-        threshold is exceeded."""
+        """Check the latest RuuviTag beacon scan time.
+
+        Sends an email if the threshold is exceeded.
+        """
         last_obs_time = self.get_ruuvitag_scan_time()
 
         for location in self._config['ruuvitag']['Location'].split(','):
-            time_diff = datetime.now(tz=last_obs_time[location].tzinfo) - last_obs_time[location]
+            time_diff = datetime.now(tz=last_obs_time[location].tzinfo) \
+                - last_obs_time[location]
             last_obs_time_tz = last_obs_time[location].astimezone(
                 ZoneInfo(self._config['db']['DisplayTimezone']))
 
             # Timeout is in minutes
-            if int(time_diff.total_seconds()) > int(self._config['ruuvitag']['Timeout']) * 60:
+            if int(time_diff.total_seconds()) > \
+               int(self._config['ruuvitag']['Timeout']) * 60:
                 if self._state[location]['email_sent'] == 'False':
-                    # pylint: disable=consider-using-f-string
                     if send_email(self._config['email'],
-                                  f'env-logger: RuuviTag beacon "{location}" inactivity warning',
-                                  'No RuuviTag observation for location "{}" has been '
-                                  'scanned in env-logger after {} (timeout {} minutes). '
-                                  'Please check for possible problems.'
+                                  f'env-logger: RuuviTag beacon "{location}" '
+                                  'inactivity warning',
+                                  'No RuuviTag observation for location "{}" has '
+                                  'been scanned in env-logger after {} '
+                                  '(timeout {} minutes). Please check for possible '
+                                  'problems.'
                                   .format(location, last_obs_time_tz.isoformat(),
                                           self._config['ruuvitag']['Timeout'])):
                         self._state[location]['email_sent'] = 'True'
                     else:
                         self._state[location]['email_sent'] = 'False'
             else:
-                if self._state[location]['email_sent'] == 'True':
+                if self._state[location]['email_sent'] == 'True': # noqa: PLR5501
                     send_email(self._config['email'],
                                f'env-logger: Ruuvitag beacon "{location}" scanned',
                                f'A RuuviTag observation for location "{location}" '
@@ -166,12 +184,12 @@ class RuuvitagMonitor:
                     self._state[location]['email_sent'] = 'False'
 
     def get_state(self):
-        """Returns the RuuviTag scan state."""
+        """Return the RuuviTag scan state."""
         return self._state
 
 
 def send_email(config, subject, message):
-    """Sends an email with provided subject and message to specified recipients."""
+    """Send an email with provided subject and message to specified recipient(s)."""
     msg = MIMEText(message)
     msg['Subject'] = subject
     msg['From'] = config['Sender']
@@ -185,19 +203,22 @@ def send_email(config, subject, message):
             server.login(config['User'], email_password)
             server.send_message(msg)
     except smtplib.SMTPException as smtp_e:
-        logging.error('Failed to send email with subject "%s": %s', subject, str(smtp_e))
+        logging.error('Failed to send email with subject "%s": %s',
+                      subject, str(smtp_e))
         return False
 
     return True
 
 
 def create_db_conn_string(db_config):
-    """Creates the database connection string."""
+    """Create the database connection string."""
     db_config = {
         'host': environ['DB_HOST'] if 'DB_HOST' in environ else db_config['Host'],
         'name': environ['DB_NAME'] if 'DB_NAME' in environ else db_config['Name'],
-        'username': environ['DB_USERNAME'] if 'DB_USERNAME' in environ else db_config['User'],
-        'password': environ['DB_PASSWORD'] if 'DB_PASSWORD' in environ else db_config['Password']
+        'username': environ['DB_USERNAME'] if 'DB_USERNAME' in environ \
+        else db_config['User'],
+        'password': environ['DB_PASSWORD'] if 'DB_PASSWORD' in environ \
+        else db_config['Password']
     }
 
     return f'host={db_config["host"]} user={db_config["username"]} ' \
@@ -205,8 +226,9 @@ def create_db_conn_string(db_config):
 
 
 def main():
-    """Module main function."""
-    logging.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s', level=logging.INFO)
+    """Run the module code."""
+    logging.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s',
+                        level=logging.INFO)
 
     parser = argparse.ArgumentParser(description='Monitors observation reception.')
     parser.add_argument('--config', type=str, help='configuration file to use '
