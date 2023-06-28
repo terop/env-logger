@@ -1,5 +1,5 @@
 FROM amazoncorretto:17-alpine as corretto-jdk
-LABEL maintainer="tero.paloheimo@iki.fi"
+LABEL org.opencontainers.image.authors="tero.paloheimo@iki.fi"
 
 # Required for strip-debug to work
 RUN apk add --no-cache binutils
