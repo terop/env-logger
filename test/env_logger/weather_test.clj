@@ -24,10 +24,6 @@
            (org.postgresql.util PSQLException
                                 PSQLState)))
 
-(def fmi-current (atom {}))
-(def fmi-forecast (atom nil))
-(def owm (atom nil))
-
 ;; Utilities
 
 (deftest test-iso8601-and-tz-str-formatting
