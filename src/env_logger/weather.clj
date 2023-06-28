@@ -132,8 +132,10 @@
        :cloudiness (Math/round (Float/parseFloat (nth values 2)))
        :wind-direction (get-wd-str (Float/parseFloat
                                     (nth values 3)))
-       :precipitation (Float/parseFloat (format "%.1f" (Float/parseFloat
-                                                        (nth values 4))))})))
+       :precipitation (if (= (nth values 4) "NaN")
+                        0
+                        (Float/parseFloat (format "%.1f" (Float/parseFloat
+                                                          (nth values 4)))))})))
 
 (defn -update-fmi-weather-data-json
   "Updates the latest FMI weather data from the FMI JSON for the given weather
@@ -229,13 +231,14 @@
                          (t/minus (calculate-start-time) (t/minutes 10))))))
 
 (defn -update-fmi-weather-forecast
-  "Updates the latest FMI HARMONIE weather forecast from the FMI WFS for the
-  given weather observation station."
+  "Updates the latest FMI forecaster edited weather forecast from the FMI WFS
+  for the given weather observation station."
   [latitude longitude]
   (future
     (let [url (format (str "https://opendata.fmi.fi/wfs?service=WFS&version="
                            "2.0.0&request=getFeature&storedquery_id=fmi::"
-                           "forecast::harmonie::surface::point::simple&latlon="
+                           "forecast::edited::weather::scandinavia::point::"
+                           "simple&latlon="
                            "%s&parameters=Temperature,WindSpeedMS,"
                            "TotalCloudCover,WindDirection,PrecipitationAmount"
                            "&starttime=%s&endtime=%s")
