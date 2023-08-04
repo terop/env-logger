@@ -60,13 +60,12 @@ class ObservationMonitor:
                     self._state['email_sent'] = 'True'
                 else:
                     self._state['email_sent'] = 'False'
-        else:
-            if self._state['email_sent'] == 'True': # noqa: PLR5501
-                send_email(self._config['email'],
-                           'env-logger: observation received',
-                           'An observation has been received at '
-                           f'{last_obs_time_tz.isoformat()}.')
-                self._state['email_sent'] = 'False'
+        elif self._state['email_sent'] == 'True':
+            send_email(self._config['email'],
+                       'env-logger: observation received',
+                       'An observation has been received at '
+                       f'{last_obs_time_tz.isoformat()}.')
+            self._state['email_sent'] = 'False'
 
     def get_state(self):
         """Return the observation state."""
@@ -111,12 +110,11 @@ class BeaconMonitor:
                               'possible problems.'.format(last_obs_time_tz.isoformat(),
                                                           self._config['blebeacon']['Timeout'])):
                     self._state['email_sent'] = 'True'
-        else:
-            if self._state['email_sent'] == 'True': # noqa: PLR5501
-                send_email(self._config['email'],
-                           'env-logger: BLE beacon scanned',
-                           f'BLE beacon scanned was at {last_obs_time_tz.isoformat()}.')
-                self._state['email_sent'] = 'False'
+        elif self._state['email_sent'] == 'True':
+            send_email(self._config['email'],
+                       'env-logger: BLE beacon scanned',
+                       f'BLE beacon scanned was at {last_obs_time_tz.isoformat()}.')
+            self._state['email_sent'] = 'False'
 
     def get_state(self):
         """Return the BLE beacon scan state."""
@@ -175,13 +173,12 @@ class RuuvitagMonitor:
                         self._state[location]['email_sent'] = 'True'
                     else:
                         self._state[location]['email_sent'] = 'False'
-            else:
-                if self._state[location]['email_sent'] == 'True': # noqa: PLR5501
-                    send_email(self._config['email'],
-                               f'env-logger: Ruuvitag beacon "{location}" scanned',
-                               f'A RuuviTag observation for location "{location}" '
-                               f'was scanned at {last_obs_time_tz.isoformat()}.')
-                    self._state[location]['email_sent'] = 'False'
+            elif self._state[location]['email_sent'] == 'True':
+                send_email(self._config['email'],
+                           f'env-logger: Ruuvitag beacon "{location}" scanned',
+                           f'A RuuviTag observation for location "{location}" '
+                           f'was scanned at {last_obs_time_tz.isoformat()}.')
+                self._state[location]['email_sent'] = 'False'
 
     def get_state(self):
         """Return the RuuviTag scan state."""
