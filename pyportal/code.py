@@ -136,10 +136,11 @@ def get_backend_endpoint_content(endpoint, token):
 
     Returns a (token, JSON value) tuple.
     """
+    sleep_time = 5
     failure_count = 0
 
-    while failure_count < NW_FAILURE_THRESHOLD:
-        try:
+    try:
+        while failure_count < NW_FAILURE_THRESHOLD:
             resp = requests.get(f'{BACKEND_URL}/{endpoint}',
                                 headers={'Authorization': f'Token {token}'})
             if resp.status_code != HTTP_STATUS_CODE_OK:
@@ -150,27 +151,27 @@ def get_backend_endpoint_content(endpoint, token):
                     print(f'Error: failed to fetch content from "{endpoint}"')
                 continue
             break
-        except RuntimeError as rte:
-            failure_count += 1
-            print(f'Error: got exception "{rte}", failure count {failure_count}')
-            time.sleep(5)
 
-            if failure_count >= NW_FAILURE_THRESHOLD:
-                print(f'Error: endpoint "{endpoint}" fetch failed {failure_count} '
-                      'times, reloading board')
-                time.sleep(5)
-                supervisor.reload()
-        except TimeoutError:
-            print(f'Error: endpoint "{endpoint}" fetch failed {failure_count}, ',
-                  'reloading board')
-            time.sleep(5)
-            supervisor.reload()
-        except requests.OutOfRetries as oor:
-            print(f'Too many retries exception: {oor}\nReloading board')
-            time.sleep(5)
-            supervisor.reload()
+        return (token, resp.json())
+    except RuntimeError as rte:
+        failure_count += 1
+        print(f'Error: got exception "{rte}", failure count {failure_count}')
+        time.sleep(sleep_time)
 
-    return (token, resp.json())
+        if failure_count >= NW_FAILURE_THRESHOLD:
+            print(f'Error: endpoint "{endpoint}" fetch failed {failure_count} '
+                  'times, reloading board')
+            time.sleep(sleep_time)
+            supervisor.reload()
+    except TimeoutError:
+        print(f'Error: endpoint "{endpoint}" fetch failed {failure_count}, ',
+              'reloading board')
+        time.sleep(sleep_time)
+        supervisor.reload()
+    except requests.OutOfRetries as oor:
+        print(f'Too many retries exception: {oor}\nReloading board')
+        time.sleep(sleep_time)
+        supervisor.reload()
 
 
 def set_time(timezone):
@@ -196,6 +197,9 @@ def set_time(timezone):
             if 'ESP32' in str(ex):
                 connect_to_wlan()
             time.sleep(5)
+        except TimeoutError as ex:
+            print(f'Error: an exception occurred in set_time: {ex}')
+            supervisor.reload()
 
 
 def adjust_backlight(display):
