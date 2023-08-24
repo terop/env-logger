@@ -31,12 +31,12 @@ class ObservationMonitor:
 
     def get_obs_time(self):
         """Return the recording time of the latest observation."""
-        with psycopg.connect(create_db_conn_string(self._config['db'])) as conn:
-            with conn.cursor() as cursor:
-                cursor.execute('SELECT recorded FROM observations '
-                               'ORDER BY id DESC LIMIT 1')
-                result = cursor.fetchone()
-                return result[0] if result else datetime.now()
+        with psycopg.connect(create_db_conn_string(self._config['db'])) as conn, \
+             conn.cursor() as cursor:
+            cursor.execute('SELECT recorded FROM observations '
+                           'ORDER BY id DESC LIMIT 1')
+            result = cursor.fetchone()
+            return result[0] if result else datetime.now()
 
     def check_observation(self):
         """Check when the last observation has been received.
@@ -82,12 +82,12 @@ class BeaconMonitor:
 
     def get_beacon_scan_time(self):
         """Return the recording time of the latest BLE beacon scan."""
-        with psycopg.connect(create_db_conn_string(self._config['db'])) as conn:
-            with conn.cursor() as cursor:
-                cursor.execute('SELECT recorded FROM observations WHERE id = '
-                               '(SELECT obs_id FROM beacons ORDER BY id DESC LIMIT 1)')
-                result = cursor.fetchone()
-                return result[0] if result else datetime.now()
+        with psycopg.connect(create_db_conn_string(self._config['db'])) as conn, \
+             conn.cursor() as cursor:
+            cursor.execute('SELECT recorded FROM observations WHERE id = '
+                           '(SELECT obs_id FROM beacons ORDER BY id DESC LIMIT 1)')
+            result = cursor.fetchone()
+            return result[0] if result else datetime.now()
 
     def check_beacon(self):
         """Check the latest BLE beacon scan time.
@@ -102,14 +102,14 @@ class BeaconMonitor:
         # Timeout is in hours
         if int(time_diff.total_seconds()) > \
            int(self._config['blebeacon']['Timeout']) * 60 * 60:
-            if self._state['email_sent'] == 'False':
-                if send_email(self._config['email'],
-                              'env-logger: BLE beacon inactivity warning',
-                              'No BLE beacon has been scanned in env-logger '
-                              'after {} (timeout {} hours). Please check for '
-                              'possible problems.'.format(last_obs_time_tz.isoformat(),
-                                                          self._config['blebeacon']['Timeout'])):
-                    self._state['email_sent'] = 'True'
+            if self._state['email_sent'] == 'False' and \
+               send_email(self._config['email'],
+                          'env-logger: BLE beacon inactivity warning',
+                          'No BLE beacon has been scanned in env-logger '
+                          'after {} (timeout {} hours). Please check for '
+                          'possible problems.'.format(last_obs_time_tz.isoformat(),
+                                                      self._config['blebeacon']['Timeout'])):
+                self._state['email_sent'] = 'True'
         elif self._state['email_sent'] == 'True':
             send_email(self._config['email'],
                        'env-logger: BLE beacon scanned',
@@ -133,14 +133,14 @@ class RuuvitagMonitor:
         """Return recording time of the latest RuuviTag beacon observation."""
         results = {}
 
-        with psycopg.connect(create_db_conn_string(self._config['db'])) as conn:
-            with conn.cursor() as cursor:
-                for location in self._config['ruuvitag']['Location'].split(','):
-                    cursor.execute("""SELECT recorded FROM ruuvitag_observations WHERE
-                    location = %s ORDER BY recorded DESC LIMIT 1""", (location,))
+        with psycopg.connect(create_db_conn_string(self._config['db'])) as conn, \
+             conn.cursor() as cursor:
+            for location in self._config['ruuvitag']['Location'].split(','):
+                cursor.execute("""SELECT recorded FROM ruuvitag_observations WHERE
+                location = %s ORDER BY recorded DESC LIMIT 1""", (location,))
 
-                    result = cursor.fetchone()
-                    results[location] = result[0] if result else datetime.now()
+                result = cursor.fetchone()
+                results[location] = result[0] if result else datetime.now()
 
         return results
 
@@ -199,9 +199,9 @@ def send_email(config, subject, message):
                               context=ssl.create_default_context()) as server:
             server.login(config['User'], email_password)
             server.send_message(msg)
-    except smtplib.SMTPException as smtp_e:
-        logging.error('Failed to send email with subject "%s": %s',
-                      subject, str(smtp_e))
+    except smtplib.SMTPException:
+        logging.exception('Failed to send email with subject "%s"',
+                          subject)
         return False
 
     return True

@@ -39,8 +39,8 @@ def get_env_data(env_settings):
     arduino_ok = True
     try:
         resp = requests.get(env_settings['arduino_url'], timeout=5)
-    except ConnectionError as con_err:
-        logging.error('Connection problem to Arduino: %s', con_err)
+    except ConnectionError:
+        logging.exception('Connection problem to Arduino')
         arduino_ok = False
     if arduino_ok and not resp.ok:
         logging.error('Cannot read Arduino data, status code: %s', resp.status_code)
@@ -57,8 +57,8 @@ def get_env_data(env_settings):
                 logging.error('Got no serial data from Wio Terminal')
                 return {}
             terminal_data = json.loads(raw_data)
-    except serial.serialutil.SerialException as exc:
-        logging.error('Cannot read Wio Terminal serial: %s', exc)
+    except serial.serialutil.SerialException:
+        logging.exception('Cannot read Wio Terminal serial')
         return {}
 
     final_data = {'outsideTemperature': round(arduino_data['extTempSensor'], 2)
@@ -103,7 +103,7 @@ async def scan_ruuvitags(rt_config, device):
     try:
         await asyncio.wait_for(_async_scan(mac_addresses, device), timeout=12)
     except asyncio.TimeoutError:
-        logging.error('RuuviTag scan timed out')
+        logging.exception('RuuviTag scan timed out')
 
     return found_tags
 
@@ -208,8 +208,8 @@ def main():
     with open(config, 'r', encoding='utf-8') as config_file:
         try:
             config = json.load(config_file)
-        except json.JSONDecodeError as err:
-            logging.error('Could not parse configuration file: %s', err)
+        except json.JSONDecodeError:
+            logging.exception('Could not parse configuration file')
             sys.exit(1)
 
     env_config = config['environment']

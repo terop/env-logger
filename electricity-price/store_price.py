@@ -30,8 +30,8 @@ def fetch_prices(config, fetch_date):
     if fetch_date:
         try:
             start = datetime.strptime(fetch_date, '%Y-%m-%d')
-        except ValueError as err:
-            logging.error('Invalid date provided: %s', err)
+        except ValueError:
+            logging.exception('Invalid date provided')
             sys.exit(1)
     else:
         start += timedelta(days=1)
@@ -66,13 +66,13 @@ def store_prices(db_config, price_data):
     insert_query = 'INSERT INTO electricity_price (start_time, price) VALUES (%s, %s)'
 
     try:
-        with psycopg.connect(create_db_conn_string(db_config)) as conn:
-            with conn.cursor() as cursor:
-                for price in price_data:
-                    cursor.execute(insert_query, (price['time'],
-                                                  round(float(price['price']), 2)))
-    except psycopg.Error as pge:
-        logging.error('Price insert failed: %s', pge)
+        with psycopg.connect(create_db_conn_string(db_config)) as conn, \
+             conn.cursor() as cursor:
+            for price in price_data:
+                cursor.execute(insert_query, (price['time'],
+                                              round(float(price['price']), 2)))
+    except psycopg.Error:
+        logging.exception('Price insert failed')
         sys.exit(1)
 
 

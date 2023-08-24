@@ -27,8 +27,8 @@ def fetch_consumption_data(config, manual_fetch_date):
     else:
         try:
             fetch_dt = datetime.strptime(manual_fetch_date, '%Y-%m-%d')
-        except ValueError as err:
-            logging.error('Invalid date provided: %s', err)
+        except ValueError:
+            logging.exception('Invalid date provided')
             sys.exit(1)
 
         fetch_date = fetch_dt.date()
@@ -38,8 +38,8 @@ def fetch_consumption_data(config, manual_fetch_date):
     authenticator = Authenticator(config['username'], config['password'])
     try:
         login_result = authenticator.login()
-    except Exception as ex:
-        logging.error('Login failed: %s', str(ex))
+    except Exception:
+        logging.exception('Login failed')
         sys.exit(1)
 
     token = login_result['token']
@@ -60,11 +60,9 @@ def fetch_consumption_data(config, manual_fetch_date):
                                         fetch_date.year, fetch_date.month,
                                         fetch_date.day)
 
-    consumption = []
-    for point in raw_consumption:
-        if 'invoicedConsumption' in point:
-            consumption.append({'time': point['timestamp'],
-                                'consumption': point['invoicedConsumption']})
+    consumption = [{'time': point['timestamp'],
+                    'consumption': point['invoicedConsumption']}
+                   for point in raw_consumption if 'invoicedConsumption' in point]
 
     return consumption
 
@@ -74,13 +72,13 @@ def store_consumption(db_config, consumption_data):
     insert_query = 'INSERT INTO electricity_usage (time, usage) VALUES (%s, %s)'
 
     try:
-        with psycopg.connect(create_db_conn_string(db_config)) as conn:
-            with conn.cursor() as cursor:
-                for point in consumption_data:
-                    cursor.execute(insert_query, (point['time'],
-                                                  point['consumption']))
-    except psycopg.Error as pge:
-        logging.error('Data insert failed: %s', pge)
+        with psycopg.connect(create_db_conn_string(db_config)) as conn, \
+             conn.cursor() as cursor:
+            for point in consumption_data:
+                cursor.execute(insert_query, (point['time'],
+                                              point['consumption']))
+    except psycopg.Error:
+        logging.exception('Data insert failed')
         sys.exit(1)
 
 
