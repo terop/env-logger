@@ -1,2 +1,3 @@
-select = ["B", "D", "E", "F", "G", "I", "N", "PL", "RUF", "W"]
+select = ["B", "D", "E", "F", "G", "I", "N", "PERF", "PIE", "PL", "SIM", "RUF", "TRY", "W"]
+ignore = ["D203", "D213"]
 target-version = "py311"

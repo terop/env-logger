@@ -39,7 +39,7 @@ BACKLIGHT_DIMMING_END = 7
 # Backlight value during dimming
 BACKLIGHT_DIMMING_VALUE = 0.5
 # Network failure threshold after which the board is rebooted
-NW_FAILURE_THRESHOLD = 4
+NW_FAILURE_THRESHOLD = 3
 
 
 def connect_to_wlan():
@@ -100,7 +100,7 @@ def fetch_token():
                 print('Error: token acquisition failed, backend failure '
                       f'count {backend_failure_count}')
 
-                if backend_failure_count > NW_FAILURE_THRESHOLD:
+                if backend_failure_count >= NW_FAILURE_THRESHOLD:
                     print('Error: token fetch failed: backend problem, '
                           f'failure count {backend_failure_count}')
                     return None
@@ -114,7 +114,7 @@ def fetch_token():
             print(f'Error: token fetch failed: "{rte}", failure count {failure_count}')
             time.sleep(5)
 
-            if failure_count > NW_FAILURE_THRESHOLD:
+            if failure_count >= NW_FAILURE_THRESHOLD:
                 print(f'Error: token fetch failed {failure_count} times, '
                       'reloading board')
                 time.sleep(5)
@@ -140,36 +140,33 @@ def get_backend_endpoint_content(endpoint, token):
     failure_count = 0
 
     try:
-        while failure_count < NW_FAILURE_THRESHOLD:
-            resp = requests.get(f'{BACKEND_URL}/{endpoint}',
-                                headers={'Authorization': f'Token {token}'})
-            if resp.status_code != HTTP_STATUS_CODE_OK:
-                if resp.status_code == HTTP_STATUS_CODE_UNAUTHORIZED:
-                    print('Error: request was unauthorized, getting new token')
-                    token = fetch_token()
-                else:
-                    print(f'Error: failed to fetch content from "{endpoint}"')
-                continue
-            break
+        while failure_count <= NW_FAILURE_THRESHOLD:
+            try:
+                resp = requests.get(f'{BACKEND_URL}/{endpoint}',
+                                    headers={'Authorization': f'Token {token}'})
+                if resp.status_code != HTTP_STATUS_CODE_OK:
+                    if resp.status_code == HTTP_STATUS_CODE_UNAUTHORIZED:
+                        print('Error: request was unauthorized, getting new token')
+                        token = fetch_token()
+                    else:
+                        print(f'Error: failed to fetch content from "{endpoint}"')
+                    continue
+
+                break
+            except RuntimeError as rte:
+                failure_count += 1
+                print(f'Error: got exception "{rte}", failure count {failure_count}')
+                time.sleep(sleep_time)
+
+                if failure_count >= NW_FAILURE_THRESHOLD:
+                    print(f'Error: endpoint "{endpoint}" fetch failed {failure_count} '
+                          'times, reloading board')
+                    time.sleep(sleep_time)
+                    supervisor.reload()
 
         return (token, resp.json())
-    except RuntimeError as rte:
-        failure_count += 1
-        print(f'Error: got exception "{rte}", failure count {failure_count}')
-        time.sleep(sleep_time)
-
-        if failure_count >= NW_FAILURE_THRESHOLD:
-            print(f'Error: endpoint "{endpoint}" fetch failed {failure_count} '
-                  'times, reloading board')
-            time.sleep(sleep_time)
-            supervisor.reload()
-    except TimeoutError:
-        print(f'Error: endpoint "{endpoint}" fetch failed {failure_count}, ',
-              'reloading board')
-        time.sleep(sleep_time)
-        supervisor.reload()
-    except requests.OutOfRetries as oor:
-        print(f'Too many retries exception: {oor}\nReloading board')
+    except (TimeoutError, requests.OutOfRetries) as ex:
+        print(f'Error: endpoint "{endpoint}" fetch failed: {ex}, reloading board')
         time.sleep(sleep_time)
         supervisor.reload()
 
@@ -217,10 +214,9 @@ def prepare_elec_price_data(elec_price_data, utc_offset_hours):
     if not elec_price_data:
         return None
 
-    if 'error' in elec_price_data:
-        if elec_price_data['error'] != 'not-enabled':
-            print(f'Electricity price data fetch failed: {elec_price_data["error"]}')
-            return None
+    if 'error' in elec_price_data and elec_price_data['error'] != 'not-enabled':
+        print(f'Electricity price data fetch failed: {elec_price_data["error"]}')
+        return None
 
     prices = OrderedDict()
     tz_delta = timedelta(hours=utc_offset_hours)
