@@ -3,21 +3,31 @@ const colors = [
     '#7864cb', '#5ab642', '#bf51b6', '#cf615e', '#dc437e',
     '#49b9a9', '#cc572c', '#628bcb', '#a5b043', '#d089c5',
     '#4c7e3d', '#a0496c', '#d79d48', '#6abe77', '#8c6f33'],
-      // Data field names
-      fieldNames = {'weather': ['fmi-temperature', 'cloudiness', 'wind-speed'],
-                    'other': ['brightness', 'rssi', 'o-temperature']};
+    // Data field names
+    fieldNames = {
+        'weather': ['fmi-temperature', 'cloudiness', 'wind-speed'],
+        'other': ['brightness', 'rssi', 'o-temperature']
+    };
 
-var labelValues = {'weather': {},
-                   'other': {},
-                   'rt': {}},
-    dataSets = {'weather': {},
-                'other': {},
-                'rt': {}},
-    data = {'obs': [],
-            'rt': [],
-            'weather': []},
-    dataLabels = {'weather': [],
-                  'other': []},
+var labelValues = {
+    'weather': {},
+    'other': {},
+    'rt': {}
+},
+    dataSets = {
+        'weather': {},
+        'other': {},
+        'rt': {}
+    },
+    data = {
+        'obs': [],
+        'rt': [],
+        'weather': []
+    },
+    dataLabels = {
+        'weather': [],
+        'other': []
+    },
     beaconName = '',
     mode = null,
     testbedImageBasepath = '',
@@ -25,15 +35,19 @@ var labelValues = {'weather': {},
     rtDefaultShow = null,
     rtDefaultValues = [],
     rtNames = [],
-    charts = {'weather': null,
-              'other': null,
-              'elecData': null};
+    charts = {
+        'weather': null,
+        'other': null,
+        'elecData': null
+    };
 
 var loadPage = () => {
     // Persist state of chart data sets
     var persistDatasetState = () => {
-        var hidden = {'weather': {},
-                      'other': {}};
+        var hidden = {
+            'weather': {},
+            'other': {}
+        };
 
         if (!charts['weather'])
             return;
@@ -77,15 +91,16 @@ var loadPage = () => {
     // rtObservations - observations as JSON
     // rtLabels - RuuviTag labels
     var parseRTData = (rtObservations, rtLabels) => {
-        const labelCount = rtLabels.length,
-              timeDiffThreshold = 10;
+        const timeDiffThreshold = 10;
         var location = null,
             dateRef = null,
             obsByDate = {};
 
         for (const label of rtLabels)
-            dataSets['rt'][label] = {'temperature': [],
-                                     'humidity': []};
+            dataSets['rt'][label] = {
+                'temperature': [],
+                'humidity': []
+            };
 
         for (var i = 0; i < rtObservations.length; i++) {
             const obs = rtObservations[i];
@@ -181,11 +196,15 @@ var loadPage = () => {
 
     // Transform data to Chart.js compatible format. Returns the data series labels.
     var transformData = () => {
-        dataSets = {'weather': {},
-                    'other': {},
-                    'rt': {}},
-        dataLabels = {'weather': [],
-                      'other': []};
+        dataSets = {
+            'weather': {},
+            'other': {},
+            'rt': {}
+        },
+            dataLabels = {
+                'weather': [],
+                'other': []
+            };
 
         data['obs'].map((element) => {
             parseData(element);
@@ -195,20 +214,23 @@ var loadPage = () => {
         if (mode === 'all') {
             parseRTData(data['rt'], rtNames);
 
-            labelValues['other'] = {'brightness': 'Brightness',
-                                    'o-temperature': 'Outside temperature',
-                                    'rssi': beaconName !== '' ? `Beacon "${beaconName}" RSSI` : 'Beacon RSSI'};
+            labelValues['other'] = {
+                'brightness': 'Brightness',
+                'o-temperature': 'Outside temperature',
+                'rssi': beaconName !== '' ? `Beacon "${beaconName}" RSSI` : 'Beacon RSSI'
+            };
             for (const name of rtNames)
-                labelValues['rt'][name] = {'temperature': `RT "${name}" temperature`,
-                                           'humidity': `RT "${name}" humidity`};
+                labelValues['rt'][name] = {
+                    'temperature': `RT "${name}" temperature`,
+                    'humidity': `RT "${name}" humidity`
+                };
         }
-        labelValues['weather'] = {'fmi-temperature': 'Temperature (FMI)',
-                                  'cloudiness': 'Cloudiness',
-                                  'wind-speed': 'Wind speed'};
+        labelValues['weather'] = {
+            'fmi-temperature': 'Temperature (FMI)',
+            'cloudiness': 'Cloudiness',
+            'wind-speed': 'Wind speed'
+        };
 
-        if (mode === 'all' && beaconName !== '') {
-            var label = `Beacon "${beaconName}" RSSI`;
-        }
         return labelValues;
     };
 
@@ -254,20 +276,20 @@ var loadPage = () => {
                 for (const key of weatherKeys) {
                     if (key === 'wind-speed')
                         observationText += `Wind: ${wd['wind-direction']['long']} ` +
-                        `${wd[key]} ${addUnitSuffix(key)}, `;
+                            `${wd[key]} ${addUnitSuffix(key)}, `;
                     else if (key === 'fmi-temperature')
                         observationText += `${labelValues['weather'][key]}: ` +
-                        `${wd['temperature']} ${addUnitSuffix(key)}, `;
+                            `${wd['temperature']} ${addUnitSuffix(key)}, `;
                     else
                         observationText += `${labelValues['weather'][key]}: ${wd[key]}` +
-                        `${addUnitSuffix(key)}, `;
+                            `${addUnitSuffix(key)}, `;
                 }
             }
             if (mode === 'all') {
                 if (data['weather']['owm'])
                     observationText += `Description: ${data['weather']['owm']['current']['weather'][0]['description']}<br>` +
-                    `Sun: Sunrise ${formatUnixSecondTs(data['weather']['owm']['current']['sunrise'])},` +
-                    ` Sunset ${formatUnixSecondTs(data['weather']['owm']['current']['sunset'])}<br>`;
+                        `Sun: Sunrise ${formatUnixSecondTs(data['weather']['owm']['current']['sunrise'])},` +
+                        ` Sunset ${formatUnixSecondTs(data['weather']['owm']['current']['sunset'])}<br>`;
 
                 let obsIndex = dataSets['other']['brightness'].length - 1;
 
@@ -278,7 +300,7 @@ var loadPage = () => {
                     `${addUnitSuffix('temperature')},`;
 
                 let itemsAdded = 0;
-                for(const key in dataSets['rt']) {
+                for (const key in dataSets['rt']) {
                     obsIndex = dataSets['rt'][key]['temperature'].length - 1;
                     break;
                 }
@@ -297,13 +319,13 @@ var loadPage = () => {
                 const forecast = data['weather']['fmi']['forecast'];
                 if (forecast && data['weather']['owm']['forecast'])
                     document.getElementById('forecast').innerHTML =
-                    '<br><br>Forecast for ' +
-                    luxon.DateTime.fromISO(forecast['time']).toFormat('dd.MM.yyyy HH:mm') +
-                    `: temperature: ${forecast['temperature']} \u2103, ` +
-                    `cloudiness: ${forecast['cloudiness']} %, ` +
-                    `wind: ${forecast['wind-direction']['long']} ${forecast['wind-speed']} m/s, ` +
-                    `precipitation: ${forecast['precipitation']} mm, ` +
-                    `description: ${data['weather']['owm']['forecast']['weather'][0]['description']}`;
+                        '<br><br>Forecast for ' +
+                        luxon.DateTime.fromISO(forecast['time']).toFormat('dd.MM.yyyy HH:mm') +
+                        `: temperature: ${forecast['temperature']} \u2103, ` +
+                        `cloudiness: ${forecast['cloudiness']} %, ` +
+                        `wind: ${forecast['wind-direction']['long']} ${forecast['wind-speed']} m/s, ` +
+                        `precipitation: ${forecast['precipitation']} mm, ` +
+                        `description: ${data['weather']['owm']['forecast']['weather'][0]['description']}`;
             } else {
                 observationText = observationText.slice(0, -2);
             }
@@ -336,8 +358,10 @@ var loadPage = () => {
             };
 
             let labels = [],
-                data = {'price': [],
-                        'usage': []};
+                data = {
+                    'price': [],
+                    'usage': []
+                };
 
             for (const item of elecUsageData) {
                 labels.push(luxon.DateTime.fromISO(item['start-time']).toJSDate());
@@ -548,8 +572,8 @@ var loadPage = () => {
 
         var showTestbedImage = (pointDt) => {
             const pattern = /testbed-(.+).png/,
-                  imageCountIdx = testbedImageNames.length - 1,
-                  refDt = luxon.DateTime.fromMillis(pointDt);
+                imageCountIdx = testbedImageNames.length - 1,
+                refDt = luxon.DateTime.fromMillis(pointDt);
             let smallest = 100000,
                 smallestIdx = imageCountIdx;
 
@@ -567,8 +591,8 @@ var loadPage = () => {
             }
 
             const imageName = testbedImageNames[smallestIdx],
-                  datePattern = /testbed-([\d-]+)T.+/,
-                  result = datePattern.exec(imageName);
+                datePattern = /testbed-([\d-]+)T.+/,
+                result = datePattern.exec(imageName);
             if (result) {
                 document.getElementById('testbedImage').src =
                     `${testbedImageBasepath}${result[1]}/${imageName}`;
@@ -585,7 +609,7 @@ var loadPage = () => {
                 rtDefaultValues.includes(measurable))
                 return true;
             else if (rtDefaultShow.includes(location) &&
-                     rtDefaultValues.includes(measurable))
+                rtDefaultValues.includes(measurable))
                 return true;
             else
                 return false;
@@ -631,7 +655,7 @@ var loadPage = () => {
         };
 
         var getPluginConfig = (chartType) => {
-            return  {
+            return {
                 title: {
                     display: true,
                     text: (chartType === 'weather') ?
@@ -674,21 +698,21 @@ var loadPage = () => {
                 }
             }
         },
-              interactionOptions = {
-                  mode: 'index'
-              },
-              onClickFunction = (event, elements) => {
-                  if (!elements.length)
-                      return;
+            interactionOptions = {
+                mode: 'index'
+            },
+            onClickFunction = (event, elements) => {
+                if (!elements.length)
+                    return;
 
-                  document.getElementById('showImages').checked = true;
-                  document.getElementById('imageDiv').classList.remove('display-none');
+                document.getElementById('showImages').checked = true;
+                document.getElementById('imageDiv').classList.remove('display-none');
 
-                  const chart = event.chart.canvas.id.includes('weather') ? charts['weather'] : charts['other'],
-                        canvasPosition = Chart.helpers.getRelativePosition(event, chart);
+                const chart = event.chart.canvas.id.includes('weather') ? charts['weather'] : charts['other'],
+                    canvasPosition = Chart.helpers.getRelativePosition(event, chart);
 
-                  showTestbedImage(chart.scales.x.getValueForPixel(canvasPosition.x));
-              };
+                showTestbedImage(chart.scales.x.getValueForPixel(canvasPosition.x));
+            };
 
         Chart.defaults.animation.duration = 400;
 
@@ -755,7 +779,7 @@ var loadPage = () => {
 
     var updateButtonClickHandler = (event) => {
         const startDate = document.getElementById('startDate').value,
-              endDate = document.getElementById('endDate').value;
+            endDate = document.getElementById('endDate').value;
         var isSpinnerShown = false;
 
         if ((startDate && luxon.DateTime.fromISO(startDate).invalid) ||
@@ -782,17 +806,18 @@ var loadPage = () => {
         persistDatasetState();
 
         axios.get('data/display',
-                  {
-                      params: {
-                          'startDate': startDate,
-                          'endDate': endDate,
-                      }})
+            {
+                params: {
+                    'startDate': startDate,
+                    'endDate': endDate,
+                }
+            })
             .then(resp => {
                 const rData = resp.data;
 
                 data['weather'] = rData['weather-data'],
-                data['obs'] = rData['obs-data'],
-                data['rt'] = rData['rt-data'];
+                    data['obs'] = rData['obs-data'],
+                    data['rt'] = rData['rt-data'];
 
                 document.getElementById('startDate').value = rData['obs-dates']['current']['start'];
                 document.getElementById('endDate').value = rData['obs-dates']['current']['end'];
@@ -820,7 +845,7 @@ var loadPage = () => {
 
     var elecUpdateButtonClickHandler = (event) => {
         const startDate = document.getElementById('elecStartDate').value,
-              endDate = document.getElementById('elecEndDate').value;
+            endDate = document.getElementById('elecEndDate').value;
 
         if ((startDate && luxon.DateTime.fromISO(startDate).invalid) ||
             (endDate && luxon.DateTime.fromISO(endDate).invalid)) {
@@ -836,11 +861,12 @@ var loadPage = () => {
         }
 
         axios.get('data/elec-data',
-                  {
-                      params: {
-                          'startDate': startDate,
-                          'endDate': endDate,
-                      }})
+            {
+                params: {
+                    'startDate': startDate,
+                    'endDate': endDate,
+                }
+            })
             .then(resp => {
                 const elecData = resp.data;
 
@@ -865,69 +891,69 @@ var loadPage = () => {
     };
 
     document.getElementById('updateBtn').addEventListener('click',
-                                                          updateButtonClickHandler,
-                                                          false);
+        updateButtonClickHandler,
+        false);
 
     if (mode === 'all')
         document.getElementById('elecUpdateBtn').addEventListener('click',
-                                                                  elecUpdateButtonClickHandler,
-                                                                  false);
+            elecUpdateButtonClickHandler,
+            false);
 
     document.getElementById('showImages').addEventListener('click',
-                                                           () => {
-                                                               toggleVisibility('imageDiv');
-                                                           },
-                                                           false);
+        () => {
+            toggleVisibility('imageDiv');
+        },
+        false);
 
     document.getElementById('weatherHideAll')
         .addEventListener('click',
-                          () => {
-                              for (var i = 0; i < charts['weather'].data.datasets.length; i++)
-                                  charts['weather'].getDatasetMeta(i).hidden = true;
-                              charts['weather'].update();
-                          },
-                          false);
+            () => {
+                for (var i = 0; i < charts['weather'].data.datasets.length; i++)
+                    charts['weather'].getDatasetMeta(i).hidden = true;
+                charts['weather'].update();
+            },
+            false);
 
 
     if (mode === 'all') {
         showElectricityPrice();
 
         document.getElementById('showLatestObs').addEventListener('click',
-                                                                  () => {
-                                                                      toggleVisibility('latestDiv');
-                                                                  },
-                                                                  false);
+            () => {
+                toggleVisibility('latestDiv');
+            },
+            false);
 
         document.getElementById('showWeatherChart').addEventListener('click',
-                                                                     () => {
-                                                                         toggleVisibility('weatherDiv');
-                                                                     },
-                                                                     false);
+            () => {
+                toggleVisibility('weatherDiv');
+            },
+            false);
 
 
         document.getElementById('showOtherChart').addEventListener('click',
-                                                                   () => {
-                                                                       toggleVisibility('otherDiv');
-                                                                   },
-                                                                   false);
+            () => {
+                toggleVisibility('otherDiv');
+            },
+            false);
 
         document.getElementById('otherHideAll')
             .addEventListener('click',
-                              () => {
-                                  for (var i = 0; i < charts['other'].data.datasets.length; i++)
-                                      charts['other'].getDatasetMeta(i).hidden = true;
-                                  charts['other'].update();
-                              },
-                              false);
+                () => {
+                    for (var i = 0; i < charts['other'].data.datasets.length; i++)
+                        charts['other'].getDatasetMeta(i).hidden = true;
+                    charts['other'].update();
+                },
+                false);
         document.getElementById('ruuvitagMode')
             .addEventListener('click',
-                              () => {
-                                  for (var i = 0; i < charts['other'].data.datasets.length; i++)
-                                      if (charts['other'].data.datasets[i].label.indexOf('RT ') === -1)
-                                          charts['other'].getDatasetMeta(i).hidden = true;
-                                  charts['other'].update();
-                              },
-                              false);
+                () => {
+                    for (var i = 0; i < charts['other'].data.datasets.length; i++)
+                        if (charts['other'].data.datasets[i].label.indexOf('RT ') === -1)
+                            charts['other'].getDatasetMeta(i).hidden = true;
+                    charts['other'].update();
+                },
+                false);
     }
 };
 
@@ -937,13 +963,13 @@ axios.get('data/display')
 
         mode = rData['mode'];
         testbedImageBasepath = rData['tb-image-basepath'],
-        data['weather'] = rData['weather-data'],
-        data['obs'] = rData['obs-data'];
+            data['weather'] = rData['weather-data'],
+            data['obs'] = rData['obs-data'];
         if (mode === 'all') {
             rtNames = rData['rt-names'],
-            rtDefaultShow = rData['rt-default-show'],
-            rtDefaultValues = rData['rt-default-values'],
-            data['rt'] = rData['rt-data'];
+                rtDefaultShow = rData['rt-default-show'],
+                rtDefaultValues = rData['rt-default-values'],
+                data['rt'] = rData['rt-data'];
         }
 
         if (rData['obs-dates']['min-max']) {

@@ -22,18 +22,18 @@ const publicKeyCredentialCreationOptions = (server, username) => ({
 
 const handleRegistration = function () {
     axios.get('webauthn/register',
-              {
-                  params: {
-                      username: username,
-                      name: document.getElementById('name').value
-                  }
-              })
+        {
+            params: {
+                username: username,
+                name: document.getElementById('name').value
+            }
+        })
         .then(resp => {
             return resp.data;
         })
         .then(async resp => {
             const pubKey = publicKeyCredentialCreationOptions(resp, username);
-            const creds = await navigator.credentials.create({publicKey: pubKey});
+            const creds = await navigator.credentials.create({ publicKey: pubKey });
             return {
                 'challenge': resp.challenge,
                 'attestation': btoa(String.fromCharCode(...new Uint8Array(creds.response.attestationObject))),
@@ -42,11 +42,11 @@ const handleRegistration = function () {
         })
         .then(payload => {
             axios.post('webauthn/register',
-                       payload)
-                .then(resp => {
+                payload)
+                .then(_ => {
                     document.getElementById('registerSuccess').classList.remove('hidden');
                 })
-                .catch(error => {
+                .catch(_ => {
                     document.getElementById('registerFailure').classList.remove('hidden');
                 });
         });

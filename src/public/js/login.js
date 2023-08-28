@@ -1,6 +1,6 @@
 var username = '';
 
-const publicKeyCredentialRequestOptions = function(server) {
+const publicKeyCredentialRequestOptions = function (server) {
     var credentials = [];
     for (cred of server.credentials)
         credentials.push({
@@ -22,11 +22,11 @@ const publicKeyCredentialRequestOptions = function(server) {
 
 const doWebAuthnLogin = function (resolve, reject) {
     axios.get('webauthn/login',
-              {
-                  params: {
-                      username: username
-                  }
-              })
+        {
+            params: {
+                username: username
+            }
+        })
         .then(resp => {
             return resp.data;
         })
@@ -35,7 +35,7 @@ const doWebAuthnLogin = function (resolve, reject) {
         })
         .then(async resp => {
             const pubKey = publicKeyCredentialRequestOptions(resp);
-            const assertion = await navigator.credentials.get({publicKey: pubKey});
+            const assertion = await navigator.credentials.get({ publicKey: pubKey });
             return {
                 'challenge': resp.challenge,
                 'credential-id': btoa(String.fromCharCode(...new Uint8Array(assertion.rawId))),
@@ -46,22 +46,28 @@ const doWebAuthnLogin = function (resolve, reject) {
                 'client-data': btoa(String.fromCharCode(...new Uint8Array(assertion.response.clientDataJSON))),
             };
         })
-        .catch(error => {})
+        .catch(_ => {})
         .then(payload => {
             axios.post('webauthn/login',
-                       payload)
+                payload)
                 .then(resp => {
-                    resolve({'result': true,
-                             'redirect-url': resp.data});
+                    resolve({
+                        'result': true,
+                        'redirect-url': resp.data
+                    });
                 })
                 .catch(error => {
                     if (error.response.data && error.response.data.error &&
                         error.response.data.error === 'invalid-authenticator')
-                        reject({'result': false,
-                                'cause': 'invalid-authenticator'});
+                        reject({
+                            'result': false,
+                            'cause': 'invalid-authenticator'
+                        });
 
-                    reject({'result': false,
-                            'cause': error});
+                    reject({
+                        'result': false,
+                        'cause': error
+                    });
                 });
         });
 };
