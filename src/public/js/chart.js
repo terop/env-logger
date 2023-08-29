@@ -28,6 +28,10 @@ var labelValues = {
         'weather': [],
         'other': []
     },
+    annotationIndexes = {
+        'weather': [],
+        'other': []
+    },
     beaconName = '',
     mode = null,
     testbedImageBasepath = '',
@@ -151,8 +155,11 @@ var loadPage = () => {
         }
     };
 
-    // Parses an observation.
-    // observation - observation as JSON
+    /* Parse an observation.
+     *
+     * Arguments:
+     * observation - an observation as JSON
+     */
     var parseData = (observation) => {
         // dataMode - string, which mode to process data in, values: weather, other
         // observation - object, observation to process
@@ -172,10 +179,27 @@ var loadPage = () => {
             }
         };
 
+        var recordAnnotationIndexes = (dataMode, observationTime) => {
+            // Skip the first few observations as a line annotation is not needed
+            // in the beginning of a chart
+            if (dataLabels[dataMode].length > 2) {
+                var recorded = luxon.DateTime.fromMillis(observationTime);
+                if (recorded.hour === 0 && recorded.minute == 0) {
+                    annotationIndexes[dataMode].push(dataLabels[dataMode].length - 1);
+                }
+            }
+        };
+
         if (mode === 'all') {
             dataLabels['other'].push(new Date(observation['recorded']));
-            if (observation['weather-recorded'])
+
+            recordAnnotationIndexes('other', observation['recorded']);
+
+            if (observation['weather-recorded']) {
                 dataLabels['weather'].push(new Date(observation['weather-recorded']));
+
+                recordAnnotationIndexes('weather', observation['weather-recorded']);
+            }
 
             // Weather
             processFields('weather', observation, fieldNames['weather'], true);
@@ -189,6 +213,8 @@ var loadPage = () => {
         } else {
             dataLabels['weather'].push(new Date(observation['time']));
 
+            recordAnnotationIndexes('weather', observation['time']);
+
             processFields('weather', observation, fieldNames['weather'], false);
         }
         testbedImageNames.push(observation['tb-image-name']);
@@ -200,11 +226,15 @@ var loadPage = () => {
             'weather': {},
             'other': {},
             'rt': {}
-        },
-            dataLabels = {
-                'weather': [],
-                'other': []
-            };
+        };
+        dataLabels = {
+            'weather': [],
+            'other': []
+        };
+        annotationIndexes = {
+            'weather': [],
+            'other': []
+        };
 
         data['obs'].map((element) => {
             parseData(element);
@@ -337,24 +367,37 @@ var loadPage = () => {
 
         // Show the electricity price and usage data in a chart
         var plotElectricityData = (elecUsageData, updateDate) => {
-            let drawAnnotation = (plotData) => {
+            let generateElecAnnotationConfig = (plotData) => {
                 const currentIdx = getClosestElecPriceDataIndex(plotData);
+                var annotations = {},
+                    currentLineIndex = 1;
+
+                // Skip first and last data points as lines are not needed there
+                for (var i = 1; i < plotData.length - 1; i++) {
+                    if (luxon.DateTime.fromISO(plotData[i]['start-time']).hour === 0) {
+                        annotations[`line${currentLineIndex}`] = {
+                            type: 'line',
+                            xMin: labels[i],
+                            xMax: labels[i],
+                            borderColor: '#838b93',
+                            borderWidth: 1
+                        };
+                        currentLineIndex++;
+                    }
+                }
 
                 if (luxon.DateTime.fromISO(document.getElementById('elecEndDate').value) >=
-                    luxon.DateTime.fromISO(luxon.DateTime.now().toISODate()))
-                    return {
-                        annotations: {
-                            line1: {
-                                type: 'line',
-                                xMin: labels[currentIdx],
-                                xMax: labels[currentIdx],
-                                borderColor: 'rgb(0, 0, 0)',
-                                borderWidth: 2,
-                            }
-                        }
+                    luxon.DateTime.fromISO(luxon.DateTime.now().toISODate())) {
+                    annotations[`line${currentLineIndex}`] = {
+                        type: 'line',
+                        xMin: labels[currentIdx],
+                        xMax: labels[currentIdx],
+                        borderColor: 'rgb(0, 0, 0)',
+                        borderWidth: 2
                     };
-                else
-                    return null;
+                }
+
+                return { annotations: annotations };
             };
 
             let labels = [],
@@ -451,7 +494,7 @@ var loadPage = () => {
                                     mode: 'x'
                                 }
                             },
-                            annotation: drawAnnotation(elecUsageData)
+                            annotation: generateElecAnnotationConfig(elecUsageData)
                         },
                         spanGaps: true,
                         normalized: true,
@@ -482,7 +525,7 @@ var loadPage = () => {
                 charts['elecData'].data.datasets[0].data = data['price'];
                 charts['elecData'].data.datasets[1].data = data['usage'];
 
-                charts['elecData'].options.plugins.annotation = drawAnnotation(elecUsageData);
+                charts['elecData'].options.plugins.annotation = generateElecAnnotationConfig(elecUsageData);
                 charts['elecData'].update();
             }
         };
@@ -615,6 +658,24 @@ var loadPage = () => {
                 return false;
         };
 
+        var generateAnnotationConfig = (chartType) => {
+            var lineConfigs = {},
+                currentLineIndex = 0;
+
+            for (var i = 0; i < annotationIndexes[chartType].length; i++) {
+                lineConfigs[`line${currentLineIndex}`] = {
+                    type: 'line',
+                    xMin: dataLabels[chartType][annotationIndexes[chartType][i]],
+                    xMax: dataLabels[chartType][annotationIndexes[chartType][i]],
+                    borderColor: '#838b93',
+                    borderWidth: 1
+                };
+                currentLineIndex++;
+            }
+
+            return { annotations: lineConfigs };
+        };
+
         var generateDataConfig = (dataMode) => {
             var config = {
                 labels: dataMode === 'weather' ? dataLabels['weather'] : dataLabels['other'],
@@ -654,7 +715,7 @@ var loadPage = () => {
             return config;
         };
 
-        var getPluginConfig = (chartType) => {
+        var generatePluginConfig = (chartType) => {
             return {
                 title: {
                     display: true,
@@ -668,7 +729,8 @@ var loadPage = () => {
                         },
                         mode: 'x'
                     }
-                }
+                },
+                annotation: generateAnnotationConfig(chartType)
             };
         };
 
@@ -722,7 +784,7 @@ var loadPage = () => {
             options: {
                 scales: scaleOptions,
                 interaction: interactionOptions,
-                plugins: getPluginConfig('weather'),
+                plugins: generatePluginConfig('weather'),
                 onClick: onClickFunction,
                 spanGaps: true,
                 normalized: true,
@@ -738,7 +800,7 @@ var loadPage = () => {
                 options: {
                     scales: scaleOptions,
                     interaction: interactionOptions,
-                    plugins: getPluginConfig('other'),
+                    plugins: generatePluginConfig('other'),
                     onClick: onClickFunction,
                     spanGaps: true,
                     normalized: true,
@@ -825,10 +887,12 @@ var loadPage = () => {
                 transformData();
 
                 charts['weather'].data = generateDataConfig('weather');
+                charts['weather'].options.plugins.annotation = generateAnnotationConfig('weather');
                 charts['weather'].update();
 
                 if (mode === 'all') {
                     charts['other'].data = generateDataConfig('other');
+                    charts['other'].options.plugins.annotation = generateAnnotationConfig('other');
                     charts['other'].update();
                 }
 
