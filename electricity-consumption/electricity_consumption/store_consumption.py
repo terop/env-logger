@@ -103,14 +103,15 @@ def main():
                         level=logging.INFO)
 
     parser = argparse.ArgumentParser(description='Stores electricity consumption data '
-                                     'into a database.')
+                                     'into a database. By default data for the '
+                                     ' previous is fetched.')
     parser.add_argument('--config', type=str, help='configuration file to use')
     parser.add_argument('--date', type=str, help='date (in YYYY-MM-DD format) for '
                         'which to fetch data')
 
     args = parser.parse_args()
     config_file = args.config if args.config else 'config.json'
-    data_array_min_length = 20
+    required_data_array_length = 24
 
     if not exists(config_file):
         logging.error('Could not find configuration file "%s"', config_file)
@@ -121,7 +122,7 @@ def main():
 
     consumption_data = fetch_consumption_data(config['fetch'], args.date)
 
-    if len(consumption_data) < data_array_min_length:
+    if len(consumption_data) < required_data_array_length:
         logging.error('Data fetching failed, not enough data was received')
         sys.exit(1)
 
