@@ -54,11 +54,11 @@
                                                           (:store-timezone
                                                            env))))
                                                 start-date))}
-                                   :min (db/get-elec-usage-interval-start
+                                   :min (db/get-elec-consumption-interval-start
                                          con)}}))))))))
 
-(defn parse-usage-data-file
-  "Parses CSV file with electricity usage data."
+(defn parse-consumption-data-file
+  "Parses CSV file with electricity consumption data."
   [data-file]
   (with-open [reader (io/reader data-file)]
     (let [rows (doall (csv/read-csv reader {:separator \;}))]

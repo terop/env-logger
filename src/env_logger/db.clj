@@ -428,16 +428,16 @@
       {})))
 
 (defn get-elec-data
-  "Returns the electricity price and usage values inside the given time
+  "Returns the electricity price and consumption values inside the given time
   interval. If the end parameter is nil all the values after start will
   be returned."
   [db-con start end]
   (try
     (let [query (sql/format {:select [:p.start_time
                                       :p.price
-                                      :u.usage]
+                                      :u.consumption]
                              :from [[:electricity_price :p]]
-                             :left-join [[:electricity_usage :u]
+                             :left-join [[:electricity_consumption :u]
                                          [:= :p.start_time :u.time]]
                              :where (if end
                                       [:and
@@ -472,34 +472,34 @@
                                             ["id = ?" obs-id]
                                             rs-opts))))
 
-(defn insert-elec-usage-data
-  "Inserts given electricity usage data."
-  [db-con usage-data]
+(defn insert-elec-consumption-data
+  "Inserts given electricity consumption data."
+  [db-con consumption-data]
   (jdbc/with-transaction [tx db-con]
     (try
       (let [res (js/insert-multi! tx
-                                  :electricity_usage
-                                  [:time :usage]
-                                  usage-data
+                                  :electricity_consumption
+                                  [:time :consumption]
+                                  consumption-data
                                   rs-opts)]
-        (if (= (count usage-data) (count res))
+        (if (= (count consumption-data) (count res))
           true
           (do
             (.rollback tx)
             false)))
       (catch PSQLException pe
-        (error pe "Electricity usage data insert failed")
+        (error pe "Electricity consumption data insert failed")
         (.rollback tx)
         false))))
 
-(defn get-latest-elec-usage-record-time
-  "Returns the time of the latest electricity usage record."
+(defn get-latest-elec-consumption-record-time
+  "Returns the time of the latest electricity consumption record."
   [db-con]
   (try
     (let [time (:time (jdbc/execute-one! db-con
                                          (sql/format {:select
                                                       [[:%max.time "time"]]
-                                                      :from :electricity_usage})
+                                                      :from :electricity_consumption})
                                          rs-opts))]
       (when time
         (t/format "d.L.Y HH:mm"
@@ -509,20 +509,20 @@
                             (t/hours (get-tz-offset (:store-timezone env))))
                     (t/local-date-time time)))))
     (catch PSQLException pe
-      (error pe "Electricity usage latest usage date fetch failed")
+      (error pe "Electricity consumption latest consumption date fetch failed")
       nil)))
 
-(defn get-elec-usage-interval-start
-  "Fetches the date interval start of electricity usage data."
+(defn get-elec-consumption-interval-start
+  "Fetches the date interval start of electricity consumption data."
   [db-con]
   (try
     (let [result (jdbc/execute-one! db-con
                                     (sql/format
                                      {:select [[:%min.time "start"]]
-                                      :from :electricity_usage}))]
+                                      :from :electricity_consumption}))]
       (when (:start result)
         (t/format (t/formatter :iso-local-date)
                   (t/local-date-time (:start result)))))
     (catch PSQLException pe
-      (error pe "Electricity usage date interval start fetch failed")
+      (error pe "Electricity consumption date interval start fetch failed")
       nil)))

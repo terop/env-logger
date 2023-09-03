@@ -69,7 +69,8 @@ def fetch_consumption_data(config, manual_fetch_date):
 
 def store_consumption(db_config, consumption_data):
     """Store consumption data to a database pointed by the DB config."""
-    insert_query = 'INSERT INTO electricity_usage (time, usage) VALUES (%s, %s)'
+    insert_query = 'INSERT INTO electricity_consumption (time, consumption) ' \
+        'VALUES (%s, %s)'
 
     try:
         with psycopg.connect(create_db_conn_string(db_config)) as conn, \

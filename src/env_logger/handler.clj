@@ -26,7 +26,7 @@
              [authentication :as auth]
              [db :as db]
              [electricity :refer [electricity-data
-                                  parse-usage-data-file]]
+                                  parse-consumption-data-file]]
              [render :refer [serve-text serve-json serve-template]]
              [weather :refer [get-fmi-weather-data
                               store-weather-data?
@@ -191,21 +191,21 @@
                                  json-decode-opts)))
           (serve-text "OK") auth/response-server-error)))))
 
-(defn elec-usage-data-upload
-  "Function called on electricity usage data upload."
+(defn elec-consumption-data-upload
+  "Function called on electricity consumption data upload."
   [request]
   (if (ends-with? (:filename
                    (get (:params request)
-                        "usage-file"))
+                        "consumption-file"))
                   ".csv")
-    (let [parsed-data (parse-usage-data-file (:tempfile
-                                              (get (:params request)
-                                                   "usage-file")))]
+    (let [parsed-data (parse-consumption-data-file (:tempfile
+                                                    (get (:params request)
+                                                         "consumption-file")))]
       (if (:error parsed-data)
         {:status "error"
          :cause (:error parsed-data)}
         (with-open [con (jdbc/get-connection db/postgres-ds)]
-          (if (db/insert-elec-usage-data con parsed-data)
+          (if (db/insert-elec-consumption-data con parsed-data)
             {:status "success"}
             {:status "error"}))))
     {:status "error"
@@ -332,23 +332,22 @@
      ["/misc"
       ;; Time data (timestamp and UTC offset)
       ["/time" {:get time-data}]
-      ;; Electricity usage data upload
-      ["/elec-usage" {:get #(if (authenticated? (:session %))
-                              (let [latest-dt
-                                    (with-open [con
-                                                (jdbc/get-connection
-                                                 db/postgres-ds)]
-                                      (db/get-latest-elec-usage-record-time
-                                       con))]
-                                (serve-template
-                                 "templates/elec-usage-upload.html"
-                                 {:app-url (:app-url env)
-                                  :latest-dt latest-dt}))
-                              (found (:app-url env)))
-                      :post #(if (authenticated? (:session %))
-                               (serve-json (elec-usage-data-upload %))
-                               auth/response-unauthorized)}]
-      ]]
+      ;; Electricity consumption data upload
+      ["/elec-consumption" {:get #(if (authenticated? (:session %))
+                                    (let [latest-dt
+                                          (with-open [con
+                                                      (jdbc/get-connection
+                                                       db/postgres-ds)]
+                                            (db/get-latest-elec-consumption-record-time
+                                             con))]
+                                      (serve-template
+                                       "templates/elec-consumption-upload.html"
+                                       {:app-url (:app-url env)
+                                        :latest-dt latest-dt}))
+                                    (found (:app-url env)))
+                            :post #(if (authenticated? (:session %))
+                                     (serve-json (elec-consumption-data-upload %))
+                                     auth/response-unauthorized)}]]]
     {:data {:muuntaja m/instance
             :middleware [muuntaja/format-middleware]}})
    (ring/routes

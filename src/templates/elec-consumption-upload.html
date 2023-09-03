@@ -56,9 +56,9 @@
             <br>
 
             <form>
-                <label for="usage-file">Filename</label>
+                <label for="consumption-file">Filename</label>
                 <br>
-                <input type="file" id="usage-file" name="usage-file" required>
+                <input type="file" id="consumption-file" name="consumption-file" required>
                 <br><br>
                 <input class="btn btn-primary" id="uploadButton" value="Upload">
             </form>
@@ -70,15 +70,15 @@
             document.getElementById('uploadButton').
                      addEventListener('click',
                                       () => {
-                                          const files = document.querySelector('#usage-file').files;
+                                          const files = document.querySelector('#consumption-file').files;
                                           if (!files.length) {
                                               alert('Error: a file must be provided');
                                               return;
                                           }
 
                                           let formData = new FormData();
-                                          formData.append('usage-file', files[0]);
-                                          axios.post('{{ app-url }}misc/elec-usage', formData,
+                                          formData.append('consumption-file', files[0]);
+                                          axios.post('{{ app-url }}misc/elec-consumption', formData,
                                                      { headers: { 'Content-Type': 'multipart/form-data' }
                                           })
                                                .then(function (response) {

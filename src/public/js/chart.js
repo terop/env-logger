@@ -365,8 +365,8 @@ var loadPage = () => {
         };
         showLastObservation();
 
-        // Show the electricity price and usage data in a chart
-        var plotElectricityData = (elecUsageData, updateDate) => {
+        // Show the electricity price and consumption data in a chart
+        var plotElectricityData = (elecConsumptionData, updateDate) => {
             let generateElecAnnotationConfig = (plotData) => {
                 const currentIdx = getClosestElecPriceDataIndex(plotData);
                 var annotations = {},
@@ -403,13 +403,13 @@ var loadPage = () => {
             let labels = [],
                 data = {
                     'price': [],
-                    'usage': []
+                    'consumption': []
                 };
 
-            for (const item of elecUsageData) {
+            for (const item of elecConsumptionData) {
                 labels.push(luxon.DateTime.fromISO(item['start-time']).toJSDate());
                 data['price'].push(item['price']);
-                data['usage'].push(item['usage']);
+                data['consumption'].push(item['consumption']);
             }
 
             if (updateDate)
@@ -434,10 +434,10 @@ var loadPage = () => {
                             },
                             {
                                 type: 'bar',
-                                label: 'Usage',
-                                yAxisID: 'yUsage',
+                                label: 'Consumption',
+                                yAxisID: 'yConsumption',
                                 backgroundColor: colors[7],
-                                data: data['usage']
+                                data: data['consumption']
                             }
                         ]
                     },
@@ -467,11 +467,11 @@ var loadPage = () => {
                                     beginAtZero: true
                                 }
                             },
-                            yUsage: {
+                            yConsumption: {
                                 position: 'right',
                                 title: {
                                     display: true,
-                                    text: 'Usage (kWh)'
+                                    text: 'Consumption (kWh)'
                                 },
                                 ticks: {
                                     beginAtZero: true
@@ -484,7 +484,7 @@ var loadPage = () => {
                         plugins: {
                             title: {
                                 display: true,
-                                text: 'Electricity price and usage'
+                                text: 'Electricity price and consumption'
                             },
                             zoom: {
                                 zoom: {
@@ -494,7 +494,7 @@ var loadPage = () => {
                                     mode: 'x'
                                 }
                             },
-                            annotation: generateElecAnnotationConfig(elecUsageData)
+                            annotation: generateElecAnnotationConfig(elecConsumptionData)
                         },
                         spanGaps: true,
                         normalized: true,
@@ -523,9 +523,9 @@ var loadPage = () => {
             } else {
                 charts['elecData'].data.labels = labels;
                 charts['elecData'].data.datasets[0].data = data['price'];
-                charts['elecData'].data.datasets[1].data = data['usage'];
+                charts['elecData'].data.datasets[1].data = data['consumption'];
 
-                charts['elecData'].options.plugins.annotation = generateElecAnnotationConfig(elecUsageData);
+                charts['elecData'].options.plugins.annotation = generateElecAnnotationConfig(elecConsumptionData);
                 charts['elecData'].update();
             }
         };

@@ -10,9 +10,9 @@
                                    convert-to-epoch-ms
                                    -convert-to-iso8601-str
                                    get-elec-data
-                                   get-elec-usage-interval-start
+                                   get-elec-consumption-interval-start
                                    get-last-obs-id
-                                   get-latest-elec-usage-record-time
+                                   get-latest-elec-consumption-record-time
                                    get-midnight-dt
                                    get-obs-date-interval
                                    get-obs-days
@@ -25,7 +25,7 @@
                                    get-weather-observations
                                    image-age-check
                                    insert-beacons
-                                   insert-elec-usage-data
+                                   insert-elec-consumption-data
                                    insert-observation
                                    insert-plain-observation
                                    insert-ruuvitag-observation
@@ -77,7 +77,7 @@
   [test-fn]
   (jdbc/execute! test-ds (sql/format {:delete-from :observations}))
   (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))
-  (jdbc/execute! test-ds (sql/format {:delete-from :electricity_usage}))
+  (jdbc/execute! test-ds (sql/format {:delete-from :electricity_consumption}))
   (js/insert! test-ds
               :observations
               {:recorded (t/minus current-dt (t/days 4))
@@ -85,7 +85,7 @@
   (test-fn)
   (jdbc/execute! test-ds (sql/format {:delete-from :observations}))
   (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))
-  (jdbc/execute! test-ds (sql/format {:delete-from :electricity_usage})))
+  (jdbc/execute! test-ds (sql/format {:delete-from :electricity_consumption})))
 
 ;; Fixture run at the start and end of tests
 (use-fixtures :once clean-test-database)
@@ -440,21 +440,21 @@
                                                                  22 0 0))
                  :price 4.0})
     (js/insert! test-ds
-                :electricity_usage
+                :electricity_consumption
                 {:time (t/sql-timestamp (t/zoned-date-time 2022 10 7
                                                            22 0 0))
-                 :usage 1.0})
+                 :consumption 1.0})
     (let [res (get-elec-data test-ds
                              (make-local-dt "2022-10-08" "start")
                              (make-local-dt "2022-10-08" "end"))]
       (is (= 1 (count res)))
-      (is (= {:price 10.0 :usage nil}
+      (is (= {:price 10.0 :consumption nil}
              (dissoc (first res) :start-time))))
     (let [res (get-elec-data test-ds
                              (make-local-dt "2022-10-07" "start")
                              (make-local-dt "2022-10-08" "end"))]
       (is (= 2 (count res)))
-      (is (= {:price 4.0 :usage 1.0}
+      (is (= {:price 4.0 :consumption 1.0}
              (dissoc (first res) :start-time))))
     (is (= 2 (count (get-elec-data test-ds
                                    (make-local-dt "2022-10-07" "start")
@@ -469,7 +469,7 @@
       (is (nil? (get-elec-data test-ds
                                (make-local-dt "2022-10-08" "start")
                                (make-local-dt "2022-10-08" "end")))))
-    (jdbc/execute! test-ds (sql/format {:delete-from :electricity_usage}))))
+    (jdbc/execute! test-ds (sql/format {:delete-from :electricity_consumption}))))
 
 (deftest get-tz-offset-test
   (testing "Timezone offset calculation"
@@ -491,11 +491,11 @@
     (let [tz-offset (get-tz-offset "UTC")]
       (is (= 1620734400000
              (convert-to-epoch-ms tz-offset
-                                  (t/to-sql-timestamp
+                                  (t/sql-timestamp
                                    (t/local-date-time 2021 5 11 12 0)))))
       (is (= 1609593180000
              (convert-to-epoch-ms tz-offset
-                                  (t/to-sql-timestamp
+                                  (t/sql-timestamp
                                    (t/local-date-time 2021 1 2 13 13))))))))
 
 (deftest test-iso8601-str-generation
@@ -504,51 +504,51 @@
       (is (= (str (first (s/split (str now) #"\.")) "Z")
              (-convert-to-iso8601-str now))))))
 
-(deftest test-elec-usage-data-insert
-  (testing "Insert of electricity usage data"
-    (let [usage-data [[current-dt 0.1]
-                      [(t/plus current-dt (t/hours 1)) 0.12]]]
-      (is (true? (insert-elec-usage-data test-ds usage-data)))
-      (is (= (count usage-data)
+(deftest test-elec-consumption-data-insert
+  (testing "Insert of electricity consumption data"
+    (let [consumption-data [[current-dt 0.1]
+                            [(t/plus current-dt (t/hours 1)) 0.12]]]
+      (is (true? (insert-elec-consumption-data test-ds consumption-data)))
+      (is (= (count consumption-data)
              (:count (jdbc/execute-one! test-ds
                                         (sql/format
                                          {:select [:%count.id]
-                                          :from :electricity_usage})))))
+                                          :from :electricity_consumption})))))
       (with-redefs [js/insert-multi! (fn [_ _ _ _ _]
                                        [{:id 1}])]
-        (is (false? (insert-elec-usage-data test-ds usage-data))))
+        (is (false? (insert-elec-consumption-data test-ds consumption-data))))
       (with-redefs [js/insert-multi!
                     (fn [_ _ _ _ _]
                       (throw (PSQLException.
                               "Test exception"
                               (PSQLState/COMMUNICATION_ERROR))))]
-        (is (false? (insert-elec-usage-data test-ds usage-data)))))))
+        (is (false? (insert-elec-consumption-data test-ds consumption-data)))))))
 
-(deftest test-get-latest-elec-usage-record-time
-  (testing "Fetching of latest electricity usage time"
+(deftest test-get-latest-elec-consumption-record-time
+  (testing "Fetching of latest electricity consumption time"
     (with-redefs [jdbc/execute-one!
                   (fn [_ _ _]
                     (throw (PSQLException.
                             "Test exception"
                             (PSQLState/COMMUNICATION_ERROR))))]
-      (is (nil? (get-latest-elec-usage-record-time test-ds))))
-    (is (nil? (get-latest-elec-usage-record-time test-ds)))
-    (let [usage-data [[(t/local-date-time 2023 2 7 19 50) 0.1]]]
-      (insert-elec-usage-data test-ds usage-data)
+      (is (nil? (get-latest-elec-consumption-record-time test-ds))))
+    (is (nil? (get-latest-elec-consumption-record-time test-ds)))
+    (let [consumption-data [[(t/local-date-time 2023 2 7 19 50) 0.1]]]
+      (insert-elec-consumption-data test-ds consumption-data)
       (with-redefs [get-tz-offset (fn [_] 0)]
-        (is (= "7.2.2023 19:50" (get-latest-elec-usage-record-time test-ds))))
-      (jdbc/execute! test-ds (sql/format {:delete-from :electricity_usage})))))
+        (is (= "7.2.2023 19:50" (get-latest-elec-consumption-record-time test-ds))))
+      (jdbc/execute! test-ds (sql/format {:delete-from :electricity_consumption})))))
 
-(deftest test-get-elec-usage-interval-start
-  (testing "Fetching of electricity usage interval start"
+(deftest test-get-elec-consumption-interval-start
+  (testing "Fetching of electricity consumption interval start"
     (with-redefs [jdbc/execute-one!
                   (fn [_ _]
                     (throw (PSQLException.
                             "Test exception"
                             (PSQLState/COMMUNICATION_ERROR))))]
-      (is (nil? (get-elec-usage-interval-start test-ds))))
-    (is (nil? (get-elec-usage-interval-start test-ds)))
-    (let [usage-data [[(t/local-date-time 2023 2 22 19 50) 0.1]]]
-      (insert-elec-usage-data test-ds usage-data))
-    (is (= "2023-02-22" (get-elec-usage-interval-start test-ds)))
-    (jdbc/execute! test-ds (sql/format {:delete-from :electricity_usage}))))
+      (is (nil? (get-elec-consumption-interval-start test-ds))))
+    (is (nil? (get-elec-consumption-interval-start test-ds)))
+    (let [consumption-data [[(t/local-date-time 2023 2 22 19 50) 0.1]]]
+      (insert-elec-consumption-data test-ds consumption-data))
+    (is (= "2023-02-22" (get-elec-consumption-interval-start test-ds)))
+    (jdbc/execute! test-ds (sql/format {:delete-from :electricity_consumption}))))

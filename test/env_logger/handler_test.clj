@@ -79,25 +79,25 @@
                                                  "Europe/Helsinki"}})))]
         (is (= 3 (get resp "offset-hour")))))))
 
-(deftest elec-usage-data-upload-test
-  (testing "Electricity usage data upload"
+(deftest elec-consumption-data-upload-test
+  (testing "Electricity consumption data upload"
     (is (= {:status "error"
             :cause "invalid-filename"}
-           (h/elec-usage-data-upload {:params {"usage-file"
-                                               {:filename "notfound.txt"}}})))
-    (let [request {:params {"usage-file"
-                            {:filename "usage.csv"}}}]
-      (with-redefs [e/parse-usage-data-file (fn [_] {:error "myerror"})]
+           (h/elec-consumption-data-upload {:params {"consumption-file"
+                                                     {:filename "notfound.txt"}}})))
+    (let [request {:params {"consumption-file"
+                            {:filename "consumption.csv"}}}]
+      (with-redefs [e/parse-consumption-data-file (fn [_] {:error "myerror"})]
         (is (= {:status "error"
                 :cause "myerror"}
-               (h/elec-usage-data-upload request))))
-      (with-redefs [e/parse-usage-data-file (fn [_] {})
+               (h/elec-consumption-data-upload request))))
+      (with-redefs [e/parse-consumption-data-file (fn [_] {})
                     db/postgres-ds test-ds
-                    db/insert-elec-usage-data (fn [_ _] false)]
+                    db/insert-elec-consumption-data (fn [_ _] false)]
         (is (= {:status "error"}
-               (h/elec-usage-data-upload request))))
-      (with-redefs [e/parse-usage-data-file (fn [_] {})
+               (h/elec-consumption-data-upload request))))
+      (with-redefs [e/parse-consumption-data-file (fn [_] {})
                     db/postgres-ds test-ds
-                    db/insert-elec-usage-data (fn [_ _] true)]
+                    db/insert-elec-consumption-data (fn [_ _] true)]
         (is (= {:status "success"}
-               (h/elec-usage-data-upload request)))))))
+               (h/elec-consumption-data-upload request)))))))
