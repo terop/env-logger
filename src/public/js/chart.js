@@ -714,6 +714,11 @@ var loadPage = () => {
                             return;
                         }
 
+                        if (!elecData['data-hour'] || !elecData['data-day'][0]) {
+                            toggleVisibility('elecDataCheckboxDiv');
+                            return;
+                        }
+
                         if (elecData['dates']['max']) {
                             const dateMax = elecData['dates']['max'];
 
