@@ -34,6 +34,7 @@
                                    insert-tb-image-name
                                    insert-wd
                                    make-local-dt
+                                   add-tz-offset-to-dt
                                    test-db-connection
                                    validate-date]])
   (:import (org.postgresql.util PSQLException
@@ -69,9 +70,9 @@
 
 ;; Current datetime used in tests
 (def current-dt (t/local-date-time))
-(def current-dt-zoned (t/format (t/formatter :iso-offset-date-time)
+(def current-dt-zoned (t/format :iso-offset-date-time
                                 (t/zoned-date-time)))
-(def date-fmt (t/formatter :iso-local-date))
+(def date-fmt :iso-local-date)
 
 (defn clean-test-database
   "Cleans the test database before and after running tests. Also inserts one
@@ -248,6 +249,11 @@
            (str (make-local-dt "2020-09-27" "start"))))
     (is (= "2020-09-27T23:59:59"
            (str (make-local-dt "2020-09-27" "end"))))))
+
+(deftest test-add-tz-offset-to-dt
+  (testing "TZ offset adding"
+    (let [orig-dt (t/local-date-time)]
+      (is (= orig-dt (add-tz-offset-to-dt orig-dt))))))
 
 (deftest weather-obs-interval-select
   (testing "Select weather observations between one or two dates"

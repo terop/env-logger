@@ -121,7 +121,7 @@
                      ruuvitag-locations))
          :obs-dates {:current {:start
                                (when (:end obs-dates)
-                                 (t/format (t/formatter :iso-local-date)
+                                 (t/format :iso-local-date
                                            (t/minus (t/local-date
                                                      (t/formatter
                                                       :iso-local-date)
