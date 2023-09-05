@@ -262,6 +262,16 @@
                       (get-tz-offset (:store-timezone env))
                       0))))
 
+(defn add-tz-offset-to-dt
+  "Add the TZ offset of the 'storing timezone' to the provided datetime if the
+ system has different timezone than the 'storing timezone'."
+  [dt]
+  (if-not (= (ZoneId/systemDefault)
+             (t/zone-id (:store-timezone env)))
+    (t/plus dt
+            (t/hours (get-tz-offset (:store-timezone env))))
+    dt))
+
 (defmacro get-by-interval
   "Fetches observations in an interval using the provided function."
   [fetch-fn db-con dates dt-column]
@@ -433,14 +443,13 @@
   (try
     (let [nf (NumberFormat/getInstance)
           end-val (or end
-                      (:date
-                       (jdbc/execute-one!
-                        db-con
-                        [(str
-                          "SELECT to_char(MAX(start_time), "
-                          "'YYYY-MM-DD') AS date FROM "
-                          " electricity_price")]
-                        rs-opts)))]
+                      (let [dt (:date (jdbc/execute-one!
+                                       db-con
+                                       [(str "SELECT MAX(start_time) AS date "
+                                             "FROM electricity_price")]
+                                       rs-opts))]
+                        (when dt
+                          (add-tz-offset-to-dt (t/local-date-time dt)))))]
       (.applyPattern ^DecimalFormat nf "0.0#")
       (if-not end-val
         [nil]
@@ -548,11 +557,7 @@
                                          rs-opts))]
       (when time
         (t/format "d.L.Y HH:mm"
-                  (if-not (= (ZoneId/systemDefault)
-                             (t/zone-id (:store-timezone env)))
-                    (t/plus (t/local-date-time time)
-                            (t/hours (get-tz-offset (:store-timezone env))))
-                    (t/local-date-time time)))))
+                  (add-tz-offset-to-dt (t/local-date-time time)))))
     (catch PSQLException pe
       (error pe "Electricity consumption latest consumption date fetch failed")
       nil)))
@@ -580,10 +585,10 @@
                                      {:select [[:%max.start_time "end"]]
                                       :from :electricity_price}))]
       (when (:end result)
-        ;; Remove one hour to get rid of the last value (midnight) which ends up
-        ;; on the following day
-        (t/format :iso-local-date (t/minus (t/local-date-time (:end result))
-                                           (t/hours 1)))))
+        (let [end-dt (add-tz-offset-to-dt (t/local-date-time (:end result)))]
+          ;; Remove one hour to get rid of the last value (midnight) which ends up
+          ;; on the following day
+          (t/format :iso-local-date (t/minus end-dt (t/hours 1))))))
     (catch PSQLException pe
       (error pe "Electricity price date interval end fetch failed")
       nil)))
