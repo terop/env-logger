@@ -21,7 +21,7 @@
                                secure-site-defaults]]
              [reload :refer [wrap-reload]]]
             [ring.util.http-response :refer [bad-request found]]
-            [taoensso.timbre :refer [error]]
+            [taoensso.timbre :refer [error set-min-level!]]
             [env-logger
              [authentication :as auth]
              [db :as db]
@@ -358,6 +358,7 @@
 (defn -main
   "Starts the web server."
   []
+  (set-min-level! :info)
   (let [port (Integer/parseInt (get (System/getenv)
                                     "APP_PORT" "8080"))]
     (run-jetty (if (:development-mode env)

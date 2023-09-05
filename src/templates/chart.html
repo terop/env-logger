@@ -11,72 +11,105 @@
             input[type="text"] {
                 width: 100px;
             }
+
             input[type="date"] {
                 width: 140px;
             }
+
             .left-margin {
                 margin-left: 30px;
             }
+
             .clear-both {
                 clear: both;
             }
+
             .display-none {
                 display: none;
             }
+
             .top-padding {
                 min-height: 75rem;
                 padding-top: 4.5rem;
             }
+
             .fg-blur {
                 backdrop-filter: blur(4px);
             }
+
             .bg-blur {
                 filter: blur(4px);
             }
-            .hide-all,#otherResetZoom {
+
+            .hide-all,
+            #otherResetZoom {
                 margin-left: 30px;
             }
-            #plotControls > div > label {
+
+            #plotControls>div>label {
                 margin-right: 10px;
             }
-            #updateBtn,#elecUpdateBtn {
+
+            #updateBtn,
+            #elecUpdateBtn {
                 margin-left: 30px;
             }
+
             #latestDiv {
                 margin-top: 15px;
                 margin-bottom: 10px;
             }
+
             #latestCheckboxDiv {
                 margin-bottom: 15px;
                 font-size: 0.8em;
             }
+
             #noDataError {
                 width: 50%;
                 margin-top: 20px;
             }
-            #weatherDiv,#otherDiv {
+
+            #weatherDiv,
+            #otherDiv {
                 width: 1300px;
                 height: 680px;
             }
+
             #elecDataDiv {
                 width: 1300px;
                 height: 730px;
             }
-            #otherCheckboxDiv,#elecDataCheckboxDiv,#imageButtonDiv {
+
+            #otherCheckboxDiv,
+            #elecDataCheckboxDiv,
+            #imageButtonDiv {
                 margin-top: 20px;
                 margin-bottom: 10px;
             }
-            #lastObservation,#forecast {
+
+            #lastObservation,
+            #forecast {
                 font-size: 0.9em;
             }
+
             #loadingSpinner {
                 backdrop-filter: blur(10px);
                 width: 3.5em;
                 height: 3.5em;
             }
+
             #imageButtonDiv {
                 margin-top: 20px;
                 margin-bottom: 20px;
+            }
+
+            #imageDiv {
+                margin-bottom: 20px;
+            }
+
+            #showElecDayData {
+                margin-left: 80px;
             }
         </style>
 
@@ -154,8 +187,8 @@
                 </div>
 
                 <div class="left-margin" id="elecDataCheckboxDiv">
-                    <input type="checkbox" id="showElecDataChart">
-                    <label for="showElecDataChart">Show electricity price and consumption chart</label>
+                    <input type="checkbox" id="showElecDataCharts">
+                    <label for="showElecDataCharts">Show electricity price and consumption charts</label>
                 </div>
                 <div class="display-none left-margin" id="elecDataDiv">
                     <form>
@@ -166,9 +199,13 @@
                         <input type="button" class="btn btn-primary" id="elecUpdateBtn" value="Update">
                     </form>
 
-                    <canvas id="elecDataChart" width="1300" height="650"></canvas>
+                    <canvas id="hourElecDataChart" width="1300" height="650"></canvas>
 
                     <input type="button" id="elecDataResetZoom" class="btn btn-light" value="Reset chart zoom">
+
+                    <input type="checkbox" id="showElecDayData" name="showElecDayData">
+                    <label for="showElecDayData">Show day data</label>
+                    <canvas id="dayElecDataChart" width="1200" height="550"></canvas>
                 </div>
             {% endif %}
 
@@ -176,7 +213,7 @@
                 <input type="checkbox" id="showImages">
                 <label for="showImages">Show Testbed image</label>
             </div>
-            <div id="imageDiv" class="left-margin display-none" style="margin-bottom: 20px;">
+            <div id="imageDiv" class="left-margin display-none">
                 <img src="" id="testbedImage" alt="FMI Testbed image">
             </div>
         </div>

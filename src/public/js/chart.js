@@ -42,7 +42,8 @@ var labelValues = {
     charts = {
         'weather': null,
         'other': null,
-        'elecData': null
+        'elecDataHour': null,
+        'elecDataDay': null
     };
 
 var loadPage = () => {
@@ -365,8 +366,9 @@ var loadPage = () => {
         };
         showLastObservation();
 
-        // Show the electricity price and consumption data in a chart
-        var plotElectricityData = (elecConsumptionData, updateDate) => {
+        // Show the hourly electricity price and consumption data in a chart
+        var plotElectricityDataHour = (elecData, updateDate = false,
+            removeLast = false) => {
             let generateElecAnnotationConfig = (plotData) => {
                 const currentIdx = getClosestElecPriceDataIndex(plotData);
                 var annotations = {},
@@ -406,7 +408,8 @@ var loadPage = () => {
                     'consumption': []
                 };
 
-            for (const item of elecConsumptionData) {
+            for (var i = 0; i < elecData.length - (removeLast ? 1 : 0); i++) {
+                let item = elecData[i];
                 labels.push(luxon.DateTime.fromISO(item['start-time']).toJSDate());
                 data['price'].push(item['price']);
                 data['consumption'].push(item['consumption']);
@@ -417,8 +420,8 @@ var loadPage = () => {
                     luxon.DateTime.fromJSDate(labels[labels.length - 1]).toISODate() :
                     luxon.DateTime.now().toISODate();
 
-            if (!charts['elecData']) {
-                charts['elecData'] = new Chart(document.getElementById('elecDataChart').getContext('2d'), {
+            if (!charts['elecDataHour']) {
+                charts['elecDataHour'] = new Chart(document.getElementById('hourElecDataChart').getContext('2d'), {
                     data: {
                         labels: labels,
                         datasets: [
@@ -484,7 +487,7 @@ var loadPage = () => {
                         plugins: {
                             title: {
                                 display: true,
-                                text: 'Electricity price and consumption'
+                                text: 'Hourly electricity price and consumption'
                             },
                             zoom: {
                                 zoom: {
@@ -494,7 +497,7 @@ var loadPage = () => {
                                     mode: 'x'
                                 }
                             },
-                            annotation: generateElecAnnotationConfig(elecConsumptionData)
+                            annotation: generateElecAnnotationConfig(elecData)
                         },
                         spanGaps: true,
                         normalized: true,
@@ -506,11 +509,11 @@ var loadPage = () => {
                 document.getElementById('elecDataResetZoom').addEventListener(
                     'click',
                     () => {
-                        charts['elecData'].resetZoom();
+                        charts['elecDataHour'].resetZoom();
                     },
                     false);
 
-                document.getElementById('showElecDataChart').addEventListener(
+                document.getElementById('showElecDataCharts').addEventListener(
                     'click',
                     () => {
                         toggleVisibility('elecDataDiv');
@@ -520,13 +523,129 @@ var loadPage = () => {
                         }, 100);
                     },
                     false);
-            } else {
-                charts['elecData'].data.labels = labels;
-                charts['elecData'].data.datasets[0].data = data['price'];
-                charts['elecData'].data.datasets[1].data = data['consumption'];
 
-                charts['elecData'].options.plugins.annotation = generateElecAnnotationConfig(elecConsumptionData);
-                charts['elecData'].update();
+                document.getElementById('showElecDayData').addEventListener(
+                    'click',
+                    (event) => {
+                        if (event.currentTarget.checked) {
+                            document.getElementById('dayElecDataChart').style.display = 'block';
+                            document.getElementById('elecDataDiv').style.height = '1300px';
+                        } else {
+                            document.getElementById('dayElecDataChart').style.display = 'none';
+                            document.getElementById('elecDataDiv').style.height = '730px';
+                        }
+                        // Scroll page to bottom after loading the image for improved viewing
+                        window.setTimeout(() => {
+                            window.scroll(0, document.body.scrollHeight);
+                        }, 100);
+                    },
+                    false);
+            } else {
+                charts['elecDataHour'].data.labels = labels;
+                charts['elecDataHour'].data.datasets[0].data = data['price'];
+                charts['elecDataHour'].data.datasets[1].data = data['consumption'];
+
+                charts['elecDataHour'].options.plugins.annotation = generateElecAnnotationConfig(elecData);
+                charts['elecDataHour'].update();
+            }
+        };
+
+        // Show the daily electricity price and consumption data in a chart
+        var plotElectricityDataDay = (elecData, removeLast = false) => {
+            let labels = [],
+                data = {
+                    'price': [],
+                    'consumption': []
+                };
+
+            for (var i = 0; i < elecData.length - (removeLast ? 1 : 0); i++) {
+                let item = elecData[i];
+                labels.push(item['date']);
+                data['price'].push(item['price']);
+                data['consumption'].push(item['consumption']);
+            }
+
+            if (!charts['elecDataDay']) {
+                charts['elecDataDay'] = new Chart(document.getElementById('dayElecDataChart').getContext('2d'), {
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                type: 'line',
+                                label: 'Price',
+                                yAxisID: 'yPrice',
+                                borderColor: colors[6],
+                                data: data['price'],
+                                fill: false,
+                                pointRadius: 1,
+                                borderWidth: 1
+                            },
+                            {
+                                type: 'bar',
+                                label: 'Consumption',
+                                yAxisID: 'yConsumption',
+                                backgroundColor: colors[7],
+                                data: data['consumption']
+                            }
+                        ]
+                    },
+                    options: {
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    unit: 'day',
+                                    tooltipFormat: 'd.L.yyyy',
+                                    displayFormats: {
+                                        day: 'd.L.yyyy'
+                                    }
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Time'
+                                }
+                            },
+                            yPrice: {
+                                title: {
+                                    display: true,
+                                    text: 'Price (c / kWh)'
+                                },
+                                ticks: {
+                                    beginAtZero: true
+                                }
+                            },
+                            yConsumption: {
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: 'Consumption (kWh)'
+                                },
+                                ticks: {
+                                    beginAtZero: true
+                                }
+                            }
+                        },
+                        interaction: {
+                            mode: 'index'
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Daily electricity price and consumption'
+                            }
+                        },
+                        spanGaps: true,
+                        normalized: true,
+                        tension: 0.1,
+                        animation: false
+                    }
+                });
+            } else {
+                charts['elecDataDay'].data.labels = labels;
+                charts['elecDataDay'].data.datasets[0].data = data['price'];
+                charts['elecDataDay'].data.datasets[1].data = data['consumption'];
+
+                charts['elecDataDay'].update();
             }
         };
 
@@ -595,6 +714,13 @@ var loadPage = () => {
                             return;
                         }
 
+                        if (elecData['dates']['max']) {
+                            const dateMax = elecData['dates']['max'];
+
+                            document.getElementById('elecStartDate').max = dateMax;
+                            document.getElementById('elecEndDate').max = dateMax;
+                        }
+
                         if (elecData['dates']['min']) {
                             const dateMin = elecData['dates']['min'];
 
@@ -605,8 +731,11 @@ var loadPage = () => {
                         if (elecData['dates']['current']['start'])
                             document.getElementById('elecStartDate').value = elecData['dates']['current']['start'];
 
-                        showLatestPrice(elecData['data']);
-                        plotElectricityData(elecData['data'], true);
+                        showLatestPrice(elecData['data-hour']);
+                        plotElectricityDataHour(elecData['data-hour'], true, true);
+
+                        plotElectricityDataDay(elecData['data-day'], true);
+                        document.getElementById('dayElecDataChart').style.display = 'none';
                     }
                 }).catch(error => {
                     console.log(`Electricity data fetch error: ${error}`);
@@ -928,7 +1057,7 @@ var loadPage = () => {
             {
                 params: {
                     'startDate': startDate,
-                    'endDate': endDate,
+                    'endDate': endDate
                 }
             })
             .then(resp => {
@@ -946,7 +1075,8 @@ var loadPage = () => {
                     document.getElementById('elecStartDate').value = elecData['dates']['current']['start'];
                     document.getElementById('elecEndDate').value = elecData['dates']['current']['end'];
 
-                    plotElectricityData(elecData['data'], false);
+                    plotElectricityDataHour(elecData['data-hour']);
+                    plotElectricityDataDay(elecData['data-day']);
                 }
             })
             .catch(error => {

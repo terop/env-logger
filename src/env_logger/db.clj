@@ -388,10 +388,8 @@
                                       :from :observations}))]
       (if (and (:start result)
                (:end result))
-        {:start (t/format (t/formatter :iso-local-date)
-                          (t/local-date-time (:start result)))
-         :end (t/format (t/formatter :iso-local-date)
-                        (t/local-date-time (:end result)))}
+        {:start (t/format :iso-local-date (t/local-date-time (:start result)))
+         :end (t/format :iso-local-date (t/local-date-time (:end result)))}
         result))
     (catch PSQLException pe
       (error pe "Observation date interval fetch failed")
@@ -427,9 +425,56 @@
       (error pe "RuuviTag observation fetching failed")
       {})))
 
-(defn get-elec-data
-  "Returns the electricity price and consumption values inside the given time
-  interval. If the end parameter is nil all the values after start will
+(defn get-elec-data-day
+  "Returns the electricity price and consumption values per day inside the given
+  time interval. If the end parameter is nil all the values after start will
+  be returned."
+  [db-con start end]
+  (try
+    (let [nf (NumberFormat/getInstance)
+          end-val (or end
+                      (:date
+                       (jdbc/execute-one!
+                        db-con
+                        [(str
+                          "SELECT to_char(MAX(start_time), "
+                          "'YYYY-MM-DD') AS date FROM "
+                          " electricity_price")]
+                        rs-opts)))]
+      (.applyPattern ^DecimalFormat nf "0.0#")
+      (if-not end-val
+        [nil]
+        (for [date (take (inc (t/time-between (t/local-date start)
+                                              (t/local-date end-val)
+                                              :days))
+                         (t/iterate t/plus (t/local-date start) (t/days 1)))]
+          (let [query (sql/format {:select [[:%sum.consumption :consumption]
+                                            [:%avg.price :price]]
+                                   :from [[:electricity_price :p]]
+                                   :left-join [[:electricity_consumption :u]
+                                               [:= :p.start_time :u.time]]
+                                   :where [:and
+                                           [:>= :p.start_time
+                                            (make-local-dt date "start")]
+                                           [:<= :p.start_time
+                                            (make-local-dt date "end")]]})
+                result (jdbc/execute-one! db-con query rs-opts)]
+            (when (:price result)
+              (merge result
+                     {:date (t/format :iso-local-date date)
+                      :price (when (:price result)
+                               (Float/parseFloat
+                                (. nf format (:price result))))
+                      :consumption (when (:consumption result)
+                                     (Float/parseFloat
+                                      (. nf format (:consumption result))))}))))))
+    (catch PSQLException pe
+      (error pe "Daily electricity data fetching failed")
+      [nil])))
+
+(defn get-elec-data-hour
+  "Returns the electricity price and consumption values per hour inside the given
+  time interval. If the end parameter is nil all the values after start will
   be returned."
   [db-con start end]
   (try
@@ -451,7 +496,7 @@
           (merge row
                  {:start-time (-convert-to-iso8601-str (:start-time row))}))))
     (catch PSQLException pe
-      (error pe "Electricity price fetching failed")
+      (error pe "Hourly electricity data fetching failed")
       nil)))
 
 (defn get-last-obs-id
@@ -521,8 +566,24 @@
                                      {:select [[:%min.time "start"]]
                                       :from :electricity_consumption}))]
       (when (:start result)
-        (t/format (t/formatter :iso-local-date)
-                  (t/local-date-time (:start result)))))
+        (t/format :iso-local-date (t/local-date-time (:start result)))))
     (catch PSQLException pe
       (error pe "Electricity consumption date interval start fetch failed")
+      nil)))
+
+(defn get-elec-price-interval-end
+  "Fetches the date interval end of electricity price data."
+  [db-con]
+  (try
+    (let [result (jdbc/execute-one! db-con
+                                    (sql/format
+                                     {:select [[:%max.start_time "end"]]
+                                      :from :electricity_price}))]
+      (when (:end result)
+        ;; Remove one hour to get rid of the last value (midnight) which ends up
+        ;; on the following day
+        (t/format :iso-local-date (t/minus (t/local-date-time (:end result))
+                                           (t/hours 1)))))
+    (catch PSQLException pe
+      (error pe "Electricity price date interval end fetch failed")
       nil)))

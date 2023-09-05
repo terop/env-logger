@@ -9,8 +9,10 @@
             [env-logger.db :refer [db-conf
                                    convert-to-epoch-ms
                                    -convert-to-iso8601-str
-                                   get-elec-data
+                                   get-elec-data-day
+                                   get-elec-data-hour
                                    get-elec-consumption-interval-start
+                                   get-elec-price-interval-end
                                    get-last-obs-id
                                    get-latest-elec-consumption-record-time
                                    get-midnight-dt
@@ -424,11 +426,16 @@
                                       ["indoor"]))))))
 
 (deftest get-elec-data-test
-  (testing "Electricity price fetching"
+  (testing "Electricity data fetching"
     (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))
-    (is (nil? (get-elec-data test-ds
-                             (make-local-dt "2022-10-08" "start")
-                             (make-local-dt "2022-10-08" "end"))))
+    ;; Tests with no data for both day and hour
+    (is (nil? (get-elec-data-hour test-ds
+                                  (make-local-dt "2022-10-08" "start")
+                                  (make-local-dt "2022-10-08" "end"))))
+    (is (nil? (first (get-elec-data-day test-ds "2022-10-08" "2022-10-08"))))
+    (is (nil? (first (get-elec-data-day test-ds
+                                        "2022-10-08"
+                                        nil))))
     (js/insert! test-ds
                 :electricity_price
                 {:start_time (t/sql-timestamp (t/zoned-date-time 2022 10 8
@@ -444,32 +451,47 @@
                 {:time (t/sql-timestamp (t/zoned-date-time 2022 10 7
                                                            22 0 0))
                  :consumption 1.0})
-    (let [res (get-elec-data test-ds
-                             (make-local-dt "2022-10-08" "start")
-                             (make-local-dt "2022-10-08" "end"))]
+    ;; Hour data tests
+    (let [res (get-elec-data-hour test-ds
+                                  (make-local-dt "2022-10-08" "start")
+                                  (make-local-dt "2022-10-08" "end"))]
       (is (= 1 (count res)))
       (is (= {:price 10.0 :consumption nil}
              (dissoc (first res) :start-time))))
-    (let [res (get-elec-data test-ds
-                             (make-local-dt "2022-10-07" "start")
-                             (make-local-dt "2022-10-08" "end"))]
+    (let [res (get-elec-data-hour test-ds
+                                  (make-local-dt "2022-10-07" "start")
+                                  (make-local-dt "2022-10-08" "end"))]
       (is (= 2 (count res)))
       (is (= {:price 4.0 :consumption 1.0}
              (dissoc (first res) :start-time))))
-    (is (= 2 (count (get-elec-data test-ds
-                                   (make-local-dt "2022-10-07" "start")
-                                   nil))))
-    (is (nil? (get-elec-data test-ds
-                             (make-local-dt "2022-10-10" "start")
-                             (make-local-dt "2022-10-10" "end"))))
+    (is (= 2 (count (get-elec-data-hour test-ds
+                                        (make-local-dt "2022-10-07" "start")
+                                        nil))))
+    (is (nil? (get-elec-data-hour test-ds
+                                  (make-local-dt "2022-10-10" "start")
+                                  (make-local-dt "2022-10-10" "end"))))
     (with-redefs [jdbc/execute! (fn [_ _ _]
                                   (throw (PSQLException.
                                           "Test exception"
                                           (PSQLState/COMMUNICATION_ERROR))))]
-      (is (nil? (get-elec-data test-ds
-                               (make-local-dt "2022-10-08" "start")
-                               (make-local-dt "2022-10-08" "end")))))
-    (jdbc/execute! test-ds (sql/format {:delete-from :electricity_consumption}))))
+      (is (nil? (get-elec-data-hour test-ds
+                                    (make-local-dt "2022-10-08" "start")
+                                    (make-local-dt "2022-10-08" "end")))))
+    ;; Day data tests
+    (is (= [{:consumption 1.0 :price 4.0 :date "2022-10-07"}
+            {:consumption nil :price 10.0 :date "2022-10-08"}]
+           (get-elec-data-day test-ds "2022-10-07" "2022-10-08")))
+    (is (= [{:consumption 1.0 :price 4.0 :date "2022-10-07"}
+            {:consumption nil :price 10.0 :date "2022-10-08"}]
+           (get-elec-data-day test-ds "2022-10-07" nil)))
+    (is (nil? (first (get-elec-data-day test-ds "2022-10-10" "2022-10-10"))))
+    (with-redefs [jdbc/execute-one! (fn [_ _ _]
+                                      (throw (PSQLException.
+                                              "Test exception"
+                                              (PSQLState/COMMUNICATION_ERROR))))]
+      (is (nil? (first (get-elec-data-day test-ds "2022-10-08" nil)))))
+    (jdbc/execute! test-ds (sql/format {:delete-from :electricity_consumption}))
+    (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))))
 
 (deftest get-tz-offset-test
   (testing "Timezone offset calculation"
@@ -552,3 +574,26 @@
       (insert-elec-consumption-data test-ds consumption-data))
     (is (= "2023-02-22" (get-elec-consumption-interval-start test-ds)))
     (jdbc/execute! test-ds (sql/format {:delete-from :electricity_consumption}))))
+
+(deftest test-get-elec-price-interval-end
+  (testing "Fetching of electricity price interval end"
+    (with-redefs [jdbc/execute-one!
+                  (fn [_ _]
+                    (throw (PSQLException.
+                            "Test exception"
+                            (PSQLState/COMMUNICATION_ERROR))))]
+      (is (nil? (get-elec-price-interval-end test-ds))))
+    (is (nil? (get-elec-price-interval-end test-ds)))
+
+    (js/insert! test-ds
+                :electricity_price
+                {:start_time (t/sql-timestamp (t/zoned-date-time 2023 9 4
+                                                                 18 0 0))
+                 :price 10.0})
+    (js/insert! test-ds
+                :electricity_price
+                {:start_time (t/sql-timestamp (t/zoned-date-time 2023 9 5
+                                                                 22 0 0))
+                 :price 4.0})
+    (is (= "2023-09-05" (get-elec-price-interval-end test-ds)))
+    (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))))

@@ -30,18 +30,20 @@
           (if (or start-date end-date)
             (if-not start-date
               (bad-request "Missing parameter")
-              (serve-json {:data (db/get-elec-data con
-                                                   (db/make-local-dt start-date
-                                                                     "start")
-                                                   (when end-date
-                                                     (db/make-local-dt end-date
-                                                                       "end")))
+              (serve-json {:data-hour (db/get-elec-data-hour con
+                                                             (db/make-local-dt start-date
+                                                                               "start")
+                                                             (when end-date
+                                                               (db/make-local-dt end-date
+                                                                                 "end")))
+                           :data-day (db/get-elec-data-day con start-date end-date)
                            :dates {:current {:start start-date
                                              :end end-date}}}))
             (let [start-date (db/get-midnight-dt (:initial-show-days env))]
-              (serve-json {:data (db/get-elec-data con
-                                                   start-date
-                                                   nil)
+              (serve-json {:data-hour (db/get-elec-data-hour con
+                                                             start-date
+                                                             nil)
+                           :data-day (db/get-elec-data-day con start-date nil)
                            :dates {:current {:start
                                              (t/format
                                               (t/formatter
@@ -54,6 +56,7 @@
                                                           (:store-timezone
                                                            env))))
                                                 start-date))}
+                                   :max (db/get-elec-price-interval-end con)
                                    :min (db/get-elec-consumption-interval-start
                                          con)}}))))))))
 
