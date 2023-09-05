@@ -42,5 +42,7 @@
                          ;; Any Eastwood options can be passed here as edn:
                          {}]
              :extra-deps {jonase/eastwood {:mvn/version "1.4.0"}}}
-  :kibit {:extra-deps {tvaughan/kibit-runner {:mvn/version "1.0.1"}}
-          :main-opts  ["-m" "kibit-runner.cmdline"]}}}
+  :kibit {:extra-deps {jonase/kibit {:git/url "https://github.com/clj-commons/kibit.git"
+                                     :sha "93a9ce52aaf7761a97528d0b4d412408d09d12a1"}}
+          :exec-fn kibit.driver/exec
+          :exec-args {:paths ["src" "test"]}}}}

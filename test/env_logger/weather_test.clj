@@ -98,7 +98,7 @@
                                    :winddirection 68.0,
                                    :windspeed 2.6
                                    :temperature -7.6}])]
-      (is (not (nil? (-update-fmi-weather-data-ts 87874)))))))
+      (is (some? (-update-fmi-weather-data-ts 87874))))))
 
 (deftest test-weather-data-json-update
   (testing "Tests FMI weather data (JSON) updating"

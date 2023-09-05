@@ -109,7 +109,7 @@
     (insert-authenticator)
     (let [authenticator (get-authenticators test-ds test-user)]
       (is (= 1 (count authenticator)))
-      (is (not (nil? (first authenticator))))
+      (is (some? (first authenticator)))
       (is (instance? AuthenticatorImpl (first authenticator))))
     (delete-authenticators)))
 

@@ -245,7 +245,7 @@
   [date]
   (if (nil? date)
     true
-    (not (nil? (re-find #"\d{4}-\d{1,2}-\d{1,2}" date)))))
+    (some? (re-find #"\d{4}-\d{1,2}-\d{1,2}" date))))
 
 (defn make-local-dt
   "Creates SQL datetime in local time from the provided date string.
