@@ -1,7 +1,9 @@
 target/
-.clj-kondo/
-.lein-*
+.clj-kondo/*
+!.clj-kondo/config.edn
+.cpcache/
 .eastwood
+.lsp/
 resources/dev/config.edn
 resources/prod/config.edn
 resources/config.edn
