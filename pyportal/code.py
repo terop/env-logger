@@ -220,7 +220,7 @@ def prepare_elec_price_data(elec_price_data, utc_offset_hours):
 
     prices = OrderedDict()
     tz_delta = timedelta(hours=utc_offset_hours)
-    for item in elec_price_data['data']:
+    for item in elec_price_data['data-hour']:
         prices[datetime.fromisoformat(item['start-time'].replace('Z', '')) + \
                tz_delta] = item['price']
 
