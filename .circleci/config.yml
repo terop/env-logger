@@ -43,8 +43,21 @@ jobs:
             # Enable electricity price showing during testing
             sed -i 's/:show-elec-price false/:show-elec-price true/' resources/dev/config.edn
 
-      - run: clojure -T:build build && clojure -M:test
+      - run:
+          name: run tests
+          command: clojure -T:build build && clojure -M:test
 
-      - run: clojure -M:eastwood
+      - run:
+          name: run linters
+          command: |
+            clojure -M:eastwood
+            clojure -X:kibit
 
-      - run: clojure -X:kibit
+      - run:
+          name: run clj-kondo
+          command: |
+            (cd /tmp
+             curl -sLO https://raw.githubusercontent.com/clj-kondo/clj-kondo/master/script/install-clj-kondo
+             chmod +x install-clj-kondo
+             ./install-clj-kondo --dir /tmp)
+             /tmp/clj-kondo --lint src test
