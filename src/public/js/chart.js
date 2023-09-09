@@ -265,14 +265,20 @@ var loadPage = () => {
         return labelValues;
     };
 
+    var hideElement = (elementId) => {
+        document.getElementById(elementId).style.display = 'none';
+    };
+
     if (data['obs'].length === 0) {
         document.getElementById('noDataError').style.display = 'block';
-        document.getElementById('weatherDiv').style.display = 'none';
-        document.getElementById('imageButtonDiv').style.display = 'none';
+        hideElement('weatherDiv');
+        hideElement('imageButtonDiv');
         if (mode === 'all') {
-            document.getElementById('weatherCheckboxDiv').style.display = 'none';
-            document.getElementById('otherDiv').style.display = 'none';
-            document.getElementById('otherCheckboxDiv').style.display = 'none';
+            hideElement('latestCheckboxDiv');
+            hideElement('weatherCheckboxDiv');
+            hideElement('otherDiv');
+            hideElement('otherCheckboxDiv');
+            hideElement('elecDataCheckboxDiv');
         }
     } else {
         labelValues = transformData();
@@ -531,7 +537,7 @@ var loadPage = () => {
                             document.getElementById('dayElecDataChart').style.display = 'block';
                             document.getElementById('elecDataDiv').style.height = '1300px';
                         } else {
-                            document.getElementById('dayElecDataChart').style.display = 'none';
+                            hideElement('dayElecDataChart');
                             document.getElementById('elecDataDiv').style.height = '730px';
                         }
                         // Scroll page to bottom after loading the image for improved viewing
@@ -740,7 +746,7 @@ var loadPage = () => {
                         plotElectricityDataHour(elecData['data-hour'], true, true);
 
                         plotElectricityDataDay(elecData['data-day'], true);
-                        document.getElementById('dayElecDataChart').style.display = 'none';
+                        hideElement('dayElecDataChart');
                     }
                 }).catch(error => {
                     console.log(`Electricity data fetch error: ${error}`);
@@ -1114,7 +1120,7 @@ var loadPage = () => {
             false);
 
 
-    if (mode === 'all') {
+    if (mode === 'all' && data['obs'].length > 0) {
         showElectricityPrice();
 
         document.getElementById('showLatestObs').addEventListener('click',
