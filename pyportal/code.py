@@ -109,9 +109,9 @@ def fetch_token():
                 continue
 
             break
-        except RuntimeError as rte:
+        except (RuntimeError, BrokenPipeError) as ex:
             failure_count += 1
-            print(f'Error: token fetch failed: "{rte}", failure count {failure_count}')
+            print(f'Error: token fetch failed: "{ex}", failure count {failure_count}')
             time.sleep(5)
 
             if failure_count >= NW_FAILURE_THRESHOLD:
@@ -153,9 +153,9 @@ def get_backend_endpoint_content(endpoint, token):
                     continue
 
                 break
-            except RuntimeError as rte:
+            except (RuntimeError, BrokenPipeError) as ex:
                 failure_count += 1
-                print(f'Error: got exception "{rte}", failure count {failure_count}')
+                print(f'Error: got exception "{ex}", failure count {failure_count}')
                 time.sleep(sleep_time)
 
                 if failure_count >= NW_FAILURE_THRESHOLD:
