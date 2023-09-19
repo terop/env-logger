@@ -192,12 +192,14 @@ def send_email(config, subject, message):
     msg['From'] = config['Sender']
     msg['To'] = config['Recipient']
 
+    email_username = environ['EMAIL_USERNAME'] if 'EMAIL_USERNAME' in environ \
+        else config['Username']
     email_password = environ['EMAIL_PASSWORD'] if 'EMAIL_PASSWORD' in environ \
         else config['Password']
     try:
         with smtplib.SMTP_SSL(config['Server'],
                               context=ssl.create_default_context()) as server:
-            server.login(config['User'], email_password)
+            server.login(email_username, email_password)
             server.send_message(msg)
     except smtplib.SMTPException:
         logging.exception('Failed to send email with subject "%s"',
