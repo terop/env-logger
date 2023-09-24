@@ -67,8 +67,8 @@ def connect_to_wlan():
     while not esp.is_connected:
         try:
             esp.connect_AP(secrets['ssid'], secrets['password'])
-        except RuntimeError as rte:
-            print(f'Error: could not connect to AP, retrying: {rte}')
+        except (RuntimeError, ConnectionError) as ex:
+            print(f'Error: could not connect to AP, retrying: {ex}')
 
             failure_count += 1
             if failure_count >= NW_FAILURE_THRESHOLD:
