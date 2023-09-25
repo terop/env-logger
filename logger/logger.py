@@ -39,8 +39,8 @@ def get_env_data(env_settings):
     arduino_ok = True
     try:
         resp = requests.get(env_settings['arduino_url'], timeout=5)
-    except ConnectionError:
-        logging.exception('Connection problem to Arduino')
+    except (ConnectionError, OSError) as ex:
+        logging.error('Connection problem to Arduino: %s', ex) # noqa: TRY400
         arduino_ok = False
     if arduino_ok and not resp.ok:
         logging.error('Cannot read Arduino data, status code: %s', resp.status_code)
