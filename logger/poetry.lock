@@ -334,7 +334,7 @@ use-chardet-on-py3 = ["chardet (>=3.0.2,<6)"]
 
 [[package]]
 name = "ruuvitag-sensor"
-version = "2.2.0"
+version = "2.3.0"
 description = "Find RuuviTag sensors and get decoded data from selected sensors"
 optional = false
 python-versions = ">=3.7"
@@ -342,6 +342,7 @@ files = []
 develop = false
 
 [package.dependencies]
+bleak = {version = "*", markers = "platform_system == \"Windows\" or platform_system == \"Darwin\""}
 ptyprocess = {version = "*", markers = "platform_system == \"Linux\""}
 reactivex = "*"
 
