@@ -109,6 +109,8 @@ def main():
     parser.add_argument('--config', type=str, help='configuration file to use')
     parser.add_argument('--date', type=str, help='date (in YYYY-MM-DD format) for '
                         'which to fetch data')
+    parser.add_argument('--verbose', action='store_true',
+                        help='print returned consumption data')
 
     args = parser.parse_args()
     config_file = args.config if args.config else 'config.json'
@@ -122,6 +124,10 @@ def main():
         config = json.load(cfg_file)
 
     consumption_data = fetch_consumption_data(config['fetch'], args.date)
+
+    if args.verbose:
+        logging.info('Consumption data: length %s, array %s',
+                     len(consumption_data), consumption_data)
 
     if len(consumption_data) < required_data_array_length:
         logging.error('Data fetching failed, not enough data was received')
