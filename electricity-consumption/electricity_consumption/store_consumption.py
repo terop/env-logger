@@ -11,7 +11,7 @@ import logging
 import sys
 from datetime import date, datetime, timedelta
 from os import environ
-from os.path import exists
+from pathlib import Path
 
 import psycopg
 from pycaruna import Authenticator, CarunaPlus, TimeSpan
@@ -116,11 +116,11 @@ def main():
     config_file = args.config if args.config else 'config.json'
     required_data_array_length = 24
 
-    if not exists(config_file):
+    if not Path(config_file).exists():
         logging.error('Could not find configuration file "%s"', config_file)
         sys.exit(1)
 
-    with open(config_file, 'r', encoding='utf-8') as cfg_file:
+    with Path(config_file).open('r', encoding='utf-8') as cfg_file:
         config = json.load(cfg_file)
 
     consumption_data = fetch_consumption_data(config['fetch'], args.date)

@@ -15,7 +15,7 @@ import sys
 from datetime import datetime
 from email.mime.text import MIMEText
 from os import environ
-from os.path import exists, isdir
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import psycopg
@@ -236,7 +236,7 @@ def main():
     args = parser.parse_args()
     config_file = args.config if args.config else 'monitor.cfg'
 
-    if not exists(config_file):
+    if not Path(config_file).exists():
         logging.error('Could not find configuration file "%s"', args.config_file)
         sys.exit(1)
 
@@ -246,7 +246,7 @@ def main():
     state_file_dir = None
     if 'STATE_FILE_DIRECTORY' in environ:
         state_file_dir = environ['STATE_FILE_DIRECTORY']
-        if not exists(state_file_dir) or not isdir(state_file_dir):
+        if not Path(state_file_dir).exists() or not Path(state_file_dir).is_dir():
             logging.error('State file directory "%s" does not exist', state_file_dir)
             sys.exit(1)
 
@@ -254,7 +254,7 @@ def main():
         else f'{state_file_dir}/monitor_state.json'
 
     try:
-        with open(state_file_name, 'r', encoding='utf-8') as state_file:
+        with Path(state_file_name).open('r', encoding='utf-8') as state_file:
             state = json.load(state_file)
     except FileNotFoundError:
         state = {'observation': {'email_sent': 'False'},
@@ -277,7 +277,7 @@ def main():
         ruuvitag.check_ruuvitag()
         state['ruuvitag'] = ruuvitag.get_state()
 
-    with open(state_file_name, 'w', encoding='utf-8') as state_file:
+    with Path(state_file_name).open('w', encoding='utf-8') as state_file:
         json.dump(state, state_file, indent=4)
 
 

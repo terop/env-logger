@@ -12,7 +12,7 @@ import subprocess
 import sys
 from collections import OrderedDict
 from datetime import datetime
-from os.path import exists
+from pathlib import Path
 from statistics import mean
 from time import sleep
 
@@ -131,7 +131,8 @@ def get_ble_beacons(config, device):
     min_ble_line_length = 15
 
     try:
-        proc = subprocess.Popen([f'{config["beacon_scan_path"]}/ble_beacon_scan',
+        proc = subprocess.Popen([f'{config["beacon_scan_path"]}/ble_beacon_scan', \
+                                 # noqa: S603
                                  '-t', str(config['beacon_scan_time']), '-d', device],
                                 stdout=subprocess.PIPE)
         sleep(config['beacon_scan_time'] + 2)
@@ -201,11 +202,11 @@ def main():
     rt_device = args.rt_device if args.rt_device else 'hci0'
     ble_device = args.ble_device if args.ble_device else 'hci0'
 
-    if not exists(config):
+    if not Path(config).exists() or not Path(config).is_file():
         logging.error('Could not find configuration file: %s', config)
         sys.exit(1)
 
-    with open(config, 'r', encoding='utf-8') as config_file:
+    with Path(config).open('r', encoding='utf-8') as config_file:
         try:
             config = json.load(config_file)
         except json.JSONDecodeError:

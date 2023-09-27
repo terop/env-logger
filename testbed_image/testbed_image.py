@@ -7,6 +7,7 @@ is stored on success.
 
 import sys
 from datetime import datetime
+from pathlib import Path
 
 import pytz
 import requests
@@ -20,7 +21,7 @@ def download_image():
     """
     timestamp = datetime.now().isoformat()
     try:
-        resp = requests.get('http://testbed.fmi.fi/?imgtype=radar&t=5&n=1')
+        resp = requests.get('https://testbed.fmi.fi/?imgtype=radar&t=5&n=1', timeout=10)
     except requests.ConnectionError as ce:
         print(f'{timestamp}: Failed to access Testbed page: {ce}',
               file=sys.stderr)
@@ -40,7 +41,7 @@ def download_image():
         return None
 
     try:
-        resp = requests.get(img_url)
+        resp = requests.get(img_url, timeout=10)
     except requests.ConnectionError as ce:
         print(f'{timestamp}: Failed to download Testbed image: {ce}',
               file=sys.stderr)
@@ -60,7 +61,7 @@ def main():
     filename_dt = helsinki_tz.localize(datetime.now()).strftime('%Y-%m-%dT%H:%M%z')
     filename = f'testbed-{filename_dt}.png'
 
-    with open(filename, 'wb') as tb_image:
+    with Path(filename).open('wb') as tb_image:
         tb_image.write(image)
 
     print(filename)
