@@ -252,7 +252,7 @@ def prepare_elec_price_data(elec_price_data, utc_offset_hours):
     return values
 
 
-def update_screen(display, observation, weather_data, elec_price_data, utc_offset_hour, # noqa: E501,PLR0912,PLR0913,PLR0915
+def update_screen(display, observation, weather_data, elec_price_data, utc_offset_hour, # noqa: PLR0912, PLR0913, PLR0915
                   time_update_only=False):
     """Update screen contents."""
     c_time = time.localtime()
