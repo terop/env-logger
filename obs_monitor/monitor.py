@@ -50,9 +50,9 @@ class ObservationMonitor:
 
         if int(time_diff.total_seconds() / 60) > \
            int(self._config['observation']['Timeout']):
+            logging.warning('No observations received since %s',
+                            last_obs_time_tz.isoformat())
             if self._state['email_sent'] == 'False':
-                logging.warning('No observations received since %s',
-                                last_obs_time_tz.isoformat())
                 if send_email(self._config['email'],
                               'env-logger: observation inactivity warning',
                               'No observations have been received in the env-logger '
@@ -104,6 +104,8 @@ class BeaconMonitor:
         # Timeout is in hours
         if int(time_diff.total_seconds()) > \
            int(self._config['blebeacon']['Timeout']) * 60 * 60:
+            logging.warning('No BLE beacon has been scanned after %s',
+                            last_obs_time_tz.isoformat())
             if self._state['email_sent'] == 'False' and \
                send_email(self._config['email'],
                           'env-logger: BLE beacon inactivity warning',
@@ -111,8 +113,6 @@ class BeaconMonitor:
                           'after {} (timeout {} hours). Please check for '
                           'possible problems.'.format(last_obs_time_tz.isoformat(),
                                                       self._config['blebeacon']['Timeout'])):
-                logging.warning('No BLE beacon has been scanned after %s',
-                                last_obs_time_tz.isoformat())
                 self._state['email_sent'] = 'True'
         elif self._state['email_sent'] == 'True':
             send_email(self._config['email'],
@@ -165,6 +165,9 @@ class RuuvitagMonitor:
             if int(time_diff.total_seconds()) > \
                int(self._config['ruuvitag']['Timeout']) * 60:
                 if self._state[location]['email_sent'] == 'False':
+                    logging.warning('No RuuviTag observation for location %s has '
+                                    'been scanned after %s',
+                                    location, last_obs_time_tz.isoformat())
                     if send_email(self._config['email'],
                                   f'env-logger: RuuviTag beacon "{location}" '
                                   'inactivity warning',
@@ -174,9 +177,6 @@ class RuuvitagMonitor:
                                   'problems.'
                                   .format(location, last_obs_time_tz.isoformat(),
                                           self._config['ruuvitag']['Timeout'])):
-                        logging.warning('No RuuviTag observation for location %s has '
-                                        'been scanned after %s',
-                                        location, last_obs_time_tz.isoformat())
                         self._state[location]['email_sent'] = 'True'
                     else:
                         self._state[location]['email_sent'] = 'False'
