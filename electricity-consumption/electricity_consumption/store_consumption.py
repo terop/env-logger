@@ -109,6 +109,8 @@ def main():
     parser.add_argument('--config', type=str, help='configuration file to use')
     parser.add_argument('--date', type=str, help='date (in YYYY-MM-DD format) for '
                         'which to fetch data')
+    parser.add_argument('--no-store', action='store_true',
+                        help='do not store consumption data to database')
     parser.add_argument('--verbose', action='store_true',
                         help='print returned consumption data')
 
@@ -132,6 +134,10 @@ def main():
     if len(consumption_data) < required_data_array_length:
         logging.error('Data fetching failed, not enough data was received')
         sys.exit(1)
+
+    if args.no_store:
+        logging.info('Not storing data to database')
+        sys.exit(0)
 
     store_consumption(config['db'], consumption_data)
 
