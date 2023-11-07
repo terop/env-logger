@@ -10,6 +10,11 @@ Enabled = True
 # Timeout in minutes
 Timeout = 5
 
+[outsidetemp]
+Enabled = True
+# Timeout in minutes
+Timeout = 5
+
 [blebeacon]
 Enabled = True
 # Timeout in hours

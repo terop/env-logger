@@ -43,6 +43,8 @@ class ObservationMonitor:
 
         Sends an email if the threshold is exceeded.
         """
+        logging.info('Starting observation inactivity check')
+
         last_obs_time = self.get_obs_time()
         last_obs_time_tz = last_obs_time.astimezone(
                     ZoneInfo(self._config['db']['DisplayTimezone']))
@@ -67,6 +69,83 @@ class ObservationMonitor:
                        'env-logger: observation received',
                        'An observation has been detected at '
                        f'{last_obs_time_tz.isoformat()}.')
+            logging.info('An observation was detected at %s',
+                         last_obs_time_tz.isoformat())
+            self._state['email_sent'] = 'False'
+
+    def get_state(self):
+        """Return the observation state."""
+        return self._state
+
+
+class OutsideTemperatureMonitor:
+    """Class for monitoring outside temperature values."""
+
+    def __init__(self, config, state):
+        """Class constructor."""
+        self._config = config
+        self._state = state
+
+    def check_ot_rec_status(self):
+        """Return the outside temperature value status.
+
+        Returns False if a value is seen within the configured timeout. Otherwise True
+        is returned with a timestamp value of the latest observed value.
+        """
+        end_threshold = 30
+        timezone = ZoneInfo(self._config['db']['DisplayTimezone'])
+        current_dt = datetime.now(tz=timezone)
+
+        with psycopg.connect(create_db_conn_string(self._config['db'])) as conn, \
+             conn.cursor() as cursor:
+            cursor.execute('SELECT outside_temperature FROM observations '
+                           'ORDER BY id DESC LIMIT 1')
+            result = cursor.fetchone()
+            if result[0] is None:
+                cursor.execute('SELECT recorded FROM observations WHERE '
+                               'outside_temperature IS NULL ORDER BY id DESC LIMIT 30')
+                result = cursor.fetchall()
+                for res in result:
+                    recorded_tz = res[0].astimezone(timezone)
+                    time_diff_min = (current_dt - recorded_tz).total_seconds() / 60
+                    if time_diff_min > int(self._config['outsidetemp']['Timeout']) and \
+                       time_diff_min < end_threshold:
+                        logging.warning('No outside temperature value received '
+                                        'since %s',
+                                        recorded_tz.isoformat())
+                        return (True, recorded_tz.isoformat())
+
+            return (False,)
+
+    def handle_status_data(self):
+        """Check the outside temperature status data.
+
+        Sends an email if the threshold is exceeded.
+        """
+        logging.info('Starting outside temperature value inactivity check')
+
+        ot_status = self.check_ot_rec_status()
+
+        if ot_status[0]:
+            if self._state['email_sent'] == 'False':
+                if send_email(self._config['email'],
+                              'env-logger: outside temperature value inactivity '
+                              'warning',
+                              'No outside temperature values have been received '
+                              'in the env-logger backend after {} (timeout {} '
+                              'minutes). Please check for possible problems.'
+                              .format(ot_status[1],
+                                      self._config['outsidetemp']['Timeout'])):
+                    self._state['email_sent'] = 'True'
+                else:
+                    self._state['email_sent'] = 'False'
+        elif self._state['email_sent'] == 'True':
+            dt_str = datetime.now(
+                tz=ZoneInfo(self._config['db']['DisplayTimezone'])).isoformat()
+            send_email(self._config['email'],
+                       'env-logger: outside temperature value received',
+                       f'An outside temperature value has been detected at {dt_str}.')
+            logging.info('An outside temperature value was detected at %s', dt_str)
             self._state['email_sent'] = 'False'
 
     def get_state(self):
@@ -96,6 +175,8 @@ class BeaconMonitor:
 
         Sends an email if the threshold is exceeded.
         """
+        logging.info('Starting BLE beacon inactivity check')
+
         last_obs_time = self.get_beacon_scan_time()
         last_obs_time_tz = last_obs_time.astimezone(ZoneInfo( \
             self._config['db']['DisplayTimezone']))
@@ -118,6 +199,8 @@ class BeaconMonitor:
             send_email(self._config['email'],
                        'env-logger: BLE beacon scanned',
                        f'BLE beacon was detected at {last_obs_time_tz.isoformat()}.')
+            logging.info('BLE beacon was detected at %s',
+                         last_obs_time_tz.isoformat())
             self._state['email_sent'] = 'False'
 
     def get_state(self):
@@ -153,6 +236,8 @@ class RuuvitagMonitor:
 
         Sends an email if the threshold is exceeded.
         """
+        logging.info('Starting RuuviTag observation inactivity check')
+
         last_obs_time = self.get_ruuvitag_scan_time()
 
         for location in self._config['ruuvitag']['Location'].split(','):
@@ -185,6 +270,9 @@ class RuuvitagMonitor:
                            f'env-logger: Ruuvitag beacon "{location}" scanned',
                            f'A RuuviTag observation for location "{location}" '
                            f'was detected at {last_obs_time_tz.isoformat()}.')
+                logging.info('A RuuviTag observation for location "%s" was '
+                             'detected at %s',
+                             location, last_obs_time_tz.isoformat())
                 self._state[location]['email_sent'] = 'False'
 
     def get_state(self):
@@ -265,6 +353,7 @@ def main():
             state = json.load(state_file)
     except FileNotFoundError:
         state = {'observation': {'email_sent': 'False'},
+                 'outsidetemp': {'email_sent': 'False'},
                  'blebeacon': {'email_sent': 'False'},
                  'ruuvitag': {}}
         for location in config['ruuvitag']['Location'].split(','):
@@ -275,6 +364,10 @@ def main():
         obs = ObservationMonitor(config, state['observation'])
         obs.check_observation()
         state['observation'] = obs.get_state()
+    if config['outsidetemp']['Enabled'] == 'True':
+        otm = OutsideTemperatureMonitor(config, state['outsidetemp'])
+        otm.handle_status_data()
+        state['outsidetemp'] = otm.get_state()
     if config['blebeacon']['Enabled'] == 'True':
         beacon = BeaconMonitor(config, state['blebeacon'])
         beacon.check_beacon()
