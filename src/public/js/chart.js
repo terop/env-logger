@@ -333,8 +333,12 @@ var loadPage = () => {
                 observationText += `${labelValues['other']['brightness']}: ${dataSets['other']['brightness'][obsIndex]}` +
                     `${addUnitSuffix('brightness')}, ` +
                     `${labelValues['other']['rssi']}: ${dataSets['other']['rssi'][obsIndex]}${addUnitSuffix('rssi')}, ` +
-                    `${labelValues['other']['o-temperature']}: ${dataSets['other']['o-temperature'][obsIndex]}` +
-                    `${addUnitSuffix('temperature')},`;
+                    `${labelValues['other']['o-temperature']}:`;
+                if (dataSets['other']['o-temperature'][obsIndex] !== null) {
+                    observationText += ` ${dataSets['other']['o-temperature'][obsIndex]}` +
+                        `${addUnitSuffix('temperature')}`;
+                }
+                observationText += ',';
 
                 let itemsAdded = 0;
                 for (const key in dataSets['rt']) {
