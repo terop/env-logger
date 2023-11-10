@@ -27,6 +27,8 @@ FONT = bitmap_font.load_font("fonts/DejaVuSansMono-16.pcf")
 SLEEP_TIME = 85
 # Sleep time (in seconds) between clock setting
 TIME_SET_SLEEP_TIME = 360
+# Interval (in minutes) between data storage events
+DATA_STORAGE_INTERVAL = 3
 
 # Default backlight value
 BACKLIGHT_DEFAULT_VALUE = 0.7
@@ -91,9 +93,9 @@ def fetch_token():
     while True:
         try:
             resp = requests.post(f'{BACKEND_URL}/token-login',
-                                 data={'username': \
+                                 data={'username':
                                        secrets['data-read-user']['username'],
-                                       'password': \
+                                       'password':
                                        secrets['data-read-user']['password']})
             if resp.status_code != HTTP_STATUS_CODE_OK:
                 backend_failure_count += 1
@@ -221,7 +223,7 @@ def prepare_elec_price_data(elec_price_data, utc_offset_hours):
     prices = OrderedDict()
     tz_delta = timedelta(hours=utc_offset_hours)
     for item in elec_price_data['data-hour']:
-        prices[datetime.fromisoformat(item['start-time'].replace('Z', '')) + \
+        prices[datetime.fromisoformat(item['start-time'].replace('Z', '')) +
                tz_delta] = item['price']
 
     if datetime.now() > max(prices):
@@ -370,13 +372,14 @@ def main():
     print('Current time set')
 
     display = SimpleTextDisplay(title=' ', colors=[SimpleTextDisplay.WHITE], font=FONT)
-    seconds_slept = -1
+    init_fetch_done = False
     time_set_seconds_slept = 0
     token = None
     weather_data = None
     elec_price_metadata = {'raw_data': None,
                            'fetched': None}
     elec_price_fetch_threshold = 1800
+    data_update_second_threshold = 40
 
     board.DISPLAY.brightness = BACKLIGHT_DEFAULT_VALUE
 
@@ -396,23 +399,26 @@ def main():
                 'data/elec-data', token)
             elec_price_metadata['fetched'] = datetime.now()
 
-        if seconds_slept in [-1, 1]:
+        now = datetime.now()
+        update_data = now.minute % DATA_STORAGE_INTERVAL == 0 and \
+            now.second == data_update_second_threshold
+
+        if update_data or not init_fetch_done:
             elec_price_data = prepare_elec_price_data(elec_price_metadata['raw_data'],
                                                       utc_offset_hour)
             token, observation = get_backend_endpoint_content('data/latest-obs', token)
             token, weather_data = get_backend_endpoint_content('data/weather', token)
+            if not init_fetch_done:
+                init_fetch_done = True
+                update_data = True
 
         update_screen(display, observation, weather_data, elec_price_data,
-                      utc_offset_hour, 0 < seconds_slept < SLEEP_TIME)
-
-        if seconds_slept == -1 or seconds_slept >= SLEEP_TIME:
-            seconds_slept = 0
+                      utc_offset_hour, not update_data)
 
         if time_set_seconds_slept >= TIME_SET_SLEEP_TIME:
             set_time(secrets['timezone'])
             time_set_seconds_slept = 0
 
-        seconds_slept += 1
         time_set_seconds_slept += 1
         time.sleep(1)
 
