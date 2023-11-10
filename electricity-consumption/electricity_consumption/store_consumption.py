@@ -104,8 +104,8 @@ def main():
                         level=logging.INFO)
 
     parser = argparse.ArgumentParser(description='Stores electricity consumption data '
-                                     'into a database. By default data for the '
-                                     ' previous is fetched.')
+                                     'into a PostgreSQL database. By default data for '
+                                     'the previous day is fetched.')
     parser.add_argument('--config', type=str, help='configuration file to use')
     parser.add_argument('--date', type=str, help='date (in YYYY-MM-DD format) for '
                         'which to fetch data')
