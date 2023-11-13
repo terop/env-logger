@@ -338,9 +338,9 @@ requests = ">=2"
 
 [package.source]
 type = "git"
-url = "https://github.com/terop/pycaruna.git"
-reference = "bd6a6de4671b6b914b76e64d986be6361f8f6dbf"
-resolved_reference = "bd6a6de4671b6b914b76e64d986be6361f8f6dbf"
+url = "https://github.com/Jalle19/pycaruna.git"
+reference = "98cab8c5d005d7be472e5b2d789f27375092a0ba"
+resolved_reference = "98cab8c5d005d7be472e5b2d789f27375092a0ba"
 
 [[package]]
 name = "requests"
@@ -416,4 +416,4 @@ zstd = ["zstandard (>=0.18.0)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "95c655e222bf0218032651d315c517c4dc3476354a2dcc252e37d4ff8c996aca"
+content-hash = "612f9b31954e11269da21a7e6242cf801eccb614037ddbf1dfdfd0d7165e02a0"
