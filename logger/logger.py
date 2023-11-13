@@ -72,7 +72,7 @@ async def scan_ruuvitags(rt_config, device):
     """Scan for RuuviTag(s)."""
     found_tags = {}
 
-    def _get_tag_location(rt_config, mac):
+    def _get_tag_location(mac):
         """Get RuuviTag location based on tag MAC address."""
         for tag in rt_config['tags']:
             if mac == tag['mac']:
@@ -88,7 +88,7 @@ async def scan_ruuvitags(rt_config, device):
             if mac in found_tags:
                 continue
 
-            found_tags[mac] = {'location': _get_tag_location(rt_config, mac),
+            found_tags[mac] = {'location': _get_tag_location(mac),
                                'temperature': tag_data[1]['temperature'],
                                'pressure': tag_data[1]['pressure'],
                                'humidity': tag_data[1]['humidity'],
@@ -102,15 +102,15 @@ async def scan_ruuvitags(rt_config, device):
 
     try:
         await asyncio.wait_for(_async_scan(mac_addresses, device), timeout=10)
-    except asyncio.CancelledError:
-        logging.warning('RuuviTag scan was cancelled, retrying')
+    except (asyncio.CancelledError, TimeoutError):
+        logging.exception('RuuviTag scan was cancelled or timed out, retrying')
         remaining_macs = [mac for mac in mac_addresses if mac not in found_tags]
         try:
             await asyncio.wait_for(_async_scan(remaining_macs, device), timeout=10)
         except asyncio.CancelledError:
-            logging.exception('RuuviTag scan cancelled on retry')
-    except TimeoutError:
-        logging.exception('RuuviTag scan timed out')
+            logging.error('RuuviTag scan cancelled on retry') # noqa: TRY400
+        except TimeoutError:
+            logging.error('RuuviTag scan timed out on retry') # noqa: TRY400
 
     return found_tags
 
