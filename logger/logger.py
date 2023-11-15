@@ -103,7 +103,7 @@ async def scan_ruuvitags(rt_config, device):
     try:
         await asyncio.wait_for(_async_scan(mac_addresses, device), timeout=10)
     except (asyncio.CancelledError, TimeoutError):
-        logging.exception('RuuviTag scan was cancelled or timed out, retrying')
+        logging.error('RuuviTag scan was cancelled or timed out, retrying') # noqa: TRY400
         remaining_macs = [mac for mac in mac_addresses if mac not in found_tags]
         try:
             await asyncio.wait_for(_async_scan(remaining_macs, device), timeout=10)
