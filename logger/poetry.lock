@@ -40,13 +40,13 @@ files = [
 
 [[package]]
 name = "certifi"
-version = "2023.7.22"
+version = "2023.11.17"
 description = "Python package for providing Mozilla's CA Bundle."
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "certifi-2023.7.22-py3-none-any.whl", hash = "sha256:92d6037539857d8206b8f6ae472e8b77db8058fec5937a1ef3f54304089edbb9"},
-    {file = "certifi-2023.7.22.tar.gz", hash = "sha256:539cc1d13202e33ca466e88b2807e29f4c13049d6d87031a3c110744495cb082"},
+    {file = "certifi-2023.11.17-py3-none-any.whl", hash = "sha256:e036ab49d5b79556f99cfc2d9320b34cfbe5be05c5871b51de9329f0603b0474"},
+    {file = "certifi-2023.11.17.tar.gz", hash = "sha256:9b469f3a900bf28dc19b8cfbf8019bf47f7fdd1a65a1d4ffb98fc14166beb4d1"},
 ]
 
 [[package]]
@@ -353,8 +353,10 @@ version = "2.3.0"
 description = "Find RuuviTag sensors and get decoded data from selected sensors"
 optional = false
 python-versions = ">=3.7"
-files = []
-develop = false
+files = [
+    {file = "ruuvitag_sensor-2.3.0-py3-none-any.whl", hash = "sha256:4c476550750564fe67c05c652aaf7cad075906e165f2e3b503239410afd0a06d"},
+    {file = "ruuvitag_sensor-2.3.0.tar.gz", hash = "sha256:cc1d8c5b58893e07bc4b005eb6ab12e0815c62596e1cf3e0c28499e9bd36d206"},
+]
 
 [package.dependencies]
 bleak = {version = "*", markers = "platform_system == \"Windows\" or platform_system == \"Darwin\""}
@@ -363,12 +365,6 @@ reactivex = "*"
 
 [package.extras]
 dev = ["black", "flake8-pyproject", "isort", "mypy", "pylint", "pytest", "pytest-asyncio"]
-
-[package.source]
-type = "git"
-url = "https://github.com/ttu/ruuvitag-sensor.git"
-reference = "HEAD"
-resolved_reference = "2fd6249e7c4e7384c23c8e1271396cbc435a11cf"
 
 [[package]]
 name = "typing-extensions"
@@ -400,4 +396,4 @@ zstd = ["zstandard (>=0.18.0)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "85623f0bb7c24a1ce5b092a2222720f13db086978f86de0a0b8f678a84defc45"
+content-hash = "189c69a7412d1badc18b79eb00dc14075bd1c9300b357a4dd3846a4eb7548ee8"
