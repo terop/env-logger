@@ -29,14 +29,16 @@
                                              :price 7.0
                                              :consumption 1.8}])
                     db/get-elec-consumption-interval-start (fn [_] "2023-02-21")
-                    db/get-elec-price-interval-end (fn [_] "2023-09-05")]
+                    db/get-elec-price-interval-end (fn [_] "2023-09-05")
+                    db/get-month-avg-elec-price (fn [_] "10.0")]
         (let [resp (e/electricity-data
                     {:params {"endDate" "2022-10-08"}})]
           (is (= 400 (:status resp)))
           (is (= "Missing parameter" (:body resp))))
         (is (= {"dates" {"current" {"start" "2022-10-08", "end" "2022-10-08"}}
                 "data-hour" [{"consumption" 0.5, "start-time" 123, "price" 10.0}]
-                "data-day" [{"consumption" 1.8, "date" "2023-09-04", "price" 7.0}]}
+                "data-day" [{"consumption" 1.8, "date" "2023-09-04", "price" 7.0}]
+                "elec-price-avg" "10.0"}
                (j/read-value (:body (e/electricity-data
                                      {:params {"startDate" "2022-10-08"
                                                "endDate" "2022-10-08"}})))))
@@ -44,7 +46,8 @@
                          "min" "2023-02-21",
                          "current" {"start" "2023-02-22"}}
                 "data-hour" [{"consumption" 0.5, "start-time" 123, "price" 10.0}]
-                "data-day" [{"consumption" 1.8, "date" "2023-09-04", "price" 7.0}]}
+                "data-day" [{"consumption" 1.8, "date" "2023-09-04", "price" 7.0}]
+                "elec-price-avg" "10.0"}
                (j/read-value (:body (e/electricity-data
                                      {:params {}})))))))))
 

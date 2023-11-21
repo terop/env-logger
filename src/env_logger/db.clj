@@ -508,6 +508,25 @@
       (error pe "Hourly electricity data fetching failed")
       nil)))
 
+(defn get-month-avg-elec-price
+  "Returns the average electricity price for the current month."
+  [db-con]
+  (try
+    (let [today (t/local-date)
+          month-start (t/minus today (t/days (dec (t/as today :day-of-month))))
+          query (sql/format {:select [:%avg.price]
+                             :from :electricity_price
+                             :where [[:>= :start_time
+                                      (make-local-dt (str month-start) "start")]]})
+          result (:avg (jdbc/execute-one! db-con query rs-opts))]
+      (when result
+        (let [nf (NumberFormat/getInstance)]
+          (.applyPattern ^DecimalFormat nf "0.0#")
+          (.format nf result))))
+    (catch PSQLException pe
+      (error pe "Monthly average electricity price fetching failed")
+      nil)))
+
 (defn get-last-obs-id
   "Returns the ID of the last observation."
   [db-con]

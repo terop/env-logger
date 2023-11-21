@@ -38,7 +38,8 @@
                                                                                  "end")))
                            :data-day (db/get-elec-data-day con start-date end-date)
                            :dates {:current {:start start-date
-                                             :end end-date}}}))
+                                             :end end-date}}
+                           :elec-price-avg (db/get-month-avg-elec-price con)}))
             (let [start-date (db/get-midnight-dt (:initial-show-days env))]
               (serve-json {:data-hour (db/get-elec-data-hour con
                                                              start-date
@@ -59,7 +60,8 @@
                                                          start-date))}
                                    :max (db/get-elec-price-interval-end con)
                                    :min (db/get-elec-consumption-interval-start
-                                         con)}}))))))))
+                                         con)}
+                           :elec-price-avg (db/get-month-avg-elec-price con)}))))))))
 
 (defn parse-consumption-data-file
   "Parses CSV file with electricity consumption data."

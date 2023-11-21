@@ -16,6 +16,7 @@
                                    get-last-obs-id
                                    get-latest-elec-consumption-record-time
                                    get-midnight-dt
+                                   get-month-avg-elec-price
                                    get-obs-date-interval
                                    get-obs-days
                                    get-obs-interval
@@ -602,4 +603,33 @@
                                                                  22 0 0))
                  :price 4.0})
     (is (= "2023-09-05" (get-elec-price-interval-end test-ds)))
+    (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))))
+
+(deftest test-get-month-avg-elec-price
+  (testing "Calculating the average electricity price of the current month"
+    (with-redefs [jdbc/execute-one!
+                  (fn [_ _ _]
+                    (throw (PSQLException.
+                            "Test exception"
+                            (PSQLState/COMMUNICATION_ERROR))))]
+      (is (nil? (get-month-avg-elec-price test-ds))))
+    (is (nil? (get-month-avg-elec-price test-ds)))
+
+    (js/insert! test-ds
+                :electricity_price
+                {:start_time (t/sql-timestamp (t/zoned-date-time))
+                 :price 10.0})
+    (js/insert! test-ds
+                :electricity_price
+                {:start_time (t/sql-timestamp (t/minus (t/zoned-date-time)
+                                                       (t/hours 1)))
+                 :price 4.0})
+    (is (= "7.0" (get-month-avg-elec-price test-ds)))
+    ;; Check that prices before the current month are not used
+    (js/insert! test-ds
+                :electricity_price
+                {:start_time (t/sql-timestamp (t/minus (t/zoned-date-time)
+                                                       (t/days 40)))
+                 :price 12.0})
+    (is (= "7.0" (get-month-avg-elec-price test-ds)))
     (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))))

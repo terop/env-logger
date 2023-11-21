@@ -663,7 +663,7 @@ var loadPage = () => {
         var getClosestElecPriceDataIndex = (priceData) => {
             const now = luxon.DateTime.now();
 
-            var smallest = 1000000000,
+            var smallest = Infinity,
                 smallestIdx = -1;
 
             for (i = 0; i < priceData.length; i++) {
@@ -751,6 +751,10 @@ var loadPage = () => {
 
                         plotElectricityDataDay(elecData['data-day'], true);
                         hideElement('dayElecDataChart');
+
+                        if (elecData['elec-price-avg'] !== null)
+                            document.getElementById('lastObservation').innerHTML +=
+`<br>Average electricity price for the current month: ${elecData['elec-price-avg']} c / kWh`;
                     }
                 }).catch(error => {
                     console.log(`Electricity data fetch error: ${error}`);
