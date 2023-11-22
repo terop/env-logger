@@ -499,6 +499,7 @@ var loadPage = () => {
                                 display: true,
                                 text: 'Hourly electricity price and consumption'
                             },
+                            tooltip: getElectricityDataTooltipConfig(),
                             zoom: {
                                 zoom: {
                                     drag: {
@@ -558,6 +559,27 @@ var loadPage = () => {
                 charts['elecDataHour'].options.plugins.annotation = generateElecAnnotationConfig(elecData);
                 charts['elecDataHour'].update();
             }
+        };
+
+        var getElectricityDataTooltipConfig = () => {
+            return {
+                callbacks: {
+                    label: function(context) {
+                        let label = context.dataset.label || '';
+
+                        if (label)
+                            label += `: ${context.parsed.y ? context.parsed.y : 0} `;
+
+                        if (context.parsed.y !== null) {
+                            if (label.toLowerCase().includes('consumption'))
+                                label += 'kWh';
+                            else if (label.toLowerCase().includes('price'))
+                                label += 'c / kWh';
+                        }
+                        return label;
+                    }
+                }
+            };
         };
 
         // Show the daily electricity price and consumption data in a chart
@@ -642,7 +664,8 @@ var loadPage = () => {
                             title: {
                                 display: true,
                                 text: 'Daily electricity price and consumption'
-                            }
+                            },
+                            tooltip: getElectricityDataTooltipConfig()
                         },
                         spanGaps: true,
                         normalized: true,
@@ -878,7 +901,29 @@ var loadPage = () => {
                         mode: 'x'
                     }
                 },
-                annotation: generateAnnotationConfig(chartType)
+                annotation: generateAnnotationConfig(chartType),
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+
+                            if (label)
+                                label += `: ${context.parsed.y} `;
+
+                            if (context.parsed.y !== null) {
+                                if (label.toLowerCase().includes('temperature'))
+                                    label += '\u2103';
+                                else if (label.toLowerCase().includes('humidity'))
+                                    label += '%H';
+                                else if (label.toLowerCase().includes('speed'))
+                                    label += 'm/s';
+                                else if (label.toLowerCase().includes('rssi'))
+                                    label += 'dB';
+                            }
+                            return label;
+                        }
+                    }
+                }
             };
         };
 
