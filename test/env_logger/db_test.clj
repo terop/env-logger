@@ -167,7 +167,7 @@
 
 (deftest obs-interval-select
   (testing "Select observations between one or two dates"
-    (is (= 4 (count (get-obs-interval
+    (is (= 5 (count (get-obs-interval
                      test-ds
                      {:start nil
                       :end nil}))))
@@ -177,13 +177,13 @@
                                        (t/minus (t/local-date)
                                                 (t/days 2)))
                       :end nil}))))
-    (is (= 1 (count (get-obs-interval
+    (is (= 2 (count (get-obs-interval
                      test-ds
                      {:start nil
                       :end (t/format date-fmt
                                      (t/minus (t/local-date)
                                               (t/days 2)))}))))
-    (is (= 4 (count (get-obs-interval
+    (is (= 5 (count (get-obs-interval
                      test-ds
                      {:start (t/format date-fmt
                                        (t/minus (t/local-date)
@@ -320,7 +320,10 @@
                         :wind-speed 5.0}]
       (is (pos? (insert-wd test-ds
                            obs-id
-                           weather-data))))))
+                           weather-data)))
+      (is (pos? (insert-wd test-ds
+                           obs-id
+                           (assoc weather-data :cloudiness nil)))))))
 
 (deftest ruuvitag-observation-insert
   (testing "Insert of RuuviTag observation"
