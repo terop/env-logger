@@ -251,6 +251,9 @@ def prepare_elec_price_data(elec_price_data, utc_offset_hours):
     if next_hour in prices:
         values['next'] = [next_hour, prices[next_hour]]
 
+    if elec_price_data['elec-price-avg'] is not None:
+        values['average'] = elec_price_data['elec-price-avg']
+
     return values
 
 
@@ -326,6 +329,11 @@ def update_screen(display, observation, weather_data, elec_price_data, utc_offse
             display[row].text += f', {next_val[0].hour}:{next_val[0].minute:02}: ' + \
                 f'{next_val[1]} c'
         row += 1
+        if 'average' in elec_price_data:
+            display[row - 1].text += ','
+            display[row].text += 'current month average: ' \
+                f'{elec_price_data["average"]} c / kWh'
+            row += 1
 
     display[row].text = ''
     row += 1
