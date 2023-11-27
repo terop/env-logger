@@ -5,7 +5,7 @@
             [clojure.data.zip.xml :as zx]
             [clojure.string :as s]
             [config.core :refer [env]]
-            [taoensso.timbre :refer [error info]]
+            [taoensso.timbre :refer [error info warn]]
             [jsonista.core :as j]
             [clj-http.client :as client]
             [next.jdbc :as jdbc]
@@ -71,6 +71,14 @@
       false)))
 
 ;; FMI
+
+(defn wd-has-empty-values?
+  "Returns true if the provided weather data observation has a nil value
+  in its cloudiness, temperature, or wind-speed values."
+  [observation]
+  (or (nil? (:cloudiness observation))
+      (nil? (:temperature observation))
+      (nil? (:wind-speed observation))))
 
 (defn get-wd-str
   "Returns a dict with the long and short form of the given wind direction
@@ -312,8 +320,16 @@
 (defn fetch-all-weather-data
   "Fetches all (FMI current and forecast as well as OWM) weather data."
   []
-  (when-not (-update-fmi-weather-data-ts (:fmi-station-id env))
-    (-update-fmi-weather-data-json (:fmi-station-id env)))
+  (when (or (nil? (-update-fmi-weather-data-ts (:fmi-station-id env)))
+            (and (seq @fmi-current)
+                 (wd-has-empty-values? (last (last @fmi-current)))))
+    (when (wd-has-empty-values? (last (last @fmi-current)))
+      (warn "Got nil values in FMI weather data observation (from TS):"
+            (last (last @fmi-current))))
+    (-update-fmi-weather-data-json (:fmi-station-id env))
+    (when (wd-has-empty-values? (last (last @fmi-current)))
+      (warn "Got nil values in FMI weather data observation (from JSON):"
+            (last (last @fmi-current)))))
   (-update-fmi-weather-forecast (:weather-lat env)
                                 (:weather-lon env))
   (-fetch-owm-data (:owm-app-id env)

@@ -19,7 +19,8 @@
                               get-fmi-weather-data
                               get-wd-str
                               get-weather-data
-                              store-weather-data?]]])
+                              store-weather-data?
+                              wd-has-empty-values?]]])
   (:import java.time.ZonedDateTime
            (org.postgresql.util PSQLException
                                 PSQLState)))
@@ -179,6 +180,16 @@
     (is (= {:short "N"
             :long "north"}
            (get-wd-str 360)))))
+
+(deftest test-wd-has-empty-values?
+  (testing "Test weather data nil value detection"
+    (let [observation {:cloudiness 8,
+                       :wind-speed 7.6,
+                       :temperature -10.2}]
+      (is (false? (wd-has-empty-values? observation)))
+      (is (true? (wd-has-empty-values? (assoc observation :cloudiness nil))))
+      (is (true? (wd-has-empty-values? (assoc observation :temperature nil))))
+      (is (true? (wd-has-empty-values? (assoc observation :wind-speed nil)))))))
 
 ;; OWM
 
