@@ -165,13 +165,9 @@ var loadPage = () => {
         // dataMode - string, which mode to process data in, values: weather, other
         // observation - object, observation to process
         // selectKeys - array, which data keys to select
-        // skipWeatherKeyNulls - whether to skip null values for weather keys
-        var processFields = (dataMode, observation, selectKeys, skipWeatherKeyNulls) => {
+        var processFields = (dataMode, observation, selectKeys) => {
             for (key in observation) {
                 if (selectKeys.includes(key)) {
-                    if (dataMode === 'weather' && skipWeatherKeyNulls && observation[key] === null)
-                        continue;
-
                     if (dataSets[dataMode][key] !== undefined)
                         dataSets[dataMode][key].push(observation[key]);
                     else
@@ -203,10 +199,11 @@ var loadPage = () => {
             }
 
             // Weather
-            processFields('weather', observation, fieldNames['weather'], true);
+            if (observation['weather-recorded'])
+                processFields('weather', observation, fieldNames['weather']);
 
             // Other
-            processFields('other', observation, fieldNames['other'], false);
+            processFields('other', observation, fieldNames['other']);
 
             if (beaconName === '' && observation['name']) {
                 beaconName = observation['name'];
@@ -216,7 +213,7 @@ var loadPage = () => {
 
             recordAnnotationIndexes('weather', observation['time']);
 
-            processFields('weather', observation, fieldNames['weather'], false);
+            processFields('weather', observation, fieldNames['weather']);
         }
         testbedImageNames.push(observation['tb-image-name']);
     };
