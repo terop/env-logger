@@ -343,5 +343,5 @@
   the available data."
   []
   {:fmi {:current (get-fmi-weather-data)
-         :forecast @fmi-forecast}
+         :forecast (dissoc @fmi-forecast :fetched)}
    :owm (dissoc @owm :stored)})

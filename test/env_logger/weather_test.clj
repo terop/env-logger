@@ -299,5 +299,5 @@
                 :wind-direction {:short "SE"
                                  :long "south east"}
                 :precipitation 1.0}
-               (dissoc (:forecast (:fmi weather-data)) :fetched)))
+               (:forecast (:fmi weather-data))))
         (is (empty? (:not-found weather-data)))))))
