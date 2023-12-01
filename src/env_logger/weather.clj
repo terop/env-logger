@@ -243,7 +243,9 @@
   for the given weather observation station."
   [latitude longitude]
   (future
-    (let [url (format (str "https://opendata.fmi.fi/wfs?service=WFS&version="
+    (let [start-time (t/plus (t/zoned-date-time) (t/minutes 10))
+          end-time (t/plus start-time (t/hours 1))
+          url (format (str "https://opendata.fmi.fi/wfs?service=WFS&version="
                            "2.0.0&request=getFeature&storedquery_id=fmi::"
                            "forecast::edited::weather::scandinavia::point::"
                            "simple&latlon="
@@ -253,25 +255,23 @@
                       (str latitude "," longitude)
                       ;; Start time must always be ahead of the current time so
                       ;; that forecast for the next hour is fetched
-                      (-convert-to-tz-iso8601-str (t/plus
-                                                   (t/zoned-date-time)
-                                                   (t/minutes 5)))
-                      (-convert-to-tz-iso8601-str (t/plus
-                                                   (t/zoned-date-time)
-                                                   (t/hours 1))))
+                      (-convert-to-tz-iso8601-str start-time)
+                      (-convert-to-tz-iso8601-str end-time))
           index (atom retry-count)]
       (try
-        ;; Fetch after x:56 seems to always fail so do not even attempt it
-        (while (and (<= (.getMinute (t/local-date-time)) 56)
-                    (pos? @index)
+        (while (and (pos? @index)
                     (or (nil? @fmi-forecast)
                         (< (abs (t/time-between (t/local-date-time
                                                  (:time @fmi-forecast))
                                                 (t/local-date-time)
-                                                :minutes)) 15)))
+                                                :minutes)) 15)
+                        (> (abs (t/time-between (t/local-date-time)
+                                                (:fetched @fmi-forecast)
+                                                :minutes)) 30)))
           (let [forecast (extract-forecast-data (parse url))]
             (if forecast
-              (reset! fmi-forecast forecast)
+              (reset! fmi-forecast
+                      (assoc forecast :fetched (t/local-date-time)))
               (do
                 (info (str "Retrying forecast fetch, attempt "
                            (- retry-count (dec @index)) " of " retry-count))

@@ -164,7 +164,7 @@
   (fetch-all-weather-data)
   ;; Sleep a bit before continuing so that the possible weather data update
   ;; has the possibility to complete
-  (Thread/sleep 1300)
+  (Thread/sleep 1500)
   (if-not (auth/check-auth-code (get (:params request) "code"))
     auth/response-unauthorized
     (if-not (db/test-db-connection db/postgres-ds)
