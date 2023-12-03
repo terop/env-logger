@@ -282,10 +282,10 @@ var loadPage = () => {
 
         // Add unit suffix
         var addUnitSuffix = (keyName) => {
-            return `${keyName.indexOf('temperature') >= 0 ? ' \u2103' : ''}` +
-                `${keyName.indexOf('wind') >= 0 ? ' m/s' : ''}` +
-                `${keyName.indexOf('humidity') >= 0 ? ' %H' : ''}` +
-                `${keyName.indexOf('rssi') >= 0 ? ' dB' : ''}`;
+            return `${keyName.includes('temperature') ? ' \u2103' : ''}` +
+                `${keyName.includes('wind') ? ' m/s' : ''}` +
+                `${keyName.includes('humidity') ? ' %H' : ''}` +
+                `${keyName.includes('rssi') ? ' dBm' : ''}`;
         };
 
         // Format a given Unix second timestamp in hour:minute format
@@ -905,18 +905,11 @@ var loadPage = () => {
                             let label = context.dataset.label || '';
 
                             if (label)
-                                label += `: ${context.parsed.y} `;
+                                label += `: ${context.parsed.y}`;
 
-                            if (context.parsed.y !== null) {
-                                if (label.toLowerCase().includes('temperature'))
-                                    label += '\u2103';
-                                else if (label.toLowerCase().includes('humidity'))
-                                    label += '%H';
-                                else if (label.toLowerCase().includes('speed'))
-                                    label += 'm/s';
-                                else if (label.toLowerCase().includes('rssi'))
-                                    label += 'dB';
-                            }
+                            if (context.parsed.y !== null)
+                                label += `${addUnitSuffix(label.toLowerCase())}`;
+
                             return label;
                         }
                     }
