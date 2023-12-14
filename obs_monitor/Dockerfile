@@ -1,6 +1,6 @@
 FROM python:3.11-alpine as python
 ENV PYTHONUNBUFFERED=true
-RUN apk update && apk upgrade
+RUN apk update && apk upgrade && python3 -m pip install --upgrade pip
 
 WORKDIR /usr/src/app
 COPY monitor.cfg monitor.py poetry.lock ./
