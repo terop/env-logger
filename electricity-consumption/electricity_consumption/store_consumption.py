@@ -133,6 +133,7 @@ def main():
 
     if len(consumption_data) < required_data_array_length:
         logging.error('Data fetching failed, not enough data was received')
+        logging.info('Received data array length: %s', len(consumption_data))
         sys.exit(1)
 
     if args.no_store:
