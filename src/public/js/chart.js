@@ -329,13 +329,15 @@ var loadPage = () => {
 
                 observationText += `${labelValues['other']['brightness']}: ${dataSets['other']['brightness'][obsIndex]}` +
                     `${addUnitSuffix('brightness')}, `;
-                if (dataSets['other']['rssi'][obsIndex] !== null)
-                    observationText += `${labelValues['other']['rssi']}: ${dataSets['other']['rssi'][obsIndex]}${addUnitSuffix('rssi')}, `;
                 observationText += `${labelValues['other']['o-temperature']}:`;
-                if (dataSets['other']['o-temperature'][obsIndex] !== null) {
+                if (dataSets['other']['o-temperature'][obsIndex] !== null)
                     observationText += ` ${dataSets['other']['o-temperature'][obsIndex]}` +
-                        `${addUnitSuffix('temperature')}`;
-                }
+                        `${addUnitSuffix('temperature')}, `;
+
+                observationText += `${labelValues['other']['rssi']}:`;
+                if (dataSets['other']['rssi'][obsIndex] !== null)
+                     observationText += ` ${dataSets['other']['rssi'][obsIndex]}${addUnitSuffix('rssi')}`;
+
                 observationText += ',';
 
                 let itemsAdded = 0;
