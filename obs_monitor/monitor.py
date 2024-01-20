@@ -178,7 +178,7 @@ class BeaconMonitor:
         logging.info('Starting BLE beacon inactivity check')
 
         last_obs_time = self.get_beacon_scan_time()
-        last_obs_time_tz = last_obs_time.astimezone(ZoneInfo( \
+        last_obs_time_tz = last_obs_time.astimezone(ZoneInfo(\
             self._config['db']['DisplayTimezone']))
         time_diff = datetime.now(tz=last_obs_time.tzinfo) - last_obs_time
 

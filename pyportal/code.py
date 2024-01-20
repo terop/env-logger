@@ -257,7 +257,7 @@ def prepare_elec_price_data(elec_price_data, utc_offset_hours):
     return values
 
 
-def update_screen(display, observation, weather_data, elec_price_data, utc_offset_hour, # noqa: PLR0912, PLR0913, PLR0915
+def update_screen(display, observation, weather_data, elec_price_data, utc_offset_hour,  # noqa: PLR0912, PLR0913, PLR0915
                   time_update_only=False):
     """Update screen contents."""
     c_time = time.localtime()
@@ -314,7 +314,7 @@ def update_screen(display, observation, weather_data, elec_price_data, utc_offse
                     f'{forecast["wind-speed"]} m/s, precipitation ' + \
                     f'{forecast["precipitation"]} mm,'
                 display[5].text = \
-                    f'desc \"{weather_data["owm"]["forecast"]["weather"][0]["description"]}\"' # noqa: E501
+                    f'desc \"{weather_data["owm"]["forecast"]["weather"][0]["description"]}\"'  # noqa: E501
                 row = 6
     else:
         row = 2

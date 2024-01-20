@@ -40,7 +40,7 @@ def get_env_data(env_settings):
     try:
         resp = requests.get(env_settings['arduino_url'], timeout=5)
     except (ConnectionError, OSError) as ex:
-        logging.error('Connection problem to Arduino: %s', ex) # noqa: TRY400
+        logging.error('Connection problem to Arduino: %s', ex)  # noqa: TRY400
         arduino_ok = False
     if arduino_ok and not resp.ok:
         logging.error('Cannot read Arduino data, status code: %s', resp.status_code)
@@ -53,7 +53,7 @@ def get_env_data(env_settings):
     try:
         with serial.Serial(env_settings['terminal_serial'], 115200, timeout=10) as ser:
             raw_data = ser.readline()
-            if raw_data.decode() == '':
+            if not raw_data.decode():
                 logging.error('Got no serial data from Wio Terminal')
                 return {}
             terminal_data = json.loads(raw_data)
@@ -103,14 +103,14 @@ async def scan_ruuvitags(rt_config, device):
     try:
         await asyncio.wait_for(_async_scan(mac_addresses, device), timeout=10)
     except (asyncio.CancelledError, TimeoutError):
-        logging.error('RuuviTag scan was cancelled or timed out, retrying') # noqa: TRY400
+        logging.error('RuuviTag scan was cancelled or timed out, retrying')  # noqa: TRY400
         remaining_macs = [mac for mac in mac_addresses if mac not in found_tags]
         try:
             await asyncio.wait_for(_async_scan(remaining_macs, device), timeout=10)
         except asyncio.CancelledError:
-            logging.error('RuuviTag scan cancelled on retry') # noqa: TRY400
+            logging.error('RuuviTag scan cancelled on retry')  # noqa: TRY400
         except TimeoutError:
-            logging.error('RuuviTag scan timed out on retry') # noqa: TRY400
+            logging.error('RuuviTag scan timed out on retry')  # noqa: TRY400
 
     return found_tags
 

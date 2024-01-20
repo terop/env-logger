@@ -37,7 +37,7 @@ def download_image():
         return None
     img_url = images[0]['src']
 
-    if img_url == '':
+    if not img_url:
         return None
 
     try:
