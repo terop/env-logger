@@ -3,7 +3,7 @@
         org.clojure/data.zip {:mvn/version "1.0.0"}
         org.clojure/data.csv {:mvn/version "1.0.1"}
         ;; Only needed for unit tests, test run fails without this
-        org.clojure/tools.namespace {:mvn/version "1.4.4"}
+        org.clojure/tools.namespace {:mvn/version "1.4.5"}
         yogthos/config {:mvn/version "1.2.0"}
         ring/ring-devel {:mvn/version "1.11.0"}
         ring/ring-jetty-adapter {:mvn/version "1.11.0"}
