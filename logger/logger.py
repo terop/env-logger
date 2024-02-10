@@ -50,20 +50,28 @@ def get_env_data(env_settings):
         arduino_data = resp.json()
 
     # Read Wio Terminal
-    try:
-        with serial.Serial(env_settings['terminal_serial'], 115200, timeout=10) as ser:
-            raw_data = ser.readline()
-            if not raw_data.decode():
-                logging.error('Got no serial data from Wio Terminal')
-                return {}
-            terminal_data = json.loads(raw_data)
-    except serial.serialutil.SerialException:
-        logging.exception('Cannot read Wio Terminal serial')
-        return {}
+    terminal_ok = True
+    if not Path(env_settings['terminal_serial']).exists():
+        logging.warning('Could not find Wio Terminal device "%s"',
+                        env_settings['terminal_serial'])
+        terminal_ok = False
+    else:
+        try:
+            with serial.Serial(env_settings['terminal_serial'], 115200, timeout=10) \
+                 as ser:
+                raw_data = ser.readline()
+                if not raw_data.decode():
+                    logging.error('Got no serial data from Wio Terminal')
+                    terminal_ok = False
+
+                terminal_data = json.loads(raw_data)
+        except serial.serialutil.SerialException:
+            logging.exception('Cannot read Wio Terminal serial')
+            terminal_ok = False
 
     final_data = {'outsideTemperature': round(arduino_data['extTempSensor'], 2)
                   if arduino_ok else None,
-                  'insideLight': terminal_data['light']}
+                  'insideLight': terminal_data['light'] if terminal_ok else None}
 
     return final_data
 
