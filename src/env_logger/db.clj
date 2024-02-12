@@ -127,7 +127,7 @@
   (let [^LocalDateTime subs-dt (t/minus (t/local-date-time dt)
                                         (t/hours tz-offset))]
     (* (.toEpochSecond subs-dt
-                       (ZoneOffset/UTC))
+                       ZoneOffset/UTC)
        1000)))
 
 (defn -convert-to-iso8601-str
