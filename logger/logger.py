@@ -156,13 +156,12 @@ async def get_ble_beacon(config):
         devices = await BleakScanner.discover(return_adv=True, timeout=4)
 
         for device, ad in devices.values():
-            if device.address != config['beacon_mac']:
-                continue
-
-            data['rssi'].append(ad.rssi)
-            if battery_service_uuid in ad.service_data \
-               and ad.service_data[battery_service_uuid] is not None:
-                data['battery'].append(ad.service_data[battery_service_uuid][0])
+            if device.address == config['beacon_mac']:
+                data['rssi'].append(ad.rssi)
+                if battery_service_uuid in ad.service_data \
+                   and ad.service_data[battery_service_uuid] is not None:
+                    data['battery'].append(ad.service_data[battery_service_uuid][0])
+                break
 
     if data['rssi']:
         return {'mac': config['beacon_mac'],
