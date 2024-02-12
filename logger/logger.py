@@ -75,7 +75,7 @@ def get_env_data(env_settings):
     return final_data
 
 
-async def scan_ruuvitags(rt_config, device):
+async def scan_ruuvitags(rt_config):
     """Scan for RuuviTag(s)."""
     found_tags = {}
 
@@ -87,10 +87,10 @@ async def scan_ruuvitags(rt_config, device):
 
         return None
 
-    async def _async_scan(mac_addresses, bt_device):
+    async def _async_scan(mac_addresses):
         expected_tag_count = len(mac_addresses)
 
-        async for tag_data in RuuviTagSensor.get_data_async(mac_addresses, bt_device):
+        async for tag_data in RuuviTagSensor.get_data_async(mac_addresses):
             mac = tag_data[0]
             if mac in found_tags:
                 continue
@@ -108,12 +108,12 @@ async def scan_ruuvitags(rt_config, device):
     mac_addresses = [tag['mac'] for tag in rt_config['tags']]
 
     try:
-        await asyncio.wait_for(_async_scan(mac_addresses, device), timeout=10)
+        await asyncio.wait_for(_async_scan(mac_addresses), timeout=10)
     except (asyncio.CancelledError, TimeoutError):
         logging.error('RuuviTag scan was cancelled or timed out, retrying')  # noqa: TRY400
         remaining_macs = [mac for mac in mac_addresses if mac not in found_tags]
         try:
-            await asyncio.wait_for(_async_scan(remaining_macs, device), timeout=10)
+            await asyncio.wait_for(_async_scan(remaining_macs), timeout=10)
         except asyncio.CancelledError:
             logging.error('RuuviTag scan cancelled on retry')  # noqa: TRY400
         except TimeoutError:
@@ -196,14 +196,11 @@ def main():
                                      'named "logger_config.json" is used unless '
                                      'provided with --config.')
     parser.add_argument('--config', type=str, help='Configuration file')
-    parser.add_argument('--rt-device', type=str,
-                        help='Bluetooth device to use for RuuviTag scanning')
     parser.add_argument('--dummy', action='store_true',
                         help='Send dummy data (meant for testing)')
 
     args = parser.parse_args()
     config = args.config if args.config else 'logger_config.json'
-    rt_device = args.rt_device if args.rt_device else 'hci0'
 
     if not Path(config).exists() or not Path(config).is_file():
         logging.error('Could not find configuration file: %s', config)
@@ -227,7 +224,7 @@ def main():
         env_data['beacon'] = asyncio.run(get_ble_beacon(env_config))
 
     # This code only works with Python 3.10 and newer
-    ruuvitags = asyncio.run(scan_ruuvitags(config['ruuvitag'], rt_device))
+    ruuvitags = asyncio.run(scan_ruuvitags(config['ruuvitag']))
     store_ruuvitags(config, ruuvitags)
 
     store_to_db(config['timezone'], env_config, env_data, config['authentication_code'])
