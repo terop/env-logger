@@ -17,6 +17,7 @@ import pytz
 import requests
 import serial
 from bleak import BleakScanner
+from bleak.exc import BleakDBusError
 from requests.exceptions import ConnectionError
 
 os.environ['RUUVI_BLE_ADAPTER'] = 'bleak'
@@ -109,7 +110,7 @@ async def scan_ruuvitags(rt_config):
 
     try:
         await asyncio.wait_for(_async_scan(mac_addresses), timeout=10)
-    except (asyncio.CancelledError, TimeoutError):
+    except (asyncio.CancelledError, TimeoutError, BleakDBusError):
         logging.error('RuuviTag scan was cancelled or timed out, retrying')  # noqa: TRY400
         remaining_macs = [mac for mac in mac_addresses if mac not in found_tags]
         try:
@@ -118,6 +119,8 @@ async def scan_ruuvitags(rt_config):
             logging.error('RuuviTag scan cancelled on retry')  # noqa: TRY400
         except TimeoutError:
             logging.error('RuuviTag scan timed out on retry')  # noqa: TRY400
+        except BleakDBusError:
+            logging.error('Bleak error during RuuviTag retry scan')  # noqa: TRY400
 
     return found_tags
 
