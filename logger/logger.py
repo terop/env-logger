@@ -7,18 +7,16 @@ import asyncio
 import json
 import logging
 import os
-import signal
-import subprocess
 import sys
 from collections import OrderedDict
 from datetime import datetime
 from pathlib import Path
-from statistics import mean
-from time import sleep
+from statistics import median
 
 import pytz
 import requests
 import serial
+from bleak import BleakScanner
 from requests.exceptions import ConnectionError
 
 os.environ['RUUVI_BLE_ADAPTER'] = 'bleak'
@@ -52,7 +50,8 @@ def get_env_data(env_settings):
     # Read Wio Terminal
     terminal_ok = True
     if not Path(env_settings['terminal_serial']).exists():
-        logging.warning('Could not find Wio Terminal device "%s"',
+        logging.warning('Could not find Wio Terminal device "%s", '
+                        'skipping Wio Terminal read',
                         env_settings['terminal_serial'])
         terminal_ok = False
     else:
@@ -141,41 +140,33 @@ def store_ruuvitags(config, tag_data):
                      json_data, resp.status_code, resp.text)
 
 
-def get_ble_beacons(config, device):
-    """Return the MAC addresses and RSSI values of predefined Bluetooth BLE beacons."""
-    min_ble_line_length = 15
+async def get_ble_beacon(config):
+    """Scan and return data on the configured Bluetooth LE beacon.
 
-    try:
-        proc = subprocess.Popen([f'{config["beacon_scan_path"]}/ble_beacon_scan', \
-                                 # noqa: S603
-                                 '-t', str(config['beacon_scan_time']), '-d', device],
-                                stdout=subprocess.PIPE)
-        sleep(config['beacon_scan_time'] + 2)
-        if proc.poll() is None:
-            proc.send_signal(signal.SIGINT)
-    except subprocess.CalledProcessError:
-        return []
-    except subprocess.TimeoutExpired:
-        return []
-    (stdout_data, stderr_data) = proc.communicate()
-    if not stdout_data or stderr_data:
-        return []
-    output = stdout_data.decode('utf-8').strip()
+    Returns the MAC address, RSSI value and possibly battery level of the
+    Bluetooth LE beacon.
+    """
+    data = {'rssi': [], 'battery': []}
+    battery_service_uuid = '00002080-0000-1000-8000-00805f9b34fb'
 
-    rssis = []
-    split_output = output.split('\n')
-    for line in split_output:
-        if len(line) < min_ble_line_length:
-            continue
-        address, rssi = line.split(' ')
-        if address == config['beacon_mac']:
-            rssis.append(int(rssi))
+    for _ in range(3):
+        devices = await BleakScanner.discover(return_adv=True, timeout=4)
 
-    if len(rssis) > 0:
-        return [{'mac': config['beacon_mac'],
-                 'rssi': round(mean(rssis))}]
+        for device, ad in devices.values():
+            if device.address != config['beacon_mac']:
+                continue
 
-    return []
+            data['rssi'].append(ad.rssi)
+            if battery_service_uuid in ad.service_data \
+               and ad.service_data[battery_service_uuid] is not None:
+                data['battery'].append(ad.service_data[battery_service_uuid][0])
+
+    if data['rssi']:
+        return {'mac': config['beacon_mac'],
+                'rssi': round(median(data['rssi'])),
+                'battery': round(median(data['battery'])) if data['battery'] else None}
+
+    return {}
 
 
 def store_to_db(timezone, config, data, auth_code):
@@ -207,15 +198,12 @@ def main():
     parser.add_argument('--config', type=str, help='Configuration file')
     parser.add_argument('--rt-device', type=str,
                         help='Bluetooth device to use for RuuviTag scanning')
-    parser.add_argument('--ble-device', type=str,
-                        help='Bluetooth device to use for BLE beacon scanning')
     parser.add_argument('--dummy', action='store_true',
                         help='Send dummy data (meant for testing)')
 
     args = parser.parse_args()
     config = args.config if args.config else 'logger_config.json'
     rt_device = args.rt_device if args.rt_device else 'hci0'
-    ble_device = args.ble_device if args.ble_device else 'hci0'
 
     if not Path(config).exists() or not Path(config).is_file():
         logging.error('Could not find configuration file: %s', config)
@@ -232,20 +220,11 @@ def main():
     if args.dummy:
         env_data = {'insideLight': 10,
                     'outsideTemperature': 5,
-                    'beacons': []}
+                    'beacon': {}}
     else:
         env_data = get_env_data(env_config)
 
-        env_data['beacons'] = get_ble_beacons(env_config, ble_device)
-        # Possible retry if first scan fails
-        for _ in range(2):
-            if env_data['beacons']:
-                break
-
-            orig_scan_time = env_config['beacon_scan_time']
-            env_config['beacon_scan_time'] /= 2
-            env_data['beacons'] = get_ble_beacons(env_config, ble_device)
-            env_config['beacon_scan_time'] = orig_scan_time
+        env_data['beacon'] = asyncio.run(get_ble_beacon(env_config))
 
     # This code only works with Python 3.10 and newer
     ruuvitags = asyncio.run(scan_ruuvitags(config['ruuvitag'], rt_device))

@@ -9,9 +9,9 @@ packages = [{include = "logger.py"}]
 [tool.poetry.dependencies]
 python = "^3.11"
 pyserial = "^3.5"
-pytz = "^2023.3"
+pytz = "^2024.0"
 requests = "^2.30.0"
-bleak = "^0.20.2"
+bleak = { version = "^0.21.0", python = ">=3.11,<3.13" }
 ruuvitag-sensor = "^2.3.0"
 
 
