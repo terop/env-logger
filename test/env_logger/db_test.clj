@@ -27,7 +27,7 @@
                                    get-weather-obs-interval
                                    get-weather-observations
                                    image-age-check
-                                   insert-beacons
+                                   insert-beacon
                                    insert-elec-consumption-data
                                    insert-observation
                                    insert-plain-observation
@@ -111,8 +111,8 @@
   (testing "Full observation insert"
     (let [observation {:timestamp current-dt-zoned
                        :insideLight 0
-                       :beacons [{:rssi -68
-                                  :mac "7C:EC:79:3F:BE:97"}]}
+                       :beacon {:mac "7C:EC:79:3F:BE:97"
+                                :rssi -68}}
           weather-data {:time (t/sql-timestamp current-dt)
                         :temperature 20
                         :cloudiness 2
@@ -141,7 +141,7 @@
                                             (sql/format
                                              {:select [:%count.id]
                                               :from :observations})))))))
-      (with-redefs [insert-beacons (fn [_ _ _] '(-1))]
+      (with-redefs [insert-beacon (fn [_ _ _] '-1)]
         (is (false? (insert-observation test-ds
                                         (merge observation
                                                {:outsideTemperature nil
@@ -350,15 +350,15 @@
                                                      :temperature)))))))
 
 (deftest beacon-insert
-  (testing "Insert of beacon(s)"
+  (testing "Insert of beacon"
     (let [obs-id (:min (jdbc/execute-one! test-ds
                                           (sql/format {:select [:%min.id]
                                                        :from :observations})))
           beacon {:rssi -68
                   :mac "7C:EC:79:3F:BE:97"}]
-      (is (pos? (first (insert-beacons test-ds
-                                       obs-id
-                                       {:beacons [beacon]})))))))
+      (is (pos? (insert-beacon test-ds
+                               obs-id
+                               {:beacon beacon}))))))
 
 (deftest plain-observation-insert
   (testing "Insert of a row into the observations table"

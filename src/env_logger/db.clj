@@ -155,10 +155,10 @@
                     :tb_image_name (get-tb-image db-con)}
                    rs-opts)))
 
-(defn insert-beacons
-  "Insert one or more beacons into the beacons table."
+(defn insert-beacon
+  "Insert a beacon into the beacons table."
   [db-con obs-id observation]
-  (for [beacon (:beacons observation)]
+  (let [beacon (:beacon observation)]
     (:id (js/insert! db-con
                      :beacons
                      {:obs_id obs-id
@@ -214,8 +214,7 @@
         (let [obs-id (insert-plain-observation tx
                                                observation)]
           (when (pos? obs-id)
-            (if (every? pos?
-                        (insert-beacons tx obs-id observation))
+            (if (pos? (insert-beacon tx obs-id observation))
               (let [weather-data (:weather-data observation)]
                 (if (nil? weather-data)
                   true
