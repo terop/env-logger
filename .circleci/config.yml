@@ -65,5 +65,5 @@ jobs:
       - run:
           name: run cljfmt
           command: |
-            clojure -Ttools install io.github.weavejester/cljfmt '{:git/tag "0.11.2"}' :as cljfmt
+            clojure -Ttools install io.github.weavejester/cljfmt '{:git/tag "0.12.0"}' :as cljfmt
             clojure -Tcljfmt check
