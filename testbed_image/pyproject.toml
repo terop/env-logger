@@ -7,10 +7,10 @@ packages = [{include = "testbed_image.py"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-requests = "^2.28.2"
-beautifulsoup4 = "^4.11.2"
-pytz = "^2023.3"
-lxml = "^4.9.2"
+requests = "^2.30.0"
+beautifulsoup4 = "^4.12.0"
+pytz = "^2024.0"
+lxml = "^5.1.0"
 
 
 [build-system]
