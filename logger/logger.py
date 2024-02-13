@@ -11,7 +11,7 @@ import sys
 from collections import OrderedDict
 from datetime import datetime
 from pathlib import Path
-from statistics import median
+from statistics import mean, median
 
 import pytz
 import requests
@@ -165,7 +165,7 @@ async def get_ble_beacon(config):
 
     if data['rssi']:
         return {'mac': config['beacon_mac'],
-                'rssi': round(median(data['rssi'])),
+                'rssi': round(mean(data['rssi'])),
                 'battery': round(median(data['battery'])) if data['battery'] else None}
 
     return {}
