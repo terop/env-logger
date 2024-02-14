@@ -14,7 +14,9 @@ CREATE TABLE beacons (
        id SERIAL PRIMARY KEY,
        obs_id INTEGER NOT NULL REFERENCES observations (id) ON DELETE CASCADE,
        mac_address CHAR(17) NOT NULL,
-       rssi SMALLINT NOT NULL
+       rssi SMALLINT NOT NULL,
+       -- allow NULL values as all beacons do not support battery level reporting
+       battery_level SMALLINT
 );
 
 -- FMI weather data table

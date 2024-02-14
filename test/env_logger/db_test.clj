@@ -112,7 +112,8 @@
     (let [observation {:timestamp current-dt-zoned
                        :insideLight 0
                        :beacon {:mac "7C:EC:79:3F:BE:97"
-                                :rssi -68}}
+                                :rssi -68
+                                :battery_level nil}}
           weather-data {:time (t/sql-timestamp current-dt)
                         :temperature 20
                         :cloudiness 2
@@ -350,7 +351,7 @@
                                                      :temperature)))))))
 
 (deftest beacon-insert
-  (testing "Insert of beacon"
+  (testing "Insert of a beacon"
     (let [obs-id (:min (jdbc/execute-one! test-ds
                                           (sql/format {:select [:%min.id]
                                                        :from :observations})))]
@@ -365,7 +366,47 @@
       (is (pos? (insert-beacon test-ds
                                obs-id
                                {:beacon {:rssi -68
-                                         :mac "7C:EC:79:3F:BE:97"}}))))))
+                                         :mac "7C:EC:79:3F:BE:97"
+                                         :battery "foo"}})))
+      (let [beacons-id (insert-beacon test-ds
+                               obs-id
+                               {:beacon {:rssi -68
+                                         :mac "7C:EC:79:3F:BE:97"
+                                         :battery nil}})]
+        (is (pos? beacons-id))
+        (let [result (jdbc/execute-one! test-ds
+                                        (sql/format {:select [:mac_address
+                                                              :rssi
+                                                              :battery_level]
+                                                     :from :beacons
+                                                     :where [:= :id
+                                                             beacons-id]}))]
+          (is (= (:mac_address result) "7C:EC:79:3F:BE:97"))
+          (is (= (:rssi result) -68))
+          (is (nil? (:battery_level result))))
+        ;; Remove beacon to not break other tests
+        (jdbc/execute! test-ds
+                       (sql/format {:delete-from :beacons
+                                    :where [:= :id beacons-id]})))
+      (let [beacons-id (insert-beacon test-ds
+                               obs-id
+                               {:beacon {:rssi -72
+                                         :mac "7C:EC:79:3F:BE:97"
+                                         :battery 95}})]
+        (is (pos? beacons-id))
+        (let [result (jdbc/execute-one! test-ds
+                                        (sql/format {:select [:mac_address
+                                                              :rssi
+                                                              :battery_level]
+                                                     :from :beacons
+                                                     :where [:= :id
+                                                             beacons-id]}))]
+          (is (= (:rssi result) -72))
+          (is (= (:battery_level result) 95)))
+        ;; Remove beacon to not break other tests
+        (jdbc/execute! test-ds
+                       (sql/format {:delete-from :beacons
+                                    :where [:= :id beacons-id]}))))))
 
 (deftest plain-observation-insert
   (testing "Insert of a row into the observations table"

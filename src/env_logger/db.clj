@@ -161,16 +161,21 @@
   (let [beacon (:beacon observation)]
     (if (and (and (seq (:mac beacon))
                   (> (count (:mac beacon)) 16))
-             (integer? (:rssi beacon)))
-      (:id (js/insert! db-con
-                       :beacons
-                       {:obs_id obs-id
-                        :mac_address (:mac beacon)
-                        :rssi (:rssi beacon)}
-                       rs-opts))
+             (integer? (:rssi beacon))
+             (or (when (nil? (:battery beacon)) true)
+                 (integer? (:battery beacon))))
+            (:id (js/insert! db-con
+                             :beacons
+                             {:obs_id obs-id
+                              :mac_address (:mac beacon)
+                              :rssi (:rssi beacon)
+                              :battery_level (:battery beacon)}
+                             rs-opts))
       (do
-        (error "Invalid data for beacon insert: MAC" (:mac beacon) " RSSI"
+        (error "Invalid data for beacon insert: MAC" (:mac beacon) "RSSI"
                (:rssi beacon))
+        (when (:battery beacon)
+          (error "battery level" (:battery beacon)))
         1))))
 
 (defn insert-wd
