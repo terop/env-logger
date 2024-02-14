@@ -353,12 +353,19 @@
   (testing "Insert of beacon"
     (let [obs-id (:min (jdbc/execute-one! test-ds
                                           (sql/format {:select [:%min.id]
-                                                       :from :observations})))
-          beacon {:rssi -68
-                  :mac "7C:EC:79:3F:BE:97"}]
+                                                       :from :observations})))]
       (is (pos? (insert-beacon test-ds
                                obs-id
-                               {:beacon beacon}))))))
+                               {:beacon {:rssi -68
+                                         :mac nil}})))
+      (is (pos? (insert-beacon test-ds
+                               obs-id
+                               {:beacon {:rssi 13.3
+                                         :mac "7C:EC:79:3F:BE:97"}})))
+      (is (pos? (insert-beacon test-ds
+                               obs-id
+                               {:beacon {:rssi -68
+                                         :mac "7C:EC:79:3F:BE:97"}}))))))
 
 (deftest plain-observation-insert
   (testing "Insert of a row into the observations table"

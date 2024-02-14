@@ -159,12 +159,19 @@
   "Insert a beacon into the beacons table."
   [db-con obs-id observation]
   (let [beacon (:beacon observation)]
-    (:id (js/insert! db-con
-                     :beacons
-                     {:obs_id obs-id
-                      :mac_address (:mac beacon)
-                      :rssi (:rssi beacon)}
-                     rs-opts))))
+    (if (and (and (seq (:mac beacon))
+                  (> (count (:mac beacon)) 16))
+             (integer? (:rssi beacon)))
+      (:id (js/insert! db-con
+                       :beacons
+                       {:obs_id obs-id
+                        :mac_address (:mac beacon)
+                        :rssi (:rssi beacon)}
+                       rs-opts))
+      (do
+        (error "Invalid data for beacon insert: MAC" (:mac beacon) " RSSI"
+               (:rssi beacon))
+        1))))
 
 (defn insert-wd
   "Insert a FMI weather observation into the database."
@@ -214,7 +221,8 @@
         (let [obs-id (insert-plain-observation tx
                                                observation)]
           (when (pos? obs-id)
-            (if (pos? (insert-beacon tx obs-id observation))
+            (if (or (when-not (seq (:beacon observation)) true)
+                    (pos? (insert-beacon tx obs-id observation)))
               (let [weather-data (:weather-data observation)]
                 (if (nil? weather-data)
                   true
@@ -318,7 +326,7 @@
                       (merge where-query {:limit limit
                                           :order-by [[:o.id :desc]]})
                       (assoc where-query :order-by [[:o.id :asc]]))
-        beacon-names (:beacon-name env)
+        beacon-name (:beacon-name env)
         tz-offset (get-tz-offset (:display-timezone env))]
     (for [row (jdbc/execute! db-con
                              (sql/format limit-query)
@@ -330,7 +338,7 @@
                                           (convert-to-epoch-ms
                                            tz-offset
                                            (:weather-recorded row)))
-                      :name (get beacon-names
+                      :name (get beacon-name
                                  (:mac-address row)
                                  (:mac-address row))})
               :mac-address))))
