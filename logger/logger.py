@@ -12,6 +12,7 @@ from collections import OrderedDict
 from datetime import datetime
 from pathlib import Path
 from statistics import mean, median
+from time import sleep
 
 import pytz
 import requests
@@ -224,6 +225,9 @@ def main():
         env_data = get_env_data(env_config)
 
         env_data['beacon'] = asyncio.run(get_ble_beacon(env_config))
+        # Sleep to avoid possible Bleak scanning overlap when both BLE and
+        # RuuviTag scanning is running at the same time
+        sleep(2.5)
 
     # This code only works with Python 3.10 and newer
     ruuvitags = asyncio.run(scan_ruuvitags(config['ruuvitag']))
