@@ -369,10 +369,10 @@
                                          :mac "7C:EC:79:3F:BE:97"
                                          :battery "foo"}})))
       (let [beacons-id (insert-beacon test-ds
-                               obs-id
-                               {:beacon {:rssi -68
-                                         :mac "7C:EC:79:3F:BE:97"
-                                         :battery nil}})]
+                                      obs-id
+                                      {:beacon {:rssi -68
+                                                :mac "7C:EC:79:3F:BE:97"
+                                                :battery nil}})]
         (is (pos? beacons-id))
         (let [result (jdbc/execute-one! test-ds
                                         (sql/format {:select [:mac_address
@@ -389,10 +389,10 @@
                        (sql/format {:delete-from :beacons
                                     :where [:= :id beacons-id]})))
       (let [beacons-id (insert-beacon test-ds
-                               obs-id
-                               {:beacon {:rssi -72
-                                         :mac "7C:EC:79:3F:BE:97"
-                                         :battery 95}})]
+                                      obs-id
+                                      {:beacon {:rssi -72
+                                                :mac "7C:EC:79:3F:BE:97"
+                                                :battery 95}})]
         (is (pos? beacons-id))
         (let [result (jdbc/execute-one! test-ds
                                         (sql/format {:select [:mac_address

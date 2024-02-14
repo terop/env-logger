@@ -164,13 +164,13 @@
              (integer? (:rssi beacon))
              (or (when (nil? (:battery beacon)) true)
                  (integer? (:battery beacon))))
-            (:id (js/insert! db-con
-                             :beacons
-                             {:obs_id obs-id
-                              :mac_address (:mac beacon)
-                              :rssi (:rssi beacon)
-                              :battery_level (:battery beacon)}
-                             rs-opts))
+      (:id (js/insert! db-con
+                       :beacons
+                       {:obs_id obs-id
+                        :mac_address (:mac beacon)
+                        :rssi (:rssi beacon)
+                        :battery_level (:battery beacon)}
+                       rs-opts))
       (do
         (error "Invalid data for beacon insert: MAC" (:mac beacon) "RSSI"
                (:rssi beacon))
