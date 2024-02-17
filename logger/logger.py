@@ -2,6 +2,8 @@
 
 """A program for fetching and sending environment data to the data logger backend."""
 
+# ruff: noqa: TRY400
+
 import argparse
 import asyncio
 import json
@@ -39,7 +41,7 @@ def get_env_data(env_settings):
     try:
         resp = requests.get(env_settings['arduino_url'], timeout=5)
     except (ConnectionError, OSError) as ex:
-        logging.error('Connection problem to Arduino: %s', ex)  # noqa: TRY400
+        logging.error('Connection problem to Arduino: %s', ex)
         arduino_ok = False
     if arduino_ok and not resp.ok:
         logging.error('Cannot read Arduino data, status code: %s', resp.status_code)
@@ -111,16 +113,16 @@ async def scan_ruuvitags(rt_config):
     try:
         await asyncio.wait_for(_async_scan(mac_addresses), timeout=10)
     except (asyncio.CancelledError, TimeoutError, BleakDBusError):
-        logging.error('RuuviTag scan was cancelled or timed out, retrying')  # noqa: TRY400
+        logging.error('RuuviTag scan was cancelled or timed out, retrying')
         remaining_macs = [mac for mac in mac_addresses if mac not in found_tags]
         try:
             await asyncio.wait_for(_async_scan(remaining_macs), timeout=10)
         except asyncio.CancelledError:
-            logging.error('RuuviTag scan cancelled on retry')  # noqa: TRY400
+            logging.error('RuuviTag scan cancelled on retry')
         except TimeoutError:
-            logging.error('RuuviTag scan timed out on retry')  # noqa: TRY400
+            logging.error('RuuviTag scan timed out on retry')
         except BleakDBusError as bde:
-            logging.error('Bleak error during RuuviTag retry scan: %s', bde)  # noqa: TRY400
+            logging.error('Bleak error during RuuviTag retry scan: %s', bde)
 
     return found_tags
 
@@ -168,7 +170,7 @@ async def get_ble_beacon(config, bt_device):
         await asyncio.sleep(scan_time)
         await scanner.stop()
     except BleakError as be:
-        logging.error('BLE beacon scan failed: %s', be)  # noqa: TRY400
+        logging.error('BLE beacon scan failed: %s', be)
         return {}
 
     if data['rssi']:
