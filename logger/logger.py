@@ -78,7 +78,7 @@ def get_env_data(env_settings):
     return final_data
 
 
-async def scan_ruuvitags(rt_config):
+async def scan_ruuvitags(rt_config, bt_device):
     """Scan for RuuviTag(s)."""
     found_tags = {}
 
@@ -93,7 +93,7 @@ async def scan_ruuvitags(rt_config):
     async def _async_scan(mac_addresses):
         expected_tag_count = len(mac_addresses)
 
-        async for tag_data in RuuviTagSensor.get_data_async(mac_addresses):
+        async for tag_data in RuuviTagSensor.get_data_async(mac_addresses, bt_device):
             mac = tag_data[0]
             if mac in found_tags:
                 continue
@@ -239,7 +239,7 @@ def main():
         env_data['beacon'] = asyncio.run(get_ble_beacon(env_config, bt_device))
 
     # This code only works with Python 3.10 and newer
-    ruuvitags = asyncio.run(scan_ruuvitags(config['ruuvitag']))
+    ruuvitags = asyncio.run(scan_ruuvitags(config['ruuvitag'], bt_device))
     store_ruuvitags(config, ruuvitags)
 
     store_to_db(config['timezone'], env_config, env_data, config['authentication_code'])
