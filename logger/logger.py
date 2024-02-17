@@ -12,13 +12,12 @@ from collections import OrderedDict
 from datetime import datetime
 from pathlib import Path
 from statistics import mean, median
-from time import sleep
 
 import pytz
 import requests
 import serial
 from bleak import BleakScanner
-from bleak.exc import BleakDBusError
+from bleak.exc import BleakDBusError, BleakError
 from requests.exceptions import ConnectionError
 
 os.environ['RUUVI_BLE_ADAPTER'] = 'bleak'
@@ -120,8 +119,8 @@ async def scan_ruuvitags(rt_config):
             logging.error('RuuviTag scan cancelled on retry')  # noqa: TRY400
         except TimeoutError:
             logging.error('RuuviTag scan timed out on retry')  # noqa: TRY400
-        except BleakDBusError:
-            logging.error('Bleak error during RuuviTag retry scan')  # noqa: TRY400
+        except BleakDBusError as bde:
+            logging.error('Bleak error during RuuviTag retry scan: %s', bde)  # noqa: TRY400
 
     return found_tags
 
@@ -144,25 +143,33 @@ def store_ruuvitags(config, tag_data):
                      json_data, resp.status_code, resp.text)
 
 
-async def get_ble_beacon(config):
+async def get_ble_beacon(config, bt_device):
     """Scan and return data on the configured Bluetooth LE beacon.
 
     Returns the MAC address, RSSI value and possibly battery level of the
     Bluetooth LE beacon.
     """
+    scan_time = 11
     data = {'rssi': [], 'battery': []}
     battery_service_uuid = '00002080-0000-1000-8000-00805f9b34fb'
 
-    for _ in range(3):
-        devices = await BleakScanner.discover(return_adv=True, timeout=4)
+    def callback(device, ad):
+        if device.address == config['beacon_mac']:
+            data['rssi'].append(ad.rssi)
+            if battery_service_uuid in ad.service_data \
+               and ad.service_data[battery_service_uuid] is not None:
+                data['battery'].append(ad.service_data[battery_service_uuid][0])
 
-        for device, ad in devices.values():
-            if device.address == config['beacon_mac']:
-                data['rssi'].append(ad.rssi)
-                if battery_service_uuid in ad.service_data \
-                   and ad.service_data[battery_service_uuid] is not None:
-                    data['battery'].append(ad.service_data[battery_service_uuid][0])
-                break
+    try:
+        additional_arguments = {'adapter': bt_device}
+        scanner = BleakScanner(callback, **additional_arguments)
+
+        await scanner.start()
+        await asyncio.sleep(scan_time)
+        await scanner.stop()
+    except BleakError as be:
+        logging.error('BLE beacon scan failed: %s', be)  # noqa: TRY400
+        return {}
 
     if data['rssi']:
         return {'mac': config['beacon_mac'],
@@ -201,9 +208,12 @@ def main():
     parser.add_argument('--config', type=str, help='Configuration file')
     parser.add_argument('--dummy', action='store_true',
                         help='Send dummy data (meant for testing)')
+    parser.add_argument('--bt-device', type=str,
+                        help='Bluetooth device to use (default: hci0)')
 
     args = parser.parse_args()
     config = args.config if args.config else 'logger_config.json'
+    bt_device = args.bt_device if args.bt_device else 'hci0'
 
     if not Path(config).exists() or not Path(config).is_file():
         logging.error('Could not find configuration file: %s', config)
@@ -224,10 +234,7 @@ def main():
     else:
         env_data = get_env_data(env_config)
 
-        env_data['beacon'] = asyncio.run(get_ble_beacon(env_config))
-        # Sleep to avoid possible Bleak scanning overlap when both BLE and
-        # RuuviTag scanning is running at the same time
-        sleep(2.5)
+        env_data['beacon'] = asyncio.run(get_ble_beacon(env_config, bt_device))
 
     # This code only works with Python 3.10 and newer
     ruuvitags = asyncio.run(scan_ruuvitags(config['ruuvitag']))
