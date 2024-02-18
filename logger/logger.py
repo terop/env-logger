@@ -81,6 +81,9 @@ def get_env_data(env_settings):
 async def scan_ruuvitags(rt_config, bt_device):
     """Scan for RuuviTag(s)."""
     found_tags = {}
+    # This is done to ensure that BLE beacon and RuuviTag scanning are not running
+    # in parallel which can cause problems
+    await asyncio.sleep(2)
 
     def _get_tag_location(mac):
         """Get RuuviTag location based on tag MAC address."""
@@ -151,7 +154,7 @@ async def get_ble_beacon(config, bt_device):
     Returns the MAC address, RSSI value and possibly battery level of the
     Bluetooth LE beacon.
     """
-    scan_time = 11
+    scan_time = 10
     data = {'rssi': [], 'battery': []}
     battery_service_uuid = '00002080-0000-1000-8000-00805f9b34fb'
 
@@ -163,8 +166,7 @@ async def get_ble_beacon(config, bt_device):
                 data['battery'].append(ad.service_data[battery_service_uuid][0])
 
     try:
-        additional_arguments = {'adapter': bt_device}
-        scanner = BleakScanner(callback, **additional_arguments)
+        scanner = BleakScanner(callback, adapter=bt_device)
 
         await scanner.start()
         await asyncio.sleep(scan_time)
@@ -229,20 +231,23 @@ def main():
             sys.exit(1)
 
     env_config = config['environment']
-    if args.dummy:
-        env_data = {'insideLight': 10,
-                    'outsideTemperature': 5,
-                    'beacon': {}}
-    else:
-        env_data = get_env_data(env_config)
 
-        env_data['beacon'] = asyncio.run(get_ble_beacon(env_config, bt_device))
+    with asyncio.Runner() as runner:
+        if args.dummy:
+            env_data = {'insideLight': 10,
+                        'outsideTemperature': 5,
+                        'beacon': {}}
+        else:
+            env_data = get_env_data(env_config)
 
-    # This code only works with Python 3.10 and newer
-    ruuvitags = asyncio.run(scan_ruuvitags(config['ruuvitag'], bt_device))
-    store_ruuvitags(config, ruuvitags)
+        env_data['beacon'] = runner.run(get_ble_beacon(env_config, bt_device))
 
-    store_to_db(config['timezone'], env_config, env_data, config['authentication_code'])
+        # This code only works with Python 3.10 and newer
+        ruuvitags = runner.run(scan_ruuvitags(config['ruuvitag'], bt_device))
+        store_ruuvitags(config, ruuvitags)
+
+        store_to_db(config['timezone'], env_config, env_data,
+                    config['authentication_code'])
 
 
 if __name__ == '__main__':
