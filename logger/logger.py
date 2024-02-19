@@ -14,6 +14,7 @@ from collections import OrderedDict
 from datetime import datetime
 from pathlib import Path
 from statistics import mean, median
+from time import sleep
 
 import pytz
 import requests
@@ -21,10 +22,12 @@ import serial
 from bleak import BleakScanner
 from bleak.exc import BleakDBusError, BleakError
 from requests.exceptions import ConnectionError
+from urllib3.exceptions import ConnectTimeoutError, MaxRetryError, ReadTimeoutError
 
 os.environ['RUUVI_BLE_ADAPTER'] = 'bleak'
 from ruuvitag_sensor.ruuvi import RuuviTagSensor  # noqa: E402
 
+lock = asyncio.Lock()
 
 def get_timestamp(timezone):
     """Return the current timestamp in ISO 8601 format."""
@@ -81,9 +84,8 @@ def get_env_data(env_settings):
 async def scan_ruuvitags(rt_config, bt_device):
     """Scan for RuuviTag(s)."""
     found_tags = {}
-    # This is done to ensure that BLE beacon and RuuviTag scanning are not running
-    # in parallel which can cause problems
-    await asyncio.sleep(2)
+
+    await lock.acquire()
 
     def _get_tag_location(mac):
         """Get RuuviTag location based on tag MAC address."""
@@ -115,9 +117,11 @@ async def scan_ruuvitags(rt_config, bt_device):
 
     try:
         await asyncio.wait_for(_async_scan(mac_addresses), timeout=10)
-    except (asyncio.CancelledError, TimeoutError, BleakDBusError):
-        logging.error('RuuviTag scan was cancelled or timed out, retrying')
+    except (asyncio.CancelledError, TimeoutError, BleakDBusError) as err:
+        logging.error('RuuviTag scan was cancelled or timed out, retrying: %s', err)
         remaining_macs = [mac for mac in mac_addresses if mac not in found_tags]
+
+        await asyncio.sleep(4)
         try:
             await asyncio.wait_for(_async_scan(remaining_macs), timeout=10)
         except asyncio.CancelledError:
@@ -127,28 +131,37 @@ async def scan_ruuvitags(rt_config, bt_device):
         except BleakDBusError as bde:
             logging.error('Bleak error during RuuviTag retry scan: %s', bde)
 
+    lock.release()
+
     return found_tags
 
 
-def store_ruuvitags(config, tag_data):
+def store_ruuvitags(config, timestamp, tag_data):
     """Send provided RuuviTag data to the backend."""
-    timestamp = get_timestamp(config['timezone'])
-
     for tag in tag_data.values():
         tag['timestamp'] = timestamp
         json_data = json.dumps(tag)
 
-        resp = requests.post(config['ruuvitag']['url'],
-                             params={'observation': json_data,
-                                     'code': config['authentication_code']},
-                             timeout=5)
+        try:
+            resp = requests.post(config['ruuvitag']['url'],
+                                 params={'observation': json_data,
+                                         'code': config['authentication_code']},
+                                 timeout=10)
+        except (ConnectTimeoutError, MaxRetryError, OSError, ReadTimeoutError) as err:
+            logging.error('RuuviTag data store failed: %s', err)
+            sleep(5)
 
-        logging.info("RuuviTag observation request data: '%s', response: code %s, "
+            resp = requests.post(config['ruuvitag']['url'],
+                                 params={'observation': json_data,
+                                         'code': config['authentication_code']},
+                                 timeout=10)
+
+        logging.info("RuuviTag observation data: '%s', response: code %s, "
                      "text '%s'",
                      json_data, resp.status_code, resp.text)
 
 
-async def get_ble_beacon(config, bt_device):
+async def scan_ble_beacon(config, bt_device):
     """Scan and return data on the configured Bluetooth LE beacon.
 
     Returns the MAC address, RSSI value and possibly battery level of the
@@ -158,8 +171,10 @@ async def get_ble_beacon(config, bt_device):
     data = {'rssi': [], 'battery': []}
     battery_service_uuid = '00002080-0000-1000-8000-00805f9b34fb'
 
+    await lock.acquire()
+
     def callback(device, ad):
-        if device.address == config['beacon_mac']:
+        if device.address == config['ble_beacon_mac']:
             data['rssi'].append(ad.rssi)
             if battery_service_uuid in ad.service_data \
                and ad.service_data[battery_service_uuid] is not None:
@@ -176,27 +191,52 @@ async def get_ble_beacon(config, bt_device):
         return {}
 
     if data['rssi']:
-        return {'mac': config['beacon_mac'],
+        if not data['battery'] and config['ble_beacon_rescan_battery']:
+            logging.info('Rescanning BLE beacon for battery data')
+            try:
+                scanner = BleakScanner(callback, adapter=bt_device)
+
+                await scanner.start()
+                await asyncio.sleep(5)
+                await scanner.stop()
+            except BleakError as be:
+                logging.error('BLE beacon scan failed: %s', be)
+
+        lock.release()
+
+        return {'mac': config['ble_beacon_mac'],
                 'rssi': round(mean(data['rssi'])),
                 'battery': round(median(data['battery'])) if data['battery'] else None}
+
+    lock.release()
 
     return {}
 
 
-def store_to_db(timezone, config, data, auth_code):
-    """Store the data in the backend database with a HTTP POST request."""
+def store_to_db(config, timestamp, data):
+    """Store the observation data to the backend database."""
     if data == {}:
         logging.error('Received no data, stopping')
         return
 
-    data['timestamp'] = get_timestamp(timezone)
+    data['timestamp'] = timestamp
     data = OrderedDict(sorted(data.items()))
-    resp = requests.post(config['upload_url'],
-                         params={'observation': json.dumps(data),
-                                 'code': auth_code},
-                         timeout=5)
 
-    logging.info("Weather observation request data: '%s', response: code %s, text '%s'",
+    try:
+        resp = requests.post(config['environment']['upload_url'],
+                             params={'observation': json.dumps(data),
+                                     'code': config['authentication_code']},
+                             timeout=10)
+    except (ConnectTimeoutError, MaxRetryError, OSError, ReadTimeoutError) as err:
+        logging.error('Observation data store failed: %s', err)
+        sleep(5)
+
+        resp = requests.post(config['environment']['upload_url'],
+                             params={'observation': json.dumps(data),
+                                     'code': config['authentication_code']},
+                             timeout=10)
+
+    logging.info("Observation data: '%s', response: code %s, text '%s'",
                  json.dumps(data), resp.status_code, resp.text)
 
 
@@ -232,6 +272,8 @@ def main():
 
     env_config = config['environment']
 
+    logging.info('Logger run started')
+
     with asyncio.Runner() as runner:
         if args.dummy:
             env_data = {'insideLight': 10,
@@ -240,14 +282,13 @@ def main():
         else:
             env_data = get_env_data(env_config)
 
-        env_data['beacon'] = runner.run(get_ble_beacon(env_config, bt_device))
+        env_data['beacon'] = runner.run(scan_ble_beacon(env_config, bt_device))
+        timestamp = get_timestamp(config['timezone'])
+        store_to_db(config, timestamp, env_data)
 
         # This code only works with Python 3.10 and newer
         ruuvitags = runner.run(scan_ruuvitags(config['ruuvitag'], bt_device))
-        store_ruuvitags(config, ruuvitags)
-
-        store_to_db(config['timezone'], env_config, env_data,
-                    config['authentication_code'])
+        store_ruuvitags(config, timestamp, ruuvitags)
 
 
 if __name__ == '__main__':

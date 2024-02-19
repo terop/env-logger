@@ -5,7 +5,8 @@
         "arduino_url": "http://192.168.1.123",
         "terminal_serial": "/dev/ttyACM0",
         "upload_url": "https://example.com/env-logger/obs/observation",
-        "beacon_mac": "20:91:48:26:51:F1"
+        "ble_beacon_mac": "20:91:48:26:51:F1",
+        "ble_beacon_rescan_battery": false
     },
     "ruuvitag": {
         "url": "https://example.com/env-logger/obs/rt-observation",
