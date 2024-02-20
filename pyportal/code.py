@@ -28,7 +28,7 @@ SLEEP_TIME = 85
 # Sleep time (in seconds) between clock setting
 TIME_SET_SLEEP_TIME = 360
 # Interval (in minutes) between data storage events
-DATA_STORAGE_INTERVAL = 3
+DATA_STORAGE_INTERVAL = 4
 
 # Default backlight value
 BACKLIGHT_DEFAULT_VALUE = 0.7
