@@ -344,11 +344,11 @@ def update_screen(display, observation, weather_data, elec_price_data, utc_offse
     display[row].text += 'outside temp'
     if observation['data']['o-temperature'] is not None:
         display[row].text += f' {observation["data"]["o-temperature"]} \u00b0C'
-    if observation['data']['rssi']:
+    if observation['data']['beacon-rssi']:
         display[row].text += ','
         row += 1
         display[row].text = f'beacon "{observation["data"]["name"]}" ' + \
-            f'RSSI {observation["data"]["rssi"]} dBm'
+            f'RSSI {observation["data"]["beacon-rssi"]} dBm'
     row += 1
 
     if observation['rt-data']:

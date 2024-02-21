@@ -317,7 +317,7 @@
                              :w.wind_speed
                              [:o.outside_temperature "o_temperature"]
                              :b.mac_address
-                             :b.rssi
+                             [:b.rssi "beacon_rssi"]
                              :o.tb_image_name]
                     :from [[:observations :o]]
                     :left-join [[:weather-data :w]
@@ -343,9 +343,9 @@
                                           (convert-to-epoch-ms
                                            tz-offset
                                            (:weather-recorded row)))
-                      :name (get beacon-name
-                                 (:mac-address row)
-                                 (:mac-address row))})
+                      :beacon-name (get beacon-name
+                                        (:mac-address row)
+                                        (:mac-address row))})
               :mac-address))))
 
 (defn get-obs-days

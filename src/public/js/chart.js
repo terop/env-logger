@@ -6,7 +6,7 @@ const colors = [
     // Data field names
     fieldNames = {
         'weather': ['fmi-temperature', 'cloudiness', 'wind-speed'],
-        'other': ['brightness', 'rssi', 'o-temperature']
+        'other': ['brightness', 'beacon-rssi', 'o-temperature']
     };
 
 var labelValues = {
@@ -205,7 +205,7 @@ var loadPage = () => {
             // Other
             processFields('other', observation, fieldNames['other']);
 
-            bleBeaconNames.push(observation['name']);
+            bleBeaconNames.push(observation['beacon-name']);
         } else {
             dataLabels['weather'].push(new Date(observation['time']));
 
@@ -245,7 +245,7 @@ var loadPage = () => {
             labelValues['other'] = {
                 'brightness': 'Brightness',
                 'o-temperature': 'Outside temperature',
-                'rssi': 'Beacon RSSI'
+                'beacon-rssi': 'Beacon RSSI'
             };
             for (const name of rtNames)
                 labelValues['rt'][name] = {
@@ -335,8 +335,8 @@ var loadPage = () => {
                         `${addUnitSuffix('temperature')}, `;
 
                 observationText += `Beacon "${bleBeaconNames[obsIndex]}" RSSI:`;
-                if (dataSets['other']['rssi'][obsIndex] !== null)
-                     observationText += ` ${dataSets['other']['rssi'][obsIndex]}${addUnitSuffix('rssi')}`;
+                if (dataSets['other']['beacon-rssi'][obsIndex] !== null)
+                     observationText += ` ${dataSets['other']['beacon-rssi'][obsIndex]}${addUnitSuffix('beacon-rssi')}`;
 
                 observationText += ',';
 

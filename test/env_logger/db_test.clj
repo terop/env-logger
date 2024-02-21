@@ -159,8 +159,8 @@
             :wind-speed 5.0
             :fmi-temperature 20.0
             :o-temperature 5.0
-            :name "7C:EC:79:3F:BE:97"
-            :rssi -68
+            :beacon-name "7C:EC:79:3F:BE:97"
+            :beacon-rssi -68
             :tb-image-name nil}
            (-> (nth (get-obs-days test-ds 3) 1)
                (dissoc :recorded)
