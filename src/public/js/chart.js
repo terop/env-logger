@@ -32,7 +32,7 @@ var labelValues = {
         'weather': [],
         'other': []
     },
-    beaconName = '',
+    bleBeaconNames = [],
     mode = null,
     testbedImageBasepath = '',
     testbedImageNames = [],
@@ -205,9 +205,7 @@ var loadPage = () => {
             // Other
             processFields('other', observation, fieldNames['other']);
 
-            if (beaconName === '' && observation['name']) {
-                beaconName = observation['name'];
-            }
+            bleBeaconNames.push(observation['name']);
         } else {
             dataLabels['weather'].push(new Date(observation['time']));
 
@@ -233,6 +231,8 @@ var loadPage = () => {
             'weather': [],
             'other': []
         };
+        testbedImageNames = [];
+        bleBeaconNames = [];
 
         data['obs'].map((element) => {
             parseData(element);
@@ -245,7 +245,7 @@ var loadPage = () => {
             labelValues['other'] = {
                 'brightness': 'Brightness',
                 'o-temperature': 'Outside temperature',
-                'rssi': beaconName !== '' ? `Beacon "${beaconName}" RSSI` : 'Beacon RSSI'
+                'rssi': 'Beacon RSSI'
             };
             for (const name of rtNames)
                 labelValues['rt'][name] = {
@@ -907,8 +907,12 @@ var loadPage = () => {
                         label: function(context) {
                             let label = context.dataset.label || '';
 
-                            if (label)
+                            if (label) {
+                                if (label.toLowerCase().includes('rssi'))
+                                    label = `Beacon "${bleBeaconNames[context.dataIndex]}" RSSI`;
+
                                 label += `: ${context.parsed.y}`;
+                            }
 
                             if (context.parsed.y !== null)
                                 label += `${addUnitSuffix(label.toLowerCase())}`;
