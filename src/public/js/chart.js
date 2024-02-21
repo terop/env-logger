@@ -334,7 +334,7 @@ var loadPage = () => {
                     observationText += ` ${dataSets['other']['o-temperature'][obsIndex]}` +
                         `${addUnitSuffix('temperature')}, `;
 
-                observationText += `${labelValues['other']['rssi']}:`;
+                observationText += `Beacon "${bleBeaconNames[obsIndex]}" RSSI:`;
                 if (dataSets['other']['rssi'][obsIndex] !== null)
                      observationText += ` ${dataSets['other']['rssi'][obsIndex]}${addUnitSuffix('rssi')}`;
 
