@@ -347,8 +347,10 @@ def update_screen(display, observation, weather_data, elec_price_data, utc_offse
     if observation['data']['beacon-rssi']:
         display[row].text += ','
         row += 1
-        display[row].text = f'beacon "{observation["data"]["name"]}" ' + \
-            f'RSSI {observation["data"]["beacon-rssi"]} dBm'
+        display[row].text = f'beacon "{observation["data"]["beacon-name"]}": RSSI ' + \
+            f'{observation["data"]["beacon-rssi"]} dBm, battery '
+        battery_text = observation['data']['beacon-battery']
+        display[row].text += f'{battery_text} %' if battery_text else 'NA'
     row += 1
 
     if observation['rt-data']:
