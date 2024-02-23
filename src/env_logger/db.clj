@@ -318,6 +318,7 @@
                              [:o.outside_temperature "o_temperature"]
                              :b.mac_address
                              [:b.rssi "beacon_rssi"]
+                             [:b.battery_level "beacon_battery"]
                              :o.tb_image_name]
                     :from [[:observations :o]]
                     :left-join [[:weather-data :w]

@@ -6,7 +6,7 @@ const colors = [
     // Data field names
     fieldNames = {
         'weather': ['fmi-temperature', 'cloudiness', 'wind-speed'],
-        'other': ['brightness', 'beacon-rssi', 'o-temperature']
+        'other': ['brightness', 'o-temperature', 'beacon-rssi', 'beacon-battery']
     };
 
 var labelValues = {
@@ -245,7 +245,8 @@ var loadPage = () => {
             labelValues['other'] = {
                 'brightness': 'Brightness',
                 'o-temperature': 'Outside temperature',
-                'beacon-rssi': 'Beacon RSSI'
+                'beacon-rssi': 'Beacon RSSI',
+                'beacon-battery': 'Beacon battery level'
             };
             for (const name of rtNames)
                 labelValues['rt'][name] = {
@@ -285,7 +286,8 @@ var loadPage = () => {
             return `${keyName.includes('temperature') ? ' \u2103' : ''}` +
                 `${keyName.includes('wind') ? ' m/s' : ''}` +
                 `${keyName.includes('humidity') ? ' %H' : ''}` +
-                `${keyName.includes('rssi') ? ' dBm' : ''}`;
+                `${keyName.includes('rssi') ? ' dBm' : ''}` +
+                `${keyName.includes('battery') ? ' %' : ''}`;
         };
 
         // Format a given Unix second timestamp in hour:minute format
@@ -334,9 +336,14 @@ var loadPage = () => {
                     observationText += ` ${dataSets['other']['o-temperature'][obsIndex]}` +
                         `${addUnitSuffix('temperature')}, `;
 
-                observationText += `Beacon "${bleBeaconNames[obsIndex]}" RSSI:`;
-                if (dataSets['other']['beacon-rssi'][obsIndex] !== null)
-                     observationText += ` ${dataSets['other']['beacon-rssi'][obsIndex]}${addUnitSuffix('beacon-rssi')}`;
+                observationText += `Beacon "${bleBeaconNames[obsIndex]}": RSSI`;
+                if (dataSets['other']['beacon-rssi'][obsIndex] !== null) {
+                    observationText += ` ${dataSets['other']['beacon-rssi'][obsIndex]}${addUnitSuffix('beacon-rssi')}`;
+
+                    let battery = dataSets['other']['beacon-battery'][obsIndex],
+                    batteryText = battery ? `${battery} ${addUnitSuffix('beacon-battery')}` : 'NA';
+                    observationText += `, battery level ${batteryText}`;
+                }
 
                 observationText += ',';
 
@@ -817,18 +824,6 @@ var loadPage = () => {
             }
         };
 
-        // Decide if RuuviTag dataset should be shown or hidden by default
-        var checkRTDatasetDisplayStatus = (location, measurable) => {
-            if (rtDefaultShow.length === 1 && rtDefaultShow[0] === 'all' &&
-                rtDefaultValues.includes(measurable))
-                return true;
-            else if (rtDefaultShow.includes(location) &&
-                rtDefaultValues.includes(measurable))
-                return true;
-            else
-                return false;
-        };
-
         var generateAnnotationConfig = (chartType) => {
             var lineConfigs = {},
                 currentLineIndex = 0;
@@ -859,7 +854,7 @@ var loadPage = () => {
                     label: labelValues[dataMode][key],
                     borderColor: colors[index],
                     data: dataSets[dataMode][key],
-                    hidden: false,
+                    hidden: dataMode === 'other' && key.includes('battery'),
                     fill: false,
                     pointRadius: 1,
                     borderWidth: 1
@@ -874,7 +869,7 @@ var loadPage = () => {
                             label: labelValues['rt'][name][meas],
                             borderColor: colors[index],
                             data: dataSets['rt'][name][meas],
-                            hidden: !checkRTDatasetDisplayStatus(name, meas),
+                            hidden: true,
                             fill: false,
                             pointRadius: 1,
                             borderWidth: 1
@@ -910,6 +905,8 @@ var loadPage = () => {
                             if (label) {
                                 if (label.toLowerCase().includes('rssi'))
                                     label = `Beacon "${bleBeaconNames[context.dataIndex]}" RSSI`;
+                                if (label.toLowerCase().includes('battery'))
+                                    label = `Beacon "${bleBeaconNames[context.dataIndex]}" battery level`;
 
                                 label += `: ${context.parsed.y}`;
                             }

@@ -161,6 +161,7 @@
             :o-temperature 5.0
             :beacon-name "7C:EC:79:3F:BE:97"
             :beacon-rssi -68
+            :beacon-battery nil
             :tb-image-name nil}
            (-> (nth (get-obs-days test-ds 3) 1)
                (dissoc :recorded)
