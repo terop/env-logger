@@ -47,51 +47,6 @@ var labelValues = {
     };
 
 var loadPage = () => {
-    // Persist state of chart data sets
-    var persistDatasetState = () => {
-        var hidden = {
-            'weather': {},
-            'other': {}
-        };
-
-        if (!charts['weather'])
-            return;
-
-        for (var i = 0; i < charts['weather'].data.datasets.length; i++)
-            hidden['weather'][i.toString()] = !!charts['weather'].getDatasetMeta(i).hidden;
-
-        if (mode === 'all')
-            // State persistence and restore are broken for RuuviTag series
-            for (var j = 0; j < 2; j++)
-                hidden['other'][j.toString()] = !!charts['other'].getDatasetMeta(j).hidden;
-
-        localStorage.setItem('hiddenDatasets', JSON.stringify(hidden));
-    };
-
-    // Restore chart data sets state
-    var restoreDatasetState = () => {
-        if (!localStorage.getItem('hiddenDatasets'))
-            return;
-
-        const hidden = JSON.parse(localStorage.getItem('hiddenDatasets'));
-
-        if (!charts['weather'])
-            // Do not attempt restore if there is no data
-            return;
-
-        for (var i = 0; i < charts['weather'].data.datasets.length; i++)
-            charts['weather'].getDatasetMeta(i).hidden = hidden['weather'][i.toString()] ? true : null;
-        charts['weather'].update();
-
-        if (mode === 'all') {
-            for (var j = 0; j < 2; j++)
-                charts['other'].getDatasetMeta(j).hidden = hidden['other'][j.toString()] ? true : null;
-            charts['other'].update();
-        }
-
-        localStorage.removeItem('hiddenDatasets');
-    };
-
     // Parse RuuviTag observations
     // rtObservations - observations as JSON
     // rtLabels - RuuviTag labels
@@ -847,33 +802,53 @@ var loadPage = () => {
                 labels: dataMode === 'weather' ? dataLabels['weather'] : dataLabels['other'],
                 datasets: []
             },
-                index = 0;
+            dsIndex = 0,
+            index = 0;
+
+            var getDatasetVisibility = (dsName, dsIndex, isRuuvitag = false) => {
+                let chart = charts[dataMode];
+
+                if (chart) {
+                    let currentStatus = chart.getDatasetMeta(dsIndex).hidden;
+                    if (currentStatus === null)
+                        return dataMode === 'weather' ? false :
+                            dsName.includes('battery') || isRuuvitag;
+                    else
+                        return currentStatus;
+                } else {
+                    return dataMode === 'weather' ? false :
+                        dsName.includes('battery') || isRuuvitag;
+                }
+            };
 
             for (const key of (dataMode === 'weather' ? fieldNames['weather'] : fieldNames['other'])) {
                 config.datasets.push({
                     label: labelValues[dataMode][key],
                     borderColor: colors[index],
                     data: dataSets[dataMode][key],
-                    hidden: dataMode === 'other' && key.includes('battery'),
+                    hidden: getDatasetVisibility(key, dsIndex),
                     fill: false,
                     pointRadius: 1,
                     borderWidth: 1
                 });
+                dsIndex++;
                 index++;
             }
             if (dataMode === 'other') {
                 const rtMeasurables = ['temperature', 'humidity'];
+
                 for (const name of rtNames)
                     for (const meas of rtMeasurables) {
                         config.datasets.push({
                             label: labelValues['rt'][name][meas],
                             borderColor: colors[index],
                             data: dataSets['rt'][name][meas],
-                            hidden: true,
+                            hidden: getDatasetVisibility(name, dsIndex, true),
                             fill: false,
                             pointRadius: 1,
                             borderWidth: 1
                         });
+                        dsIndex++;
                         index++;
                     }
             }
@@ -1052,8 +1027,6 @@ var loadPage = () => {
             toggleLoadingSpinner();
         }
 
-        persistDatasetState();
-
         axios.get('data/display',
             {
                 params: {
@@ -1082,8 +1055,6 @@ var loadPage = () => {
                     charts['other'].options.plugins.annotation = generateAnnotationConfig('other');
                     charts['other'].update();
                 }
-
-                restoreDatasetState();
             })
             .catch(error => {
                 console.log(`Display data fetch error: ${error}`);
