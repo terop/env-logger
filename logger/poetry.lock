@@ -334,15 +334,13 @@ socks = ["PySocks (>=1.5.6,!=1.5.7)"]
 use-chardet-on-py3 = ["chardet (>=3.0.2,<6)"]
 
 [[package]]
-name = "ruuvitag-sensor"
+name = "ruuvitag_sensor"
 version = "2.3.0"
 description = "Find RuuviTag sensors and get decoded data from selected sensors"
 optional = false
 python-versions = ">=3.7"
-files = [
-    {file = "ruuvitag_sensor-2.3.0-py3-none-any.whl", hash = "sha256:4c476550750564fe67c05c652aaf7cad075906e165f2e3b503239410afd0a06d"},
-    {file = "ruuvitag_sensor-2.3.0.tar.gz", hash = "sha256:cc1d8c5b58893e07bc4b005eb6ab12e0815c62596e1cf3e0c28499e9bd36d206"},
-]
+files = []
+develop = false
 
 [package.dependencies]
 bleak = {version = "*", markers = "platform_system == \"Windows\" or platform_system == \"Darwin\""}
@@ -350,17 +348,23 @@ ptyprocess = {version = "*", markers = "platform_system == \"Linux\""}
 reactivex = "*"
 
 [package.extras]
-dev = ["black", "flake8-pyproject", "isort", "mypy", "pylint", "pytest", "pytest-asyncio"]
+dev = ["black (==23.3.0)", "flake8-pyproject", "isort", "mypy", "pylint", "pytest", "pytest-asyncio"]
+
+[package.source]
+type = "git"
+url = "https://github.com/ttu/ruuvitag-sensor.git"
+reference = "HEAD"
+resolved_reference = "e74eabfd74616f28a77b7f8eda2aff399d6cf07f"
 
 [[package]]
 name = "typing-extensions"
-version = "4.9.0"
+version = "4.10.0"
 description = "Backported and Experimental Type Hints for Python 3.8+"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "typing_extensions-4.9.0-py3-none-any.whl", hash = "sha256:af72aea155e91adfc61c3ae9e0e342dbc0cba726d6cba4b6c72c1f34e47291cd"},
-    {file = "typing_extensions-4.9.0.tar.gz", hash = "sha256:23478f88c37f27d76ac8aee6c905017a143b0b1b886c3c9f66bc2fd94f9f5783"},
+    {file = "typing_extensions-4.10.0-py3-none-any.whl", hash = "sha256:69b1a937c3a517342112fb4c6df7e72fc39a38e7891a5730ed4985b5214b5475"},
+    {file = "typing_extensions-4.10.0.tar.gz", hash = "sha256:b0abd7c89e8fb96f98db18d86106ff1d90ab692004eb746cf6eda2682f91b3cb"},
 ]
 
 [[package]]
@@ -601,4 +605,4 @@ all = ["winrt-Windows.Foundation.Collections[all] (==2.0.0-beta.1)", "winrt-Wind
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "9443f6338a5728687861fd191cb727d83e3a0d688c26069b1189a390b0ded3cf"
+content-hash = "a89ef96231e119c889f7df5d4afa1b3be4ac78e21cdbcaa9c7d51d1a7e8d2558"
