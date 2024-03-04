@@ -29,6 +29,7 @@ from ruuvitag_sensor.ruuvi import RuuviTagSensor  # noqa: E402
 
 lock = asyncio.Lock()
 
+
 def get_timestamp(timezone):
     """Return the current timestamp in ISO 8601 format."""
     return datetime.now(pytz.timezone(timezone)).isoformat()
@@ -227,9 +228,10 @@ def store_to_db(config, timestamp, data):
                              params={'observation': json.dumps(data),
                                      'code': config['authentication_code']},
                              timeout=10)
-    except (ConnectTimeoutError, MaxRetryError, OSError, ReadTimeoutError) as err:
+    except (ConnectTimeoutError, MaxRetryError, OSError, ReadTimeoutError,
+            TimeoutError) as err:
         logging.error('Observation data store failed: %s', err)
-        sleep(5)
+        sleep(7)
 
         resp = requests.post(config['environment']['upload_url'],
                              params={'observation': json.dumps(data),
