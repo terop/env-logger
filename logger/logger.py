@@ -27,8 +27,6 @@ from urllib3.exceptions import ConnectTimeoutError, MaxRetryError, ReadTimeoutEr
 os.environ['RUUVI_BLE_ADAPTER'] = 'bleak'
 from ruuvitag_sensor.ruuvi import RuuviTagSensor  # noqa: E402
 
-lock = asyncio.Lock()
-
 
 def get_timestamp(timezone):
     """Return the current timestamp in ISO 8601 format."""
@@ -82,11 +80,9 @@ def get_env_data(env_settings):
     return final_data
 
 
-async def scan_ruuvitags(rt_config, bt_device):
+async def scan_ruuvitags(bt_device, rt_config):
     """Scan for RuuviTag(s)."""
     found_tags = {}
-
-    await lock.acquire()
 
     def _get_tag_location(mac):
         """Get RuuviTag location based on tag MAC address."""
@@ -96,10 +92,11 @@ async def scan_ruuvitags(rt_config, bt_device):
 
         return None
 
-    async def _async_scan(mac_addresses):
-        expected_tag_count = len(mac_addresses)
+    async def _async_scan(macs):
+        expected_tag_count = len(macs)
+        found_count = 0
 
-        async for tag_data in RuuviTagSensor.get_data_async(mac_addresses, bt_device):
+        async for tag_data in RuuviTagSensor.get_data_async(macs, bt_device):
             mac = tag_data[0]
             if mac in found_tags:
                 continue
@@ -110,29 +107,23 @@ async def scan_ruuvitags(rt_config, bt_device):
                                'humidity': tag_data[1]['humidity'],
                                'battery_voltage': tag_data[1]['battery'] / 1000.0,
                                'rssi': tag_data[1]['rssi']}
+            found_count += 1
 
-            if len(found_tags) == expected_tag_count:
+            if found_count == expected_tag_count:
                 break
 
-    mac_addresses = [tag['mac'] for tag in rt_config['tags']]
+    macs = [tag['mac'] for tag in rt_config['tags']]
 
     try:
-        await asyncio.wait_for(_async_scan(mac_addresses), timeout=10)
+        await asyncio.wait_for(_async_scan(macs), timeout=15)
     except (asyncio.CancelledError, TimeoutError, BleakDBusError) as err:
-        logging.error('RuuviTag scan was cancelled or timed out, retrying: %s', err)
-        remaining_macs = [mac for mac in mac_addresses if mac not in found_tags]
-
-        await asyncio.sleep(4)
-        try:
-            await asyncio.wait_for(_async_scan(remaining_macs), timeout=10)
-        except asyncio.CancelledError:
-            logging.error('RuuviTag scan cancelled on retry')
-        except TimeoutError:
-            logging.error('RuuviTag scan timed out on retry')
-        except BleakDBusError as bde:
-            logging.error('Bleak error during RuuviTag retry scan: %s', bde)
-
-    lock.release()
+        match err:
+            case asyncio.CancelledError():
+                logging.error('RuuviTag scan was cancelled')
+            case TimeoutError():
+                logging.error('RuuviTag scan timed out')
+            case _:
+                logging.error('RuuviTag scan failed for some other reason')
 
     return found_tags
 
@@ -168,11 +159,9 @@ async def scan_ble_beacon(config, bt_device):
     Returns the MAC address, RSSI value and possibly battery level of the
     Bluetooth LE beacon.
     """
-    scan_time = 10
+    scan_time = 8
     data = {'rssi': [], 'battery': []}
     battery_service_uuid = '00002080-0000-1000-8000-00805f9b34fb'
-
-    await lock.acquire()
 
     def callback(device, ad):
         if device.address == config['ble_beacon_mac']:
@@ -198,18 +187,14 @@ async def scan_ble_beacon(config, bt_device):
                 scanner = BleakScanner(callback, adapter=bt_device)
 
                 await scanner.start()
-                await asyncio.sleep(5)
+                await asyncio.sleep(4)
                 await scanner.stop()
             except BleakError as be:
                 logging.error('BLE beacon scan failed: %s', be)
 
-        lock.release()
-
         return {'mac': config['ble_beacon_mac'],
                 'rssi': round(mean(data['rssi'])),
                 'battery': round(median(data['battery'])) if data['battery'] else None}
-
-    lock.release()
 
     return {}
 
@@ -276,21 +261,22 @@ def main():
 
     logging.info('Logger run started')
 
-    with asyncio.Runner() as runner:
-        if args.dummy:
-            env_data = {'insideLight': 10,
-                        'outsideTemperature': 5,
-                        'beacon': {}}
-        else:
-            env_data = get_env_data(env_config)
+    if args.dummy:
+        env_data = {'insideLight': 10,
+                    'outsideTemperature': 5,
+                    'beacon': {}}
+    else:
+        env_data = get_env_data(env_config)
 
-        env_data['beacon'] = runner.run(scan_ble_beacon(env_config, bt_device))
-        timestamp = get_timestamp(config['timezone'])
-        store_to_db(config, timestamp, env_data)
+    logging.info('BLE beacon scan started')
+    env_data['beacon'] = asyncio.run(scan_ble_beacon(env_config, bt_device))
+    timestamp = get_timestamp(config['timezone'])
+    store_to_db(config, timestamp, env_data)
 
-        # This code only works with Python 3.10 and newer
-        ruuvitags = runner.run(scan_ruuvitags(config['ruuvitag'], bt_device))
-        store_ruuvitags(config, timestamp, ruuvitags)
+    # This code only works with Python 3.10 and newer
+    logging.info('RuuviTag scan started')
+    ruuvitags = asyncio.run(scan_ruuvitags(bt_device, config['ruuvitag']))
+    store_ruuvitags(config, timestamp, ruuvitags)
 
 
 if __name__ == '__main__':
