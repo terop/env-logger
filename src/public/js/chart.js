@@ -1,10 +1,7 @@
-/* global alert,axios,Chart,luxon */
+/* global alert,axios,luxon,Plotly */
 
-// Chart colors
-const colors = [
-  '#7864cb', '#5ab642', '#bf51b6', '#cf615e', '#dc437e',
-  '#49b9a9', '#cc572c', '#628bcb', '#a5b043', '#d089c5',
-  '#4c7e3d', '#a0496c', '#d79d48', '#6abe77', '#8c6f33'];
+const DateTime = luxon.DateTime;
+
 // Data field names
 const fieldNames = {
   weather: ['fmi-temperature', 'cloudiness', 'wind-speed'],
@@ -39,12 +36,6 @@ let mode = null;
 let testbedImageBasepath = '';
 let testbedImageNames = [];
 let rtNames = [];
-const charts = {
-  weather: null,
-  other: null,
-  elecDataHour: null,
-  elecDataDay: null
-};
 
 const loadPage = () => {
   // Parse RuuviTag observations
@@ -72,8 +63,8 @@ const loadPage = () => {
 
       location = obs.location;
 
-      const diff = luxon.DateTime.fromMillis(dateRef).diff(
-        luxon.DateTime.fromMillis(obs.recorded), 'seconds');
+      const diff = DateTime.fromMillis(dateRef).diff(
+        DateTime.fromMillis(obs.recorded), 'seconds');
 
       if (Math.abs(diff.toObject().seconds) > timeDiffThreshold) {
         dateRef = obs.recorded;
@@ -116,10 +107,10 @@ const loadPage = () => {
   };
 
   /* Parse an observation.
-     *
-     * Arguments:
-     * observation - an observation as JSON
-     */
+   *
+   * Arguments:
+   * observation - an observation as JSON
+   */
   const parseData = (observation) => {
     // dataMode - string, which mode to process data in, values: weather, other
     // observation - object, observation to process
@@ -140,9 +131,9 @@ const loadPage = () => {
       // Skip the first few observations as a line annotation is not needed
       // in the beginning of a chart
       if (dataLabels[dataMode].length > 2) {
-        const recorded = luxon.DateTime.fromMillis(observationTime);
+        const recorded = DateTime.fromMillis(observationTime);
         if (recorded.hour === 0 && recorded.minute === 0) {
-          annotationIndexes[dataMode].push(dataLabels[dataMode].length - 1);
+          annotationIndexes[dataMode].push(recorded.toJSDate());
         }
       }
     };
@@ -177,7 +168,7 @@ const loadPage = () => {
     testbedImageNames.push(observation['tb-image-name']);
   };
 
-  // Transform data to Chart.js compatible format. Returns the data series labels.
+  // Transform data to Plotly compatible format. Returns the data series labels.
   const transformData = () => {
     dataSets = {
       weather: {},
@@ -206,8 +197,12 @@ const loadPage = () => {
       labelValues.other = {
         brightness: 'Brightness',
         'o-temperature': 'Outside temperature',
-        'beacon-rssi': 'Beacon RSSI',
-        'beacon-battery': 'Beacon battery level'
+        'beacon-rssi': bleBeaconNames.length
+          ? `Beacon "${bleBeaconNames[0]}" RSSI`
+          : 'Beacon RSSI',
+        'beacon-battery': bleBeaconNames.length
+          ? `Beacon "${bleBeaconNames[0]}" battery level`
+          : 'Beacon battery level'
       };
       for (const name of rtNames) {
         labelValues.rt[name] = {
@@ -217,7 +212,7 @@ const loadPage = () => {
       }
     }
     labelValues.weather = {
-      'fmi-temperature': 'Temperature (FMI)',
+      'fmi-temperature': 'Temperature',
       cloudiness: 'Cloudiness',
       'wind-speed': 'Wind speed'
     };
@@ -245,6 +240,7 @@ const loadPage = () => {
 
     // Add unit suffix
     const addUnitSuffix = (keyName) => {
+      keyName = keyName.toLowerCase();
       return `${keyName.includes('temperature') ? ' \u2103' : ''}` +
         `${keyName.includes('wind') ? ' m/s' : ''}` +
         `${keyName.includes('humidity') ? ' %H' : ''}` +
@@ -254,7 +250,7 @@ const loadPage = () => {
 
     // Format a given Unix second timestamp in hour:minute format
     const formatUnixSecondTs = (unixTs) => {
-      return luxon.DateTime.fromSeconds(unixTs).toFormat('HH:mm');
+      return DateTime.fromSeconds(unixTs).toFormat('HH:mm');
     };
 
     // Show last observation and some other data for quick viewing
@@ -269,8 +265,8 @@ const loadPage = () => {
 
       const wd = (mode === 'all' ? data.weather.fmi.current : data.weather);
       if (wd) {
-        observationText += `${luxon.DateTime.now().setLocale('fi').toLocaleString()}` +
-          ` ${luxon.DateTime.fromISO(wd.time).toLocaleString(luxon.DateTime.TIME_SIMPLE)}: `;
+        observationText += `${DateTime.now().setLocale('fi').toLocaleString()}` +
+          ` ${DateTime.fromISO(wd.time).toLocaleString(DateTime.TIME_SIMPLE)}: `;
         for (const key of weatherKeys) {
           if (key === 'wind-speed') {
             observationText += `Wind: ${wd['wind-direction'].long} ` +
@@ -335,7 +331,7 @@ const loadPage = () => {
         if (forecast && data.weather.owm.forecast) {
           document.getElementById('forecast').innerHTML =
             '<br><br>Forecast for ' +
-            luxon.DateTime.fromISO(forecast.time).toFormat('dd.MM.yyyy HH:mm') +
+            DateTime.fromISO(forecast.time).toFormat('dd.MM.yyyy HH:mm') +
             `: temperature: ${forecast.temperature} \u2103, ` +
             `cloudiness: ${forecast.cloudiness} %, ` +
             `wind: ${forecast['wind-direction'].long} ${forecast['wind-speed']} m/s, ` +
@@ -354,40 +350,50 @@ const loadPage = () => {
     // Show the hourly electricity price and consumption data in a chart
     var plotElectricityDataHour = (elecData, updateDate = false,
       removeLast = false) => {
-      const generateElecAnnotationConfig = (plotData) => {
-        const currentIdx = getClosestElecPriceDataIndex(plotData);
-        const annotations = {};
-        let currentLineIndex = 1;
+      /* eslint-disable no-unused-vars */
+      const generateElecAnnotationConfig = (xValues, yValues) => {
+        const currentIdx = getClosestElecPriceDataIndex(xValues);
+        const shapes = [];
+
+        // TODO figure out correct values for log scale
+        const extValues = getDataExtremeValues(yValues);
 
         // Skip first and last data points as lines are not needed there
-        for (let i = 1; i < plotData.length - 1; i++) {
-          if (luxon.DateTime.fromISO(plotData[i]['start-time']).hour === 0) {
-            annotations[`line${currentLineIndex}`] = {
+        for (let i = 1; i < xValues.length - 1; i++) {
+          if (DateTime.fromJSDate(xValues[i]).hour === 0) {
+            shapes.push({
               type: 'line',
-              xMin: labels[i],
-              xMax: labels[i],
-              borderColor: '#838b93',
-              borderWidth: 1
-            };
-            currentLineIndex++;
+              x0: xValues[i],
+              y0: extValues[0],
+              x1: xValues[i],
+              y1: extValues[1],
+              line: {
+                color: '#838b93',
+                width: 1
+              }
+            });
           }
         }
 
-        if (luxon.DateTime.fromISO(document.getElementById('elecEndDate').value) >=
-          luxon.DateTime.fromISO(luxon.DateTime.now().toISODate())) {
-          annotations[`line${currentLineIndex}`] = {
+        if (DateTime.fromISO(document.getElementById('elecEndDate').value) >=
+          DateTime.fromISO(DateTime.now().toISODate())) {
+          shapes.push({
             type: 'line',
-            xMin: labels[currentIdx],
-            xMax: labels[currentIdx],
-            borderColor: 'rgb(0, 0, 0)',
-            borderWidth: 2
-          };
+            x0: xValues[currentIdx],
+            y0: extValues[0],
+            x1: xValues[currentIdx],
+            y1: extValues[1],
+            line: {
+              width: 2
+            }
+          });
         }
 
-        return { annotations };
+        return shapes;
       };
+      /* eslint-enable no-unused-vars */
 
-      const labels = [];
+      const xValues = [];
       const data = {
         price: [],
         consumption: []
@@ -395,114 +401,82 @@ const loadPage = () => {
 
       for (let i = 0; i < elecData.length - (removeLast ? 1 : 0); i++) {
         const item = elecData[i];
-        labels.push(luxon.DateTime.fromISO(item['start-time']).toJSDate());
+        xValues.push(DateTime.fromISO(item['start-time']).toJSDate());
         data.price.push(item.price);
         data.consumption.push(item.consumption);
       }
 
       if (updateDate) {
-        document.getElementById('elecEndDate').value = labels.length
-          ? luxon.DateTime.fromJSDate(labels[labels.length - 1]).toISODate()
-          : luxon.DateTime.now().toISODate();
+        document.getElementById('elecEndDate').value = xValues.length
+          ? DateTime.fromJSDate(xValues[xValues.length - 1]).toISODate()
+          : DateTime.now().toISODate();
       }
 
-      if (!charts.elecDataHour) {
-        charts.elecDataHour = new Chart(document.getElementById('hourElecDataChart').getContext('2d'), {
-          data: {
-            labels,
-            datasets: [
-              {
-                type: 'line',
-                label: 'Price',
-                yAxisID: 'yPrice',
-                borderColor: colors[6],
-                data: data.price,
-                fill: false,
-                pointRadius: 1,
-                borderWidth: 1
-              },
-              {
-                type: 'bar',
-                label: 'Consumption',
-                yAxisID: 'yConsumption',
-                backgroundColor: colors[7],
-                data: data.consumption
-              }
-            ]
+      const generateElecTraceConfig = () => {
+        return [{
+          x: xValues,
+          y: data.price,
+          name: 'Price',
+          type: 'scattergl',
+          mode: 'lines+markers',
+          marker: {
+            size: 5
           },
-          options: {
-            scales: {
-              x: {
-                type: 'time',
-                time: {
-                  unit: 'hour',
-                  tooltipFormat: 'd.L.yyyy HH:mm',
-                  displayFormats: {
-                    hour: 'HH',
-                    minute: 'HH:mm'
-                  }
-                },
-                title: {
-                  display: true,
-                  text: 'Time'
-                }
-              },
-              yPrice: {
-                title: {
-                  display: true,
-                  text: 'Price (c / kWh)'
-                },
-                ticks: {
-                  beginAtZero: true
-                }
-              },
-              yConsumption: {
-                position: 'right',
-                title: {
-                  display: true,
-                  text: 'Consumption (kWh)'
-                },
-                ticks: {
-                  beginAtZero: true
-                }
-              }
-            },
-            interaction: {
-              mode: 'index'
-            },
-            plugins: {
-              title: {
-                display: true,
-                text: 'Hourly electricity price and consumption'
-              },
-              tooltip: getElectricityDataTooltipConfig(),
-              zoom: {
-                zoom: {
-                  drag: {
-                    enabled: true
-                  },
-                  mode: 'x'
-                }
-              },
-              annotation: generateElecAnnotationConfig(elecData)
-            },
-            spanGaps: true,
-            normalized: true,
-            tension: 0.1,
-            animation: false
-          }
-        });
+          xhoverformat: '<b>%d.%m. %H:%M</b>',
+          hovertemplate: '%{y}%{text}',
+          text: Array(xValues.length).fill(' c / kWh')
+        },
+        {
+          x: xValues,
+          y: data.consumption,
+          name: 'Consumption',
+          type: 'bar',
+          yaxis: 'y2',
+          xhoverformat: '<b>%d.%m. %H:%M</b>',
+          hovertemplate: '%{text}',
+          text: data.consumption.map((value) => `${value} kWh`)
+        }];
+      };
 
-        document.getElementById('elecDataResetZoom').addEventListener(
-          'click',
-          () => {
-            charts.elecDataHour.resetZoom();
+      const generateElecLayoutConfig = (diffInDays) => {
+        return {
+          title: 'Hourly electricity price and consumption',
+          xaxis: {
+            title: 'Time',
+            type: 'date',
+            autorange: true,
+            dtick: getXAxisTickSize(diffInDays),
+            tickformat: '%H',
+            tickangle: -45
           },
-          false);
+          yaxis: {
+            title: 'Price (c / kWh)',
+            type: 'log'
+          },
+          yaxis2: {
+            title: 'Consumption (kWh)',
+            overlaying: 'y',
+            side: 'right'
+          },
+          legend: {
+            orientation: 'h'
+          },
+          hovermode: 'x unified'
+          // TODO enable after fixing y-axis values
+          // shapes: generateElecAnnotationConfig(labels, [data.price, data.consumption])
+        };
+      };
+
+      if (!document.getElementById('hourElecDataPlot').data) {
+        const diffInDays = DateTime.fromJSDate(xValues[xValues.length - 1]).diff(
+          DateTime.fromJSDate(xValues[0]), 'days').toObject().days;
+
+        Plotly.newPlot('hourElecDataPlot',
+          generateElecTraceConfig(),
+          generateElecLayoutConfig(diffInDays));
 
         document.getElementById('showElecDataCharts').addEventListener(
-          'click',
-          () => {
+          'click', () => {
             toggleVisibility('elecDataDiv');
             // Scroll page to bottom after loading the image for improved viewing
             window.setTimeout(() => {
@@ -512,13 +486,12 @@ const loadPage = () => {
           false);
 
         document.getElementById('showElecDayData').addEventListener(
-          'click',
-          (event) => {
+          'click', (event) => {
             if (event.currentTarget.checked) {
-              document.getElementById('dayElecDataChart').style.display = 'block';
+              document.getElementById('dayElecDataPlot').style.display = 'block';
               document.getElementById('elecDataDiv').style.height = '1300px';
             } else {
-              hideElement('dayElecDataChart');
+              hideElement('dayElecDataPlot');
               document.getElementById('elecDataDiv').style.height = '730px';
             }
             // Scroll page to bottom after loading the image for improved viewing
@@ -528,36 +501,13 @@ const loadPage = () => {
           },
           false);
       } else {
-        charts.elecDataHour.data.labels = labels;
-        charts.elecDataHour.data.datasets[0].data = data.price;
-        charts.elecDataHour.data.datasets[1].data = data.consumption;
+        const diffInDays = DateTime.fromJSDate(xValues[xValues.length - 1]).diff(
+          DateTime.fromJSDate(xValues[0]), 'days').toObject().days;
 
-        charts.elecDataHour.options.plugins.annotation = generateElecAnnotationConfig(elecData);
-        charts.elecDataHour.update();
+        Plotly.react(document.getElementById('hourElecDataPlot'),
+          generateElecTraceConfig(),
+          generateElecLayoutConfig(diffInDays));
       }
-    };
-
-    var getElectricityDataTooltipConfig = () => {
-      return {
-        callbacks: {
-          label: function (context) {
-            let label = context.dataset.label || '';
-
-            if (label) {
-              label += `: ${context.parsed.y ? context.parsed.y : 0} `;
-            }
-
-            if (context.parsed.y !== null) {
-              if (label.toLowerCase().includes('consumption')) {
-                label += 'kWh';
-              } else if (label.toLowerCase().includes('price')) {
-                label += 'c / kWh';
-              }
-            }
-            return label;
-          }
-        }
-      };
     };
 
     // Show the daily electricity price and consumption data in a chart
@@ -575,100 +525,77 @@ const loadPage = () => {
         data.consumption.push(item.consumption);
       }
 
-      if (!charts.elecDataDay) {
-        charts.elecDataDay = new Chart(document.getElementById('dayElecDataChart').getContext('2d'), {
-          data: {
-            labels,
-            datasets: [
-              {
-                type: 'line',
-                label: 'Price',
-                yAxisID: 'yPrice',
-                borderColor: colors[6],
-                data: data.price,
-                fill: false,
-                pointRadius: 1,
-                borderWidth: 1
-              },
-              {
-                type: 'bar',
-                label: 'Consumption',
-                yAxisID: 'yConsumption',
-                backgroundColor: colors[7],
-                data: data.consumption
-              }
-            ]
+      const generateElecTraceConfig = () => {
+        return [{
+          x: labels,
+          y: data.price,
+          name: 'Price',
+          type: 'scattergl',
+          mode: 'lines+markers',
+          marker: {
+            size: 5
           },
-          options: {
-            scales: {
-              x: {
-                type: 'time',
-                time: {
-                  unit: 'day',
-                  tooltipFormat: 'd.L.yyyy',
-                  displayFormats: {
-                    day: 'd.L.yyyy'
-                  }
-                },
-                title: {
-                  display: true,
-                  text: 'Time'
-                }
-              },
-              yPrice: {
-                title: {
-                  display: true,
-                  text: 'Price (c / kWh)'
-                },
-                ticks: {
-                  beginAtZero: true
-                }
-              },
-              yConsumption: {
-                position: 'right',
-                title: {
-                  display: true,
-                  text: 'Consumption (kWh)'
-                },
-                ticks: {
-                  beginAtZero: true
-                }
-              }
-            },
-            interaction: {
-              mode: 'index'
-            },
-            plugins: {
-              title: {
-                display: true,
-                text: 'Daily electricity price and consumption'
-              },
-              tooltip: getElectricityDataTooltipConfig()
-            },
-            spanGaps: true,
-            normalized: true,
-            tension: 0.1,
-            animation: false
-          }
-        });
-      } else {
-        charts.elecDataDay.data.labels = labels;
-        charts.elecDataDay.data.datasets[0].data = data.price;
-        charts.elecDataDay.data.datasets[1].data = data.consumption;
+          xhoverformat: '<b>%d.%m.%Y</b>',
+          hovertemplate: '%{y}%{text}',
+          text: Array(labels.length).fill(' c / kWh')
+        },
+        {
+          x: labels,
+          y: data.consumption,
+          name: 'Consumption',
+          type: 'bar',
+          yaxis: 'y2',
+          xhoverformat: '<b>%d.%m.%Y</b>',
+          hovertemplate: '%{text}',
+          text: data.consumption.map((value) => `${value} kWh`)
+        }];
+      };
 
-        charts.elecDataDay.update();
+      const generateElecLayoutConfig = () => {
+        return {
+          title: 'Daily electricity price and consumption',
+          xaxis: {
+            title: 'Time',
+            type: 'date',
+            dtick: 86400000,
+            tickformat: '%d.%m.%Y'
+          },
+          yaxis: {
+            title: 'Average price (c / kWh)',
+            type: 'log'
+          },
+          yaxis2: {
+            title: 'Consumption (kWh)',
+            overlaying: 'y',
+            side: 'right'
+          },
+          legend: {
+            orientation: 'h'
+          },
+          hovermode: 'x unified'
+        };
+      };
+
+      if (!document.getElementById('dayElecDataPlot').data) {
+        Plotly.newPlot('dayElecDataPlot',
+          generateElecTraceConfig(),
+          generateElecLayoutConfig());
+      } else {
+        Plotly.react('dayElecDataPlot',
+          generateElecTraceConfig(),
+          generateElecLayoutConfig());
       }
     };
 
     // Determine the index of electricity price data value which is closest to the current hour
-    var getClosestElecPriceDataIndex = (priceData) => {
-      const now = luxon.DateTime.now();
+    const getClosestElecPriceDataIndex = (xValues) => {
+      const now = DateTime.now();
 
       let smallest = Infinity;
       let smallestIdx = -1;
 
-      for (let i = 0; i < priceData.length; i++) {
-        const diff = Math.abs(luxon.DateTime.fromISO(priceData[i]['start-time']).diff(now).milliseconds);
+      for (let i = 0; i < xValues.length; i++) {
+        const diff = Math.abs(DateTime.fromJSDate(xValues[i]).diff(now).milliseconds);
         if (diff < smallest) {
           smallest = diff;
           smallestIdx = i;
@@ -676,7 +603,7 @@ const loadPage = () => {
       }
 
       // Special case handling for the situation when the next hour is closer than the current
-      if (now.hour < luxon.DateTime.fromISO(priceData[smallestIdx]['start-time']).hour) {
+      if (now.hour < DateTime.fromJSDate(xValues[smallestIdx]).hour) {
         smallestIdx -= 1;
       }
 
@@ -687,25 +614,25 @@ const loadPage = () => {
     var showElectricityPrice = () => {
       // Displays the latest price as text
       const showLatestPrice = (priceData) => {
-        const now = luxon.DateTime.now();
+        const now = DateTime.now();
 
-        if (now > luxon.DateTime.fromISO(priceData[priceData.length - 1]['start-time'])) {
+        if (now > DateTime.fromISO(priceData[priceData.length - 1]['start-time'])) {
           console.log('No recent electricity price data to show');
           return;
         }
 
-        const currentIdx = getClosestElecPriceDataIndex(priceData);
+        const currentIdx = getClosestElecPriceDataIndex(priceData.map(item => new Date(item['start-time'])));
 
         const currentHourData = priceData[currentIdx];
         if (currentHourData) {
-          const currentPriceTime = luxon.DateTime.fromISO(currentHourData['start-time']).toFormat('HH:mm');
+          const currentPriceTime = DateTime.fromISO(currentHourData['start-time']).toFormat('HH:mm');
           document.getElementById('lastObservation').innerHTML += '<br>Electricity price at ' +
             `${currentPriceTime}: ${currentHourData.price} c / kWh`;
         }
 
         const nextHourData = priceData[currentIdx + 1];
         if (nextHourData) {
-          const nextPriceTime = luxon.DateTime.fromISO(nextHourData['start-time']).toFormat('HH:mm');
+          const nextPriceTime = DateTime.fromISO(nextHourData['start-time']).toFormat('HH:mm');
           document.getElementById('forecast').innerHTML += '<br>Electricity price at ' +
             `${nextPriceTime}: ${nextHourData.price} c / kWh`;
         }
@@ -752,7 +679,7 @@ const loadPage = () => {
             plotElectricityDataHour(elecData['data-hour'], true, true);
 
             plotElectricityDataDay(elecData['data-day'], true);
-            hideElement('dayElecDataChart');
+            hideElement('dayElecDataPlot');
 
             if (elecData['elec-price-avg'] !== null) {
               document.getElementById('lastObservation').innerHTML +=
@@ -767,14 +694,14 @@ const loadPage = () => {
     const showTestbedImage = (pointDt) => {
       const pattern = /testbed-(.+).png/;
       const imageCountIdx = testbedImageNames.length - 1;
-      const refDt = luxon.DateTime.fromMillis(pointDt);
+      const refDt = DateTime.fromISO(pointDt.replace(' ', 'T'));
       let smallest = 100000;
       let smallestIdx = imageCountIdx;
 
       for (let i = imageCountIdx; i >= 0; i--) {
         const match = pattern.exec(testbedImageNames[i]);
         if (match) {
-          const diff = Math.abs(refDt.diff(luxon.DateTime.fromISO(match[1]), 'minutes').minutes);
+          const diff = Math.abs(refDt.diff(DateTime.fromISO(match[1]), 'minutes').minutes);
           if (diff <= smallest) {
             smallest = diff;
             smallestIdx = i;
@@ -797,226 +724,274 @@ const loadPage = () => {
       }
     };
 
-    var generateAnnotationConfig = (chartType) => {
-      const lineConfigs = {};
-      let currentLineIndex = 0;
+    // Return extreme (min and max) values for all plot data y-axis values
+    const getDataExtremeValues = (plotData) => {
+      let minValue = 1000000;
+      let maxValue = -100000;
 
-      for (let i = 0; i < annotationIndexes[chartType].length; i++) {
-        lineConfigs[`line${currentLineIndex}`] = {
-          type: 'line',
-          xMin: dataLabels[chartType][annotationIndexes[chartType][i]],
-          xMax: dataLabels[chartType][annotationIndexes[chartType][i]],
-          borderColor: '#838b93',
-          borderWidth: 1
-        };
-        currentLineIndex++;
+      for (let i = 0; i < plotData.length; i++) {
+        const series = plotData[i].filter((item) => !Number.isNaN(item) && item !== null);
+
+        const seriesMin = Math.min(...series);
+        const seriesMax = Math.max(...series);
+
+        if (seriesMin < minValue) {
+          minValue = seriesMin;
+        }
+        if (seriesMax > maxValue) {
+          maxValue = seriesMax;
+        }
       }
 
-      return { annotations: lineConfigs };
+      return [minValue, maxValue];
     };
 
-    var generateDataConfig = (dataMode) => {
-      const config = {
-        labels: dataMode === 'weather' ? dataLabels.weather : dataLabels.other,
-        datasets: []
+    // Return the desired plot x-axis tick size for the given x-values difference
+    const getXAxisTickSize = (diffInDays) => {
+      const tickOneHour = 3600000;
+      let tickSize = tickOneHour;
+
+      if (diffInDays >= 3 && diffInDays < 6) {
+        tickSize = 2 * tickOneHour;
+      } else if (diffInDays >= 6 && diffInDays < 10) {
+        tickSize = 3 * tickOneHour;
+      } else if (diffInDays >= 10 && diffInDays < 20) {
+        tickSize = 5 * tickOneHour;
+      } else if (diffInDays >= 20) {
+        tickSize = 6 * tickOneHour;
+      }
+
+      return tickSize;
+    };
+
+    var generateTraceConfig = (dataMode) => {
+      const xValues = dataMode === 'weather' ? dataLabels.weather : dataLabels.other;
+      const traces = [];
+      const commonOpts = {
+        type: 'scatter',
+        mode: 'lines+markers',
+        marker: {
+          size: 3
+        },
+        xhoverformat: '<b>%d.%m. %H:%M:%S</b>',
+        hovertemplate: '%{y}%{text}'
       };
-      let dsIndex = 0;
-      let index = 0;
+      let changingOpts = {};
 
-      const getDatasetVisibility = (dsName, dsIndex, isRuuvitag = false) => {
-        const chart = charts[dataMode];
-
-        if (chart) {
-          const currentStatus = chart.getDatasetMeta(dsIndex).hidden;
-          if (currentStatus === null) {
-            return dataMode === 'weather'
-              ? false
-              : dsName.includes('battery') || isRuuvitag;
-          } else {
-            return currentStatus;
-          }
+      const getTraceVisibility = (traceName, isRuuvitag = false) => {
+        if (dataMode === 'weather') {
+          return true;
         } else {
-          return dataMode === 'weather'
-            ? false
-            : dsName.includes('battery') || isRuuvitag;
+          if (isRuuvitag || traceName === 'beacon-battery') {
+            return 'legendonly';
+          } else {
+            return true;
+          }
         }
       };
 
-      for (const key of (dataMode === 'weather' ? fieldNames.weather : fieldNames.other)) {
-        config.datasets.push({
-          label: labelValues[dataMode][key],
-          borderColor: colors[index],
-          data: dataSets[dataMode][key],
-          hidden: getDatasetVisibility(key, dsIndex),
-          fill: false,
-          pointRadius: 1,
-          borderWidth: 1
-        });
-        dsIndex++;
-        index++;
+      for (const key of dataMode === 'weather' ? fieldNames.weather : fieldNames.other) {
+        changingOpts = {
+          x: xValues,
+          y: dataSets[dataMode][key],
+          name: labelValues[dataMode][key],
+          visible: getTraceVisibility(key),
+          text: Array(xValues.length).fill(addUnitSuffix(labelValues[dataMode][key].toLowerCase()))
+        };
+        traces.push({ ...changingOpts, ...commonOpts });
       }
+
       if (dataMode === 'other') {
         const rtMeasurables = ['temperature', 'humidity'];
 
         for (const name of rtNames) {
           for (const meas of rtMeasurables) {
-            config.datasets.push({
-              label: labelValues.rt[name][meas],
-              borderColor: colors[index],
-              data: dataSets.rt[name][meas],
-              hidden: getDatasetVisibility(name, dsIndex, true),
-              fill: false,
-              pointRadius: 1,
-              borderWidth: 1
-            });
-            dsIndex++;
-            index++;
+            changingOpts = {
+              x: xValues,
+              y: dataSets.rt[name][meas],
+              name: labelValues.rt[name][meas],
+              visible: getTraceVisibility(name, true),
+              text: Array(xValues.length).fill(addUnitSuffix(labelValues.rt[name][meas].toLowerCase()))
+            };
+            traces.push({ ...changingOpts, ...commonOpts });
           }
         }
       }
 
-      return config;
+      return traces;
     };
 
-    const generatePluginConfig = (chartType) => {
-      return {
-        title: {
-          display: true,
-          text: (chartType === 'weather')
-            ? 'Weather observations'
-            : 'Other observations'
-        },
-        zoom: {
-          zoom: {
-            drag: {
-              enabled: true
-            },
-            mode: 'x'
+    const generateAnnotationConfig = (plotType, visibleTraceFieldNames) => {
+      if (annotationIndexes[plotType].length) {
+        const shapes = [];
+        let yValues = [];
+
+        if (visibleTraceFieldNames.length) {
+          const traceData = [];
+
+          for (const name of visibleTraceFieldNames) {
+            traceData.push(dataSets[plotType][name]);
           }
-        },
-        annotation: generateAnnotationConfig(chartType),
-        tooltip: {
-          callbacks: {
-            label: function (context) {
-              let label = context.dataset.label || '';
 
-              if (label) {
-                if (label.toLowerCase().includes('rssi')) {
-                  label = `Beacon "${bleBeaconNames[context.dataIndex]}" RSSI`;
-                }
-                if (label.toLowerCase().includes('battery')) {
-                  label = `Beacon "${bleBeaconNames[context.dataIndex]}" battery level`;
-                }
+          yValues = getDataExtremeValues(traceData);
+          yValues[0] -= 1;
+          yValues[1] += 1;
+        } else {
+          yValues = [-1, 4];
+        }
 
-                label += `: ${context.parsed.y}`;
-              }
-
-              if (context.parsed.y !== null) {
-                label += `${addUnitSuffix(label.toLowerCase())}`;
-              }
-
-              return label;
+        for (const value of annotationIndexes[plotType]) {
+          shapes.push({
+            type: 'line',
+            x0: value,
+            y0: yValues[0],
+            x1: value,
+            y1: yValues[1],
+            line: {
+              color: '#838b93',
+              width: 1
             }
-          }
+          });
         }
+
+        return shapes;
+      }
+      return null;
+    };
+
+    var generateLayoutConfig = (chartType) => {
+      const xValues = chartType === 'weather' ? dataLabels.weather : dataLabels.other;
+      const diffInDays = DateTime.fromJSDate(xValues[xValues.length - 1]).diff(
+        DateTime.fromJSDate(xValues[0]), 'days').toObject().days;
+
+      const layout = {
+        title: (chartType === 'weather')
+          ? 'FMI weather observations'
+          : 'Other observations',
+        xaxis: {
+          title: 'Time',
+          type: 'date',
+          range: [xValues[0], xValues[xValues.length - 1]],
+          dtick: getXAxisTickSize(diffInDays),
+          tickformat: '%H',
+          tickangle: -45
+        },
+        yaxis: {
+          title: 'Value'
+        },
+        legend: {
+          orientation: 'h'
+        },
+        hoverlabel: {
+          namelength: -1
+        },
+        hovermode: 'x unified'
       };
+
+      const annConfig = generateAnnotationConfig(chartType,
+        chartType === 'weather' ? fieldNames.weather : fieldNames.other.slice(0, 3));
+      if (annConfig) {
+        layout.shapes = annConfig;
+      }
+
+      return layout;
     };
 
-    const scaleOptions = {
-      x: {
-        type: 'time',
-        time: {
-          unit: 'hour',
-          tooltipFormat: 'd.L.yyyy HH:mm:ss',
-          displayFormats: {
-            hour: 'HH',
-            minute: 'HH:mm'
+    // Updates annotation y-axis values based on currently visible traces
+    var updateAnnotationYValues = (plot, traceData) => {
+      const update = {};
+      const dataExtremes = getDataExtremeValues(traceData);
+      dataExtremes[0] -= 1;
+      dataExtremes[1] += 1;
+
+      for (let i = 0; i < plot.layout.shapes.length; i++) {
+        update[`shapes[${i}].y0`] = dataExtremes[0];
+        update[`shapes[${i}].y1`] = dataExtremes[1];
+      }
+
+      Plotly.relayout(plot, update);
+    };
+
+    // Event handler for trace click events
+    const updatePlot = (event) => {
+      const plotType = event.layout.title.text.toLowerCase().includes('weather') ? 'weather' : 'other';
+      const plot = document.getElementById(`${plotType}Plot`);
+      const eData = event.data;
+      const traceIndex = event.curveNumber;
+      const traceVis = eData[traceIndex].visible;
+      const visTraceArray = [];
+      let visTraceCount = 0;
+
+      for (let i = 0; i < event.data.length; i++) {
+        if (event.data[i].visible === true) {
+          visTraceCount++;
+          visTraceArray.push(i);
+        }
+      }
+
+      // Update trace tooltips
+      if (visTraceCount === 0) {
+        visTraceArray.push(traceIndex);
+      } else {
+        if (traceVis === true) {
+          // Currently visible
+          visTraceArray.splice(visTraceArray.indexOf(traceIndex), 1);
+        } else {
+          // Currently hidden
+          visTraceArray.push(traceIndex);
+        }
+      }
+
+      // Update annotation y-axis values
+      if (plot.layout.shapes) {
+        if (visTraceArray.length) {
+          const traceData = [];
+
+          for (const i of visTraceArray) {
+            traceData.push(eData[i].y);
           }
-        },
-        title: {
-          display: true,
-          text: 'Time'
-        }
-      },
-      y: {
-        title: {
-          display: true,
-          text: 'Value'
-        },
-        ticks: {
-          beginAtZero: true
-        }
-      }
-    };
-    const interactionOptions = {
-      mode: 'index'
-    };
-    const onClickFunction = (event, elements) => {
-      if (!elements.length) {
-        return;
-      }
 
+          updateAnnotationYValues(plot, traceData);
+        } else {
+          resetAnnotationYValues(plot);
+        }
+      }
+    };
+
+    Plotly.newPlot('weatherPlot',
+      generateTraceConfig('weather'),
+      generateLayoutConfig('weather'));
+
+    document.getElementById('weatherPlot').on('plotly_click', (data) => {
       document.getElementById('showImages').checked = true;
       document.getElementById('imageDiv').classList.remove('display-none');
 
-      const chart = event.chart.canvas.id.includes('weather') ? charts.weather : charts.other;
-      const canvasPosition = Chart.helpers.getRelativePosition(event, chart);
-
-      showTestbedImage(chart.scales.x.getValueForPixel(canvasPosition.x));
-    };
-
-    Chart.defaults.animation.duration = 400;
-
-    charts.weather = new Chart(document.getElementById('weatherChart').getContext('2d'), {
-      type: 'line',
-      data: generateDataConfig('weather'),
-      options: {
-        scales: scaleOptions,
-        interaction: interactionOptions,
-        plugins: generatePluginConfig('weather'),
-        onClick: onClickFunction,
-        spanGaps: true,
-        normalized: true,
-        tension: 0.1,
-        animation: false
-      }
+      showTestbedImage(data.points[0].x);
     });
 
+    document.getElementById('weatherPlot').on('plotly_legendclick', updatePlot);
+
     if (mode === 'all') {
-      charts.other = new Chart(document.getElementById('otherChart').getContext('2d'), {
-        type: 'line',
-        data: generateDataConfig('other'),
-        options: {
-          scales: scaleOptions,
-          interaction: interactionOptions,
-          plugins: generatePluginConfig('other'),
-          onClick: onClickFunction,
-          spanGaps: true,
-          normalized: true,
-          tension: 0.1,
-          animation: false
-        }
+      Plotly.newPlot('otherPlot',
+        generateTraceConfig('other'),
+        generateLayoutConfig('other'));
+
+      document.getElementById('otherPlot').on('plotly_click', (data) => {
+        document.getElementById('showImages').checked = true;
+        document.getElementById('imageDiv').classList.remove('display-none');
+
+        showTestbedImage(data.points[0].x);
       });
-      document.getElementById('otherResetZoom').addEventListener(
-        'click',
-        () => {
-          charts.other.resetZoom();
-        },
-        false);
+
+      document.getElementById('otherPlot').on('plotly_legendclick', updatePlot);
     }
-    document.getElementById('weatherResetZoom').addEventListener(
-      'click',
-      () => {
-        charts.weather.resetZoom();
-      },
-      false);
   }
 
-  var toggleClassForElement = (elementId, className) => {
+  const toggleClassForElement = (elementId, className) => {
     document.getElementById(elementId).classList.toggle(className);
   };
 
-  var toggleVisibility = (elementId) => {
+  const toggleVisibility = (elementId) => {
     toggleClassForElement(elementId, 'display-none');
   };
 
@@ -1033,26 +1008,49 @@ const loadPage = () => {
     const endDate = document.getElementById('endDate').value;
     let isSpinnerShown = false;
 
-    if ((startDate && luxon.DateTime.fromISO(startDate).invalid) ||
-      (endDate && luxon.DateTime.fromISO(endDate).invalid)) {
+    if ((startDate && DateTime.fromISO(startDate).invalid) ||
+        (endDate && DateTime.fromISO(endDate).invalid)) {
       alert('Error: either the start or end date is invalid');
       event.preventDefault();
       return;
     }
 
-    if (luxon.DateTime.fromISO(startDate) > luxon.DateTime.fromISO(endDate)) {
+    if (DateTime.fromISO(startDate) > DateTime.fromISO(endDate)) {
       alert('Error: start date must be smaller than the end date');
       event.preventDefault();
       return;
     }
 
-    const diff = luxon.DateTime.fromISO(endDate).diff(
-      luxon.DateTime.fromISO(startDate), ['days']);
+    const diff = DateTime.fromISO(endDate).diff(
+      DateTime.fromISO(startDate), ['days']);
 
     if (mode === 'all' || diff.days >= 7) {
       isSpinnerShown = true;
       toggleLoadingSpinner();
     }
+
+    const plotUpdateAfterReset = (plotType) => {
+      const plot = document.getElementById(`${plotType}Plot`);
+      const traceVisibility = plot.data.map(trace => trace.visible);
+      const visTraceData = [];
+
+      for (const trace of plot.data) {
+        if (trace.visible === true) {
+          visTraceData.push(trace.y);
+        }
+      }
+
+      Plotly.react(plot,
+        generateTraceConfig(plotType),
+        generateLayoutConfig(plotType));
+
+      Plotly.restyle(plot, { visible: traceVisibility });
+      if (visTraceData.length) {
+        updateAnnotationYValues(plot, visTraceData);
+      } else {
+        resetAnnotationYValues(plot);
+      }
+    };
 
     axios.get('data/display',
       {
@@ -1073,14 +1071,10 @@ const loadPage = () => {
 
         transformData();
 
-        charts.weather.data = generateDataConfig('weather');
-        charts.weather.options.plugins.annotation = generateAnnotationConfig('weather');
-        charts.weather.update();
+        plotUpdateAfterReset('weather');
 
         if (mode === 'all') {
-          charts.other.data = generateDataConfig('other');
-          charts.other.options.plugins.annotation = generateAnnotationConfig('other');
-          charts.other.update();
+          plotUpdateAfterReset('other');
         }
       })
       .catch(error => {
@@ -1097,14 +1091,14 @@ const loadPage = () => {
     const startDate = document.getElementById('elecStartDate').value;
     const endDate = document.getElementById('elecEndDate').value;
 
-    if ((startDate && luxon.DateTime.fromISO(startDate).invalid) ||
-      (endDate && luxon.DateTime.fromISO(endDate).invalid)) {
+    if ((startDate && DateTime.fromISO(startDate).invalid) ||
+        (endDate && DateTime.fromISO(endDate).invalid)) {
       alert('Error: either the start or end date is invalid');
       event.preventDefault();
       return;
     }
 
-    if (luxon.DateTime.fromISO(startDate) > luxon.DateTime.fromISO(endDate)) {
+    if (DateTime.fromISO(startDate) > DateTime.fromISO(endDate)) {
       alert('Error: start date must be smaller than the end date');
       event.preventDefault();
       return;
@@ -1141,6 +1135,30 @@ const loadPage = () => {
       });
   };
 
+  // Set visibility (shown / hidden) for all traces
+  const setAllTracesVisibility = (plotId, showTraces) => {
+    const plot = document.getElementById(plotId);
+    const update = { visible: [] };
+
+    for (let i = 0; i < plot.data.length; i++) {
+      update.visible.push(showTraces ? true : 'legendonly');
+    }
+
+    Plotly.restyle(plotId, update);
+  };
+
+  const resetAnnotationYValues = (plot) => {
+    const update = {};
+    const dataExtremes = [-1, 4];
+
+    for (let i = 0; i < plot.layout.shapes.length; i++) {
+      update[`shapes[${i}].y0`] = dataExtremes[0];
+      update[`shapes[${i}].y1`] = dataExtremes[1];
+    }
+
+    Plotly.relayout(plot, update);
+  };
+
   document.getElementById('updateBtn').addEventListener('click',
     updateButtonClickHandler,
     false);
@@ -1160,14 +1178,12 @@ const loadPage = () => {
   document.getElementById('weatherHideAll')
     .addEventListener('click',
       () => {
-        for (let i = 0; i < charts.weather.data.datasets.length; i++) {
-          charts.weather.getDatasetMeta(i).hidden = true;
-        }
-        charts.weather.update();
+        setAllTracesVisibility('weatherPlot', false);
+        resetAnnotationYValues(document.getElementById('weatherPlot'));
       },
       false);
 
-  if (mode === 'all' && data.obs.length > 0) {
+  if (mode === 'all' && data.obs.length) {
     showElectricityPrice();
 
     document.getElementById('showLatestObs').addEventListener('click',
@@ -1191,21 +1207,32 @@ const loadPage = () => {
     document.getElementById('otherHideAll')
       .addEventListener('click',
         () => {
-          for (let i = 0; i < charts.other.data.datasets.length; i++) {
-            charts.other.getDatasetMeta(i).hidden = true;
-          }
-          charts.other.update();
+          setAllTracesVisibility('otherPlot', false);
+          resetAnnotationYValues(document.getElementById('otherPlot'));
         },
         false);
+
     document.getElementById('ruuvitagMode')
       .addEventListener('click',
         () => {
-          for (let i = 0; i < charts.other.data.datasets.length; i++) {
-            if (charts.other.data.datasets[i].label.indexOf('RT ') === -1) {
-              charts.other.getDatasetMeta(i).hidden = true;
+          const plot = document.getElementById('otherPlot');
+          const update = { visible: [] };
+          const visTraceData = [];
+
+          for (const trace of plot.data) {
+            update.visible.push(!trace.name.includes('RT') ? 'legendonly' : trace.visible);
+            if (trace.name.includes('RT') && trace.visible === true) {
+              visTraceData.push(trace.y);
             }
           }
-          charts.other.update();
+
+          if (!visTraceData.length) {
+            setAllTracesVisibility('otherPlot', false);
+            resetAnnotationYValues(plot);
+          } else {
+            Plotly.restyle('otherPlot', update);
+            updateAnnotationYValues(plot, visTraceData);
+          }
         },
         false);
   }
@@ -1242,5 +1269,5 @@ axios.get('data/display')
     loadPage();
   })
   .catch(error => {
-    console.log(`Display data fetch error: ${error}`);
+    console.log(`Initial display data fetch error: ${error}`);
   });
