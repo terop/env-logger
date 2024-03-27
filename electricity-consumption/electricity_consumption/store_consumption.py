@@ -48,7 +48,7 @@ def fetch_consumption_data(config, manual_fetch_date):
     client = CarunaPlus(token)
 
     metering_points = client.get_assets(customer_id)
-    if len(metering_points) == 0:
+    if len(metering_points) == 0 or not metering_points[0]:
         logging.error('No metering points found')
         sys.exit(1)
     if 'assetId' not in metering_points[0]:
