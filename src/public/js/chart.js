@@ -348,6 +348,7 @@ const loadPage = () => {
     showLastObservation();
 
     // Show the hourly electricity price and consumption data in a chart
+    /* eslint-disable no-var */
     var plotElectricityDataHour = (elecData, updateDate = false,
       removeLast = false) => {
       /* eslint-disable no-unused-vars */
@@ -586,6 +587,7 @@ const loadPage = () => {
           generateElecLayoutConfig());
       }
     };
+    /* eslint-enable no-var */
 
     // Determine the index of electricity price data value which is closest to the current hour
     const getClosestElecPriceDataIndex = (xValues) => {
@@ -611,6 +613,7 @@ const loadPage = () => {
     };
 
     // Fetch and display current electricity price data
+    /* eslint-disable no-var */
     var showElectricityPrice = () => {
       // Displays the latest price as text
       const showLatestPrice = (priceData) => {
@@ -690,6 +693,7 @@ const loadPage = () => {
           console.log(`Electricity data fetch error: ${error}`);
         });
     };
+    /* eslint-enable no-var */
 
     const showTestbedImage = (pointDt) => {
       const pattern = /testbed-(.+).png/;
@@ -764,6 +768,7 @@ const loadPage = () => {
       return tickSize;
     };
 
+    /* eslint-disable no-var */
     var generateTraceConfig = (dataMode) => {
       const xValues = dataMode === 'weather' ? dataLabels.weather : dataLabels.other;
       const traces = [];
@@ -820,6 +825,7 @@ const loadPage = () => {
 
       return traces;
     };
+    /* eslint-enable no-var */
 
     const generateAnnotationConfig = (plotType, visibleTraceFieldNames) => {
       if (annotationIndexes[plotType].length) {
@@ -859,6 +865,7 @@ const loadPage = () => {
       return null;
     };
 
+    /* eslint-disable no-var */
     var generateLayoutConfig = (chartType) => {
       const xValues = chartType === 'weather' ? dataLabels.weather : dataLabels.other;
       const diffInDays = DateTime.fromJSDate(xValues[xValues.length - 1]).diff(
@@ -911,6 +918,7 @@ const loadPage = () => {
 
       Plotly.relayout(plot, update);
     };
+    /* eslint-enable no-var */
 
     // Event handler for trace click events
     const updatePlot = (event) => {
