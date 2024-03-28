@@ -505,7 +505,7 @@ const loadPage = () => {
         const diffInDays = DateTime.fromJSDate(xValues[xValues.length - 1]).diff(
           DateTime.fromJSDate(xValues[0]), 'days').toObject().days;
 
-        Plotly.react(document.getElementById('hourElecDataPlot'),
+        Plotly.react('hourElecDataPlot',
           generateElecTraceConfig(),
           generateElecLayoutConfig(diffInDays));
       }
@@ -801,7 +801,7 @@ const loadPage = () => {
           y: dataSets[dataMode][key],
           name: labelValues[dataMode][key],
           visible: getTraceVisibility(key),
-          text: Array(xValues.length).fill(addUnitSuffix(labelValues[dataMode][key].toLowerCase()))
+          text: Array(xValues.length).fill(addUnitSuffix(labelValues[dataMode][key]))
         };
         traces.push({ ...changingOpts, ...commonOpts });
       }
@@ -816,7 +816,7 @@ const loadPage = () => {
               y: dataSets.rt[name][meas],
               name: labelValues.rt[name][meas],
               visible: getTraceVisibility(name, true),
-              text: Array(xValues.length).fill(addUnitSuffix(labelValues.rt[name][meas].toLowerCase()))
+              text: Array(xValues.length).fill(addUnitSuffix(labelValues.rt[name][meas]))
             };
             traces.push({ ...changingOpts, ...commonOpts });
           }
