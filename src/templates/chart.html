@@ -73,7 +73,7 @@
 
             #elecDataDiv {
                 width: 1300px;
-                height: 730px;
+                margin-top: 20px;
             }
 
             #elecDataCheckboxDiv {
@@ -101,11 +101,8 @@
                 margin-bottom: 20px;
             }
 
-            #showElecDayData {
-                margin-left: 80px;
-            }
-
-            #plotAccordion {
+            #plotAccordion,
+            #elecPlotAccordion {
                 width: 1350px;
                 margin-top: 20px;
             }
@@ -203,11 +200,8 @@
                     </div>
                 </div>
 
-                <div id="elecDataCheckboxDiv">
-                    <input type="checkbox" id="showElecDataCharts">
-                    <label for="showElecDataCharts">Show electricity price and consumption charts</label>
-                </div>
-                <div class="display-none" id="elecDataDiv">
+                <div id="elecDataDiv">
+                    <h5>Electricity data</h5>
                     <form>
                         <input type="date" id="elecStartDate">
                         &nbsp;-&nbsp;
@@ -216,11 +210,28 @@
                         <input type="button" class="btn btn-primary" id="elecUpdateBtn" value="Update">
                     </form>
 
-                    <div id="hourElecDataPlot" style="margin-bottom: 10px"></div>
-
-                    <input type="checkbox" id="showElecDayData" name="showElecDayData">
-                    <label for="showElecDayData">Show day data</label>
-                    <div id="dayElecDataPlot"></div>
+                    <div class="accordion" id="elecPlotAccordion">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#elecHourPlotAccordion" aria-expanded="true" aria-controls="elecHourPlotAccordion">
+                                    Hourly electricity data
+                                </button>
+                            </h2>
+                            <div id="elecHourPlotAccordion" class="accordion-collapse collapse">
+                                <div id="hourElecDataPlot"></div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#elecDayPlotAccordion" aria-expanded="false" aria-controls="collapseTwo">
+                                    Daily electricity data
+                                </button>
+                            </h2>
+                            <div id="elecDayPlotAccordion" class="accordion-collapse collapse">
+                                <div id="dayElecDataPlot"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             {% endif %}
 

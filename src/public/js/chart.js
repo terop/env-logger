@@ -252,6 +252,14 @@ const loadPage = () => {
       return DateTime.fromSeconds(unixTs).toFormat('HH:mm');
     };
 
+    /* eslint-disable no-var */
+    var scrollToBottom = (timeout) => {
+      window.setTimeout(() => {
+        window.scroll(0, document.body.scrollHeight);
+      }, timeout);
+    };
+    /* eslint-enable no-var */
+
     // Show last observation and some other data for quick viewing
     const showLastObservation = () => {
       let observationText = '';
@@ -476,32 +484,6 @@ const loadPage = () => {
         Plotly.newPlot('hourElecDataPlot',
           generateElecTraceConfig(),
           generateElecLayoutConfig(diffInDays));
-
-        document.getElementById('showElecDataCharts').addEventListener(
-          'click', () => {
-            toggleVisibility('elecDataDiv');
-            // Scroll page to bottom after loading the image for improved viewing
-            window.setTimeout(() => {
-              window.scroll(0, document.body.scrollHeight);
-            }, 100);
-          },
-          false);
-
-        document.getElementById('showElecDayData').addEventListener(
-          'click', (event) => {
-            if (event.currentTarget.checked) {
-              document.getElementById('dayElecDataPlot').style.display = 'block';
-              document.getElementById('elecDataDiv').style.height = '1300px';
-            } else {
-              hideElement('dayElecDataPlot');
-              document.getElementById('elecDataDiv').style.height = '730px';
-            }
-            // Scroll page to bottom after loading the image for improved viewing
-            window.setTimeout(() => {
-              window.scroll(0, document.body.scrollHeight);
-            }, 100);
-          },
-          false);
       } else {
         const diffInDays = DateTime.fromJSDate(xValues[xValues.length - 1]).diff(
           DateTime.fromJSDate(xValues[0]), 'days').toObject().days;
@@ -685,7 +667,6 @@ const loadPage = () => {
             plotElectricityDataHour(elecData['data-hour'], true, true);
 
             plotElectricityDataDay(elecData['data-day'], true);
-            hideElement('dayElecDataPlot');
 
             if (elecData['elec-price-avg'] !== null) {
               document.getElementById('lastObservation').innerHTML +=
@@ -725,9 +706,7 @@ const loadPage = () => {
         document.getElementById('testbedImage').src =
           `${testbedImageBasepath}${result[1]}/${imageName}`;
         // Scroll page to bottom after loading the image for improved viewing
-        window.setTimeout(() => {
-          window.scroll(0, document.body.scrollHeight);
-        }, 500);
+        scrollToBottom(500);
       }
     };
 
@@ -1253,6 +1232,20 @@ const loadPage = () => {
           updateAnnotationYValues(plot, traceData);
         },
         false);
+
+    document.getElementById('plotAccordion')
+      .addEventListener('shown.bs.collapse', () => {
+        // Scroll page to bottom after loading the image for improved viewing
+        scrollToBottom(0);
+      },
+      false);
+
+    document.getElementById('elecPlotAccordion')
+      .addEventListener('shown.bs.collapse', () => {
+        // Scroll page to bottom after loading the image for improved viewing
+        scrollToBottom(0);
+      },
+      false);
   }
 };
 
