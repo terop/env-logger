@@ -16,10 +16,6 @@
                 width: 140px;
             }
 
-            .left-margin {
-                margin-left: 30px;
-            }
-
             .clear-both {
                 clear: both;
             }
@@ -42,7 +38,7 @@
             }
 
             #bodyDiv {
-                margin-left: 20px;
+                margin-left: 50px;
             }
 
             #plotControls>div>label {
@@ -72,7 +68,7 @@
             #weatherDiv,
             #otherDiv {
                 width: 1300px;
-                height: 730px;
+                height: 750px;
             }
 
             #elecDataDiv {
@@ -80,9 +76,7 @@
                 height: 730px;
             }
 
-            #otherCheckboxDiv,
-            #elecDataCheckboxDiv,
-            #imageButtonDiv {
+            #elecDataCheckboxDiv {
                 margin-top: 20px;
                 margin-bottom: 10px;
             }
@@ -110,6 +104,11 @@
             #showElecDayData {
                 margin-left: 80px;
             }
+
+            #plotAccordion {
+                width: 1350px;
+                margin-top: 20px;
+            }
         </style>
 
         <title>Environment log viewer - observations</title>
@@ -136,7 +135,7 @@
                 </div>
             </nav>
 
-            <div class="left-margin clear-both">
+            <div class="clear-both">
                 <h4>Date interval to show</h4>
                 <form>
                     <input type="date" id="startDate">
@@ -146,48 +145,69 @@
                 </form>
             </div>
 
-            <div class="left-margin display-none" id="latestDiv">
+            <div class="display-none" id="latestDiv">
                 <span id="lastObservation"></span>
                 <span id="forecast"></span>
             </div>
 
-            <div class="left-margin display-none alert alert-danger" id="noDataError" role="alert">
+            <div class="display-none alert alert-danger" id="noDataError" role="alert">
                 No observations found
             </div>
             {% if logged-in? %}
-                <div class="left-margin" id="latestCheckboxDiv">
+                <div id="latestCheckboxDiv">
                     <input type="checkbox" id="showLatestObs" checked>
                     <label for="showLatestObs">Show above info</label>
                 </div>
 
-                <div class="left-margin" id="weatherCheckboxDiv">
+                <div id="weatherCheckboxDiv">
                     <input type="checkbox" id="showWeatherChart" checked>
                     <label for="showWeatherChart">Show weather chart</label>
                 </div>
             {% endif %}
-            <div class="left-margin" id="weatherDiv">
-                <div id="weatherPlot" style="width:1300px; height:700px"></div>
+            <div id="weatherDiv">
+                <div id="weatherPlot"></div>
 
-                <input type="button" id="weatherHideAll" class="btn btn-danger hide-all" value="Hide all series">
+                <input type="button" id="weatherHideAll" class="btn btn-danger" value="Hide all series">
             </div>
 
             {% if logged-in? %}
-                <div class="left-margin" id="otherCheckboxDiv">
-                    <input type="checkbox" id="showOtherChart" checked>
-                    <label for="showOtherChart">Show other chart</label>
-                </div>
-                <div class="left-margin" id="otherDiv">
-                    <div id="otherPlot" style="width:1300px; height:700px"></div>
+                <div class="accordion" id="plotAccordion">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#otherPlotAccordion" aria-expanded="true" aria-controls="otherPlotAccordion">
+                                Other observations
+                            </button>
+                        </h2>
+                        <div id="otherPlotAccordion" class="accordion-collapse collapse show">
+                            <div id="otherPlot"></div>
 
-                    <input type="button" id="ruuvitagMode" class="btn btn-secondary" value="Show only RuuviTags">
-                    <input type="button" id="otherHideAll" class="btn btn-danger hide-all" value="Hide all series">
+                            <div style="margin-left: 20px; margin-bottom: 20px">
+                                <input type="button" id="otherHideAll" class="btn btn-danger" value="Hide all series">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#ruuvitagPlotAccordion" aria-expanded="false" aria-controls="collapseTwo">
+                                RuuviTag observations
+                            </button>
+                        </h2>
+                        <div id="ruuvitagPlotAccordion" class="accordion-collapse collapse">
+                            <div id="ruuvitagPlot"></div>
+
+                            <div style="margin-left: 20px; margin-bottom: 20px">
+                                <input type="button" id="ruuvitagShowAll" class="btn btn-secondary" value="Show all series" style="margin-right: 15px">
+                                <input type="button" id="ruuvitagHideAll" class="btn btn-danger" value="Hide all series">
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="left-margin" id="elecDataCheckboxDiv">
+                <div id="elecDataCheckboxDiv">
                     <input type="checkbox" id="showElecDataCharts">
                     <label for="showElecDataCharts">Show electricity price and consumption charts</label>
                 </div>
-                <div class="display-none left-margin" id="elecDataDiv">
+                <div class="display-none" id="elecDataDiv">
                     <form>
                         <input type="date" id="elecStartDate">
                         &nbsp;-&nbsp;
@@ -196,19 +216,19 @@
                         <input type="button" class="btn btn-primary" id="elecUpdateBtn" value="Update">
                     </form>
 
-                    <div id="hourElecDataPlot" style="width:1300px; height:650px; margin-bottom: 10px"></div>
+                    <div id="hourElecDataPlot" style="margin-bottom: 10px"></div>
 
                     <input type="checkbox" id="showElecDayData" name="showElecDayData">
                     <label for="showElecDayData">Show day data</label>
-                    <div id="dayElecDataPlot" style="width:1300px; height:550px"></div>
+                    <div id="dayElecDataPlot"></div>
                 </div>
             {% endif %}
 
-            <div id="imageButtonDiv" class="left-margin">
+            <div id="imageButtonDiv">
                 <input type="checkbox" id="showImages">
                 <label for="showImages">Show Testbed image</label>
             </div>
-            <div id="imageDiv" class="left-margin display-none">
+            <div id="imageDiv" class="display-none">
                 <img src="" id="testbedImage" alt="FMI Testbed image">
             </div>
         </div>

@@ -231,8 +231,7 @@ const loadPage = () => {
     if (mode === 'all') {
       hideElement('latestCheckboxDiv');
       hideElement('weatherCheckboxDiv');
-      hideElement('otherDiv');
-      hideElement('otherCheckboxDiv');
+      hideElement('plotAccordion');
       hideElement('elecDataCheckboxDiv');
     }
   } else {
@@ -441,6 +440,8 @@ const loadPage = () => {
 
       const generateElecLayoutConfig = (diffInDays) => {
         return {
+          width: 1300,
+          height: 650,
           title: 'Hourly electricity price and consumption',
           xaxis: {
             title: 'Time',
@@ -554,6 +555,8 @@ const loadPage = () => {
 
       const generateElecLayoutConfig = () => {
         return {
+          width: 1300,
+          height: 550,
           title: 'Daily electricity price and consumption',
           xaxis: {
             title: 'Time',
@@ -769,8 +772,8 @@ const loadPage = () => {
     };
 
     /* eslint-disable no-var */
-    var generateTraceConfig = (dataMode) => {
-      const xValues = dataMode === 'weather' ? dataLabels.weather : dataLabels.other;
+    var generateTraceConfig = (plotType) => {
+      const xValues = plotType === 'weather' ? dataLabels.weather : dataLabels.other;
       const traces = [];
       const commonOpts = {
         type: 'scatter',
@@ -783,30 +786,26 @@ const loadPage = () => {
       };
       let changingOpts = {};
 
-      const getTraceVisibility = (traceName, isRuuvitag = false) => {
-        if (dataMode === 'weather') {
+      const getTraceVisibility = (isRuuvitag) => {
+        if (plotType === 'weather' || !isRuuvitag) {
           return true;
         } else {
-          if (isRuuvitag || traceName === 'beacon-battery') {
-            return 'legendonly';
-          } else {
-            return true;
-          }
+          return 'legendonly';
         }
       };
 
-      for (const key of dataMode === 'weather' ? fieldNames.weather : fieldNames.other) {
-        changingOpts = {
-          x: xValues,
-          y: dataSets[dataMode][key],
-          name: labelValues[dataMode][key],
-          visible: getTraceVisibility(key),
-          text: Array(xValues.length).fill(addUnitSuffix(labelValues[dataMode][key]))
-        };
-        traces.push({ ...changingOpts, ...commonOpts });
-      }
-
-      if (dataMode === 'other') {
+      if (plotType !== 'ruuvitag') {
+        for (const key of plotType === 'weather' ? fieldNames.weather : fieldNames.other) {
+          changingOpts = {
+            x: xValues,
+            y: dataSets[plotType][key],
+            name: labelValues[plotType][key],
+            visible: getTraceVisibility(false),
+            text: Array(xValues.length).fill(addUnitSuffix(labelValues[plotType][key]))
+          };
+          traces.push({ ...changingOpts, ...commonOpts });
+        }
+      } else {
         const rtMeasurables = ['temperature', 'humidity'];
 
         for (const name of rtNames) {
@@ -815,7 +814,7 @@ const loadPage = () => {
               x: xValues,
               y: dataSets.rt[name][meas],
               name: labelValues.rt[name][meas],
-              visible: getTraceVisibility(name, true),
+              visible: getTraceVisibility(true),
               text: Array(xValues.length).fill(addUnitSuffix(labelValues.rt[name][meas]))
             };
             traces.push({ ...changingOpts, ...commonOpts });
@@ -827,18 +826,12 @@ const loadPage = () => {
     };
     /* eslint-enable no-var */
 
-    const generateAnnotationConfig = (plotType, visibleTraceFieldNames) => {
+    const generateAnnotationConfig = (plotType, traceData) => {
       if (annotationIndexes[plotType].length) {
         const shapes = [];
         let yValues = [];
 
-        if (visibleTraceFieldNames.length) {
-          const traceData = [];
-
-          for (const name of visibleTraceFieldNames) {
-            traceData.push(dataSets[plotType][name]);
-          }
-
+        if (traceData.length) {
           yValues = getDataExtremeValues(traceData);
           yValues[0] -= 1;
           yValues[1] += 1;
@@ -866,15 +859,20 @@ const loadPage = () => {
     };
 
     /* eslint-disable no-var */
-    var generateLayoutConfig = (chartType) => {
-      const xValues = chartType === 'weather' ? dataLabels.weather : dataLabels.other;
+    var generateLayoutConfig = (plotType) => {
+      const xValues = plotType === 'weather' ? dataLabels.weather : dataLabels.other;
       const diffInDays = DateTime.fromJSDate(xValues[xValues.length - 1]).diff(
         DateTime.fromJSDate(xValues[0]), 'days').toObject().days;
+      /* eslint-disable multiline-ternary */
+      const plotTitleStart = (plotType === 'weather')
+        ? 'FMI weather' : plotType === 'other'
+          ? 'Other' : 'Ruuvitag';
+      /* eslint-enable multiline-ternary */
 
       const layout = {
-        title: (chartType === 'weather')
-          ? 'FMI weather observations'
-          : 'Other observations',
+        width: 1300,
+        height: 700,
+        title: `${plotTitleStart} observations`,
         xaxis: {
           title: 'Time',
           type: 'date',
@@ -895,8 +893,15 @@ const loadPage = () => {
         hovermode: 'x unified'
       };
 
-      const annConfig = generateAnnotationConfig(chartType,
-        chartType === 'weather' ? fieldNames.weather : fieldNames.other.slice(0, 3));
+      const traceData = [];
+      if (plotType !== 'ruuvitag') {
+        for (const key of plotType === 'weather' ? fieldNames.weather : fieldNames.other) {
+          traceData.push(dataSets[plotType][key]);
+        }
+      }
+
+      // other and ruuvitag plot types share the same annotation indexes
+      const annConfig = generateAnnotationConfig(plotType === 'weather' ? plotType : 'other', traceData);
       if (annConfig) {
         layout.shapes = annConfig;
       }
@@ -922,7 +927,12 @@ const loadPage = () => {
 
     // Event handler for trace click events
     const updatePlot = (event) => {
-      const plotType = event.layout.title.text.toLowerCase().includes('weather') ? 'weather' : 'other';
+      const plotTitle = event.layout.title.text.toLowerCase();
+      /* eslint-disable multiline-ternary */
+      const plotType = plotTitle.includes('weather')
+        ? 'weather' : plotTitle.includes('other')
+          ? 'other' : 'ruuvitag';
+      /* eslint-enable multiline-ternary */
       const plot = document.getElementById(`${plotType}Plot`);
       const eData = event.data;
       const traceIndex = event.curveNumber;
@@ -992,6 +1002,12 @@ const loadPage = () => {
       });
 
       document.getElementById('otherPlot').on('plotly_legendclick', updatePlot);
+
+      Plotly.newPlot('ruuvitagPlot',
+        generateTraceConfig('ruuvitag'),
+        generateLayoutConfig('ruuvitag'));
+
+      document.getElementById('ruuvitagPlot').on('plotly_legendclick', updatePlot);
     }
   }
 
@@ -1017,7 +1033,7 @@ const loadPage = () => {
     let isSpinnerShown = false;
 
     if ((startDate && DateTime.fromISO(startDate).invalid) ||
-        (endDate && DateTime.fromISO(endDate).invalid)) {
+      (endDate && DateTime.fromISO(endDate).invalid)) {
       alert('Error: either the start or end date is invalid');
       event.preventDefault();
       return;
@@ -1083,6 +1099,7 @@ const loadPage = () => {
 
         if (mode === 'all') {
           plotUpdateAfterReset('other');
+          plotUpdateAfterReset('ruuvitag');
         }
       })
       .catch(error => {
@@ -1100,7 +1117,7 @@ const loadPage = () => {
     const endDate = document.getElementById('elecEndDate').value;
 
     if ((startDate && DateTime.fromISO(startDate).invalid) ||
-        (endDate && DateTime.fromISO(endDate).invalid)) {
+      (endDate && DateTime.fromISO(endDate).invalid)) {
       alert('Error: either the start or end date is invalid');
       event.preventDefault();
       return;
@@ -1206,12 +1223,6 @@ const loadPage = () => {
       },
       false);
 
-    document.getElementById('showOtherChart').addEventListener('click',
-      () => {
-        toggleVisibility('otherDiv');
-      },
-      false);
-
     document.getElementById('otherHideAll')
       .addEventListener('click',
         () => {
@@ -1220,27 +1231,26 @@ const loadPage = () => {
         },
         false);
 
-    document.getElementById('ruuvitagMode')
+    document.getElementById('ruuvitagHideAll')
       .addEventListener('click',
         () => {
-          const plot = document.getElementById('otherPlot');
-          const update = { visible: [] };
-          const visTraceData = [];
+          setAllTracesVisibility('ruuvitagPlot', false);
+          resetAnnotationYValues(document.getElementById('ruuvitagPlot'));
+        },
+        false);
+
+    document.getElementById('ruuvitagShowAll')
+      .addEventListener('click',
+        () => {
+          setAllTracesVisibility('ruuvitagPlot', true);
+
+          const plot = document.getElementById('ruuvitagPlot');
+          const traceData = [];
 
           for (const trace of plot.data) {
-            update.visible.push(!trace.name.includes('RT') ? 'legendonly' : trace.visible);
-            if (trace.name.includes('RT') && trace.visible === true) {
-              visTraceData.push(trace.y);
-            }
+            traceData.push(trace.y);
           }
-
-          if (!visTraceData.length) {
-            setAllTracesVisibility('otherPlot', false);
-            resetAnnotationYValues(plot);
-          } else {
-            Plotly.restyle('otherPlot', update);
-            updateAnnotationYValues(plot, visTraceData);
-          }
+          updateAnnotationYValues(plot, traceData);
         },
         false);
   }
