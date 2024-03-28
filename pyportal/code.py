@@ -4,8 +4,8 @@ import time
 from collections import OrderedDict
 from secrets import secrets
 
-import adafruit_esp32spi.adafruit_esp32spi_socket as socket
-import adafruit_requests as requests
+import adafruit_connection_manager
+import adafruit_requests
 import board
 import busio
 import rtc
@@ -43,6 +43,8 @@ BACKLIGHT_DIMMING_VALUE = 0.5
 # Network failure threshold after which the board is rebooted
 NW_FAILURE_THRESHOLD = 3
 
+requests = None
+
 
 def connect_to_wlan():
     """Connect to WLAN."""
@@ -51,24 +53,22 @@ def connect_to_wlan():
     esp32_reset = DigitalInOut(board.ESP_RESET)
 
     spi = busio.SPI(board.SCK, board.MOSI, board.MISO)
-    esp = adafruit_esp32spi.ESP_SPIcontrol(spi, esp32_cs, esp32_ready, esp32_reset)
+    radio = adafruit_esp32spi.ESP_SPIcontrol(spi, esp32_cs, esp32_ready, esp32_reset)
 
     failure_count = 0
 
-    requests.set_socket(socket, esp)
-
-    if esp.status == adafruit_esp32spi.WL_IDLE_STATUS:
+    if radio.status == adafruit_esp32spi.WL_IDLE_STATUS:
         print('ESP32 found and in idle mode')
-        print(f'Firmware version: {esp.firmware_version}')
-        print(f'MAC addr: {[hex(i) for i in esp.MAC_address]}')
+        print(f'Firmware version: {radio.firmware_version}')
+        print(f'MAC addr: {[hex(i) for i in radio.MAC_address]}')
 
     print('Connecting to AP')
-    esp.reset()
+    radio.reset()
     time.sleep(2)
 
-    while not esp.is_connected:
+    while not radio.is_connected:
         try:
-            esp.connect_AP(secrets['ssid'], secrets['password'])
+            radio.connect_AP(secrets['ssid'], secrets['password'])
         except (RuntimeError, ConnectionError) as ex:
             print(f'Error: could not connect to AP, retrying: {ex}')
 
@@ -77,12 +77,17 @@ def connect_to_wlan():
                 print(f'Error: AP connection failed {failure_count} times, '
                       'resetting ESP')
                 failure_count = 0
-                esp.reset()
+                radio.reset()
 
             time.sleep(5)
             continue
-        print(f'Connected to {str(esp.ssid, "utf-8")}    RSSI: {esp.rssi}')
-        print(f'My IP address is {esp.pretty_ip(esp.ip_address)}')
+        print(f'Connected to {str(radio.ssid, "utf-8")}    RSSI: {radio.rssi}')
+        print(f'My IP address is {radio.pretty_ip(radio.ip_address)}')
+
+    pool = adafruit_connection_manager.get_radio_socketpool(radio)
+    ssl_context = adafruit_connection_manager.get_radio_ssl_context(radio)
+    global requests  # noqa: PLW0603
+    requests = adafruit_requests.Session(pool, ssl_context)
 
 
 def fetch_token():
@@ -167,7 +172,7 @@ def get_backend_endpoint_content(endpoint, token):
                     supervisor.reload()
 
         return (token, resp.json())
-    except (TimeoutError, requests.OutOfRetries) as ex:
+    except (TimeoutError,  adafruit_requests.OutOfRetries) as ex:
         print(f'Error: endpoint "{endpoint}" fetch failed: {ex}, reloading board')
         time.sleep(sleep_time)
         supervisor.reload()

@@ -22,6 +22,7 @@ not be needed.
     * `adafruit_esp32spi/`
     * `adafruit_io/`
     * `adafruit_portalbase/`
+    * `adafruit_connection_manager.mpy`
     * `adafruit_requests.mpy`
     * `adafruit_simple_text_display.mpy`
     * `adafruit_datetime.mpy`
