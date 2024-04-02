@@ -194,14 +194,22 @@ const loadPage = () => {
     if (mode === 'all') {
       parseRTData(data.rt, rtNames);
 
+      let beaconName = null;
+      for (const item of bleBeaconNames) {
+        if (item !== null) {
+          beaconName = item;
+          break;
+        }
+      }
+
       labelValues.other = {
         brightness: 'Brightness',
         'o-temperature': 'Outside temperature',
-        'beacon-rssi': bleBeaconNames.length
-          ? `Beacon "${bleBeaconNames[0]}" RSSI`
+        'beacon-rssi': beaconName
+          ? `Beacon "${beaconName}" RSSI`
           : 'Beacon RSSI',
-        'beacon-battery': bleBeaconNames.length
-          ? `Beacon "${bleBeaconNames[0]}" battery level`
+        'beacon-battery': beaconName
+          ? `Beacon "${beaconName}" battery level`
           : 'Beacon battery level'
       };
       for (const name of rtNames) {
