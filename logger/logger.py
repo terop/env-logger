@@ -29,7 +29,7 @@ from ruuvitag_sensor.ruuvi import RuuviTagSensor  # noqa: E402
 
 
 def get_timestamp(timezone):
-    """Return the current timestamp in ISO 8601 format."""
+    """Return the current timestamp for the given timezone in ISO 8601 format."""
     return datetime.now(pytz.timezone(timezone)).isoformat()
 
 
@@ -125,12 +125,12 @@ async def scan_ruuvitags(bt_device, rt_config):
             case _:
                 logging.error('RuuviTag scan failed for some other reason')
 
-    return found_tags
+    return [tag for tag in found_tags.values()]
 
 
-def store_ruuvitags(config, timestamp, tag_data):
+def store_ruuvitags(config, timestamp, tags):
     """Send provided RuuviTag data to the backend."""
-    for tag in tag_data.values():
+    for tag in tags:
         tag['timestamp'] = timestamp
         json_data = json.dumps(tag)
 
@@ -232,11 +232,11 @@ def main():
     logging.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s',
                         level=logging.INFO)
 
-    parser = argparse.ArgumentParser(description='Scans environment data and sends it '
-                                     'to the env-logger backend. A configuration file '
-                                     'named "logger_config.json" is used unless '
-                                     'provided with --config.')
-    parser.add_argument('--config', type=str, help='Configuration file')
+    parser = argparse.ArgumentParser(
+        description="""Scans environment data and sends it to the env-logger backend.
+        A configuration file named "logger_config.json" is used unless provided with
+        the --config flag.""")
+    parser.add_argument('--config', type=str, help='Configuration file to use')
     parser.add_argument('--dummy', action='store_true',
                         help='Send dummy data (meant for testing)')
     parser.add_argument('--bt-device', type=str,
