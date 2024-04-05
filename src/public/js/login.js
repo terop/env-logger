@@ -2,7 +2,7 @@
 
 let username = '';
 
-const publicKeyCredentialRequestOptions = function (server) {
+const publicKeyCredentialRequestOptions = (server) => {
   const credentials = [];
   for (const cred of server.credentials) {
     credentials.push({
@@ -23,7 +23,7 @@ const publicKeyCredentialRequestOptions = function (server) {
   };
 };
 
-const doWebAuthnLogin = function (resolve, reject) {
+const doWebAuthnLogin = (resolve, reject) => {
   axios.get('webauthn/login',
     {
       params: {
@@ -95,7 +95,7 @@ async function handleWebAuthnLogin () {
     });
 }
 
-const handleUsernameBlur = function () {
+const handleUsernameBlur = () => {
   username = document.getElementById('username').value;
 };
 

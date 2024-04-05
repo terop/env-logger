@@ -22,7 +22,7 @@ const publicKeyCredentialCreationOptions = (server, username) => ({
   attestation: 'direct'
 });
 
-const handleRegistration = function () {
+const handleRegistration = () => {
   axios.get('webauthn/register',
     {
       params: {

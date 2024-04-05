@@ -81,7 +81,7 @@
                                           axios.post('{{ app-url }}misc/elec-consumption', formData,
                                                      { headers: { 'Content-Type': 'multipart/form-data' }
                                           })
-                                               .then(function (response) {
+                                               .then((response) => {
                                                    if (response.data.status !== 'error') {
                                                        document.getElementById('successAlert').classList.remove('hidden');
                                                    } else {
@@ -105,7 +105,7 @@
                                                        document.getElementById('errorAlert').classList.remove('hidden');
                                                    }
                                                })
-                                               .catch(function (error) {
+                                               .catch((error) => {
                                                    document.getElementById('errorAlert').classList.remove('hidden');
                                                    console.log(`Upload error: ${error}`);
                                                })
