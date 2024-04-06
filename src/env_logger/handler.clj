@@ -21,6 +21,7 @@
                                secure-site-defaults]]
              [reload :refer [wrap-reload]]]
             [ring.util.http-response :refer [bad-request found]]
+            [ring.util.response :refer [header]]
             [taoensso.timbre :refer [error set-min-level!]]
             [env-logger
              [authentication :as auth]
@@ -246,6 +247,12 @@
        (error dte "Timezone ID has an invalid format")
        {:error "Timezone ID has an invalid format"}))))
 
+(defn add-cache-control
+  "Adds the Cache-Control HTTP header with the no-cache value."
+  [handler]
+  (fn [request]
+    (header (handler request) "Cache-Control" "no-cache")))
+
 (defn get-middleware
   "Returns the middlewares to be applied."
   []
@@ -269,6 +276,7 @@
     [[wrap-authorization auth/auth-backend]
      [wrap-authentication auth/jwe-auth-backend auth/auth-backend]
      parameters/parameters-middleware
+     add-cache-control
      [wrap-defaults (if dev-mode
                       defaults-config
                       (if (:force-hsts env)
