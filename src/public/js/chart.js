@@ -756,6 +756,19 @@ const loadPage = () => {
       return tickSize;
     };
 
+    // Return the "padding" i.e. amount of empty area for the y-axis
+    const getYAxisPadding = (extremeValues) => {
+      const diff = Math.abs(extremeValues[1] - extremeValues[0]);
+
+      if (diff < 20) {
+        return 1;
+      } else if (diff >= 20 && diff < 100) {
+        return 4;
+      } else {
+        return 8;
+      }
+    };
+
     /* eslint-disable no-var */
     var generateTraceConfig = (plotType) => {
       const xValues = plotType === 'weather' ? dataLabels.weather : dataLabels.other;
@@ -818,8 +831,9 @@ const loadPage = () => {
 
         if (traceData.length) {
           yValues = getDataExtremeValues(traceData);
-          yValues[0] -= 1;
-          yValues[1] += 1;
+          const padding = getYAxisPadding(yValues);
+          yValues[0] -= padding;
+          yValues[1] += padding;
         } else {
           yValues = [-1, 4];
         }
@@ -844,7 +858,7 @@ const loadPage = () => {
     };
 
     /* eslint-disable no-var */
-    var generateLayoutConfig = (plotType) => {
+    var generateLayoutConfig = (plotType, isUpdate = false) => {
       const xValues = plotType === 'weather' ? dataLabels.weather : dataLabels.other;
       const diffInDays = DateTime.fromJSDate(xValues[xValues.length - 1]).diff(
         DateTime.fromJSDate(xValues[0]), 'days').toObject().days;
@@ -853,6 +867,24 @@ const loadPage = () => {
         ? 'FMI weather' : plotType === 'other'
           ? 'Other' : 'Ruuvitag';
       /* eslint-enable multiline-ternary */
+
+      const traceData = [];
+      if (!isUpdate) {
+        if (plotType !== 'ruuvitag') {
+          for (const key of plotType === 'weather' ? fieldNames.weather : fieldNames.other) {
+            traceData.push(dataSets[plotType][key]);
+          }
+        }
+      } else {
+        const plot = document.getElementById(`${plotType}Plot`);
+        for (const trace of plot.data) {
+          if (trace.visible === true) {
+            traceData.push(trace.y);
+          }
+        }
+      }
+      const yMinMax = getDataExtremeValues(traceData);
+      const padding = getYAxisPadding(yMinMax);
 
       const layout = {
         width: 1300,
@@ -867,7 +899,8 @@ const loadPage = () => {
           tickangle: -45
         },
         yaxis: {
-          title: 'Value'
+          title: 'Value',
+          range: [yMinMax[0] - padding, yMinMax[1] + padding]
         },
         legend: {
           orientation: 'h'
@@ -878,13 +911,6 @@ const loadPage = () => {
         hovermode: 'x unified'
       };
 
-      const traceData = [];
-      if (plotType !== 'ruuvitag') {
-        for (const key of plotType === 'weather' ? fieldNames.weather : fieldNames.other) {
-          traceData.push(dataSets[plotType][key]);
-        }
-      }
-
       // other and ruuvitag plot types share the same annotation indexes
       const annConfig = generateAnnotationConfig(plotType === 'weather' ? plotType : 'other', traceData);
       if (annConfig) {
@@ -894,13 +920,15 @@ const loadPage = () => {
       return layout;
     };
 
-    // Updates annotation y-axis values based on currently visible traces
-    var updateAnnotationYValues = (plot, traceData) => {
+    // Updates y-axis annotation and range values based on currently visible traces
+    var updateAnnotationAndRangeYValues = (plot, traceData) => {
       const update = {};
       const dataExtremes = getDataExtremeValues(traceData);
-      dataExtremes[0] -= 1;
-      dataExtremes[1] += 1;
+      const padding = getYAxisPadding(dataExtremes);
+      dataExtremes[0] -= padding;
+      dataExtremes[1] += padding;
 
+      update['yaxis.range'] = dataExtremes;
       for (let i = 0; i < plot.layout.shapes.length; i++) {
         update[`shapes[${i}].y0`] = dataExtremes[0];
         update[`shapes[${i}].y1`] = dataExtremes[1];
@@ -954,9 +982,9 @@ const loadPage = () => {
             traceData.push(eData[i].y);
           }
 
-          updateAnnotationYValues(plot, traceData);
+          updateAnnotationAndRangeYValues(plot, traceData);
         } else {
-          resetAnnotationYValues(plot);
+          resetAnnotationAndRangeYValues(plot);
         }
       }
     };
@@ -1051,13 +1079,13 @@ const loadPage = () => {
 
       Plotly.react(plot,
         generateTraceConfig(plotType),
-        generateLayoutConfig(plotType));
+        generateLayoutConfig(plotType, true));
 
       Plotly.restyle(plot, { visible: traceVisibility });
       if (visTraceData.length) {
-        updateAnnotationYValues(plot, visTraceData);
+        updateAnnotationAndRangeYValues(plot, visTraceData);
       } else {
-        resetAnnotationYValues(plot);
+        resetAnnotationAndRangeYValues(plot);
       }
     };
 
@@ -1157,10 +1185,11 @@ const loadPage = () => {
     Plotly.restyle(plotId, update);
   };
 
-  const resetAnnotationYValues = (plot) => {
+  const resetAnnotationAndRangeYValues = (plot) => {
     const update = {};
     const dataExtremes = [-1, 4];
 
+    update['yaxis.range'] = dataExtremes;
     for (let i = 0; i < plot.layout.shapes.length; i++) {
       update[`shapes[${i}].y0`] = dataExtremes[0];
       update[`shapes[${i}].y1`] = dataExtremes[1];
@@ -1189,7 +1218,7 @@ const loadPage = () => {
     .addEventListener('click',
       () => {
         setAllTracesVisibility('weatherPlot', false);
-        resetAnnotationYValues(document.getElementById('weatherPlot'));
+        resetAnnotationAndRangeYValues(document.getElementById('weatherPlot'));
       },
       false);
 
@@ -1212,7 +1241,7 @@ const loadPage = () => {
       .addEventListener('click',
         () => {
           setAllTracesVisibility('otherPlot', false);
-          resetAnnotationYValues(document.getElementById('otherPlot'));
+          resetAnnotationAndRangeYValues(document.getElementById('otherPlot'));
         },
         false);
 
@@ -1220,7 +1249,7 @@ const loadPage = () => {
       .addEventListener('click',
         () => {
           setAllTracesVisibility('ruuvitagPlot', false);
-          resetAnnotationYValues(document.getElementById('ruuvitagPlot'));
+          resetAnnotationAndRangeYValues(document.getElementById('ruuvitagPlot'));
         },
         false);
 
@@ -1235,7 +1264,7 @@ const loadPage = () => {
           for (const trace of plot.data) {
             traceData.push(trace.y);
           }
-          updateAnnotationYValues(plot, traceData);
+          updateAnnotationAndRangeYValues(plot, traceData);
         },
         false);
 
