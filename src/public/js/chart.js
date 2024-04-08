@@ -370,9 +370,8 @@ const loadPage = () => {
       const generateElecAnnotationConfig = (xValues, yValues) => {
         const currentIdx = getClosestElecPriceDataIndex(xValues);
         const shapes = [];
-
-        // TODO figure out correct values for log scale
         const extValues = getDataExtremeValues(yValues);
+        const yMinMax = [extValues[0] - 0.4, extValues[1] + 0.4];
 
         // Skip first and last data points as lines are not needed there
         for (let i = 1; i < xValues.length - 1; i++) {
@@ -380,9 +379,9 @@ const loadPage = () => {
             shapes.push({
               type: 'line',
               x0: xValues[i],
-              y0: extValues[0],
+              y0: yMinMax[0],
               x1: xValues[i],
-              y1: extValues[1],
+              y1: yMinMax[1],
               line: {
                 color: '#838b93',
                 width: 1
@@ -396,9 +395,9 @@ const loadPage = () => {
           shapes.push({
             type: 'line',
             x0: xValues[currentIdx],
-            y0: extValues[0],
+            y0: yMinMax[0],
             x1: xValues[currentIdx],
-            y1: extValues[1],
+            y1: yMinMax[1],
             line: {
               width: 2
             }
@@ -454,6 +453,9 @@ const loadPage = () => {
         }];
       };
 
+      const extValuesConsp = getDataExtremeValues([data.consumption]);
+      const extValuesPrice = getDataExtremeValues([data.price]);
+
       const generateElecLayoutConfig = (diffInDays) => {
         return {
           width: 1300,
@@ -462,40 +464,36 @@ const loadPage = () => {
           xaxis: {
             title: 'Time',
             type: 'date',
-            autorange: true,
             dtick: getXAxisTickSize(diffInDays),
             tickformat: '%H',
             tickangle: -45
           },
           yaxis: {
             title: 'Price (c / kWh)',
-            type: 'log'
+            range: [extValuesPrice[0] - 0.5,
+              extValuesPrice[extValuesPrice.length - 1] + 0.5]
           },
           yaxis2: {
             title: 'Consumption (kWh)',
             overlaying: 'y',
-            side: 'right'
+            side: 'right',
+            range: [extValuesConsp[0] - 0.1, extValuesConsp[extValuesConsp.length - 1] + 0.1]
           },
           legend: {
             orientation: 'h'
           },
-          hovermode: 'x unified'
-          // TODO enable after fixing y-axis values
-          // shapes: generateElecAnnotationConfig(labels, [data.price, data.consumption])
+          hovermode: 'x unified',
+          shapes: generateElecAnnotationConfig(xValues, [data.price, data.consumption])
         };
       };
 
+      const diffInDays = DateTime.fromJSDate(xValues[xValues.length - 1]).diff(
+        DateTime.fromJSDate(xValues[0]), 'days').toObject().days;
       if (!document.getElementById('hourElecDataPlot').data) {
-        const diffInDays = DateTime.fromJSDate(xValues[xValues.length - 1]).diff(
-          DateTime.fromJSDate(xValues[0]), 'days').toObject().days;
-
         Plotly.newPlot('hourElecDataPlot',
           generateElecTraceConfig(),
           generateElecLayoutConfig(diffInDays));
       } else {
-        const diffInDays = DateTime.fromJSDate(xValues[xValues.length - 1]).diff(
-          DateTime.fromJSDate(xValues[0]), 'days').toObject().days;
-
         Plotly.react('hourElecDataPlot',
           generateElecTraceConfig(),
           generateElecLayoutConfig(diffInDays));
