@@ -14,7 +14,7 @@ secrets = {
         'password': 'MyPassword123'
     },
     'backend-url': 'https://mydomain.com/env-logger',
-    # Hide RuuviTags with given location(s), an empty array means that all
+    # Hide RuuviTags with given name(s), an empty array means that all
     # tags are shown
-    'hidden_ruuvitag_locations': []
+    'hidden_ruuvitag_names': []
 }

@@ -360,20 +360,20 @@ def update_screen(display, observation, weather_data, elec_price_data, utc_offse
 
     if observation['rt-data']:
         rt_data = observation['rt-data']
-        seen_locations = []
+        seen_names = []
 
         for tag in rt_data:
-            location = tag['location']
+            name = tag['name']
 
-            if (location in seen_locations) or \
-               (location in secrets['hidden_ruuvitag_locations']):
+            if (name in seen_names) or \
+               (name in secrets['hidden_ruuvitag_names']):
                 continue
 
-            display[row].text = f'RuuviTag \"{location}\": temperature ' + \
+            display[row].text = f'RuuviTag \"{name}\": temperature ' + \
                 f'{tag["temperature"]} \u00b0C,'
             display[row + 1].text = f'humidity {tag["humidity"]} %H'
             row += 2
-            seen_locations.append(location)
+            seen_names.append(name)
 
     display.show()
 
