@@ -13,7 +13,7 @@
         "tags": [
             {
                 "mac": "F3:19:DD:06:E0:7A",
-                "location": "indoor"
+                "name": "indoor"
             }
         ]
     }

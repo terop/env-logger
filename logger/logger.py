@@ -84,11 +84,11 @@ async def scan_ruuvitags(bt_device, rt_config):
     """Scan for RuuviTag(s)."""
     found_tags = {}
 
-    def _get_tag_location(mac):
-        """Get RuuviTag location based on tag MAC address."""
+    def _get_tag_name(mac):
+        """Get RuuviTag name based on tag MAC address."""
         for tag in rt_config['tags']:
             if mac == tag['mac']:
-                return tag['location']
+                return tag['name']
 
         return None
 
@@ -101,7 +101,7 @@ async def scan_ruuvitags(bt_device, rt_config):
             if mac in found_tags:
                 continue
 
-            found_tags[mac] = {'location': _get_tag_location(mac),
+            found_tags[mac] = {'name': _get_tag_name(mac),
                                'temperature': tag_data[1]['temperature'],
                                'pressure': tag_data[1]['pressure'],
                                'humidity': tag_data[1]['humidity'],
