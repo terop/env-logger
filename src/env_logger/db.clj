@@ -190,32 +190,35 @@
                     :wind_speed (:wind-speed weather-data)}
                    rs-opts)))
 
-(defn insert-ruuvitag-observation
-  "Insert a RuuviTag weather observation into the database."
-  [db-con observation]
+(defn insert-ruuvitag-observations
+  "Insert one or more RuuviTag observations into the database."
+  [db-con timestamp observations]
   (try
-    (let [values {:name (:name observation)
-                  :temperature (:temperature observation)
-                  :pressure (:pressure observation)
-                  :humidity (:humidity observation)
-                  :battery_voltage (:battery_voltage observation)
-                  :rssi (:rssi observation)}]
-      (:id (js/insert! db-con
-                       :ruuvitag_observations
-                       (if (:timestamp observation)
-                         (assoc values
-                                :recorded
-                                (t/sql-timestamp
-                                 (t/minus (t/zoned-date-time
-                                           (:timestamp
-                                            observation))
-                                          (t/hours (get-tz-offset
-                                                    (:store-timezone env))))))
-                         values)
-                       rs-opts)))
+    (let [insert-fn
+          (fn [observation]
+            (let [values {:name (:name observation)
+                          :temperature (:temperature observation)
+                          :pressure (:pressure observation)
+                          :humidity (:humidity observation)
+                          :battery_voltage (:battery_voltage observation)
+                          :rssi (:rssi observation)}]
+              (:id (js/insert! db-con
+                               :ruuvitag_observations
+                               (if timestamp
+                                 (assoc values
+                                        :recorded
+                                        (t/sql-timestamp
+                                         (t/minus (t/zoned-date-time
+                                                   timestamp)
+                                                  (t/hours (get-tz-offset
+                                                            (:store-timezone
+                                                             env))))))
+                                 values)
+                               rs-opts))))]
+      (every? pos? (map insert-fn observations)))
     (catch PSQLException pe
       (error pe "RuuviTag observation insert failed")
-      -1)))
+      false)))
 
 (defn insert-observation
   "Inserts a observation to the database."

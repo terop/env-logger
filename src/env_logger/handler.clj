@@ -186,10 +186,11 @@
     (with-open [con (jdbc/get-connection db/postgres-ds)]
       (if-not (db/test-db-connection con)
         auth/response-server-error
-        (if (pos? (db/insert-ruuvitag-observation
-                   con
-                   (j/read-value (get (:params request) "observation")
-                                 json-decode-opts)))
+        (if (db/insert-ruuvitag-observations
+             con
+             (get (:params request) "timestamp")
+             (j/read-value (get (:params request) "observation")
+                           json-decode-opts))
           (serve-text "OK") auth/response-server-error)))))
 
 (defn elec-consumption-data-upload

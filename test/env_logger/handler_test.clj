@@ -42,9 +42,9 @@
                   db/postgres-ds test-ds]
       (with-redefs [db/test-db-connection (fn [_] false)]
         (is (= 500 (:status (h/rt-observation-insert {})))))
-      (with-redefs [db/insert-ruuvitag-observation (fn [_ _] 1)]
+      (with-redefs [db/insert-ruuvitag-observations (fn [_ _ _] true)]
         (is (= "OK" (:body (h/rt-observation-insert {})))))
-      (with-redefs [db/insert-ruuvitag-observation (fn [_ _] 0)]
+      (with-redefs [db/insert-ruuvitag-observations (fn [_ _ _] false)]
         (is (= 500 (:status (h/rt-observation-insert {}))))))))
 
 (deftest tb-image-insert-test

@@ -31,7 +31,7 @@
                                    insert-elec-consumption-data
                                    insert-observation
                                    insert-plain-observation
-                                   insert-ruuvitag-observation
+                                   insert-ruuvitag-observations
                                    insert-tb-image-name
                                    insert-wd
                                    make-local-dt
@@ -335,21 +335,27 @@
                         :humidity 25
                         :battery_voltage 2.921
                         :rssi -72}]
-      (is (pos? (insert-ruuvitag-observation test-ds
-                                             ruuvitag-obs)))
-      (is (pos? (insert-ruuvitag-observation
-                 test-ds
-                 (assoc ruuvitag-obs
-                        :recorded
-                        (t/zoned-date-time "2019-01-25T20:45:18+02:00")))))
-      (is (pos? (insert-ruuvitag-observation
-                 test-ds
-                 (assoc ruuvitag-obs
-                        :pressure
-                        nil))))
-      (is (= -1 (insert-ruuvitag-observation test-ds
-                                             (dissoc ruuvitag-obs
-                                                     :temperature)))))))
+      (is (true? (insert-ruuvitag-observations test-ds
+                                               nil
+                                               [ruuvitag-obs])))
+      (is (true? (insert-ruuvitag-observations
+                  test-ds
+                  (t/zoned-date-time "2019-01-25T20:45:18+02:00")
+                  [ruuvitag-obs])))
+      (is (true? (insert-ruuvitag-observations
+                  test-ds
+                  nil
+                  [(assoc ruuvitag-obs
+                          :pressure
+                          nil)
+                   (assoc ruuvitag-obs
+                          :temperature 25)])))
+      (is (false? (insert-ruuvitag-observations test-ds
+                                                nil
+                                                [(dissoc ruuvitag-obs
+                                                         :temperature)
+                                                 (assoc ruuvitag-obs
+                                                        :temperature 25)]))))))
 
 (deftest beacon-insert
   (testing "Insert of a beacon"
