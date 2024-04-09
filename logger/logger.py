@@ -130,27 +130,27 @@ async def scan_ruuvitags(bt_device, rt_config):
 
 def store_ruuvitags(config, timestamp, tags):
     """Send provided RuuviTag data to the backend."""
-    for tag in tags:
-        tag['timestamp'] = timestamp
-        json_data = json.dumps(tag)
+    json_data = json.dumps(tags)
 
-        try:
-            resp = requests.post(config['ruuvitag']['url'],
-                                 params={'observation': json_data,
-                                         'code': config['authentication_code']},
-                                 timeout=10)
-        except (ConnectTimeoutError, MaxRetryError, OSError, ReadTimeoutError) as err:
-            logging.error('RuuviTag data store failed: %s', err)
-            sleep(5)
+    try:
+        resp = requests.post(config['ruuvitag']['url'],
+                             params={'observation': json_data,
+                                     'timestamp': timestamp,
+                                     'code': config['authentication_code']},
+                             timeout=10)
+    except (ConnectTimeoutError, MaxRetryError, OSError, ReadTimeoutError) as err:
+        logging.error('RuuviTag data store failed: %s', err)
+        sleep(5)
 
-            resp = requests.post(config['ruuvitag']['url'],
-                                 params={'observation': json_data,
-                                         'code': config['authentication_code']},
-                                 timeout=10)
+        resp = requests.post(config['ruuvitag']['url'],
+                             params={'observation': json_data,
+                                     'timestamp': timestamp,
+                                     'code': config['authentication_code']},
+                             timeout=10)
 
-        logging.info("RuuviTag observation data: '%s', response: code %s, "
-                     "text '%s'",
-                     json_data, resp.status_code, resp.text)
+    logging.info("RuuviTag observation: timestamp '%s', data: '%s', "
+                 "response: code %s, text '%s'",
+                 timestamp, json_data, resp.status_code, resp.text)
 
 
 async def scan_ble_beacon(config, bt_device):
