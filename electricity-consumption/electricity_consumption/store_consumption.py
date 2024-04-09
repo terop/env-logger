@@ -88,9 +88,9 @@ def create_db_conn_string(db_config):
     db_config = {
         'host': environ['DB_HOST'] if 'DB_HOST' in environ else db_config['host'],
         'name': environ['DB_NAME'] if 'DB_NAME' in environ else db_config['dbname'],
-        'username': environ['DB_USERNAME'] if 'DB_USERNAME' in environ \
+        'username': environ['DB_USERNAME'] if 'DB_USERNAME' in environ
         else db_config['username'],
-        'password': environ['DB_PASSWORD'] if 'DB_PASSWORD' in environ \
+        'password': environ['DB_PASSWORD'] if 'DB_PASSWORD' in environ
         else db_config['password']
     }
 

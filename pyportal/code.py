@@ -172,7 +172,7 @@ def get_backend_endpoint_content(endpoint, token):
                     supervisor.reload()
 
         return (token, resp.json())
-    except (TimeoutError,  adafruit_requests.OutOfRetries) as ex:
+    except (TimeoutError, adafruit_requests.OutOfRetries) as ex:
         print(f'Error: endpoint "{endpoint}" fetch failed: {ex}, reloading board')
         time.sleep(sleep_time)
         supervisor.reload()
