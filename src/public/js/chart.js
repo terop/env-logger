@@ -43,7 +43,7 @@ const loadPage = () => {
   // rtLabels - RuuviTag labels
   const parseRTData = (rtObservations, rtLabels) => {
     const timeDiffThreshold = 10;
-    let location = null;
+    let name = null;
     let dateRef = null;
     const obsByDate = {};
 
@@ -61,7 +61,7 @@ const loadPage = () => {
         dateRef = obs.recorded;
       }
 
-      location = obs.location;
+      name = obs.name;
 
       const diff = DateTime.fromMillis(dateRef).diff(
         DateTime.fromMillis(obs.recorded), 'seconds');
@@ -75,12 +75,12 @@ const loadPage = () => {
       }
 
       if (obsByDate[dateRef] !== undefined) {
-        if (obsByDate[dateRef][location] === undefined) {
-          obsByDate[dateRef][location] = {};
+        if (obsByDate[dateRef][name] === undefined) {
+          obsByDate[dateRef][name] = {};
         }
 
-        obsByDate[dateRef][location].temperature = obs.temperature;
-        obsByDate[dateRef][location].humidity = obs.humidity;
+        obsByDate[dateRef][name].temperature = obs.temperature;
+        obsByDate[dateRef][name].humidity = obs.humidity;
       }
     }
 

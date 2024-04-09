@@ -33,7 +33,7 @@ CREATE TABLE weather_data (
 CREATE TABLE ruuvitag_observations (
        id SERIAL PRIMARY KEY,
        recorded TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-       location VARCHAR(15) NOT NULL,
+       name VARCHAR(15) NOT NULL,
        temperature REAL NOT NULL,
        -- allow NULL values as not all RuuviTags have a pressure sensor
        pressure REAL,

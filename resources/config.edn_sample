@@ -3,8 +3,8 @@
             :name "db_name"
             :username "foobar"
             :password "testpwd1!"}
- ;; RuuviTag locations to show
- :ruuvitag-locations ["indoor"]
+ ;; RuuviTag names to show
+ :ruuvitag-names ["indoor"]
  ;; Select RuuviTag(s) for values are shown by default
  ;; The special value "all" shows all RuuviTag(s)
  :ruuvitag-default-show ["indoor"]

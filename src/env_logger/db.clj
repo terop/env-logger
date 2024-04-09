@@ -194,7 +194,7 @@
   "Insert a RuuviTag weather observation into the database."
   [db-con observation]
   (try
-    (let [values {:location (:location observation)
+    (let [values {:name (:name observation)
                   :temperature (:temperature observation)
                   :pressure (:pressure observation)
                   :humidity (:humidity observation)
@@ -420,17 +420,17 @@
 
 (defn get-ruuvitag-obs
   "Returns RuuviTag observations being between the provided timestamps
-  and having the given location(s)."
-  [db-con start end locations]
+  and having the given name(s)."
+  [db-con start end names]
   (try
     (let [nf (NumberFormat/getInstance)
           query (sql/format {:select [:recorded
-                                      :location
+                                      :name
                                       :temperature
                                       :humidity]
                              :from :ruuvitag_observations
                              :where [:and
-                                     [:in :location locations]
+                                     [:in :name names]
                                      [:>= :recorded start]
                                      [:<= :recorded end]]
                              :order-by [[:id :asc]]})

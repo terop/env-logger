@@ -60,14 +60,14 @@
     auth/response-unauthorized
     (with-open [con (jdbc/get-connection db/postgres-ds)]
       (let [data (first (reverse (db/get-obs-days con 1)))
-            rt-data (sort-by :location
-                             (take (count (:ruuvitag-locations env))
+            rt-data (sort-by :name
+                             (take (count (:ruuvitag-names env))
                                    (reverse (db/get-ruuvitag-obs
                                              con
                                              (t/minus (t/local-date-time)
                                                       (t/minutes 45))
                                              (t/local-date-time)
-                                             (:ruuvitag-locations env)))))]
+                                             (:ruuvitag-names env)))))]
         (if-not data
           (serve-json {:data []
                        :rt-data []
@@ -92,7 +92,7 @@
           obs-dates (db/get-obs-date-interval con)
           logged-in? (authenticated? (:session request))
           initial-days (:initial-show-days env)
-          ruuvitag-locations (:ruuvitag-locations env)]
+          ruuvitag-names (:ruuvitag-names env)]
       (if (or start-date end-date)
         {:obs-data (if logged-in?
                      (db/get-obs-interval con
@@ -106,7 +106,7 @@
                      con
                      (db/make-local-dt start-date "start")
                      (db/make-local-dt end-date "end")
-                     ruuvitag-locations))
+                     ruuvitag-names))
          :obs-dates {:current {:start start-date
                                :end end-date}}}
         {:obs-data (if logged-in?
@@ -119,7 +119,7 @@
                      con
                      (db/get-midnight-dt initial-days)
                      (t/local-date-time)
-                     ruuvitag-locations))
+                     ruuvitag-names))
          :obs-dates {:current {:start
                                (when (:end obs-dates)
                                  (t/format :iso-local-date
@@ -143,7 +143,7 @@
           (merge {:mode (if (authenticated? (:session request)) "all" "weather")
                   :tb-image-basepath (:tb-image-basepath env)}
                  (when (authenticated? (:session request))
-                   {:rt-names (:ruuvitag-locations env)
+                   {:rt-names (:ruuvitag-names env)
                     :rt-default-show (:ruuvitag-default-show env)
                     :rt-default-values (:ruuvitag-default-values env)}))
           (get-plot-page-data request))))

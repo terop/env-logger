@@ -329,7 +329,7 @@
 
 (deftest ruuvitag-observation-insert
   (testing "Insert of RuuviTag observation"
-    (let [ruuvitag-obs {:location "indoor"
+    (let [ruuvitag-obs {:name "indoor"
                         :temperature 21
                         :pressure 1100
                         :humidity 25
@@ -447,7 +447,7 @@
     (jdbc/execute! test-ds (sql/format {:delete-from :ruuvitag_observations}))
     (js/insert! test-ds
                 :ruuvitag_observations
-                {:location "indoor"
+                {:name "indoor"
                  :temperature 22.0
                  :pressure 1024.0
                  :humidity 45.0
@@ -455,7 +455,7 @@
                  :rssi -72})
     (js/insert! test-ds
                 :ruuvitag_observations
-                {:location "indoor"
+                {:name "indoor"
                  :temperature 21.0
                  :pressure 1023.0
                  :humidity 45.0
@@ -463,13 +463,13 @@
                  :rssi -66})
     (js/insert! test-ds
                 :ruuvitag_observations
-                {:location "balcony"
+                {:name "balcony"
                  :temperature 15.0
                  :pressure 1024.0
                  :humidity 30.0
                  :battery_voltage 2.805
                  :rssi -75})
-    (is (= '{:location "balcony"
+    (is (= '{:name "balcony"
              :temperature 15.0
              :humidity 30.0}
            (dissoc (first (get-ruuvitag-obs test-ds
