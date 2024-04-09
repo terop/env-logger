@@ -222,12 +222,12 @@ class RuuvitagMonitor:
 
         with psycopg.connect(create_db_conn_string(self._config['db'])) as conn, \
              conn.cursor() as cursor:
-            for location in self._config['ruuvitag']['Location'].split(','):
+            for name in self._config['ruuvitag']['Name'].split(','):
                 cursor.execute("""SELECT recorded FROM ruuvitag_observations WHERE
-                location = %s ORDER BY recorded DESC LIMIT 1""", (location,))
+                name = %s ORDER BY recorded DESC LIMIT 1""", (name,))
 
                 result = cursor.fetchone()
-                results[location] = result[0] if result else datetime.now()
+                results[name] = result[0] if result else datetime.now()
 
         return results
 
@@ -240,40 +240,40 @@ class RuuvitagMonitor:
 
         last_obs_time = self.get_ruuvitag_scan_time()
 
-        for location in self._config['ruuvitag']['Location'].split(','):
-            time_diff = datetime.now(tz=last_obs_time[location].tzinfo) \
-                - last_obs_time[location]
-            last_obs_time_tz = last_obs_time[location].astimezone(
+        for name in self._config['ruuvitag']['Name'].split(','):
+            time_diff = datetime.now(tz=last_obs_time[name].tzinfo) \
+                - last_obs_time[name]
+            last_obs_time_tz = last_obs_time[name].astimezone(
                 ZoneInfo(self._config['db']['DisplayTimezone']))
 
             # Timeout is in minutes
             if int(time_diff.total_seconds()) > \
                int(self._config['ruuvitag']['Timeout']) * 60:
-                if self._state[location]['email_sent'] == 'False':
-                    logging.warning('No RuuviTag observation for location %s has '
+                if self._state[name]['email_sent'] == 'False':
+                    logging.warning('No RuuviTag observation for name "%s" has '
                                     'been scanned after %s',
-                                    location, last_obs_time_tz.isoformat())
+                                    name, last_obs_time_tz.isoformat())
                     if send_email(self._config['email'],
-                                  f'env-logger: RuuviTag beacon "{location}" '
+                                  f'env-logger: RuuviTag beacon "{name}" '
                                   'inactivity warning',
-                                  'No RuuviTag observation for location "{}" has '
+                                  'No RuuviTag observation for name "{}" has '
                                   'been scanned in env-logger after {} '
                                   '(timeout {} minutes). Please check for possible '
                                   'problems.'
-                                  .format(location, last_obs_time_tz.isoformat(),
+                                  .format(name, last_obs_time_tz.isoformat(),
                                           self._config['ruuvitag']['Timeout'])):
-                        self._state[location]['email_sent'] = 'True'
+                        self._state[name]['email_sent'] = 'True'
                     else:
-                        self._state[location]['email_sent'] = 'False'
-            elif self._state[location]['email_sent'] == 'True':
+                        self._state[name]['email_sent'] = 'False'
+            elif self._state[name]['email_sent'] == 'True':
                 send_email(self._config['email'],
-                           f'env-logger: Ruuvitag beacon "{location}" scanned',
-                           f'A RuuviTag observation for location "{location}" '
+                           f'env-logger: Ruuvitag beacon "{name}" scanned',
+                           f'A RuuviTag observation for name "{name}" '
                            f'was detected at {last_obs_time_tz.isoformat()}.')
-                logging.info('A RuuviTag observation for location "%s" was '
+                logging.info('A RuuviTag observation for name "%s" was '
                              'detected at %s',
-                             location, last_obs_time_tz.isoformat())
-                self._state[location]['email_sent'] = 'False'
+                             name, last_obs_time_tz.isoformat())
+                self._state[name]['email_sent'] = 'False'
 
     def get_state(self):
         """Return the RuuviTag scan state."""
@@ -356,9 +356,9 @@ def main():
                  'outsidetemp': {'email_sent': 'False'},
                  'blebeacon': {'email_sent': 'False'},
                  'ruuvitag': {}}
-        for location in config['ruuvitag']['Location'].split(','):
-            state['ruuvitag'][location] = {}
-            state['ruuvitag'][location]['email_sent'] = 'False'
+        for name in config['ruuvitag']['Name'].split(','):
+            state['ruuvitag'][name] = {}
+            state['ruuvitag'][name]['email_sent'] = 'False'
 
     if config['observation']['Enabled'] == 'True':
         obs = ObservationMonitor(config, state['observation'])

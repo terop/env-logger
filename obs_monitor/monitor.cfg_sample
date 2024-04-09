@@ -24,8 +24,8 @@ Timeout = 24
 Enabled = True
 # Timeout in minutes
 Timeout = 10
-# Multiple locations separated by a comma are supported
-Location = inside,outside
+# Multiple names separated by a comma are supported
+Name = inside,outside
 
 [email]
 Server = example.com
