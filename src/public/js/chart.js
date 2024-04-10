@@ -920,6 +920,19 @@ const loadPage = () => {
       return layout;
     };
 
+    var resetAnnotationAndRangeYValues = (plot) => {
+      const update = {};
+      const dataExtremes = [-1, 4];
+
+      update['yaxis.range'] = dataExtremes;
+      for (let i = 0; i < plot.layout.shapes.length; i++) {
+        update[`shapes[${i}].y0`] = dataExtremes[0];
+        update[`shapes[${i}].y1`] = dataExtremes[1];
+      }
+
+      Plotly.relayout(plot, update);
+    };
+
     // Updates y-axis annotation and range values based on currently visible traces
     var updateAnnotationAndRangeYValues = (plot, traceData) => {
       const update = {};
@@ -1019,6 +1032,7 @@ const loadPage = () => {
       Plotly.newPlot('ruuvitagPlot',
         generateTraceConfig('ruuvitag'),
         generateLayoutConfig('ruuvitag'));
+      resetAnnotationAndRangeYValues(document.getElementById('ruuvitagPlot'));
 
       document.getElementById('ruuvitagPlot').on('plotly_legendclick', updatePlot);
     }
@@ -1183,19 +1197,6 @@ const loadPage = () => {
     }
 
     Plotly.restyle(plotId, update);
-  };
-
-  const resetAnnotationAndRangeYValues = (plot) => {
-    const update = {};
-    const dataExtremes = [-1, 4];
-
-    update['yaxis.range'] = dataExtremes;
-    for (let i = 0; i < plot.layout.shapes.length; i++) {
-      update[`shapes[${i}].y0`] = dataExtremes[0];
-      update[`shapes[${i}].y1`] = dataExtremes[1];
-    }
-
-    Plotly.relayout(plot, update);
   };
 
   document.getElementById('updateBtn').addEventListener('click',
