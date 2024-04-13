@@ -196,13 +196,9 @@ def set_time(timezone):
                                                     utc_offset_hour * 3600)
 
                 return utc_offset_hour
-        except RuntimeError as ex:
+        except (RuntimeError, TimeoutError) as ex:
             print(f'Error: an exception occurred in set_time: {ex}')
-            if 'ESP32' in str(ex):
-                connect_to_wlan()
             time.sleep(5)
-        except TimeoutError as ex:
-            print(f'Error: an exception occurred in set_time: {ex}')
             supervisor.reload()
 
 
