@@ -8,7 +8,7 @@
         ring/ring-devel {:mvn/version "1.12.1"}
         ring/ring-jetty-adapter {:mvn/version "1.12.1"}
         ring/ring-defaults {:mvn/version "0.4.0"}
-        clj-http/clj-http {:mvn/version "3.12.3"}
+        clj-http/clj-http {:mvn/version "3.13.0"}
         clojure.java-time/clojure.java-time {:mvn/version "1.4.2"}
         org.threeten/threeten-extra {:mvn/version "1.7.2"}
         metosin/reitit {:mvn/version "0.6.0"}
