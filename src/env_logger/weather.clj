@@ -290,7 +290,7 @@
   "Fetch weather data from OpenWeatherMap, this data contains both current
   weather and forecast data."
   [app-id latitude longitude]
-  (let [url (format (str "https://api.openweathermap.org/data/2.5/onecall?"
+  (let [url (format (str "https://api.openweathermap.org/data/3.0/onecall?"
                          "lat=%s&lon=%s&exclude=minutely,daily,alerts&"
                          "units=metric&appid=%s")
                     (str latitude)
