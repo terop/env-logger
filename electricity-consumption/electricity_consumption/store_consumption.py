@@ -60,9 +60,16 @@ def fetch_consumption_data(config, manual_fetch_date):
                                         fetch_date.year, fetch_date.month,
                                         fetch_date.day)
 
-    consumption = [{'time': point['timestamp'],
-                    'consumption': point['invoicedConsumption']}
-                   for point in raw_consumption if 'invoicedConsumption' in point]
+    consumption = []
+    for point in raw_consumption:
+        if 'invoicedConsumption' in point:
+            if point['invoicedConsumption'] is None:
+                logging.error('Got a None value for consumption at %s, exiting',
+                              point['timestamp'])
+                sys.exit(1)
+
+            consumption.append({'time': point['timestamp'],
+                                'consumption': point['invoicedConsumption']})
 
     return consumption
 
