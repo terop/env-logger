@@ -166,16 +166,14 @@
           (let [obs (last (:observations parsed-json))
                 time-str (subs (s/replace (:localtime obs) "T" "") 0 12)
                 local-dt (t/local-date-time "yyyyMMddHHmm" time-str)
-                offset (.between ChronoUnit/HOURS
-                                 (.atZone local-dt (t/zone-id (:localtz obs)))
-                                 (.atZone local-dt (t/zone-id (:weather-timezone
-                                                               env))))
+                ;; Assume that the timestamp is always in local (i.e.
+                ;; Europe/Helsinki) timezone
                 wd {:time (t/sql-timestamp
-                           (t/minus
-                            (t/zoned-date-time local-dt (:localtz obs))
-                            (t/hours offset)))
+                           (t/zoned-date-time local-dt
+                                              "Europe/Helsinki"))
                     :temperature (:t2m obs)
-                    :cloudiness (:TotalCloudCover obs)
+                    :cloudiness (if-not (nil? (:TotalCloudCover obs))
+                                  (:TotalCloudCover obs) 9)
                     :wind-speed (:WindSpeedMS obs)
                     :wind-direction (get-wd-str (:WindDirection obs))}]
             (when-not (nil? (:temperature wd))
@@ -217,7 +215,8 @@
                       (t/zoned-date-time local-dt (:tz obs))
                       (t/hours offset))),
                     :temperature (:temperature obs)
-                    :cloudiness (int (:cloudiness obs))
+                    :cloudiness (if-not (nil? (:cloudiness obs))
+                                  (int (:cloudiness obs)) 9)
                     :wind-speed (:windspeed obs)
                     :wind-direction (get-wd-str (:winddirection obs))}]
             (when wd
