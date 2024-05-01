@@ -14,7 +14,7 @@
             [reitit.ring.middleware
              [muuntaja :as muuntaja]
              [parameters :as parameters]]
-            [ring.adapter.jetty :refer [run-jetty]]
+            [ring.adapter.jetty9 :refer [run-jetty]]
             [ring.middleware
              [defaults :refer [wrap-defaults
                                site-defaults
