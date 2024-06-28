@@ -240,7 +240,7 @@ const loadPage = () => {
       hideElement('latestCheckboxDiv');
       hideElement('weatherCheckboxDiv');
       hideElement('plotAccordion');
-      hideElement('elecDataCheckboxDiv');
+      hideElement('elecDataDiv');
     }
   } else {
     labelValues = transformData();
@@ -641,13 +641,13 @@ const loadPage = () => {
               if (elecData.error !== 'not-enabled') {
                 console.log(`Electricity data fetch error: ${elecData.error}`);
               }
-              toggleClassForElement('elecDataCheckboxDiv', 'display-none');
+              toggleClassForElement('elecDataDiv', 'display-none');
 
               return;
             }
 
             if (!elecData['data-hour'] || !elecData['data-day'][0]) {
-              toggleVisibility('elecDataCheckboxDiv');
+              toggleVisibility('elecDataDiv');
               return;
             }
 
