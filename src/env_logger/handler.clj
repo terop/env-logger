@@ -72,13 +72,14 @@
           (serve-json {:data []
                        :rt-data []
                        :weather-data []})
-          (serve-json {:data (update data :recorded
-                                     (convert-epoch-ms-to-string
-                                      (:recorded data)))
+          #_{:splint/disable [lint/assoc-fn]}
+          (serve-json {:data (assoc data :recorded
+                                    (convert-epoch-ms-to-string
+                                     (:recorded data)))
                        :rt-data (for [item rt-data]
-                                  (update item :recorded
-                                          (convert-epoch-ms-to-string
-                                           (:recorded item))))
+                                  (assoc item :recorded
+                                         (convert-epoch-ms-to-string
+                                          (:recorded item))))
                        :weather-data (get-fmi-weather-data)}))))))
 
 (defn get-plot-page-data
