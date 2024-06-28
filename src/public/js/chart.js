@@ -553,8 +553,7 @@ const loadPage = () => {
             tickformat: '%d.%m.%Y'
           },
           yaxis: {
-            title: 'Average price (c / kWh)',
-            type: 'log'
+            title: 'Average price (c / kWh)'
           },
           yaxis2: {
             title: 'Consumption (kWh)',
