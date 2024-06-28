@@ -15,7 +15,6 @@
                                      unauthorized-handler
                                      login-authenticate
                                      token-login]]
-             [db :refer [rs-opts]]
              [user :refer [get-pw-hash]]
              [db-test :refer [test-ds]]]
             [buddy.hashers :as h])
@@ -91,7 +90,7 @@
     (with-redefs [js/insert! (fn [_ _ _ _]
                                (throw (PSQLException.
                                        "Test exception"
-                                       (PSQLState/COMMUNICATION_ERROR))))]
+                                       PSQLState/COMMUNICATION_ERROR)))]
       (is (false? (save-authenticator test-ds test-user authenticator))))))
 
 (deftest authenticator-query

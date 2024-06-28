@@ -29,7 +29,7 @@
                   (fn [_ _ _]
                     (throw (PSQLException.
                             "Test exception"
-                            (PSQLState/COMMUNICATION_ERROR))))]
+                            PSQLState/COMMUNICATION_ERROR)))]
       (is (= {:error :db-error}
              (get-pw-hash test-ds "test-user"))))))
 

@@ -234,7 +234,7 @@
                   (fn [_ _]
                     (throw (PSQLException.
                             "Test exception"
-                            (PSQLState/COMMUNICATION_ERROR))))]
+                            PSQLState/COMMUNICATION_ERROR)))]
       (is (= {:error :db-error}
              (get-obs-date-interval test-ds))))))
 
@@ -429,7 +429,7 @@
                   (fn [_ _]
                     (throw (PSQLException.
                             "Test exception"
-                            (PSQLState/COMMUNICATION_ERROR))))]
+                            PSQLState/COMMUNICATION_ERROR)))]
       (is (false? (test-db-connection test-ds))))))
 
 (deftest testbed-image-age-check-test
@@ -538,7 +538,7 @@
     (with-redefs [jdbc/execute! (fn [_ _ _]
                                   (throw (PSQLException.
                                           "Test exception"
-                                          (PSQLState/COMMUNICATION_ERROR))))]
+                                          PSQLState/COMMUNICATION_ERROR)))]
       (is (nil? (get-elec-data-hour test-ds
                                     (make-local-dt "2022-10-08" "start")
                                     (make-local-dt "2022-10-08" "end")))))
@@ -553,7 +553,7 @@
     (with-redefs [jdbc/execute-one! (fn [_ _ _]
                                       (throw (PSQLException.
                                               "Test exception"
-                                              (PSQLState/COMMUNICATION_ERROR))))]
+                                              PSQLState/COMMUNICATION_ERROR)))]
       (is (nil? (first (get-elec-data-day test-ds "2022-10-08" nil)))))
     (jdbc/execute! test-ds (sql/format {:delete-from :electricity_consumption}))
     (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))))
@@ -608,7 +608,7 @@
                     (fn [_ _ _ _ _]
                       (throw (PSQLException.
                               "Test exception"
-                              (PSQLState/COMMUNICATION_ERROR))))]
+                              PSQLState/COMMUNICATION_ERROR)))]
         (is (false? (insert-elec-consumption-data test-ds consumption-data)))))))
 
 (deftest test-get-latest-elec-consumption-record-time
@@ -617,7 +617,7 @@
                   (fn [_ _ _]
                     (throw (PSQLException.
                             "Test exception"
-                            (PSQLState/COMMUNICATION_ERROR))))]
+                            PSQLState/COMMUNICATION_ERROR)))]
       (is (nil? (get-latest-elec-consumption-record-time test-ds))))
     (is (nil? (get-latest-elec-consumption-record-time test-ds)))
     (let [consumption-data [[(t/local-date-time 2023 2 7 19 50) 0.1]]]
@@ -632,7 +632,7 @@
                   (fn [_ _]
                     (throw (PSQLException.
                             "Test exception"
-                            (PSQLState/COMMUNICATION_ERROR))))]
+                            PSQLState/COMMUNICATION_ERROR)))]
       (is (nil? (get-elec-consumption-interval-start test-ds))))
     (is (nil? (get-elec-consumption-interval-start test-ds)))
     (let [consumption-data [[(t/local-date-time 2023 2 22 19 50) 0.1]]]
@@ -646,7 +646,7 @@
                   (fn [_ _]
                     (throw (PSQLException.
                             "Test exception"
-                            (PSQLState/COMMUNICATION_ERROR))))]
+                            PSQLState/COMMUNICATION_ERROR)))]
       (is (nil? (get-elec-price-interval-end test-ds))))
     (is (nil? (get-elec-price-interval-end test-ds)))
 
@@ -669,7 +669,7 @@
                   (fn [_ _ _]
                     (throw (PSQLException.
                             "Test exception"
-                            (PSQLState/COMMUNICATION_ERROR))))]
+                            PSQLState/COMMUNICATION_ERROR)))]
       (is (nil? (get-month-avg-elec-price test-ds))))
     (is (nil? (get-month-avg-elec-price test-ds)))
 

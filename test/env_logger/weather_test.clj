@@ -141,7 +141,7 @@
     (with-redefs [jdbc/execute-one!
                   (fn [_ _ _] (throw (PSQLException.
                                       "Test exception"
-                                      (PSQLState/COMMUNICATION_ERROR))))]
+                                      PSQLState/COMMUNICATION_ERROR)))]
       (is (false? (store-weather-data? {} (t/sql-timestamp)))))))
 
 (deftest test-get-wd-str
