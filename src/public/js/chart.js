@@ -1198,6 +1198,27 @@ const loadPage = () => {
     Plotly.restyle(plotId, update);
   };
 
+  // Show all RuuviTag series of type: temperature or humidity
+  const showRuuvitagSeriesType = (type) => {
+    setAllTracesVisibility('ruuvitagPlot', false);
+
+    const plot = document.getElementById('ruuvitagPlot');
+    const traceData = [];
+    const traceVisibility = [];
+
+    for (const trace of plot.data) {
+      if (trace.name.includes(type)) {
+        traceData.push(trace.y);
+        traceVisibility.push(true);
+      } else {
+        traceVisibility.push('legendonly');
+      }
+    }
+
+    Plotly.restyle(plot, { visible: traceVisibility });
+    updateAnnotationAndRangeYValues(plot, traceData);
+  };
+
   document.getElementById('updateBtn').addEventListener('click',
     updateButtonClickHandler,
     false);
@@ -1265,6 +1286,20 @@ const loadPage = () => {
             traceData.push(trace.y);
           }
           updateAnnotationAndRangeYValues(plot, traceData);
+        },
+        false);
+
+    document.getElementById('ruuvitagShowTemperature')
+      .addEventListener('click',
+        () => {
+          showRuuvitagSeriesType('temperature');
+        },
+        false);
+
+    document.getElementById('ruuvitagShowHumidity')
+      .addEventListener('click',
+        () => {
+          showRuuvitagSeriesType('humidity');
         },
         false);
 
