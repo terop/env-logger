@@ -32,21 +32,21 @@
                          :attestation-statement "v2dhdHRTdG10omNzaWdYRzBFAiB0LliflcT5Po+aAvh4DcwArDLNgYYWL+tDDDPbwP0fNQIhAIKFwoYN+JWm+Lla8rr6ya7vtepHWZikR9yYzhnFxHAMY3g1Y4FZAd0wggHZMIIBfaADAgECAgEBMA0GCSqGSIb3DQEBCwUAMGAxCzAJBgNVBAYTAlVTMREwDwYDVQQKDAhDaHJvbWl1bTEiMCAGA1UECwwZQXV0aGVudGljYXRvciBBdHRlc3RhdGlvbjEaMBgGA1UEAwwRQmF0Y2ggQ2VydGlmaWNhdGUwHhcNMTcwNzE0MDI0MDAwWhcNNDIwMjA3MTAxOTI1WjBgMQswCQYDVQQGEwJVUzERMA8GA1UECgwIQ2hyb21pdW0xIjAgBgNVBAsMGUF1dGhlbnRpY2F0b3IgQXR0ZXN0YXRpb24xGjAYBgNVBAMMEUJhdGNoIENlcnRpZmljYXRlMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEjWF+ZclQjmS8xWc6yCpnmdo8FEZoLCWMRj//31jf0vo+bDeLU9eVxKTf+0GZ7deGLyOrrwIDtLiRG6BWmZThAaMlMCMwEwYLKwYBBAGC5RwCAQEEBAMCBSAwDAYDVR0TAQH/BAIwADANBgkqhkiG9w0BAQsFAANHADBEAiAcozP66GUhr4J1nEAM+03WpaqrWOtjGtmSr/cS4IWd3wIgUTxReYyaiGrq0RG52f/LGB112ki9h76ZaH0CaPI31sZjZm10aGZpZG8tdTJm/w=="
                          :counter 0})
 
-(let [object-converter (new ObjectConverter)
-      credential-converter (new AttestedCredentialDataConverter
-                                object-converter)
+(let [object-converter (ObjectConverter.)
+      credential-converter (AttestedCredentialDataConverter.
+                            object-converter)
       cbor-converter (.getCborConverter object-converter)]
-  (def authenticator (new AuthenticatorImpl
-                          (.convert credential-converter
-                                    (b64/decode-binary (:attested-credential
-                                                        authenticator-data)))
-                          (.getAttestationStatement
-                           (.readValue cbor-converter
-                                       (b64/decode-binary
-                                        (:attestation-statement
-                                         authenticator-data))
-                                       AttestationStatementEnvelope))
-                          (:counter authenticator-data))))
+  (def authenticator (AuthenticatorImpl.
+                      (.convert credential-converter
+                                (b64/decode-binary (:attested-credential
+                                                    authenticator-data)))
+                      (.getAttestationStatement
+                       (.readValue cbor-converter
+                                   (b64/decode-binary
+                                    (:attestation-statement
+                                     authenticator-data))
+                                   AttestationStatementEnvelope))
+                      (:counter authenticator-data))))
 
 (def test-passwd "testpasswd")
 (def test-user "test-user")
@@ -75,16 +75,6 @@
   "Deletes all authenticators from the DB."
   []
   (jdbc/execute! test-ds ["DELETE FROM webauthn_authenticators"]))
-
-(defn get-login-count
-  "Returns the login count for an authenticator."
-  [authenticator-id]
-  (:login-count (jdbc/execute-one! test-ds
-                                   (sql/format {:select [:login_count]
-                                                :from [:webauthn_authenticators]
-                                                :where [:= :authn_id
-                                                        authenticator-id]})
-                                   rs-opts)))
 
 ;; Fixture run at the start and end of tests
 (use-fixtures :once clean-test-database)

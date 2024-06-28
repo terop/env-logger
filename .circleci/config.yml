@@ -51,7 +51,7 @@ jobs:
           name: run linters
           command: |
             clojure -M:eastwood
-            clojure -X:kibit
+            clojure -M:splint
 
       - run:
           name: run clj-kondo

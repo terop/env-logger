@@ -1,6 +1,6 @@
 (ns env-logger.weather-test
   (:require [clojure.test :refer [deftest is testing]]
-            [clojure.string :as s]
+            [clojure.string :as str]
             [clojure.xml :refer [parse]]
             [config.core :refer [env]]
             [clj-http.fake :refer [with-fake-routes]]
@@ -9,18 +9,20 @@
             [next.jdbc :as jdbc]
             [env-logger
              [db :refer [get-tz-offset]]
-             [weather :refer [-convert-to-tz-iso8601-str
-                              calculate-start-time
-                              extract-forecast-data
-                              -update-fmi-weather-forecast
-                              -update-fmi-weather-data-json
-                              -update-fmi-weather-data-ts
-                              -fetch-owm-data
-                              get-fmi-weather-data
-                              get-wd-str
-                              get-weather-data
-                              store-weather-data?
-                              wd-has-empty-values?]]])
+             [weather
+              :refer
+              [-convert-to-tz-iso8601-str
+               calculate-start-time
+               extract-forecast-data
+               -update-fmi-weather-forecast
+               -update-fmi-weather-data-json
+               -update-fmi-weather-data-ts
+               -fetch-owm-data
+               get-fmi-weather-data
+               get-wd-str
+               get-weather-data
+               store-weather-data?
+               wd-has-empty-values?]]])
   (:import java.time.ZonedDateTime
            (org.postgresql.util PSQLException
                                 PSQLState)))
@@ -30,7 +32,7 @@
 (deftest test-iso8601-and-tz-str-formatting
   (testing "Date and time to ISO 8601 with timezone string conversion"
     (let [now (ZonedDateTime/now (t/zone-id "Europe/Helsinki"))]
-      (is (= (str (first (s/split
+      (is (= (str (first (str/split
                           (str (.minusHours now
                                             (if (= "UTC" (:weather-timezone
                                                           env))
@@ -61,16 +63,16 @@
                                                         (t/zone-id
                                                          "Europe/Helsinki")))]
       (is (= "2020-12-28T09:00"
-             (first (s/split (str (t/local-date-time (calculate-start-time)))
-                             #"\.")))))
+             (first (str/split (str (t/local-date-time (calculate-start-time)))
+                               #"\.")))))
     (with-redefs [t/zoned-date-time (fn []
                                       (ZonedDateTime/of 2020 12 28
                                                         9 9 50 0
                                                         (t/zone-id
                                                          "Europe/Helsinki")))]
       (is (= "2020-12-28T09:00"
-             (first (s/split (str (t/local-date-time (calculate-start-time)))
-                             #"\[")))))))
+             (first (str/split (str (t/local-date-time (calculate-start-time)))
+                               #"\[")))))))
 
 (deftest test-forecast-data-update
   (testing "Tests FMI forecast data update"

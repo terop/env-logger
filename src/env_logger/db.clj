@@ -1,12 +1,10 @@
 (ns env-logger.db
   "Namespace containing the application's database function"
-  (:require [clojure.string :as s]
+  (:require [clojure.string :as str]
             [config.core :refer [env]]
             [taoensso.timbre :refer [error info]]
             [next.jdbc :as jdbc]
-            [next.jdbc
-             [result-set :as rs]
-             [sql :as js]]
+            [next.jdbc [result-set :as rs] [sql :as js]]
             [java-time.api :as t])
   (:import (java.text NumberFormat
                       DecimalFormat)
@@ -102,7 +100,7 @@
   "Returns the offset in hours to UTC for the given timezone."
   [tz]
   (/ (/ (/ (.getOffset (TimeZone/getTimeZone ^String tz)
-                       (.getTime (new Date))) 1000) 60) 60))
+                       (.getTime (Date.))) 1000) 60) 60))
 
 (defn get-midnight-dt
   "Returns a LocalDateTime at midnight with N days subtracted from the current
@@ -121,7 +119,7 @@
                         (get-tz-offset (:store-timezone env))
                         0)))))
 
-(defn convert-to-epoch-ms
+(defn convert->epoch-ms
   "Converts the given datetime value to Unix epoch time in milliseconds."
   [tz-offset dt]
   (let [^LocalDateTime subs-dt (t/minus (t/local-date-time dt)
@@ -134,11 +132,11 @@
   "Converts a ZonedDateTime or a java.sql.Timestamp object to a ISO 8601
   formatted datetime string."
   [datetime]
-  (s/replace (str (first (s/split (str (t/instant datetime))
-                                  #"\.\d+"))
-                  (if (not= java.sql.Timestamp (type datetime))
-                    "Z" ""))
-             "ZZ" "Z"))
+  (str/replace (str (first (str/split (str (t/instant datetime))
+                                      #"\.\d+"))
+                    (if (not= java.sql.Timestamp (type datetime))
+                      "Z" ""))
+               "ZZ" "Z"))
 
 (defn insert-plain-observation
   "Insert a row into observations table."
@@ -341,10 +339,10 @@
                              (sql/format limit-query)
                              rs-opts)]
       (dissoc (merge row
-                     {:recorded (convert-to-epoch-ms tz-offset
-                                                     (:recorded row))
+                     {:recorded (convert->epoch-ms tz-offset
+                                                   (:recorded row))
                       :weather-recorded (when (:weather-recorded row)
-                                          (convert-to-epoch-ms
+                                          (convert->epoch-ms
                                            tz-offset
                                            (:weather-recorded row)))
                       :beacon-name (get beacon-name
@@ -385,8 +383,8 @@
                                           :order-by [[:w.id :asc]]})
                              rs-opts)]
       (merge row
-             {:time (convert-to-epoch-ms tz-offset
-                                         (:time row))}))))
+             {:time (convert->epoch-ms tz-offset
+                                       (:time row))}))))
 
 (defn get-weather-obs-days
   "Fetches the weather observations from the last N days."
@@ -441,12 +439,12 @@
       (.applyPattern ^DecimalFormat nf "0.0#")
       (for [row (jdbc/execute! db-con query rs-opts)]
         (merge row
-               {:recorded (convert-to-epoch-ms tz-offset
-                                               (:recorded row))
+               {:recorded (convert->epoch-ms tz-offset
+                                             (:recorded row))
                 :temperature (Float/parseFloat
-                              (. nf format (:temperature row)))
+                              (.format nf (:temperature row)))
                 :humidity (Float/parseFloat
-                           (. nf format (:humidity row)))})))
+                           (.format nf (:humidity row)))})))
     (catch PSQLException pe
       (error pe "RuuviTag observation fetching failed")
       {})))
@@ -459,13 +457,14 @@
   (try
     (let [nf (NumberFormat/getInstance)
           end-val (or end
-                      (let [dt (:date (jdbc/execute-one!
-                                       db-con
-                                       [(str "SELECT MAX(start_time) AS date "
-                                             "FROM electricity_price")]
-                                       rs-opts))]
-                        (when dt
-                          (add-tz-offset-to-dt (t/local-date-time dt)))))]
+                      (when-let [dt (:date
+                                     (jdbc/execute-one!
+                                      db-con
+                                      (sql/format {:select [[[:max :start_time]
+                                                             :date]]
+                                                   :from [:electricity_price]})
+                                      rs-opts))]
+                        (add-tz-offset-to-dt (t/local-date-time dt))))]
       (.applyPattern ^DecimalFormat nf "0.0#")
       (if-not end-val
         [nil]
@@ -489,10 +488,10 @@
                      {:date (t/format :iso-local-date date)
                       :price (when (:price result)
                                (Float/parseFloat
-                                (. nf format (:price result))))
+                                (.format nf (:price result))))
                       :consumption (when (:consumption result)
                                      (Float/parseFloat
-                                      (. nf format (:consumption result))))}))))))
+                                      (.format nf (:consumption result))))}))))))
     (catch PSQLException pe
       (error pe "Daily electricity data fetching failed")
       [nil])))
@@ -585,14 +584,15 @@
   "Returns the time of the latest electricity consumption record."
   [db-con]
   (try
-    (let [time (:time (jdbc/execute-one! db-con
-                                         (sql/format {:select
-                                                      [[:%max.time "time"]]
-                                                      :from :electricity_consumption})
-                                         rs-opts))]
-      (when time
-        (t/format "d.L.Y HH:mm"
-                  (add-tz-offset-to-dt (t/local-date-time time)))))
+    (when-let [time (:time
+                     (jdbc/execute-one!
+                      db-con
+                      (sql/format {:select [[[:max :time] :time]]
+                                   :from [:electricity_consumption]})
+                      rs-opts))]
+      (t/format
+       "d.L.Y HH:mm"
+       (add-tz-offset-to-dt (t/local-date-time time))))
     (catch PSQLException pe
       (error pe "Electricity consumption latest consumption date fetch failed")
       nil)))

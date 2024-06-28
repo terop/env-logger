@@ -1,43 +1,43 @@
 (ns env-logger.db-test
   (:require [clojure.test :refer [deftest is testing use-fixtures]]
-            [clojure.string :as s]
+            [clojure.string :as str]
             [java-time.api :as t]
             [next.jdbc :as jdbc]
-            [next.jdbc
-             [result-set :as rs]
-             [sql :as js]]
-            [env-logger.db :refer [db-conf
-                                   convert-to-epoch-ms
-                                   -convert-to-iso8601-str
-                                   get-elec-data-day
-                                   get-elec-data-hour
-                                   get-elec-consumption-interval-start
-                                   get-elec-price-interval-end
-                                   get-last-obs-id
-                                   get-latest-elec-consumption-record-time
-                                   get-midnight-dt
-                                   get-month-avg-elec-price
-                                   get-obs-date-interval
-                                   get-obs-days
-                                   get-obs-interval
-                                   get-observations
-                                   get-ruuvitag-obs
-                                   get-tz-offset
-                                   get-weather-obs-days
-                                   get-weather-obs-interval
-                                   get-weather-observations
-                                   image-age-check
-                                   insert-beacon
-                                   insert-elec-consumption-data
-                                   insert-observation
-                                   insert-plain-observation
-                                   insert-ruuvitag-observations
-                                   insert-tb-image-name
-                                   insert-wd
-                                   make-local-dt
-                                   add-tz-offset-to-dt
-                                   test-db-connection
-                                   validate-date]])
+            [next.jdbc [result-set :as rs] [sql :as js]]
+            [env-logger.db
+             :refer
+             [db-conf
+              convert->epoch-ms
+              -convert-to-iso8601-str
+              get-elec-data-day
+              get-elec-data-hour
+              get-elec-consumption-interval-start
+              get-elec-price-interval-end
+              get-last-obs-id
+              get-latest-elec-consumption-record-time
+              get-midnight-dt
+              get-month-avg-elec-price
+              get-obs-date-interval
+              get-obs-days
+              get-obs-interval
+              get-observations
+              get-ruuvitag-obs
+              get-tz-offset
+              get-weather-obs-days
+              get-weather-obs-interval
+              get-weather-observations
+              image-age-check
+              insert-beacon
+              insert-elec-consumption-data
+              insert-observation
+              insert-plain-observation
+              insert-ruuvitag-observations
+              insert-tb-image-name
+              insert-wd
+              make-local-dt
+              add-tz-offset-to-dt
+              test-db-connection
+              validate-date]])
   (:import (org.postgresql.util PSQLException
                                 PSQLState)
            (java.time LocalDateTime
@@ -99,13 +99,13 @@
   or the current datetime minus an optional time unit."
   ([minus-time]
    (str "testbed-"
-        (s/replace (if minus-time
-                     (t/format (t/formatter "Y-MM-dd HH:mmxxx")
-                               (t/minus (t/offset-date-time)
-                                        minus-time))
-                     (t/format (t/formatter "Y-MM-dd HH:mmxxx")
-                               (t/offset-date-time)))
-                   " " "T") ".jpg")))
+        (str/replace (if minus-time
+                       (t/format (t/formatter "Y-MM-dd HH:mmxxx")
+                                 (t/minus (t/offset-date-time)
+                                          minus-time))
+                       (t/format (t/formatter "Y-MM-dd HH:mmxxx")
+                                 (t/offset-date-time)))
+                     " " "T") ".jpg")))
 
 (deftest insert-observations
   (testing "Full observation insert"
@@ -562,7 +562,7 @@
   (testing "Timezone offset calculation"
     (let [in-daylight? (.inDaylightTime (TimeZone/getTimeZone
                                          "Europe/Helsinki")
-                                        (new Date))]
+                                        (Date.))]
       (is (= (if in-daylight? 3 2) (get-tz-offset "Europe/Helsinki")))
       (is (zero? (get-tz-offset "UTC"))))))
 
@@ -573,22 +573,22 @@
                                                                21 15 16))]
         (is (= ref (get-midnight-dt 1)))))))
 
-(deftest convert-to-epoch-ms-test
+(deftest convert->epoch-ms-test
   (testing "Unix epoch time calculation"
     (let [tz-offset (get-tz-offset "UTC")]
       (is (= 1620734400000
-             (convert-to-epoch-ms tz-offset
-                                  (t/sql-timestamp
-                                   (t/local-date-time 2021 5 11 12 0)))))
+             (convert->epoch-ms tz-offset
+                                (t/sql-timestamp
+                                 (t/local-date-time 2021 5 11 12 0)))))
       (is (= 1609593180000
-             (convert-to-epoch-ms tz-offset
-                                  (t/sql-timestamp
-                                   (t/local-date-time 2021 1 2 13 13))))))))
+             (convert->epoch-ms tz-offset
+                                (t/sql-timestamp
+                                 (t/local-date-time 2021 1 2 13 13))))))))
 
 (deftest test-iso8601-str-generation
   (testing "ZonedDateTime to ISO 8601 string conversion"
     (let [now (ZonedDateTime/now (t/zone-id "UTC"))]
-      (is (= (str (first (s/split (str now) #"\.")) "Z")
+      (is (= (str (first (str/split (str now) #"\.")) "Z")
              (-convert-to-iso8601-str now))))))
 
 (deftest test-elec-consumption-data-insert

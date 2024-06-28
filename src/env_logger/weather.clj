@@ -3,15 +3,15 @@
   (:require [clojure.xml :refer [parse]]
             [clojure.zip :refer [xml-zip]]
             [clojure.data.zip.xml :as zx]
-            [clojure.string :as s]
+            [clojure.math :refer [round]]
+            [clojure.string :as str]
             [config.core :refer [env]]
             [taoensso.timbre :refer [error info warn]]
             [jsonista.core :as j]
             [clj-http.client :as client]
             [next.jdbc :as jdbc]
             [java-time.api :as t]
-            [env-logger
-             [db :refer [rs-opts -convert-to-iso8601-str]]])
+            [env-logger [db :refer [rs-opts -convert-to-iso8601-str]]])
   (:import java.time.temporal.ChronoUnit
            org.postgresql.util.PSQLException))
 (refer-clojure :exclude '[filter for group-by into partition-by set update])
@@ -55,17 +55,18 @@
   (try
     (if-not cand-dt
       false
-      (let [latest-stored (:time (jdbc/execute-one!
-                                  db-con
-                                  (sql/format {:select :time
-                                               :from :weather_data
-                                               :order-by [[:id :desc]]
-                                               :limit 1})
-                                  rs-opts))]
-        (if latest-stored
-          (t/after? (t/local-date-time cand-dt)
-                    (t/local-date-time latest-stored))
-          true)))
+      (if-let [latest-stored (:time
+                              (jdbc/execute-one! db-con
+                                                 (sql/format
+                                                  {:select :time
+                                                   :from :weather_data
+                                                   :order-by [[:id :desc]]
+                                                   :limit 1})
+                                                 rs-opts))]
+        (t/after?
+         (t/local-date-time cand-dt)
+         (t/local-date-time latest-stored))
+        true))
     (catch PSQLException pe
       (error pe "Weather data storage check failed")
       false)))
@@ -121,11 +122,11 @@
   [parsed-xml]
   (when (>= (count (:content parsed-xml)) 4)
     (let [root (xml-zip parsed-xml)
-          values (for [m (zx/xml-> root
-                                   :wfs:member
-                                   :BsWfs:BsWfsElement
-                                   :BsWfs:ParameterValue)]
-                   (zx/text m))
+          values (map
+                  zx/text
+                  (zx/xml-> root :wfs:member
+                            :BsWfs:BsWfsElement
+                            :BsWfs:ParameterValue))
           date-text (zx/text (zx/xml1-> root
                                         :wfs:member
                                         :BsWfs:BsWfsElement
@@ -137,7 +138,7 @@
                                                       (nth values 0))))
        :wind-speed (Float/parseFloat (format "%.1f" (Float/parseFloat
                                                      (nth values 1))))
-       :cloudiness (Math/round (Float/parseFloat (nth values 2)))
+       :cloudiness (round (Float/parseFloat (nth values 2)))
        :wind-direction (get-wd-str (Float/parseFloat
                                     (nth values 3)))
        :precipitation (if (= (nth values 4) "NaN")
@@ -164,7 +165,7 @@
         (when (and (:observations parsed-json)
                    (seq (:observations parsed-json)))
           (let [obs (last (:observations parsed-json))
-                time-str (subs (s/replace (:localtime obs) "T" "") 0 12)
+                time-str (subs (str/replace (:localtime obs) "T" "") 0 12)
                 local-dt (t/local-date-time "yyyyMMddHHmm" time-str)
                 ;; Assume that the timestamp is always in local (i.e.
                 ;; Europe/Helsinki) timezone
@@ -201,7 +202,7 @@
                                        {:decode-key-fn true}))]
         (when (seq parsed-json)
           (let [obs (last parsed-json)
-                time-str (subs (s/replace (:time obs) "T" "") 0 12)
+                time-str (subs (str/replace (:time obs) "T" "") 0 12)
                 local-dt (t/local-date-time "yyyyMMddHHmm" time-str)
                 offset (.between
                         ChronoUnit/HOURS
@@ -267,14 +268,13 @@
                         (> (abs (t/time-between (t/local-date-time)
                                                 (:fetched @fmi-forecast)
                                                 :minutes)) 30)))
-          (let [forecast (extract-forecast-data (parse url))]
-            (if forecast
-              (reset! fmi-forecast
-                      (assoc forecast :fetched (t/local-date-time)))
-              (do
-                (info (str "Retrying forecast fetch, attempt "
-                           (- retry-count (dec @index)) " of " retry-count))
-                (Thread/sleep 5000))))
+          (if-let [forecast (extract-forecast-data (parse url))]
+            (reset! fmi-forecast (assoc forecast :fetched (t/local-date-time)))
+            (do
+              (info (str "Retrying forecast fetch, attempt "
+                         (- retry-count (dec @index))
+                         " of " retry-count))
+              (Thread/sleep 5000)))
           (swap! index dec))
         (catch org.xml.sax.SAXParseException spe
           (error spe "FMI forecast parsing failed")

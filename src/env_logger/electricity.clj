@@ -3,7 +3,7 @@
   (:require [clojure.data.csv :as csv]
             [clojure.java.io :as io]
             [clojure.instant :refer [read-instant-timestamp]]
-            [clojure.string :as s]
+            [clojure.string :as str]
             [buddy.auth :refer [authenticated?]]
             [config.core :refer [env]]
             [java-time.api :as t]
@@ -74,4 +74,4 @@
           {:error "invalid-format"}
           (for [row (rest rows)]
             [(read-instant-timestamp (nth row 5))
-             (Float/parseFloat (s/replace (nth row 6) "," "."))]))))))
+             (Float/parseFloat (str/replace (nth row 6) "," "."))]))))))

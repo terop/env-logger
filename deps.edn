@@ -42,7 +42,6 @@
                          ;; Any Eastwood options can be passed here as edn:
                          {}]
              :extra-deps {jonase/eastwood {:mvn/version "1.4.2"}}}
-  :kibit {:extra-deps {jonase/kibit {:git/url "https://github.com/clj-commons/kibit.git"
-                                     :sha "a5fbc722265ee8456b8a985db8c18093c7d83820"}}
-          :exec-fn kibit.driver/exec
-          :exec-args {:paths ["src" "test"]}}}}
+  :splint {:extra-deps {io.github.noahtheduke/splint {:mvn/version "1.15.2"}
+                        org.clojure/clojure {:mvn/version "1.11.1"}}
+           :main-opts ["-m" "noahtheduke.splint"]}}}
