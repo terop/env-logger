@@ -8,7 +8,7 @@
              :refer
              [db-conf
               convert->epoch-ms
-              -convert-to-iso8601-str
+              -convert-time->iso8601-str
               get-elec-data-day
               get-elec-data-hour
               get-elec-consumption-interval-start
@@ -589,7 +589,7 @@
   (testing "ZonedDateTime to ISO 8601 string conversion"
     (let [now (ZonedDateTime/now (t/zone-id "UTC"))]
       (is (= (str (first (str/split (str now) #"\.")) "Z")
-             (-convert-to-iso8601-str now))))))
+             (-convert-time->iso8601-str now))))))
 
 (deftest test-elec-consumption-data-insert
   (testing "Insert of electricity consumption data"

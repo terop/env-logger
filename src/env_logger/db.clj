@@ -128,7 +128,7 @@
                        ZoneOffset/UTC)
        1000)))
 
-(defn -convert-to-iso8601-str
+(defn -convert-time->iso8601-str
   "Converts a ZonedDateTime or a java.sql.Timestamp object to a ISO 8601
   formatted datetime string."
   [datetime]
@@ -518,7 +518,7 @@
       (when (pos? (count rows))
         (for [row rows]
           (merge row
-                 {:start-time (-convert-to-iso8601-str (:start-time row))}))))
+                 {:start-time (-convert-time->iso8601-str (:start-time row))}))))
     (catch PSQLException pe
       (error pe "Hourly electricity data fetching failed")
       nil)))

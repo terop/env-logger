@@ -9,11 +9,11 @@
              [handler :as h]
              [weather :as w]]))
 
-(deftest convert-epoch-ms-to-string-test
+(deftest convert-epoch-ms->string-test
   (testing "Unix millisecond timestamp to string conversion"
     (with-redefs [db/get-tz-offset (fn [_] 3)]
       (is (= "4.8.2021 16:51:32"
-             (h/convert-epoch-ms-to-string 1628085092000))))))
+             (h/convert-epoch-ms->string 1628085092000))))))
 
 (deftest observation-insert-test
   (testing "Observation insert function"

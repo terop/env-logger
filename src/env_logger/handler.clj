@@ -43,7 +43,7 @@
   "Options for jsonista read-value."
   (j/object-mapper {:decode-key-fn true}))
 
-(defn convert-epoch-ms-to-string
+(defn convert-epoch-ms->string
   "Converts an Unix epoch timestamp to a 'human readable' value."
   [epoch-ts]
   (t/format "d.L.Y HH:mm:ss"
@@ -74,11 +74,11 @@
                        :weather-data []})
           #_{:splint/disable [lint/assoc-fn]}
           (serve-json {:data (assoc data :recorded
-                                    (convert-epoch-ms-to-string
+                                    (convert-epoch-ms->string
                                      (:recorded data)))
                        :rt-data (for [item rt-data]
                                   (assoc item :recorded
-                                         (convert-epoch-ms-to-string
+                                         (convert-epoch-ms->string
                                           (:recorded item))))
                        :weather-data (get-fmi-weather-data)}))))))
 

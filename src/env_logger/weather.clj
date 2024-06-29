@@ -11,7 +11,7 @@
             [clj-http.client :as client]
             [next.jdbc :as jdbc]
             [java-time.api :as t]
-            [env-logger [db :refer [rs-opts -convert-to-iso8601-str]]])
+            [env-logger [db :refer [rs-opts -convert-time->iso8601-str]]])
   (:import java.time.temporal.ChronoUnit
            org.postgresql.util.PSQLException))
 (refer-clojure :exclude '[filter for group-by into partition-by set update])
@@ -38,13 +38,13 @@
                             (t/seconds (.getSecond (t/zoned-date-time))))]
     start-time))
 
-(defn -convert-to-tz-iso8601-str
+(defn -convert-dt->tz-iso8601-str
   "Formats and returns a datetime as an ISO 8601 formatted start time string
   having the :weather-zone value timezone before ISO 8601 conversion."
   [datetime]
-  (-convert-to-iso8601-str (t/with-zone
-                             datetime
-                             (:weather-timezone env))))
+  (-convert-time->iso8601-str (t/with-zone
+                                datetime
+                                (:weather-timezone env))))
 
 (defn store-weather-data?
   "Tells whether to store FMI weather data.
@@ -154,7 +154,7 @@
     ;; The first check is to prevent pointless fetch attempts when data
     ;; is not yet available
     (when (and (>= (rem (.getMinute (t/local-date-time)) 10) 3)
-               (nil? (get @fmi-current (-convert-to-tz-iso8601-str
+               (nil? (get @fmi-current (-convert-dt->tz-iso8601-str
                                         (calculate-start-time)))))
       (let [url (format (str "https://www.ilmatieteenlaitos.fi/api/weather/"
                              "observations?fmisid=%s&observations=true")
@@ -179,7 +179,7 @@
                     :wind-direction (get-wd-str (:WindDirection obs))}]
             (when-not (nil? (:temperature wd))
               (swap! fmi-current conj
-                     {(-convert-to-iso8601-str (:time wd)) wd}))))))
+                     {(-convert-time->iso8601-str (:time wd)) wd}))))))
     (catch Exception ex
       (error ex "FMI weather data (JSON) fetch failed")
       nil)))
@@ -189,14 +189,14 @@
   given weather observation station."
   [station-id]
   (try
-    (when (nil? (get @fmi-current (-convert-to-tz-iso8601-str
+    (when (nil? (get @fmi-current (-convert-dt->tz-iso8601-str
                                    (calculate-start-time))))
       (let [url (format (str "https://opendata.fmi.fi/timeseries?producer="
                              "opendata&fmisid=%s&param=time,tz,temperature,"
                              "cloudiness,windspeed,winddirection&format=json&"
                              "precision=double&starttime=%s")
                         station-id
-                        (-convert-to-tz-iso8601-str (calculate-start-time)))
+                        (-convert-dt->tz-iso8601-str (calculate-start-time)))
             parsed-json (j/read-value (:body (client/get url))
                                       (j/object-mapper
                                        {:decode-key-fn true}))]
@@ -223,7 +223,7 @@
             (when wd
               (swap! fmi-current
                      conj
-                     {(-convert-to-iso8601-str (:time wd)) wd}))))))
+                     {(-convert-time->iso8601-str (:time wd)) wd}))))))
     (catch Exception ex
       (error ex "FMI weather data (time series) fetch failed")
       nil)))
@@ -234,8 +234,8 @@
   is returned."
   []
   (or (get @fmi-current
-           (-convert-to-tz-iso8601-str (calculate-start-time)))
-      (get @fmi-current (-convert-to-tz-iso8601-str
+           (-convert-dt->tz-iso8601-str (calculate-start-time)))
+      (get @fmi-current (-convert-dt->tz-iso8601-str
                          (t/minus (calculate-start-time) (t/minutes 10))))))
 
 (defn -update-fmi-weather-forecast
@@ -255,8 +255,8 @@
                       (str latitude "," longitude)
                       ;; Start time must always be ahead of the current time so
                       ;; that forecast for the next hour is fetched
-                      (-convert-to-tz-iso8601-str start-time)
-                      (-convert-to-tz-iso8601-str end-time))
+                      (-convert-dt->tz-iso8601-str start-time)
+                      (-convert-dt->tz-iso8601-str end-time))
           index (atom retry-count)]
       (try
         (while (and (pos? @index)

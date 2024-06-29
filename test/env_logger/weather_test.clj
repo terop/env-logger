@@ -11,7 +11,7 @@
              [db :refer [get-tz-offset]]
              [weather
               :refer
-              [-convert-to-tz-iso8601-str
+              [-convert-dt->tz-iso8601-str
                calculate-start-time
                extract-forecast-data
                -update-fmi-weather-forecast
@@ -40,7 +40,7 @@
                                               (get-tz-offset
                                                "Europe/Helsinki"))))
                           #"\.")) "Z")
-             (-convert-to-tz-iso8601-str now))))))
+             (-convert-dt->tz-iso8601-str now))))))
 
 ;; FMI
 
