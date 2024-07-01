@@ -25,7 +25,7 @@ from requests.exceptions import ConnectionError
 from urllib3.exceptions import ConnectTimeoutError, MaxRetryError, ReadTimeoutError
 
 os.environ['RUUVI_BLE_ADAPTER'] = 'bleak'
-from ruuvitag_sensor.ruuvi import RuuviTagSensor  # noqa: E402
+from ruuvitag_sensor.ruuvi import RuuviTagSensor
 
 
 def get_timestamp(timezone):
