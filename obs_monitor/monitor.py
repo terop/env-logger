@@ -20,6 +20,8 @@ from zoneinfo import ZoneInfo
 
 import psycopg
 
+smtp_connection = None
+
 
 class ObservationMonitor:
     """Class for monitoring environment observations."""
@@ -280,6 +282,24 @@ class RuuvitagMonitor:
         return self._state
 
 
+def create_smtp_connection(config):
+    """Create a SMTP SSL connection which can be used to send email."""
+    email_username = environ['EMAIL_USERNAME'] if 'EMAIL_USERNAME' in environ \
+        else config['Username']
+    email_password = environ['EMAIL_PASSWORD'] if 'EMAIL_PASSWORD' in environ \
+        else config['Password']
+
+    try:
+        instance = smtplib.SMTP_SSL(config['Server'],
+                                    context=ssl.create_default_context())
+        instance.login(email_username, email_password)
+    except smtplib.SMTPException:
+        logging.exception('Cannot open SMTP connection')
+        return None
+
+    return instance
+
+
 def send_email(config, subject, message):
     """Send an email with provided subject and message to specified recipient(s)."""
     msg = MIMEText(message)
@@ -287,15 +307,16 @@ def send_email(config, subject, message):
     msg['From'] = config['Sender']
     msg['To'] = config['Recipient']
 
-    email_username = environ['EMAIL_USERNAME'] if 'EMAIL_USERNAME' in environ \
-        else config['Username']
-    email_password = environ['EMAIL_PASSWORD'] if 'EMAIL_PASSWORD' in environ \
-        else config['Password']
+    global smtp_connection  # noqa: PLW0603
+
+    if not smtp_connection:
+        smtp_connection = create_smtp_connection(config)
+        if not smtp_connection:
+            logging.error('Could not open SMTP connection, aborting message sending')
+            return False
+
     try:
-        with smtplib.SMTP_SSL(config['Server'],
-                              context=ssl.create_default_context()) as server:
-            server.login(email_username, email_password)
-            server.send_message(msg)
+        smtp_connection.send_message(msg)
     except smtplib.SMTPException:
         logging.exception('Failed to send email with subject "%s"',
                           subject)
@@ -380,6 +401,8 @@ def main():
     with Path(state_file_name).open('w', encoding='utf-8') as state_file:
         json.dump(state, state_file, indent=4)
 
+    if smtp_connection:
+        smtp_connection.quit()
 
 if __name__ == '__main__':
     main()
