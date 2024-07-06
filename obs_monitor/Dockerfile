@@ -1,6 +1,6 @@
-FROM python:3.12-alpine as python
+FROM python:3.12-slim as python
 ENV PYTHONUNBUFFERED=true
-RUN apk update && apk upgrade && python3 -m pip install --upgrade pip
+RUN apt-get update && apt-get upgrade -y && python3 -m pip install --upgrade pip
 
 WORKDIR /usr/src/app
 COPY monitor.cfg monitor.py poetry.lock ./
@@ -10,7 +10,7 @@ LABEL org.opencontainers.image.authors="tero.paloheimo@iki.fi"
 FROM python as poetry
 ENV POETRY_VIRTUALENVS_IN_PROJECT=true
 ENV PATH="/root/.local/bin:${PATH}"
-RUN apk add --no-cache curl
+RUN apt-get install -y curl && apt-get clean
 
 RUN curl -sSL https://install.python-poetry.org | python3 -
 COPY pyproject.toml poetry.lock ./
@@ -19,5 +19,9 @@ RUN poetry install --no-interaction --no-ansi -vv
 FROM python as runtime
 ENV PATH="/usr/src/app/.venv/bin:${PATH}"
 COPY --from=poetry /usr/src/app /usr/src/app
+
+# Set IPv4 preference over IPv6 so that broken IPv6 environments cause minimal
+# delay for network operations
+RUN sed -i 's|#precedence ::ffff:0:0/96  100|precedence ::ffff:0:0/96  100|' /etc/gai.conf
 
 ENTRYPOINT [ "python", "./monitor.py" ]
