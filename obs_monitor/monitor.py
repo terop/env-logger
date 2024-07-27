@@ -404,5 +404,6 @@ def main():
     if smtp_connection:
         smtp_connection.quit()
 
+
 if __name__ == '__main__':
     main()

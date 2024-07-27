@@ -348,7 +348,7 @@ dev = ["black (==23.3.0)", "flake8-pyproject", "isort", "mypy", "pylint", "pytes
 type = "git"
 url = "https://github.com/ttu/ruuvitag-sensor.git"
 reference = "HEAD"
-resolved_reference = "dee46fbd36f01b67e22e29a81378a7b445247920"
+resolved_reference = "e59fa3ad8a132a6ed9cf0bb85f8d2b3862daf582"
 
 [[package]]
 name = "typing-extensions"
