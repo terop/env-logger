@@ -8,7 +8,6 @@ import argparse
 import asyncio
 import json
 import logging
-import os
 import sys
 from collections import OrderedDict
 from datetime import datetime
@@ -22,10 +21,8 @@ import serial
 from bleak import BleakScanner
 from bleak.exc import BleakDBusError, BleakError
 from requests.exceptions import ConnectionError
-from urllib3.exceptions import ConnectTimeoutError, MaxRetryError, ReadTimeoutError
-
-os.environ['RUUVI_BLE_ADAPTER'] = 'bleak'
 from ruuvitag_sensor.ruuvi import RuuviTagSensor
+from urllib3.exceptions import ConnectTimeoutError, MaxRetryError, ReadTimeoutError
 
 
 def get_timestamp(timezone):
