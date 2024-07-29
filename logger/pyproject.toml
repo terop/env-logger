@@ -11,7 +11,6 @@ python = "^3.12"
 pyserial = "^3.5"
 pytz = "^2024.0"
 requests = "^2.30.0"
-bleak = { version = "^0.21.0", python = ">=3.11,<3.13" }
 ruuvitag-sensor = { git = "https://github.com/ttu/ruuvitag-sensor.git" }
 
 
