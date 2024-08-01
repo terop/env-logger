@@ -10,6 +10,7 @@
     },
     "ruuvitag": {
         "url": "https://example.com/env-logger/obs/rt-observation",
+        "scan_timeout": 20,
         "tags": [
             {
                 "mac": "F3:19:DD:06:E0:7A",

@@ -112,7 +112,8 @@ async def scan_ruuvitags(bt_device, rt_config):
     macs = [tag['mac'] for tag in rt_config['tags']]
 
     try:
-        await asyncio.wait_for(_async_scan(macs), timeout=15)
+        await asyncio.wait_for(_async_scan(macs),
+                               timeout=rt_config.get('scan_timeout', 20))
     except (asyncio.CancelledError, TimeoutError, BleakDBusError) as err:
         match err:
             case asyncio.CancelledError():
