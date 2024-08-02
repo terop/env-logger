@@ -3,7 +3,7 @@ ENV PYTHONUNBUFFERED=true
 RUN apt-get update && apt-get upgrade -y && python3 -m pip install --upgrade pip
 
 WORKDIR /usr/src/app
-COPY monitor.cfg monitor.py poetry.lock ./
+COPY monitor.cfg monitor.py ./
 
 LABEL org.opencontainers.image.authors="tero.paloheimo@iki.fi"
 
