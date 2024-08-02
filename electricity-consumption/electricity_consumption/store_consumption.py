@@ -35,7 +35,17 @@ def fetch_consumption_data(config, manual_fetch_date):
 
     logging.info('Fetching consumption data for %s', str(fetch_date))
 
-    authenticator = Authenticator(config['username'], config['password'])
+    password = config.get('password', None)
+    if not password:
+        password_file = environ.get('CARUNA_PASSWORD_FILE', None)
+        if password_file:
+            with Path.open(password_file, 'r') as pw_file:
+                password = pw_file.readline().strip()
+        else:
+            logging.error('No Caruna password provided, exiting')
+            sys.exit(1)
+
+    authenticator = Authenticator(config['username'], password)
     try:
         login_result = authenticator.login()
     except Exception:
