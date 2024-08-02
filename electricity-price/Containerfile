@@ -3,7 +3,7 @@ ENV PYTHONUNBUFFERED=true
 RUN apk update && apk upgrade && python3 -m pip install --upgrade pip
 
 WORKDIR /usr/src/app
-COPY config.json store_price.py poetry.lock ./
+COPY config.json store_price.py ./
 
 LABEL org.opencontainers.image.authors="tero.paloheimo@iki.fi"
 

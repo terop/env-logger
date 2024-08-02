@@ -83,9 +83,16 @@ def create_db_conn_string(db_config):
         'name': environ['DB_NAME'] if 'DB_NAME' in environ else db_config['dbname'],
         'username': environ['DB_USERNAME'] if 'DB_USERNAME' in environ
         else db_config['username'],
-        'password': environ['DB_PASSWORD'] if 'DB_PASSWORD' in environ
-        else db_config['password']
+        'password': db_config.get('password', None)
     }
+    if not db_config['password']:
+        password_file = environ.get('DB_PASSWORD_FILE', None)
+        if password_file:
+            with Path.open(password_file, 'r') as pw_file:
+                db_config['password'] = pw_file.readline().strip()
+        else:
+            logging.error('No database server password provided, exiting')
+            sys.exit(1)
 
     return f'host={db_config["host"]} user={db_config["username"]} ' \
         f'password={db_config["password"]} dbname={db_config["name"]}'
