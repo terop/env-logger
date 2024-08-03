@@ -39,8 +39,8 @@ A sample configuration can be found in the `resources/config.edn_sample` file.
 The configuration file used in development is `resources/dev/config.edn` and the
 one for production in `resources/prod/config.edn`. After copying the
 sample file edit either or both file(s) as needed.
-Some settings can be overridden with environment variables. Accepted environment
-variables are described below.
+Some settings can be overridden with environment variables or by reading from a
+file. Accepted environment variables are described below.
 
 * __APP_PORT__: The port which the application will be accessible through.
 The default port is `8080`.
@@ -48,7 +48,11 @@ The default port is `8080`.
 * __POSTGRESQL_DB_PORT__: The port on which the database server is listening.
 * __POSTGRESQL_DB_NAME__: Name of the database.
 * __POSTGRESQL_DB_USERNAME__: Username of the database user.
-* __POSTGRESQL_DB_PASSWORD__: Password of the database user.
+
+The database password cannot be set through an environment variable due to
+security reasons. Instead it can be read from a file whose name is set in the
+`POSTGRESQL_DB_PASSWORD_FILE` environment variable. This file must only contain
+the database password on one line.
 
 ## Running
 ### Locally
