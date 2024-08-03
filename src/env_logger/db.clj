@@ -23,6 +23,17 @@
   [k]
   (k (:database env)))
 
+(defn get-db-password
+  "Returns the database password."
+  []
+  (let [pwd-file (System/getenv "POSTGRESQL_DB_PASSWORD_FILE")]
+    (try
+      (if pwd-file
+        (str/trim (slurp pwd-file))
+        (or (db-conf :password) (error "No database password available")))
+      (catch java.io.FileNotFoundException ex
+        (error ex "Database password file not found")))))
+
 (let [db-host (get (System/getenv)
                    "POSTGRESQL_DB_HOST"
                    (db-conf :host))
@@ -34,9 +45,7 @@
       db-user (get (System/getenv)
                    "POSTGRESQL_DB_USERNAME"
                    (db-conf :username))
-      db-password (get (System/getenv)
-                       "POSTGRESQL_DB_PASSWORD"
-                       (db-conf :password))]
+      db-password (get-db-password)]
   (def postgres (merge {:dbtype "postgresql"
                         :dbname db-name
                         :host db-host

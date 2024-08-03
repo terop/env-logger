@@ -9,6 +9,7 @@
              [db-conf
               convert->epoch-ms
               -convert-time->iso8601-str
+              get-db-password
               get-elec-data-day
               get-elec-data-hour
               get-elec-consumption-interval-start
@@ -57,9 +58,7 @@
       db-user (get (System/getenv)
                    "POSTGRESQL_DB_USERNAME"
                    (db-conf :username))
-      db-password (get (System/getenv)
-                       "POSTGRESQL_DB_PASSWORD"
-                       (db-conf :password))]
+      db-password (get-db-password)]
   (def test-postgres {:dbtype "postgresql"
                       :dbname db-name
                       :host db-host
@@ -691,3 +690,13 @@
                  :price 12.0})
     (is (= "7.0" (get-month-avg-elec-price test-ds)))
     (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))))
+
+(deftest test-get-db-password
+  (testing "Database password fetch"
+    (with-redefs [db-conf (fn [_] nil)]
+      (is (nil? (get-db-password))))
+    (with-redefs [db-conf (fn [_] "foobar")]
+      (is (= "foobar" (get-db-password))))
+    ;; Reading the password from a file is not tested because of the difficulty
+    ;; of setting environment variables in Clojure / Java
+    ))
