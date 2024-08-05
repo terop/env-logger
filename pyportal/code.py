@@ -81,7 +81,8 @@ def connect_to_wlan():
 
             time.sleep(5)
             continue
-        print(f'Connected to {str(radio.ssid, "utf-8")}    RSSI: {radio.rssi}')
+        print(f'Connected to {str(radio.ap_info.ssid, "utf-8")}    ', end='')
+        print(f'RSSI: {radio.ap_info.rssi}')
         print(f'My IP address is {radio.pretty_ip(radio.ip_address)}')
 
     pool = adafruit_connection_manager.get_radio_socketpool(radio)
