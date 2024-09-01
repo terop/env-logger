@@ -13,7 +13,6 @@ from collections import OrderedDict
 from datetime import datetime
 from pathlib import Path
 from statistics import mean, median
-from time import sleep
 
 import pytz
 import requests
@@ -135,16 +134,10 @@ def store_ruuvitags(config, timestamp, tags):
                              params={'observation': json_data,
                                      'timestamp': timestamp,
                                      'code': config['authentication_code']},
-                             timeout=10)
+                             timeout=15)
     except (ConnectTimeoutError, MaxRetryError, OSError, ReadTimeoutError) as err:
         logging.error('RuuviTag data store failed: %s', err)
-        sleep(5)
-
-        resp = requests.post(config['ruuvitag']['url'],
-                             params={'observation': json_data,
-                                     'timestamp': timestamp,
-                                     'code': config['authentication_code']},
-                             timeout=10)
+        return
 
     logging.info("RuuviTag observation: timestamp '%s', data: '%s', "
                  "response: code %s, text '%s'",
@@ -210,16 +203,11 @@ def store_to_db(config, timestamp, data):
         resp = requests.post(config['environment']['upload_url'],
                              params={'observation': json.dumps(data),
                                      'code': config['authentication_code']},
-                             timeout=10)
+                             timeout=15)
     except (ConnectTimeoutError, MaxRetryError, OSError, ReadTimeoutError,
             TimeoutError) as err:
         logging.error('Observation data store failed: %s', err)
-        sleep(7)
-
-        resp = requests.post(config['environment']['upload_url'],
-                             params={'observation': json.dumps(data),
-                                     'code': config['authentication_code']},
-                             timeout=10)
+        return
 
     logging.info("Observation data: '%s', response: code %s, text '%s'",
                  json.dumps(data), resp.status_code, resp.text)
