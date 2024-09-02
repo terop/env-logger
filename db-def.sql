@@ -9,6 +9,8 @@ CREATE TABLE observations (
        outside_temperature REAL
 );
 
+CREATE INDEX observations_recorded_brin ON observations USING BRIN (recorded);
+
 -- Beacons table
 CREATE TABLE beacons (
        id SERIAL PRIMARY KEY,
@@ -29,6 +31,8 @@ CREATE TABLE weather_data (
        wind_speed REAL
 );
 
+CREATE INDEX weather_data_time_brin ON weather_data USING BRIN (time);
+
 -- RuuviTag beacon observation data
 CREATE TABLE ruuvitag_observations (
        id SERIAL PRIMARY KEY,
@@ -41,6 +45,8 @@ CREATE TABLE ruuvitag_observations (
        battery_voltage REAL NOT NULL,
        rssi INTEGER NOT NULL
 );
+
+CREATE INDEX ruuvitag_observations_recorded_brin ON ruuvitag_observations USING BRIN (recorded);
 
 -- User table
 CREATE TABLE users (
