@@ -1,4 +1,4 @@
-FROM amazoncorretto:21-alpine as corretto-jdk
+FROM amazoncorretto:22-alpine as corretto-jdk
 LABEL org.opencontainers.image.authors="tero.paloheimo@iki.fi"
 
 # Required for strip-debug to work

@@ -10,4 +10,4 @@ uberjar: # build the jar
 	mv target/env-logger-*.jar target/env-logger.jar
 
 update: # update base images
-	podman pull amazoncorretto:21-alpine alpine:latest
+	podman pull amazoncorretto:22-alpine alpine:latest
