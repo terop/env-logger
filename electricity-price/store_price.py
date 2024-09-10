@@ -14,7 +14,7 @@ from pathlib import Path
 import psycopg
 from nordpool import elspot
 
-VAT_MULTIPLIER = 1.24
+VAT_MULTIPLIER = 1.255
 
 
 def fetch_prices(config, fetch_date):
