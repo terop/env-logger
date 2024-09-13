@@ -102,7 +102,7 @@ echo "Dumping database ${db_name} to file ${backup_file_name}"
 if [ ${local_db} ]; then
     backup_file_name="${db_name}_$(date -Iseconds).sql.xz"
 
-    if [ $(pg_dump -c -w "${db_name}" | xz -2 -z > ${backup_file_name}) ]; then
+    if [ $(pg_dump -c -w "${db_name}" | xz -1 -z > ${backup_file_name}) ]; then
         echo "Error: pg_dump failed, deleting file" >&2
         rm "${backup_file_name}"
         return 1
@@ -117,7 +117,7 @@ else
         rm "${backup_file_name}"
         return 1
     fi
-    if [ $(xz -2 -z ${backup_file_name_no_comp}) ]; then
+    if [ $(xz -1 -z ${backup_file_name_no_comp}) ]; then
         echo "Error: Kubernetes pg_dump compression failed, deleting file" >&2
         rm "${backup_file_name_no_comp}"
         return 1
