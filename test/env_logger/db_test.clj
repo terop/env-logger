@@ -84,9 +84,12 @@
               {:recorded (t/minus current-dt (t/days 4))
                :brightness 5})
   (test-fn)
-  (jdbc/execute! test-ds (sql/format {:delete-from :observations}))
+  (jdbc/execute! test-ds (sql/format {:delete-from :beacons}))
   (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))
-  (jdbc/execute! test-ds (sql/format {:delete-from :electricity_consumption})))
+  (jdbc/execute! test-ds (sql/format {:delete-from :electricity_consumption}))
+  (jdbc/execute! test-ds (sql/format {:delete-from :observations}))
+  (jdbc/execute! test-ds (sql/format {:delete-from :ruuvitag_observations}))
+  (jdbc/execute! test-ds (sql/format {:delete-from :weather_data})))
 
 ;; Fixture run at the start and end of tests
 (use-fixtures :once clean-test-database)
@@ -117,14 +120,14 @@
                         :wind-speed 5.0}]
       (is (true? (insert-observation test-ds
                                      (merge observation
-                                            {:timestamp (t/plus (:timestamp observation)
-                                                                (t/seconds 5))
+                                            {:timestamp (t/minus (:timestamp observation)
+                                                                 (t/seconds 5))
                                              :outsideTemperature 5
                                              :weather-data weather-data}))))
       (is (true? (insert-observation test-ds
                                      (merge observation
-                                            {:timestamp (t/plus (:timestamp observation)
-                                                                (t/seconds 10))
+                                            {:timestamp (t/minus (:timestamp observation)
+                                                                 (t/seconds 10))
                                              :outsideTemperature nil
                                              :weather-data nil}))))
       (is (false? (insert-observation test-ds {})))

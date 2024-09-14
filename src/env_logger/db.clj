@@ -109,7 +109,8 @@
 (defn get-tz-offset
   "Returns the offset in hours to UTC for the given timezone."
   [tz]
-  (/ (/ (/ (TimeZone/.getOffset (TimeZone/getTimeZone tz) (Date/.getTime (Date.))) 1000) 60) 60))
+  (/ (/ (/ (TimeZone/.getOffset (TimeZone/getTimeZone tz)
+                                (Date/.getTime (Date.))) 1000) 60) 60))
 
 (defn get-midnight-dt
   "Returns a LocalDateTime at midnight with N days subtracted from the current
@@ -629,8 +630,8 @@
                                       :from :electricity_price}))]
       (when (:end result)
         (let [end-dt (add-tz-offset-to-dt (t/local-date-time (:end result)))]
-          ;; Remove one hour to get rid of the last value (midnight) which ends up
-          ;; on the following day
+          ;; Remove one hour to get rid of the last value (midnight) which ends
+          ;; up on the following day
           (t/format :iso-local-date (t/minus end-dt (t/hours 1))))))
     (catch PSQLException pe
       (error pe "Electricity price date interval end fetch failed")
