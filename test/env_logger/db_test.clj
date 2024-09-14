@@ -70,8 +70,6 @@
 
 ;; Current datetime used in tests
 (def current-dt (t/local-date-time))
-(def current-dt-zoned (t/format :iso-offset-date-time
-                                (t/zoned-date-time)))
 (def date-fmt :iso-local-date)
 
 (defn clean-test-database
@@ -108,7 +106,7 @@
 
 (deftest insert-observations
   (testing "Full observation insert"
-    (let [observation {:timestamp current-dt-zoned
+    (let [observation {:timestamp (t/zoned-date-time)
                        :insideLight 0
                        :beacon {:mac "7C:EC:79:3F:BE:97"
                                 :rssi -68
@@ -119,11 +117,15 @@
                         :wind-speed 5.0}]
       (is (true? (insert-observation test-ds
                                      (merge observation
-                                            {:outsideTemperature 5
+                                            {:timestamp (t/plus (:timestamp observation)
+                                                                (t/seconds 5))
+                                             :outsideTemperature 5
                                              :weather-data weather-data}))))
       (is (true? (insert-observation test-ds
                                      (merge observation
-                                            {:outsideTemperature nil
+                                            {:timestamp (t/plus (:timestamp observation)
+                                                                (t/seconds 10))
+                                             :outsideTemperature nil
                                              :weather-data nil}))))
       (is (false? (insert-observation test-ds {})))
       (with-redefs [insert-wd (fn [_ _ _] -1)]
@@ -417,7 +419,7 @@
 (deftest plain-observation-insert
   (testing "Insert of a row into the observations table"
     (is (pos? (insert-plain-observation test-ds
-                                        {:timestamp current-dt-zoned
+                                        {:timestamp (t/zoned-date-time)
                                          :insideLight 0
                                          :outsideTemperature 5})))))
 
