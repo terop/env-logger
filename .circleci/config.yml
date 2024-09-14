@@ -45,12 +45,11 @@ jobs:
 
       - run:
           name: run tests
-          command: clojure -T:build build && clojure -M:test
+          command: clojure -T:build build && clojure -X:test
 
       - run:
           name: run linters
           command: |
-            clojure -M:eastwood
             clojure -M:splint
 
       - run:
