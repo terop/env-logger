@@ -25,7 +25,7 @@
         com.fzakaria/slf4j-timbre {:mvn/version "0.4.1"}
         terop/cljwebauthn
         {:git/url "https://github.com/terop/cljwebauthn.git"
-         :sha "bb262552d3e79bda6b975c71d06ec3d323d5580f"}}
+         :sha "98a4fe15469c3f18a77ed3865ba8226a51ddadd5"}}
  :aliases
  {:run {:main-opts ["-m" "env-logger.handler"]
         :jvm-opts ["-Dconfig=resources/dev/config.edn"]}
