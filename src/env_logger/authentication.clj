@@ -20,9 +20,9 @@
              [render :refer [serve-json serve-template serve-text]]
              [user :refer [get-user-id get-pw-hash]]])
   (:import java.time.Instant
-           com.webauthn4j.authenticator.AuthenticatorImpl
+           (com.webauthn4j.authenticator AuthenticatorImpl CoreAuthenticatorImpl)
            com.webauthn4j.converter.AttestedCredentialDataConverter
-           com.webauthn4j.converter.util.ObjectConverter
+           (com.webauthn4j.converter.util CborConverter ObjectConverter)
            org.postgresql.util.PSQLException
            webauthn4j.AttestationStatementEnvelope))
 (refer-clojure :exclude '[filter for group-by into partition-by set update])
@@ -52,24 +52,21 @@
           object-converter (ObjectConverter.)
           credential-converter (AttestedCredentialDataConverter.
                                 object-converter)
-          cred-base64 (b64/encode-binary (.convert credential-converter
-                                                   (.getAttestedCredentialData
-                                                    ^AuthenticatorImpl
-                                                    authenticator)))
-          envelope (AttestationStatementEnvelope. (.getAttestationStatement
-                                                   ^AuthenticatorImpl
+          cred-base64 (b64/encode-binary (AttestedCredentialDataConverter/.convert credential-converter
+                                                                                   (CoreAuthenticatorImpl/.getAttestedCredentialData
+                                                                                    authenticator)))
+          envelope (AttestationStatementEnvelope. (CoreAuthenticatorImpl/.getAttestationStatement
                                                    authenticator))
           row (js/insert! db-con
                           :webauthn_authenticators
                           {:user_id user-id
                            :name (when (seq @authenticator-name)
                                    @authenticator-name)
-                           :counter (.getCounter ^AuthenticatorImpl
-                                     authenticator)
+                           :counter (CoreAuthenticatorImpl/.getCounter authenticator)
                            :attested_credential cred-base64
                            :attestation_statement (b64/encode-binary
-                                                   (.writeValueAsBytes
-                                                    (.getCborConverter
+                                                   (CborConverter/.writeValueAsBytes
+                                                    (ObjectConverter/.getCborConverter
                                                      object-converter)
                                                     envelope))}
                           db/rs-opts)]
@@ -87,7 +84,7 @@
         object-converter (ObjectConverter.)
         credential-converter (AttestedCredentialDataConverter.
                               object-converter)
-        cbor-converter (.getCborConverter object-converter)]
+        cbor-converter (ObjectConverter/.getCborConverter object-converter)]
     (for [row (jdbc/execute! db-con
                              (sql/format {:select [:counter
                                                    :attested_credential
@@ -96,15 +93,14 @@
                                           :where [:= :user_id user-id]})
                              db/rs-opts)]
       (AuthenticatorImpl.
-       (.convert credential-converter
-                 (bytes (b64/decode-binary
-                         (:attested-credential row))))
-       (.getAttestationStatement
-        ^AttestationStatementEnvelope
-        (.readValue cbor-converter
-                    (bytes (b64/decode-binary
-                            (:attestation-statement row)))
-                    AttestationStatementEnvelope))
+       (AttestedCredentialDataConverter/.convert
+        credential-converter
+        (bytes (b64/decode-binary (:attested-credential row))))
+       (AttestationStatementEnvelope/.getAttestationStatement
+        (CborConverter/.readValue
+         cbor-converter
+         (bytes (b64/decode-binary (:attestation-statement row)))
+         AttestationStatementEnvelope))
        (:counter row)))))
 
 (defn register-user!
@@ -230,9 +226,8 @@
                          (h/check password (:password auth-data))))]
     (if valid?
       (let [claims {:user (keyword username)
-                    :exp (.getEpochSecond
-                          (.plusSeconds (Instant/now)
-                                        (:jwt-token-timeout env)))}
+                    :exp (Instant/.getEpochSecond
+                          (Instant/.plusSeconds (Instant/now) (:jwt-token-timeout env)))}
             token (jwt/encrypt claims jwe-secret {:alg :a256kw :enc :a128gcm})]
         (serve-text token))
       response-unauthorized)))

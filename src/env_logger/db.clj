@@ -6,7 +6,8 @@
             [next.jdbc :as jdbc]
             [next.jdbc [result-set :as rs] [sql :as js]]
             [java-time.api :as t])
-  (:import (java.text NumberFormat
+  (:import java.sql.Connection
+           (java.text NumberFormat
                       DecimalFormat)
            (java.time DateTimeException
                       LocalDateTime
@@ -108,8 +109,7 @@
 (defn get-tz-offset
   "Returns the offset in hours to UTC for the given timezone."
   [tz]
-  (/ (/ (/ (.getOffset (TimeZone/getTimeZone ^String tz)
-                       (.getTime (Date.))) 1000) 60) 60))
+  (/ (/ (/ (TimeZone/.getOffset (TimeZone/getTimeZone tz) (Date/.getTime (Date.))) 1000) 60) 60))
 
 (defn get-midnight-dt
   "Returns a LocalDateTime at midnight with N days subtracted from the current
@@ -118,10 +118,10 @@
   (let [ldt (t/local-date-time)]
     (t/minus (t/minus ldt
                       (t/days n-days)
-                      (t/hours (.getHour ldt))
-                      (t/minutes (.getMinute ldt))
-                      (t/seconds (.getSecond ldt))
-                      (t/nanos (.getNano ldt)))
+                      (t/hours (LocalDateTime/.getHour ldt))
+                      (t/minutes (LocalDateTime/.getMinute ldt))
+                      (t/seconds (LocalDateTime/.getSecond ldt))
+                      (t/nanos (LocalDateTime/.getNano ldt)))
              ;; Correct generated datetime value when UTC is used as display
              ;; timezone
              (t/hours (if (= (:display-timezone env) "UTC")
@@ -133,8 +133,7 @@
   [tz-offset dt]
   (let [^LocalDateTime subs-dt (t/minus (t/local-date-time dt)
                                         (t/hours tz-offset))]
-    (* (.toEpochSecond subs-dt
-                       ZoneOffset/UTC)
+    (* (LocalDateTime/.toEpochSecond subs-dt ZoneOffset/UTC)
        1000)))
 
 (defn -convert-time->iso8601-str
@@ -246,16 +245,16 @@
                     (do
                       (info (str "Database insert: rolling back "
                                  "transaction after weather data insert"))
-                      (.rollback tx)
+                      (Connection/.rollback tx)
                       false))))
               (do
                 (info (str "Database insert: rolling back "
                            "transaction after beacon scan insert"))
-                (.rollback tx)
+                (Connection/.rollback tx)
                 false))))
         (catch PSQLException pe
           (error pe "Database insert failed")
-          (.rollback tx)
+          (Connection/.rollback tx)
           false)))
     (do
       (error "Wrong number of observation parameters provided")
@@ -445,15 +444,15 @@
                                      [:<= :recorded end]]
                              :order-by [[:id :asc]]})
           tz-offset (get-tz-offset (:display-timezone env))]
-      (.applyPattern ^DecimalFormat nf "0.0#")
+      (DecimalFormat/.applyPattern nf "0.0#")
       (for [row (jdbc/execute! db-con query rs-opts)]
         (merge row
                {:recorded (convert->epoch-ms tz-offset
                                              (:recorded row))
                 :temperature (Float/parseFloat
-                              (.format nf (:temperature row)))
+                              (NumberFormat/.format nf (:temperature row)))
                 :humidity (Float/parseFloat
-                           (.format nf (:humidity row)))})))
+                           (NumberFormat/.format nf (:humidity row)))})))
     (catch PSQLException pe
       (error pe "RuuviTag observation fetching failed")
       {})))
@@ -474,7 +473,7 @@
                                                    :from [:electricity_price]})
                                       rs-opts))]
                         (add-tz-offset-to-dt (t/local-date-time dt))))]
-      (.applyPattern ^DecimalFormat nf "0.0#")
+      (DecimalFormat/.applyPattern nf "0.0#")
       (if-not end-val
         [nil]
         (for [date (take (inc (t/time-between (t/local-date start)
@@ -497,10 +496,10 @@
                      {:date (t/format :iso-local-date date)
                       :price (when (:price result)
                                (Float/parseFloat
-                                (.format nf (:price result))))
+                                (NumberFormat/.format nf (:price result))))
                       :consumption (when (:consumption result)
                                      (Float/parseFloat
-                                      (.format nf (:consumption result))))}))))))
+                                      (NumberFormat/.format nf (:consumption result))))}))))))
     (catch PSQLException pe
       (error pe "Daily electricity data fetching failed")
       [nil])))
@@ -545,8 +544,8 @@
           result (:avg (jdbc/execute-one! db-con query rs-opts))]
       (when result
         (let [nf (NumberFormat/getInstance)]
-          (.applyPattern ^DecimalFormat nf "0.0#")
-          (.format nf result))))
+          (DecimalFormat/.applyPattern nf "0.0#")
+          (NumberFormat/.format nf result))))
     (catch PSQLException pe
       (error pe "Monthly average electricity price fetching failed")
       nil)))
@@ -582,11 +581,11 @@
         (if (= (count consumption-data) (count res))
           true
           (do
-            (.rollback tx)
+            (Connection/.rollback tx)
             false)))
       (catch PSQLException pe
         (error pe "Electricity consumption data insert failed")
-        (.rollback tx)
+        (Connection/.rollback tx)
         false))))
 
 (defn get-latest-elec-consumption-record-time

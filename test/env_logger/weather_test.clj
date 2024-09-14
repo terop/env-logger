@@ -33,12 +33,11 @@
   (testing "Date and time to ISO 8601 with timezone string conversion"
     (let [now (ZonedDateTime/now (t/zone-id "Europe/Helsinki"))]
       (is (= (str (first (str/split
-                          (str (.minusHours now
-                                            (if (= "UTC" (:weather-timezone
-                                                          env))
-                                              0
-                                              (get-tz-offset
-                                               "Europe/Helsinki"))))
+                          (str (ZonedDateTime/.minusHours
+                                now
+                                (if (= "UTC" (:weather-timezone env))
+                                  0
+                                  (get-tz-offset "Europe/Helsinki"))))
                           #"\.")) "Z")
              (-convert-dt->tz-iso8601-str now))))))
 

@@ -12,7 +12,8 @@
             [next.jdbc :as jdbc]
             [java-time.api :as t]
             [env-logger [db :refer [rs-opts -convert-time->iso8601-str]]])
-  (:import java.time.temporal.ChronoUnit
+  (:import (java.time LocalDateTime ZonedDateTime)
+           java.time.temporal.ChronoUnit
            org.postgresql.util.PSQLException))
 (refer-clojure :exclude '[filter for group-by into partition-by set update])
 (require '[honey.sql :as sql])
@@ -30,12 +31,12 @@
   DateTime object. The time is the closest even ten minutes in the past,
   example: for 08:27 it would be 08:20."
   []
-  (let [curr-minute (.getMinute (t/zoned-date-time))
+  (let [curr-minute (ZonedDateTime/.getMinute (t/zoned-date-time))
         start-time (t/minus (t/zoned-date-time)
                             (t/minutes (- curr-minute
                                           (- curr-minute
                                              (mod curr-minute 10))))
-                            (t/seconds (.getSecond (t/zoned-date-time))))]
+                            (t/seconds (ZonedDateTime/.getSecond (t/zoned-date-time))))]
     start-time))
 
 (defn -convert-dt->tz-iso8601-str
@@ -153,7 +154,7 @@
   (try
     ;; The first check is to prevent pointless fetch attempts when data
     ;; is not yet available
-    (when (and (>= (rem (.getMinute (t/local-date-time)) 10) 3)
+    (when (and (>= (rem (LocalDateTime/.getMinute (t/local-date-time)) 10) 3)
                (nil? (get @fmi-current (-convert-dt->tz-iso8601-str
                                         (calculate-start-time)))))
       (let [url (format (str "https://www.ilmatieteenlaitos.fi/api/weather/"
@@ -204,12 +205,10 @@
           (let [obs (last parsed-json)
                 time-str (subs (str/replace (:time obs) "T" "") 0 12)
                 local-dt (t/local-date-time "yyyyMMddHHmm" time-str)
-                offset (.between
+                offset (ChronoUnit/.between
                         ChronoUnit/HOURS
-                        (.atZone local-dt (t/zone-id (:tz obs)))
-                        (.atZone
-                         local-dt
-                         (t/zone-id (:weather-timezone env))))
+                        (LocalDateTime/.atZone local-dt (t/zone-id (:tz obs)))
+                        (LocalDateTime/.atZone local-dt (t/zone-id (:weather-timezone env))))
                 wd {:time
                     (t/sql-timestamp
                      (t/minus

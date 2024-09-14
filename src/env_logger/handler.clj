@@ -239,7 +239,7 @@
      (let [tz (get (:params request) "timezone")]
        (if (and tz
                 (ZoneId/of tz))
-         {:timestamp (.getEpochSecond (Instant/now))
+         {:timestamp (Instant/.getEpochSecond (Instant/now))
           :offset-hour (db/get-tz-offset tz)}
          {:error "Unspecified error"}))
      (catch ZoneRulesException zre

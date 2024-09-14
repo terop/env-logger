@@ -20,7 +20,7 @@
             [buddy.hashers :as h])
   (:import com.webauthn4j.authenticator.AuthenticatorImpl
            com.webauthn4j.converter.AttestedCredentialDataConverter
-           com.webauthn4j.converter.util.ObjectConverter
+           (com.webauthn4j.converter.util CborConverter ObjectConverter)
            webauthn4j.AttestationStatementEnvelope
            (org.postgresql.util PSQLException
                                 PSQLState)))
@@ -34,17 +34,16 @@
 (let [object-converter (ObjectConverter.)
       credential-converter (AttestedCredentialDataConverter.
                             object-converter)
-      cbor-converter (.getCborConverter object-converter)]
+      cbor-converter (ObjectConverter/.getCborConverter object-converter)]
   (def authenticator (AuthenticatorImpl.
-                      (.convert credential-converter
-                                (b64/decode-binary (:attested-credential
-                                                    authenticator-data)))
-                      (.getAttestationStatement
-                       (.readValue cbor-converter
-                                   (b64/decode-binary
-                                    (:attestation-statement
-                                     authenticator-data))
-                                   AttestationStatementEnvelope))
+                      (AttestedCredentialDataConverter/.convert
+                       credential-converter
+                       (b64/decode-binary (:attested-credential authenticator-data)))
+                      (AttestationStatementEnvelope/.getAttestationStatement
+                       (CborConverter/.readValue
+                        cbor-converter
+                        (b64/decode-binary (:attestation-statement authenticator-data))
+                        AttestationStatementEnvelope))
                       (:counter authenticator-data))))
 
 (def test-passwd "testpasswd")
