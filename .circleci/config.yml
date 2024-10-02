@@ -9,7 +9,7 @@ jobs:
           password: $DOCKERHUB_PASSWORD
         environment:
           TEST_DATABASE_URL: postgresql://postgres@localhost/env_logger_test
-      - image: cimg/postgres:16.4
+      - image: cimg/postgres:17.0
         auth:
           username: mydockerhub-user
           password: $DOCKERHUB_PASSWORD
@@ -65,5 +65,5 @@ jobs:
       - run:
           name: run cljfmt
           command: |
-            clojure -Ttools install io.github.weavejester/cljfmt '{:git/tag "0.12.0"}' :as cljfmt
+            clojure -Ttools install io.github.weavejester/cljfmt '{:git/tag "0.13.0"}' :as cljfmt
             clojure -Tcljfmt check
