@@ -392,8 +392,8 @@
                                                      :from :beacons
                                                      :where [:= :id
                                                              beacons-id]}))]
-          (is (= (:mac_address result) "7C:EC:79:3F:BE:97"))
-          (is (= (:rssi result) -68))
+          (is (= "7C:EC:79:3F:BE:97" (:mac_address result)))
+          (is (= -68 (:rssi result)))
           (is (nil? (:battery_level result))))
         ;; Remove beacon to not break other tests
         (jdbc/execute! test-ds
@@ -412,8 +412,8 @@
                                                      :from :beacons
                                                      :where [:= :id
                                                              beacons-id]}))]
-          (is (= (:rssi result) -72))
-          (is (= (:battery_level result) 95)))
+          (is (= -72 (:rssi result)))
+          (is (= 95 (:battery_level result))))
         ;; Remove beacon to not break other tests
         (jdbc/execute! test-ds
                        (sql/format {:delete-from :beacons
