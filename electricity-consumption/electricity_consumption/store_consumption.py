@@ -17,7 +17,7 @@ import psycopg
 from pycaruna import Authenticator, CarunaPlus, TimeSpan
 
 
-def fetch_consumption_data(config, manual_fetch_date):
+def fetch_consumption_data(config, manual_fetch_date=None):
     """Fetch electricity consumption data from the Caruna API.
 
     By default data for the previous day is fetched.
@@ -122,36 +122,9 @@ def create_db_conn_string(db_config):
         f'password={db_config["password"]} dbname={db_config["name"]}'
 
 
-def main():
-    """Run the module code."""
-    logging.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s',
-                        level=logging.INFO)
-
-    parser = argparse.ArgumentParser(description='Stores electricity consumption data '
-                                     'into a PostgreSQL database. By default data for '
-                                     'the previous day is fetched.')
-    parser.add_argument('--config', type=str, help='configuration file to use')
-    parser.add_argument('--date', type=str, help='date (in YYYY-MM-DD format) for '
-                        'which to fetch data')
-    parser.add_argument('--force-store', action='store_true',
-                        help='store data despite missing values')
-    parser.add_argument('--no-store', action='store_true',
-                        help='do not store consumption data to database')
-    parser.add_argument('--verbose', action='store_true',
-                        help='print returned consumption data')
-
-    args = parser.parse_args()
-    config_file = args.config if args.config else 'config.json'
+def handle_storage(args, db_config, consumption_data):
+    """Handle the consumption storage process."""
     required_data_array_length = 24
-
-    if not Path(config_file).exists():
-        logging.error('Could not find configuration file "%s"', config_file)
-        sys.exit(1)
-
-    with Path(config_file).open('r', encoding='utf-8') as cfg_file:
-        config = json.load(cfg_file)
-
-    consumption_data = fetch_consumption_data(config['fetch'], args.date)
 
     if args.verbose:
         logging.info('Consumption data: length %s, array %s',
@@ -164,11 +137,49 @@ def main():
 
     if args.no_store:
         logging.info('Not storing data to database')
-        sys.exit(0)
+        return
 
-    store_consumption(config['db'], consumption_data)
+    store_consumption(db_config, consumption_data)
 
     logging.info('Successfully stored electricity consumption data')
+
+
+def main():
+    """Run the module code."""
+    logging.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s',
+                        level=logging.INFO)
+
+    parser = argparse.ArgumentParser(description='Stores electricity consumption data '
+                                     'into a PostgreSQL database. By default data for '
+                                     'the previous day is fetched.')
+    parser.add_argument('--config', type=str, help='configuration file to use')
+    parser.add_argument('--date', type=str, help='date (in YYYY-MM-DD format) for '
+                        'which to fetch data, multiple comma separated values are '
+                        'supported')
+    parser.add_argument('--force-store', action='store_true',
+                        help='store data despite missing values')
+    parser.add_argument('--no-store', action='store_true',
+                        help='do not store consumption data to database')
+    parser.add_argument('--verbose', action='store_true',
+                        help='print returned consumption data')
+
+    args = parser.parse_args()
+    config_file = args.config if args.config else 'config.json'
+
+    if not Path(config_file).exists():
+        logging.error('Could not find configuration file "%s"', config_file)
+        sys.exit(1)
+
+    with Path(config_file).open('r', encoding='utf-8') as cfg_file:
+        config = json.load(cfg_file)
+
+    if args.date:
+        for date in args.date.split(','):
+            handle_storage(args, config['db'],
+                           fetch_consumption_data(config['fetch'], date))
+    else:
+        handle_storage(args, config['db'],
+                       fetch_consumption_data(config['fetch']))
 
 
 if __name__ == '__main__':
