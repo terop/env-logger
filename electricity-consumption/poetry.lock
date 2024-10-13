@@ -413,13 +413,13 @@ files = [
 
 [[package]]
 name = "pycaruna"
-version = "1.0.2"
+version = "1.0.3"
 description = "Caruna API Python implementation"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "pycaruna-1.0.2-py3-none-any.whl", hash = "sha256:0a50ab03372ca5b6015c1aac5a681309015d9810a24516eb49420c9150f31b92"},
-    {file = "pycaruna-1.0.2.tar.gz", hash = "sha256:207686fc7048ca4dc2259655dbb5e96e64f9114c74bb4aaac03e94cce7661c6a"},
+    {file = "pycaruna-1.0.3-py3-none-any.whl", hash = "sha256:ef9515d651e85bf2ff72efe60e7ec3585e3bf2ae8747331a039c219e03f8e8c8"},
+    {file = "pycaruna-1.0.3.tar.gz", hash = "sha256:84c390b0ee3387761020484db98b904907de9d434c2913144f29c602f65a2f15"},
 ]
 
 [package.dependencies]
