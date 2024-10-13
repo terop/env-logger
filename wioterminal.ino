@@ -17,10 +17,11 @@ const int ledPin = 13;
 String readSensors() {
   digitalWrite(ledPin, 1);
 
-  const uint8_t lightMeasCount = 4;
+  const uint8_t lightMeasCount = 5;
   int lightValuesSum = 0;
 
   for (uint8_t i = 0; i < lightMeasCount; i++)
+    delay(50);
     lightValuesSum += analogRead(A0);
 
   float temperature = sht31.getTemperature();
@@ -59,5 +60,5 @@ void setup(void) {
 
 void loop(void) {
   Serial.println(readSensors());
-  delay(4000);
+  delay(2000);
 }
