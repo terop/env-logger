@@ -7,7 +7,7 @@ readme = "README.md"
 packages = [{include = "logger.py"}]
 
 [tool.poetry.dependencies]
-python = ">=3.12,<3.13"
+python = ">=3.13,<3.14"
 pyserial = "^3.5"
 pytz = "^2024.0"
 requests = "^2.30.0"
@@ -21,4 +21,4 @@ build-backend = "poetry.core.masonry.api"
 [tool.ruff]
 lint.select = ["B", "D", "E", "F", "G", "I", "N", "PERF", "PIE", "PL", "PTH", "SIM", "RUF", "S", "TRY", "W"]
 lint.ignore = ["D203", "D213"]
-target-version = "py312"
+target-version = "py313"
