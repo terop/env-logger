@@ -103,8 +103,9 @@ def main():
     logging.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s',
                         level=logging.INFO)
 
-    parser = argparse.ArgumentParser(description='Stores electricity prices into a '
-                                     'database.')
+    parser = argparse.ArgumentParser(description='Fetch and store electricity price '
+                                     'into a database. By default fetches prices for '
+                                     'the next day.')
     parser.add_argument('--config', type=str, help='configuration file to use')
     parser.add_argument('--date', type=str, help='date (in YYYY-MM-DD format) for '
                         'which to fetch data')

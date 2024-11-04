@@ -141,13 +141,13 @@ all = ["flake8 (>=7.1.1)", "mypy (>=1.11.2)", "pytest (>=8.3.2)", "ruff (>=0.6.2
 
 [[package]]
 name = "nordpool"
-version = "0.4.2"
+version = "0.4.3"
 description = "Python library for fetching Nord Pool spot prices."
 optional = false
-python-versions = "<3.13,>=3.10"
+python-versions = "<3.13,>=3.9"
 files = [
-    {file = "nordpool-0.4.2-py3-none-any.whl", hash = "sha256:8be89152424cbf42b8e2024abaad3887e4c47e6586b14b62d7543aff69298225"},
-    {file = "nordpool-0.4.2.tar.gz", hash = "sha256:bc7ad3a589f89a8e2601d176873c9bebc018608b4d62ff30de26071cab51d249"},
+    {file = "nordpool-0.4.3-py3-none-any.whl", hash = "sha256:c6bb90fcdf86f81a7ecc308f11effa78380a305fa6eaccb9de72f12a6dfd2b4d"},
+    {file = "nordpool-0.4.3.tar.gz", hash = "sha256:98986a86c3d3d9aec84597c6ad8daf8f018aca82cff751730ca92f5a0ed4896d"},
 ]
 
 [package.dependencies]
