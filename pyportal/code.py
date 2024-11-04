@@ -283,11 +283,8 @@ def update_screen(display, observation, weather_data, elec_price_data, utc_offse
     display[0].text = time_str
 
     if observation['weather-data']:
-        sunrise = time.localtime(weather_data['owm']['current']['sunrise'])
-        sunrise = f'{sunrise.tm_hour + utc_offset_hour:02}:{sunrise.tm_min:02}'
-        sunset = time.localtime(weather_data['owm']['current']['sunset'])
-        sunset = f'{sunset.tm_hour + utc_offset_hour:02}:{sunset.tm_min:02}'
-        display[0].text += f'           sr {sunrise} ss {sunset}'
+        display[0].text += f'           sr {weather_data['ast']['sunrise']} ' + \
+            f'ss {weather_data['ast']['sunset']}'
 
         weather = observation['weather-data']
         dt_time = datetime.fromisoformat(weather['time'].replace('Z', ''))
@@ -299,24 +296,20 @@ def update_screen(display, observation, weather_data, elec_price_data, utc_offse
             f'{weather["wind-direction"]["short"]} {weather["wind-speed"]} m/s'
 
     if weather_data['fmi']['forecast']:
-        current = weather_data['owm']['current']
         forecast = weather_data['fmi']['forecast']
-        forecast_dt = time.localtime(weather_data['owm']['forecast']['dt'])
+        forecast_dt = datetime.fromisoformat(forecast['time'].replace('Z', ''))
 
-        display[2].text += f', desc \"{current["weather"][0]["description"]}\"'
         if forecast:
             display[3].text = 'Forecast'
-            if forecast_dt and forecast_dt.tm_hour is not None \
-               and forecast_dt.tm_min is not None:
-                display[3].text += f' ({forecast_dt.tm_hour + utc_offset_hour:02}:' + \
-                    f'{forecast_dt.tm_min:02})'
+            if forecast_dt and forecast_dt.hour is not None \
+               and forecast_dt.minute is not None:
+                display[3].text += f' ({forecast_dt.hour + utc_offset_hour:02}:' + \
+                    f'{forecast_dt.minute:02})'
                 display[3].text += f': temp {forecast["temperature"]} \u00b0C, ' + \
                     f'clouds {forecast["cloudiness"]} %,'
                 display[4].text = f'wind {forecast["wind-direction"]["short"]} ' + \
                     f'{forecast["wind-speed"]} m/s, precipitation ' + \
-                    f'{forecast["precipitation"]} mm,'
-                display[5].text = \
-                    f'desc \"{weather_data["owm"]["forecast"]["weather"][0]["description"]}\"'  # noqa: E501
+                    f'{forecast["precipitation"]} mm'
                 row = 6
     else:
         row = 2
