@@ -14,10 +14,10 @@
               [-convert-dt->tz-iso8601-str
                calculate-start-time
                extract-forecast-data
+               -fetch-astronomy-data
                -update-fmi-weather-forecast
                -update-fmi-weather-data-json
                -update-fmi-weather-data-ts
-               -fetch-owm-data
                get-fmi-weather-data
                get-wd-str
                get-weather-data
@@ -192,113 +192,36 @@
       (is (true? (wd-has-empty-values? (assoc observation :temperature nil))))
       (is (true? (wd-has-empty-values? (assoc observation :wind-speed nil)))))))
 
-;; OWM
+;; Astronomy data
 
-(def owm-json-resp (j/write-value-as-string
-                    {:lat 63.25,
-                     :lon 20.74,
-                     :timezone "Europe/Helsinki",
-                     :timezone_offset 10800,
-                     :current {:sunset 1630086101,
-                               :pressure 1024,
-                               :temp 12.62,
-                               :dt 1630047529,
-                               :sunrise 1630033434,
-                               :wind_speed 2.68,
-                               :humidity 81,
-                               :feels_like 12.05,
-                               :uvi 0.94,
-                               :weather [{:id 804,
-                                          :main "Clouds",
-                                          :description "overcast clouds",
-                                          :icon "04d"}],
-                               :clouds 100,
-                               :wind_deg 58,
-                               :visibility 10000,
-                               :dew_point 9.45},
-                     :hourly [{}
-                              {:pressure 1024,
-                               :temp 12.62,
-                               :pop 0,
-                               :dt 1630047600,
-                               :wind_speed 7.12,
-                               :wind_gust 11.93,
-                               :humidity 81,
-                               :feels_like 12.05,
-                               :uvi 0.94,
-                               :weather
-                               [{:id 804,
-                                 :main "Clouds",
-                                 :description "overcast clouds",
-                                 :icon "04d"}],
-                               :clouds 100,
-                               :wind_deg 66,
-                               :visibility 10000,
-                               :dew_point 9.45}]}))
+(def ipgeol-api-resp (j/write-value-as-string
+                      {:date "2024-11-04"
+                       :sunrise "07:52"
+                       :sunset "16:15"}))
 
-(deftest test-fetch-owm-data
-  (testing "Tests OpenWeatherMap data fetching"
-    (with-fake-routes {#"https://api.openweathermap.org/data(.+)"
+(deftest test-fetch-astronomy-data
+  (testing "Tests astronomy data fetching"
+    (with-fake-routes {#"https://api.ipgeolocation.io/astronomy(.+)"
                        (fn [_] {:status 403})}
-      (is (nil? (-fetch-owm-data 123 456 789))))
-    (with-fake-routes {#"https://api.openweathermap.org/data(.+)"
+      (is (nil? (-fetch-astronomy-data "foo" 456 789))))
+    (with-fake-routes {#"https://api.ipgeolocation.io/astronomy(.+)"
                        (fn [_] {:status 200
-                                :body owm-json-resp})}
-      (is (= {:current
-              {:sunset 1630086101,
-               :pressure 1024,
-               :temp 12.62,
-               :dt 1630047529,
-               :sunrise 1630033434,
-               :wind_speed 2.68,
-               :humidity 81,
-               :feels_like 12.05,
-               :uvi 0.94,
-               :weather
-               [{:id 804,
-                 :main "Clouds",
-                 :description "overcast clouds",
-                 :icon "04d"}],
-               :clouds 100,
-               :wind_deg 58,
-               :visibility 10000,
-               :dew_point 9.45},
-              :forecast
-              {:pressure 1024,
-               :temp 12.62,
-               :pop 0,
-               :dt 1630047600,
-               :wind_speed 7.12,
-               :wind_gust 11.93,
-               :humidity 81,
-               :feels_like 12.05,
-               :uvi 0.94,
-               :weather
-               [{:id 804,
-                 :main "Clouds",
-                 :description "overcast clouds",
-                 :icon "04d"}],
-               :clouds 100,
-               :wind_deg 66,
-               :visibility 10000,
-               :dew_point 9.45}}
-             (dissoc (-fetch-owm-data 123 456 789) :stored))))))
+                                :body ipgeol-api-resp})}
+      (is (= {"2024-11-04" {:sunrise "07:52", :sunset "16:15"}}
+             (-fetch-astronomy-data "foo" 456 789))))))
 
 ;; General
 
 (deftest test-get-weather-data
-  (testing "Tests FMI and OpenWeatherMap data query"
-    (with-fake-routes {#"https://api.openweathermap.org/data(.+)"
-                       (fn [_] {:status 200
-                                :body owm-json-resp})}
-      (let [weather-data (get-weather-data)]
-        (is (seq (:current (:owm weather-data))))
-        (is (= {:time #inst "2022-06-07T16:00:00.000000000-00:00"
-                :temperature 17.0
-                :wind-speed 4.0
-                :cloudiness 0
-                :wind-direction {:short "SE"
-                                 :long "south east"}
-                :precipitation 1.0}
-               (:forecast (:fmi weather-data))))
-        (is (empty? (:not-found weather-data)))))))
+  (testing "Tests FMI and astronomy data query"
+    (let [weather-data (get-weather-data)]
+      (is (nil? (:ast weather-data)))
+      (is (= {:time #inst "2022-06-07T16:00:00.000000000-00:00"
+              :temperature 17.0
+              :wind-speed 4.0
+              :cloudiness 0
+              :wind-direction {:short "SE"
+                               :long "south east"}
+              :precipitation 1.0}
+             (:forecast (:fmi weather-data))))
+      (is (empty? (:not-found weather-data))))))

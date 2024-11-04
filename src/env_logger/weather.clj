@@ -20,7 +20,7 @@
 
 (def fmi-current (atom {}))
 (def fmi-forecast (atom nil))
-(def owm (atom nil))
+(def ast-data (atom {}))
 
 (def retry-count 3)
 
@@ -282,41 +282,36 @@
           (error ex "FMI forecast fetch failed")
           nil)))))
 
-;; OWM
+;; Astronomy data
 
-(defn -fetch-owm-data
-  "Fetch weather data from OpenWeatherMap, this data contains both current
-  weather and forecast data."
-  [app-id latitude longitude]
-  (let [url (format (str "https://api.openweathermap.org/data/3.0/onecall?"
-                         "lat=%s&lon=%s&exclude=minutely,daily,alerts&"
-                         "units=metric&appid=%s")
+(defn -fetch-astronomy-data
+  "Fetch astronomy data, currently sunrise and sunset times. Data is fetched
+  from the ipgeolocation API."
+  [api-key latitude longitude]
+  (let [url (format (str "https://api.ipgeolocation.io/astronomy?"
+                         "apiKey=%s&lat=%s&long=%s")
+                    api-key
                     (str latitude)
-                    (str longitude)
-                    app-id)]
-    (when (or (nil? @owm)
-              (> (abs (t/time-between
-                       (t/local-date-time)
-                       (:stored @owm)
-                       :minutes)) 15))
+                    (str longitude))
+        date-str (str (t/local-date))]
+    (when (or (empty? @ast-data)
+              (nil? (get @ast-data date-str)))
       (let [resp (try
                    (client/get url)
                    (catch Exception ex
-                     (error ex "OWM data fetch failed")
-                     (reset! owm nil)))]
+                     (error ex "Astronomy data fetch failed")))]
         (when (= 200 (:status resp))
           (let [all-data (j/read-value (:body resp)
                                        (j/object-mapper
                                         {:decode-key-fn true}))]
-            (reset! owm
-                    {:current (:current all-data)
-                     :forecast (nth (:hourly all-data) 1)
-                     :stored (t/local-date-time)})))))))
+            (reset! ast-data (assoc @ast-data (:date all-data)
+                                    {:sunrise (:sunrise all-data)
+                                     :sunset (:sunset all-data)}))))))))
 
 ;; General
 
 (defn fetch-all-weather-data
-  "Fetches all (FMI current and forecast as well as OWM) weather data."
+  "Fetches all FMI weather as well as astronomy data."
   []
   (when (or (nil? (-update-fmi-weather-data-ts (:fmi-station-id env)))
             (and (seq @fmi-current)
@@ -330,16 +325,15 @@
             (last (last @fmi-current)))))
   (-update-fmi-weather-forecast (:weather-lat env)
                                 (:weather-lon env))
-  (-fetch-owm-data (:owm-app-id env)
-                   (:weather-lat env)
-                   (:weather-lon env)))
+  (-fetch-astronomy-data (:ipgeol-api-key env)
+                         (:weather-lat env)
+                         (:weather-lon env)))
 
 (defn get-weather-data
-  "Get weather (FMI and OpenWeatherMap) weather data from cache if it is
-  recent enough.
+  "Get weather (FMI) and astronomy data from cache if it is recent enough.
   Otherwise fetch updated data and store it in the cache. Always return
   the available data."
   []
   {:fmi {:current (get-fmi-weather-data)
          :forecast (dissoc @fmi-forecast :fetched)}
-   :owm (dissoc @owm :stored)})
+   :ast (get @ast-data (str (t/local-date)))})

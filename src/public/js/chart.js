@@ -255,11 +255,6 @@ const loadPage = () => {
         `${keyName.includes('battery') ? ' %' : ''}`;
     };
 
-    // Format a given Unix second timestamp in hour:minute format
-    const formatUnixSecondTs = (unixTs) => {
-      return DateTime.fromSeconds(unixTs).toFormat('HH:mm');
-    };
-
     /* eslint-disable no-var */
     var scrollToBottom = (timeout) => {
       window.setTimeout(() => {
@@ -297,10 +292,8 @@ const loadPage = () => {
       }
 
       if (mode === 'all') {
-        if (data.weather.owm) {
-          observationText += `Description: ${data.weather.owm.current.weather[0].description}<br>` +
-            `Sun: Sunrise ${formatUnixSecondTs(data.weather.owm.current.sunrise)},` +
-            ` Sunset ${formatUnixSecondTs(data.weather.owm.current.sunset)}<br>`;
+        if (data.weather.ast) {
+          observationText += `Sun: Sunrise ${data.weather.ast.sunrise}, Sunset ${data.weather.ast.sunset}<br>`;
         }
 
         let obsIndex = dataSets.other.brightness.length - 1;
@@ -343,15 +336,14 @@ const loadPage = () => {
         }
 
         const forecast = data.weather.fmi.forecast;
-        if (forecast && data.weather.owm.forecast) {
+        if (forecast) {
           document.getElementById('forecast').innerHTML =
             '<br><br>Forecast for ' +
             DateTime.fromISO(forecast.time).toFormat('dd.MM.yyyy HH:mm') +
             `: temperature: ${forecast.temperature} \u2103, ` +
             `cloudiness: ${forecast.cloudiness} %, ` +
             `wind: ${forecast['wind-direction'].long} ${forecast['wind-speed']} m/s, ` +
-            `precipitation: ${forecast.precipitation} mm, ` +
-            `description: ${data.weather.owm.forecast.weather[0].description}`;
+            `precipitation: ${forecast.precipitation} mm`;
         }
       } else {
         observationText = observationText.slice(0, -2);

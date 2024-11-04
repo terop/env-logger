@@ -22,8 +22,8 @@
  :initial-show-days 2
  ;; FMI weather station ID
  :fmi-station-id 1234
- ;; OpenWeatherMap application ID (access key)
- :owm-app-id "myappid"
+ ;; ipgeolocation API key, used for astronomy data fetching
+ :ipgeol-api-key "myapikey"
  ;; Position latitude for weather data
  :weather-lat 12.34
  ;; Position longitude for weather data
