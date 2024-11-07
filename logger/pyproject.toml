@@ -1,24 +1,23 @@
-[tool.poetry]
+[project]
 name = "logger"
 version = "0.1.0"
 description = "An environment logger script"
-authors = ["Tero Paloheimo <tero.paloheimo@iki.fi>"]
 readme = "README.md"
-packages = [{include = "logger.py"}]
-
-[tool.poetry.dependencies]
-python = ">=3.13,<3.14"
-pyserial = "^3.5"
-pytz = "^2024.0"
-requests = "^2.30.0"
-ruuvitag-sensor = { git = "https://github.com/ttu/ruuvitag-sensor.git" }
-
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+authors = [
+  {name = "Tero Paloheimo", email = "tero.paloheimo@iki.fi"}
+]
+requires-python = ">=3.13"
+dependencies = [
+    "pyserial>=3.5",
+    "pytz>=2024.2",
+    "requests>=2.32.3",
+    "ruuvitag-sensor",
+]
 
 [tool.ruff]
 lint.select = ["B", "D", "E", "F", "G", "I", "N", "PERF", "PIE", "PL", "PTH", "SIM", "RUF", "S", "TRY", "W"]
 lint.ignore = ["D203", "D213"]
 target-version = "py313"
+
+[tool.uv.sources]
+ruuvitag-sensor = { git = "https://github.com/ttu/ruuvitag-sensor.git" }

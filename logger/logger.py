@@ -216,7 +216,7 @@ def main():
     store_to_db(config, timestamp, env_data)
 
     logging.info('RuuviTag scan started')
-    command = f'poetry run python3 rt_scan.py --config {config_file} ' \
+    command = f'uv run python3 rt_scan.py --config {config_file} ' \
         f'--bt-device {bt_device}'
     ret_val = subprocess.run(shlex.split(command), capture_output=True, check=False)  # noqa: S603
     ruuvitags = literal_eval(ret_val.stdout.decode().strip())
