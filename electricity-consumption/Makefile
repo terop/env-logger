@@ -6,4 +6,4 @@ build: update
 	podman tag $(IMAGE_NAME) $(shell whoami)/$(IMAGE_NAME)
 
 update: # update base image
-	podman pull python:3.13-alpine
+	podman pull python:3.13-alpine ghcr.io/astral-sh/uv:python3.13-alpine

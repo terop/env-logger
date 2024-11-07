@@ -1,26 +1,34 @@
-FROM python:3.13-alpine as python
-ENV PYTHONUNBUFFERED=true
-RUN apk update && apk upgrade && python3 -m pip install --upgrade pip
-
-WORKDIR /usr/src/app
-COPY poetry.lock .
-COPY electricity_consumption/config.json electricity_consumption/store_consumption.py \
-    ./electricity_consumption/
+FROM ghcr.io/astral-sh/uv:python3.13-alpine AS builder
+ENV UV_COMPILE_BYTECODE=1
+WORKDIR /app
+RUN --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --frozen --no-install-project --no-dev
 
 LABEL org.opencontainers.image.authors="tero.paloheimo@iki.fi"
 
-FROM python as poetry
-ENV POETRY_VIRTUALENVS_IN_PROJECT=true
-ENV PATH="/root/.local/bin:${PATH}"
-RUN apk add --no-cache curl
+FROM python:3.13-alpine
+ENV PYTHONUNBUFFERED=true
 
-RUN curl -sSL https://install.python-poetry.org | python3 -
-COPY pyproject.toml poetry.lock README.md ./
-RUN poetry install --no-interaction --no-ansi -vv
+RUN apk update && apk upgrade
 
-FROM python as runtime
+# Add user to run the app
+ARG APPLICATION_USER=appuser
+RUN adduser --no-create-home -u 1000 -D ${APPLICATION_USER}
+
+RUN mkdir /usr/src/app && chown -R ${APPLICATION_USER} /usr/src/app
+
+WORKDIR /usr/src/app
+
+# Copy the application from the builder
+COPY --from=builder --chown=${APPLICATION_USER}:${APPLICATION_USER} \
+     /app .
+
+COPY --chown=${APPLICATION_USER}:${APPLICATION_USER} \
+     config.json store_consumption.py .
+
+# Place executables in the environment at the front of the path
 ENV PATH="/usr/src/app/.venv/bin:${PATH}"
-COPY --from=poetry /usr/src/app /usr/src/app
 
-WORKDIR /usr/src/app/electricity_consumption
-ENTRYPOINT [ "python", "./store_consumption.py" ]
+USER ${APPLICATION_USER}
+ENTRYPOINT ["python", "store_consumption.py"]

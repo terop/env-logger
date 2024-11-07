@@ -1,19 +1,16 @@
-[tool.poetry]
+[project]
 name = "electricity-consumption"
 version = "0.1.0"
-description = ""
-authors = ["Tero Paloheimo <tero.paloheimo@iki.fi>"]
+description = "Electricity consumption data fetcher"
 readme = "README.md"
-packages = [{include = "electricity_consumption"}]
-
-[tool.poetry.dependencies]
-python = "^3.13"
-psycopg = {extras = ["binary"], version = "^3.1.8"}
-pycaruna = "^1.0.2"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+authors = [
+  {name = "Tero Paloheimo", email = "tero.paloheimo@iki.fi"}
+]
+requires-python = ">=3.13"
+dependencies = [
+    "psycopg[binary]>=3.2.3",
+    "pycaruna>=1.0.3",
+]
 
 [tool.ruff]
 lint.select = ["B", "D", "E", "F", "G", "I", "N", "PERF", "PIE", "PL", "PTH", "SIM", "RUF", "S", "TRY", "W"]
