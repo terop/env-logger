@@ -1,21 +1,18 @@
-[tool.poetry]
+[project]
 name = "testbed-image"
 version = "0.1.0"
 description = "FMI Testbed image fetcher"
-authors = ["Tero Paloheimo <tero.paloheimo@iki.fi>"]
-packages = [{include = "testbed_image.py"}]
-
-[tool.poetry.dependencies]
-python = "^3.13"
-requests = "^2.30.0"
-beautifulsoup4 = "^4.12.0"
-pytz = "^2024.0"
-lxml = "^5.1.0"
-
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+readme = "README.md"
+authors = [
+  {name = "Tero Paloheimo", email = "tero.paloheimo@iki.fi"}
+]
+requires-python = ">=3.13"
+dependencies = [
+    "beautifulsoup4>=4.12.3",
+    "lxml>=5.3.0",
+    "pytz>=2024.2",
+    "requests>=2.32.3",
+]
 
 [tool.ruff]
 lint.select = ["B", "D", "E", "F", "G", "I", "N", "PERF", "PIE", "PL", "PTH", "SIM", "RUF", "S", "TRY", "W"]
