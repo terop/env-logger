@@ -1,20 +1,16 @@
-[tool.poetry]
+[project]
 name = "electricity-price"
 version = "0.1.0"
 description = "Tool for fetching electricity price"
-authors = ["Tero Paloheimo <tero.paloheimo@iki.fi>"]
 readme = "README.md"
-packages = [{include = "store_price.py"}]
-
-[tool.poetry.dependencies]
-python = ">=3.12,<3.13"
-psycopg = {extras = ["binary"], version = "^3.1.9"}
-nordpool = "^0.4.0"
-
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+authors = [
+  {name = "Tero Paloheimo", email = "tero.paloheimo@iki.fi"}
+]
+requires-python = ">=3.12"
+dependencies = [
+    "nordpool>=0.4.3",
+    "psycopg[binary]>=3.2.3",
+]
 
 [tool.ruff]
 lint.select = ["B", "D", "E", "F", "G", "I", "N", "PERF", "PIE", "PL", "PTH", "SIM", "RUF", "S", "TRY", "W"]
