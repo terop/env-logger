@@ -1,27 +1,36 @@
-FROM python:3.13-slim as python
-ENV PYTHONUNBUFFERED=true
-RUN apt-get update && apt-get upgrade -y && python3 -m pip install --upgrade pip
-
-WORKDIR /usr/src/app
-COPY monitor.cfg monitor.py ./
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS builder
+ENV UV_COMPILE_BYTECODE=1
+WORKDIR /app
+RUN --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --frozen --no-install-project --no-dev
 
 LABEL org.opencontainers.image.authors="tero.paloheimo@iki.fi"
 
-FROM python as poetry
-ENV POETRY_VIRTUALENVS_IN_PROJECT=true
-ENV PATH="/root/.local/bin:${PATH}"
-RUN apt-get install -y curl && apt-get clean
+FROM python:3.13-slim
+ENV PYTHONUNBUFFERED=true
 
-RUN curl -sSL https://install.python-poetry.org | python3 -
-COPY pyproject.toml poetry.lock ./
-RUN poetry install --no-interaction --no-ansi -vv
+RUN apt-get update && apt-get upgrade -y && apt-get clean
 
-FROM python as runtime
+# Add user to run the app
+ARG APPLICATION_USER=appuser
+RUN useradd --no-create-home -u 1000 ${APPLICATION_USER}
+
+WORKDIR /usr/src/app
+
+# Copy the application from the builder
+COPY --from=builder --chown=${APPLICATION_USER}:${APPLICATION_USER} \
+     /app .
+
+COPY --chown=${APPLICATION_USER}:${APPLICATION_USER} \
+     monitor.cfg monitor.py .
+
+# Place executables in the environment at the front of the path
 ENV PATH="/usr/src/app/.venv/bin:${PATH}"
-COPY --from=poetry /usr/src/app /usr/src/app
 
 # Set IPv4 preference over IPv6 so that broken IPv6 environments cause minimal
 # delay for network operations
 RUN sed -i 's|#precedence ::ffff:0:0/96  100|precedence ::ffff:0:0/96  100|' /etc/gai.conf
 
-ENTRYPOINT [ "python", "./monitor.py" ]
+USER ${APPLICATION_USER}
+ENTRYPOINT ["python", "monitor.py"]

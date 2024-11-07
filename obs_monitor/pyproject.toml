@@ -1,18 +1,15 @@
-[tool.poetry]
+[project]
 name = "obs-monitor"
 version = "0.1.0"
 description = "env-logger observation monitor"
-authors = ["Tero Paloheimo <tero.paloheimo@iki.fi>"]
-packages = [{include = "monitor.py"}]
-
-[tool.poetry.dependencies]
-python = "^3.13"
-psycopg = {extras = ["binary"], version = "^3.1.9"}
-
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+readme = "README.md"
+authors = [
+  {name = "Tero Paloheimo", email = "tero.paloheimo@iki.fi"}
+]
+requires-python = ">=3.13"
+dependencies = [
+    "psycopg[binary]>=3.2.3",
+]
 
 [tool.ruff]
 lint.select = ["B", "D", "E", "F", "G", "I", "N", "PERF", "PIE", "PL", "PTH", "SIM", "RUF", "S", "TRY", "W"]
