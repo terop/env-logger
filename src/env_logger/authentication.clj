@@ -52,17 +52,21 @@
           object-converter (ObjectConverter.)
           credential-converter (AttestedCredentialDataConverter.
                                 object-converter)
-          cred-base64 (b64/encode-binary (AttestedCredentialDataConverter/.convert credential-converter
-                                                                                   (CoreAuthenticatorImpl/.getAttestedCredentialData
-                                                                                    authenticator)))
-          envelope (AttestationStatementEnvelope. (CoreAuthenticatorImpl/.getAttestationStatement
-                                                   authenticator))
+          cred-base64 (b64/encode-binary
+                       (AttestedCredentialDataConverter/.convert
+                        credential-converter
+                        (CoreAuthenticatorImpl/.getAttestedCredentialData
+                         authenticator)))
+          envelope (AttestationStatementEnvelope.
+                    (CoreAuthenticatorImpl/.getAttestationStatement
+                     authenticator))
           row (js/insert! db-con
                           :webauthn_authenticators
                           {:user_id user-id
                            :name (when (seq @authenticator-name)
                                    @authenticator-name)
-                           :counter (CoreAuthenticatorImpl/.getCounter authenticator)
+                           :counter (CoreAuthenticatorImpl/.getCounter
+                                     authenticator)
                            :attested_credential cred-base64
                            :attestation_statement (b64/encode-binary
                                                    (CborConverter/.writeValueAsBytes
@@ -227,7 +231,8 @@
     (if valid?
       (let [claims {:user (keyword username)
                     :exp (Instant/.getEpochSecond
-                          (Instant/.plusSeconds (Instant/now) (:jwt-token-timeout env)))}
+                          (Instant/.plusSeconds (Instant/now)
+                                                (:jwt-token-timeout env)))}
             token (jwt/encrypt claims jwe-secret {:alg :a256kw :enc :a128gcm})]
         (serve-text token))
       response-unauthorized)))
