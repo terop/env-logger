@@ -16,7 +16,7 @@
   (b/javac {:src-dirs ["src/java"]
             :class-dir class-dir
             :basis basis
-            :javac-opts ["-source" "17" "-target" "17"]}))
+            :javac-opts ["-source" "21" "-target" "21" "-proc:none"]}))
 
 (defn build [_]
   (compile-java nil)
