@@ -38,6 +38,10 @@ let testbedImageNames = [];
 let rtNames = [];
 
 const loadPage = () => {
+  const isShowAll = () => {
+    return mode === 'all';
+  };
+
   // Parse RuuviTag observations
   // rtObservations - observations as JSON
   // rtLabels - RuuviTag labels
@@ -138,7 +142,7 @@ const loadPage = () => {
       }
     };
 
-    if (mode === 'all') {
+    if (isShowAll()) {
       dataLabels.other.push(new Date(observation.recorded));
 
       recordAnnotationIndexes('other', observation.recorded);
@@ -191,7 +195,7 @@ const loadPage = () => {
     });
 
     // Data labels
-    if (mode === 'all') {
+    if (isShowAll()) {
       parseRTData(data.rt, rtNames);
 
       let beaconName = null;
@@ -237,7 +241,7 @@ const loadPage = () => {
     document.getElementById('noDataError').style.display = 'block';
     hideElement('weatherDiv');
     hideElement('imageButtonDiv');
-    if (mode === 'all') {
+    if (isShowAll()) {
       hideElement('latestCheckboxDiv');
       hideElement('weatherCheckboxDiv');
       hideElement('plotAccordion');
@@ -280,13 +284,13 @@ const loadPage = () => {
         return;
       }
 
-      if (mode === 'all' && data.weather.ast) {
+      if (isShowAll() && data.weather.ast) {
         observationText += `<span class="weight-bold">Sun</span>: sunrise ${data.weather.ast.sunrise}, sunset ${data.weather.ast.sunset}<br>`;
       }
 
-      const wd = (mode === 'all' ? data.weather.fmi.current : data.weather);
+      const wd = (isShowAll() ? data.weather.fmi.current : data.weather);
       if (wd) {
-        observationText += mode === 'all' ? '<span class="weight-bold">Weather</span>' : 'Weather';
+        observationText += isShowAll() ? '<span class="weight-bold">Weather</span>' : 'Weather';
         observationText += ` at ${DateTime.now().setLocale('fi').toLocaleString()}` +
           ` ${DateTime.fromISO(wd.time).toLocaleString(DateTime.TIME_SIMPLE)}: `;
         for (const key of weatherKeys) {
@@ -303,7 +307,7 @@ const loadPage = () => {
         }
       }
 
-      if (mode === 'all') {
+      if (isShowAll()) {
         observationText = observationText.slice(0, -2);
 
         let obsIndex = dataSets.other.brightness.length - 1;
@@ -1019,7 +1023,7 @@ const loadPage = () => {
 
     document.getElementById('weatherPlot').on('plotly_legendclick', updatePlot);
 
-    if (mode === 'all') {
+    if (isShowAll()) {
       Plotly.newPlot('otherPlot',
         generateTraceConfig('other'),
         generateLayoutConfig('other'));
@@ -1079,7 +1083,7 @@ const loadPage = () => {
     const diff = DateTime.fromISO(endDate).diff(
       DateTime.fromISO(startDate), ['days']);
 
-    if (mode === 'all' || diff.days >= 7) {
+    if (isShowAll() || diff.days >= 7) {
       isSpinnerShown = true;
       toggleLoadingSpinner();
     }
@@ -1128,7 +1132,7 @@ const loadPage = () => {
 
         plotUpdateAfterReset('weather');
 
-        if (mode === 'all') {
+        if (isShowAll()) {
           plotUpdateAfterReset('other');
           plotUpdateAfterReset('ruuvitag');
         }
@@ -1228,7 +1232,7 @@ const loadPage = () => {
     updateButtonClickHandler,
     false);
 
-  if (mode === 'all') {
+  if (isShowAll()) {
     document.getElementById('elecUpdateBtn').addEventListener('click',
       elecUpdateButtonClickHandler,
       false);
@@ -1248,7 +1252,7 @@ const loadPage = () => {
       },
       false);
 
-  if (mode === 'all' && data.obs.length) {
+  if (isShowAll() && data.obs.length) {
     showElectricityPrice();
 
     document.getElementById('showLatestObs').addEventListener('click',
