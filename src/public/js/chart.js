@@ -221,8 +221,9 @@ const loadPage = () => {
     }
     labelValues.weather = {
       'fmi-temperature': 'Temperature',
-      cloudiness: 'Cloudiness',
-      'wind-speed': 'Wind speed'
+      'cloudiness': 'Cloudiness',
+      'wind-speed': 'Wind speed',
+      'humidity': 'Humidity'
     };
 
     return labelValues;
@@ -252,7 +253,9 @@ const loadPage = () => {
         `${keyName.includes('wind') ? ' m/s' : ''}` +
         `${keyName.includes('humidity') ? ' %H' : ''}` +
         `${keyName.includes('rssi') ? ' dBm' : ''}` +
-        `${keyName.includes('battery') ? ' %' : ''}`;
+        `${keyName.includes('battery') ? ' %' : ''}` +
+        `${keyName.includes('precipitation') ? ' mm' : ''}` +
+        `${keyName.includes('cloudiness') ? ' %' : ''}`;
     };
 
     /* eslint-disable no-var */
@@ -266,7 +269,7 @@ const loadPage = () => {
     // Show last observation and some other data for quick viewing
     const showLastObservation = () => {
       let observationText = '';
-      const weatherKeys = ['fmi-temperature', 'cloudiness', 'wind-speed'];
+      const weatherKeys = ['fmi-temperature', 'cloudiness', 'wind-speed', 'humidity'];
 
       if (!data.weather) {
         console.log('Error: no weather data');
@@ -292,8 +295,9 @@ const loadPage = () => {
       }
 
       if (mode === 'all') {
+        observationText = observationText.slice(0, -2);
         if (data.weather.ast) {
-          observationText += `Sun: Sunrise ${data.weather.ast.sunrise}, Sunset ${data.weather.ast.sunset}<br>`;
+          observationText += `<br>Sun: Sunrise ${data.weather.ast.sunrise}, Sunset ${data.weather.ast.sunset}<br>`;
         }
 
         let obsIndex = dataSets.other.brightness.length - 1;
@@ -340,10 +344,11 @@ const loadPage = () => {
           document.getElementById('forecast').innerHTML =
             '<br><br>Forecast for ' +
             DateTime.fromISO(forecast.time).toFormat('dd.MM.yyyy HH:mm') +
-            `: temperature: ${forecast.temperature} \u2103, ` +
-            `cloudiness: ${forecast.cloudiness} %, ` +
-            `wind: ${forecast['wind-direction'].long} ${forecast['wind-speed']} m/s, ` +
-            `precipitation: ${forecast.precipitation} mm`;
+            `: temperature: ${forecast.temperature} ${addUnitSuffix('temperature')}, ` +
+            `cloudiness: ${forecast.cloudiness} ${addUnitSuffix('cloudiness')}, ` +
+            `wind: ${forecast['wind-direction'].long} ${forecast['wind-speed']} ${addUnitSuffix('wind')}, ` +
+            `precipitation: ${forecast.precipitation} ${addUnitSuffix('precipitation')}, ` +
+            `humidity: ${forecast.humidity} ${addUnitSuffix('humidity')}`;
         }
       } else {
         observationText = observationText.slice(0, -2);

@@ -50,6 +50,7 @@
             :cloudiness 0
             :wind-direction {:long "south east", :short "SE"}
             :precipitation 1.0
+            :humidity 93.0
             :time #inst "2022-06-07T16:00:00.000000000-00:00"}
            (extract-forecast-data
             (load-file "test/env_logger/wfs_forecast_data.txt"))))))
@@ -94,13 +95,22 @@
     (with-redefs [j/read-value (fn [_ _] [])]
       (is (nil? (-update-fmi-weather-data-ts 87874))))
     (with-redefs [j/read-value (fn [_ _]
-                                 [{:cloudiness 5.0
+                                 [{:cloudiness 8.0
                                    :tz "Europe/Helsinki"
-                                   :time "20221221T215000"
-                                   :winddirection 68.0,
-                                   :windspeed 2.6
-                                   :temperature -7.6}])]
-      (is (some? (-update-fmi-weather-data-ts 87874))))))
+                                   :time "20241110T102000"
+                                   :winddirection 254.0
+                                   :windspeed 1.1
+                                   :temperature 1.4
+                                   :humidity 90}])]
+      (let [wd (-update-fmi-weather-data-ts 87874)]
+        (is (= {:time #inst "2024-11-10T08:20:00.000000000-00:00",
+                :temperature 1.4
+                :cloudiness 8
+                :wind-speed 1.1
+                :wind-direction {:short "W"
+                                 :long "west"}
+                :humidity 90}
+               (get wd (first (keys wd)))))))))
 
 (deftest test-weather-data-json-update
   (testing "Tests FMI weather data (JSON) updating"
@@ -109,7 +119,23 @@
       (is (nil? (-update-fmi-weather-data-json 87874))))
     (with-redefs [j/read-value (fn [_ _]
                                  {:observations nil})]
-      (is (nil? (-update-fmi-weather-data-json 87874))))))
+      (is (nil? (-update-fmi-weather-data-json 87874))))
+    (with-redefs [j/read-value (fn [_ _]
+                                 {:observations [{:localtime "20241110T102000"
+                                                  :t2m 1.4
+                                                  :TotalCloudCover 8
+                                                  :WindSpeedMS 1.1
+                                                  :WindDirection 254
+                                                  :Humidity 90}]})]
+      (let [wd (-update-fmi-weather-data-json 87874)]
+        (is (= {:time #inst "2024-11-10T08:20:00.000000000-00:00",
+                :temperature 1.4
+                :cloudiness 8
+                :wind-speed 1.1
+                :wind-direction {:short "W"
+                                 :long "west"}
+                :humidity 90}
+               (get wd (first (keys wd)))))))))
 
 (deftest fmi-weather-data-fetch
   (testing "Tests FMI weather data fetch"
@@ -222,6 +248,7 @@
               :cloudiness 0
               :wind-direction {:short "SE"
                                :long "south east"}
-              :precipitation 1.0}
+              :precipitation 1.0
+              :humidity 93.0}
              (:forecast (:fmi weather-data))))
       (is (empty? (:not-found weather-data))))))

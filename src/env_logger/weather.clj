@@ -121,7 +121,7 @@
 (defn extract-forecast-data
   "Parses and returns forecast data values from the given XML data."
   [parsed-xml]
-  (when (>= (count (:content parsed-xml)) 4)
+  (when (>= (count (:content parsed-xml)) 5)
     (let [root (xml-zip parsed-xml)
           values (map
                   zx/text
@@ -145,7 +145,9 @@
        :precipitation (if (= (nth values 4) "NaN")
                         0
                         (Float/parseFloat (format "%.1f" (Float/parseFloat
-                                                          (nth values 4)))))})))
+                                                          (nth values 4)))))
+       :humidity (Float/parseFloat (format "%.1f" (Float/parseFloat
+                                                   (nth values 5))))})))
 
 (defn -update-fmi-weather-data-json
   "Updates the latest FMI weather data from the FMI JSON for the given weather
@@ -177,7 +179,8 @@
                     :cloudiness (if-not (nil? (:TotalCloudCover obs))
                                   (:TotalCloudCover obs) 9)
                     :wind-speed (:WindSpeedMS obs)
-                    :wind-direction (get-wd-str (:WindDirection obs))}]
+                    :wind-direction (get-wd-str (:WindDirection obs))
+                    :humidity (:Humidity obs)}]
             (when-not (nil? (:temperature wd))
               (swap! fmi-current conj
                      {(-convert-time->iso8601-str (:time wd)) wd}))))))
@@ -194,8 +197,8 @@
                                    (calculate-start-time))))
       (let [url (format (str "https://opendata.fmi.fi/timeseries?producer="
                              "opendata&fmisid=%s&param=time,tz,temperature,"
-                             "cloudiness,windspeed,winddirection&format=json&"
-                             "precision=double&starttime=%s")
+                             "cloudiness,windspeed,winddirection,humidity"
+                             "&format=json&precision=double&starttime=%s")
                         station-id
                         (-convert-dt->tz-iso8601-str (calculate-start-time)))
             parsed-json (j/read-value (:body (client/get url))
@@ -208,7 +211,9 @@
                 offset (ChronoUnit/.between
                         ChronoUnit/HOURS
                         (LocalDateTime/.atZone local-dt (t/zone-id (:tz obs)))
-                        (LocalDateTime/.atZone local-dt (t/zone-id (:weather-timezone env))))
+                        (LocalDateTime/.atZone local-dt
+                                               (t/zone-id (:weather-timezone
+                                                           env))))
                 wd {:time
                     (t/sql-timestamp
                      (t/minus
@@ -218,7 +223,8 @@
                     :cloudiness (if-not (nil? (:cloudiness obs))
                                   (int (:cloudiness obs)) 9)
                     :wind-speed (:windspeed obs)
-                    :wind-direction (get-wd-str (:winddirection obs))}]
+                    :wind-direction (get-wd-str (:winddirection obs))
+                    :humidity (:humidity obs)}]
             (when wd
               (swap! fmi-current
                      conj
@@ -249,8 +255,8 @@
                            "forecast::edited::weather::scandinavia::point::"
                            "simple&latlon="
                            "%s&parameters=Temperature,WindSpeedMS,"
-                           "TotalCloudCover,WindDirection,PrecipitationAmount"
-                           "&starttime=%s&endtime=%s")
+                           "TotalCloudCover,WindDirection,PrecipitationAmount,"
+                           "Humidity&starttime=%s&endtime=%s")
                       (str latitude "," longitude)
                       ;; Start time must always be ahead of the current time so
                       ;; that forecast for the next hour is fetched
