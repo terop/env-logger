@@ -214,8 +214,8 @@ const loadPage = () => {
       };
       for (const name of rtNames) {
         labelValues.rt[name] = {
-          temperature: `RT "${name}" temperature`,
-          humidity: `RT "${name}" humidity`
+          temperature: `"${name}" temperature`,
+          humidity: `"${name}" humidity`
         };
       }
     }
@@ -254,8 +254,12 @@ const loadPage = () => {
         `${keyName.includes('humidity') ? ' %H' : ''}` +
         `${keyName.includes('rssi') ? ' dBm' : ''}` +
         `${keyName.includes('battery') ? ' %' : ''}` +
-        `${keyName.includes('precipitation') ? ' mm' : ''}` +
-        `${keyName.includes('cloudiness') ? ' %' : ''}`;
+        `${keyName.includes('precipitation') ? ' mm' : ''}`;
+    };
+
+    // Change the first letter to lowercase
+    const lowerFL = (str) => {
+      return str.charAt(0).toLowerCase() + str.slice(1);
     };
 
     /* eslint-disable no-var */
@@ -276,19 +280,24 @@ const loadPage = () => {
         return;
       }
 
+      if (mode === 'all' && data.weather.ast) {
+        observationText += `<span class="weight-bold">Sun</span>: sunrise ${data.weather.ast.sunrise}, sunset ${data.weather.ast.sunset}<br>`;
+      }
+
       const wd = (mode === 'all' ? data.weather.fmi.current : data.weather);
       if (wd) {
-        observationText += `${DateTime.now().setLocale('fi').toLocaleString()}` +
+        observationText += mode === 'all' ? '<span class="weight-bold">Weather</span>' : 'Weather';
+        observationText += ` at ${DateTime.now().setLocale('fi').toLocaleString()}` +
           ` ${DateTime.fromISO(wd.time).toLocaleString(DateTime.TIME_SIMPLE)}: `;
         for (const key of weatherKeys) {
           if (key === 'wind-speed') {
-            observationText += `Wind: ${wd['wind-direction'].long} ` +
+            observationText += `wind: ${wd['wind-direction'].long} ` +
               `${wd[key]} ${addUnitSuffix(key)}, `;
           } else if (key === 'fmi-temperature') {
-            observationText += `${labelValues.weather[key]}: ` +
+            observationText += `${lowerFL(labelValues.weather[key])}: ` +
               `${wd.temperature} ${addUnitSuffix(key)}, `;
           } else {
-            observationText += `${labelValues.weather[key]}: ${wd[key]}` +
+            observationText += `${lowerFL(labelValues.weather[key])}: ${wd[key]}` +
               `${addUnitSuffix(key)}, `;
           }
         }
@@ -296,21 +305,20 @@ const loadPage = () => {
 
       if (mode === 'all') {
         observationText = observationText.slice(0, -2);
-        if (data.weather.ast) {
-          observationText += `<br>Sun: Sunrise ${data.weather.ast.sunrise}, Sunset ${data.weather.ast.sunset}<br>`;
-        }
 
         let obsIndex = dataSets.other.brightness.length - 1;
 
-        observationText += `${labelValues.other.brightness}: ${dataSets.other.brightness[obsIndex]}` +
+        observationText += `<br><span class="weight-bold">Observations</span> at ` +
+          `${DateTime.fromJSDate(dataLabels.other[obsIndex]).toLocaleString(DateTime.TIME_SIMPLE)}: ` +
+          `${lowerFL(labelValues.other.brightness)}: ${dataSets.other.brightness[obsIndex]}` +
           `${addUnitSuffix('brightness')}, `;
-        observationText += `${labelValues.other['o-temperature']}:`;
+        observationText += `${lowerFL(labelValues.other['o-temperature'])}:`;
         if (dataSets.other['o-temperature'][obsIndex] !== null) {
           observationText += ` ${dataSets.other['o-temperature'][obsIndex]}` +
             `${addUnitSuffix('temperature')}, `;
         }
 
-        observationText += `Beacon "${bleBeaconNames[obsIndex]}": RSSI`;
+        observationText += `beacon "${bleBeaconNames[obsIndex]}": RSSI`;
         if (dataSets.other['beacon-rssi'][obsIndex] !== null) {
           observationText += ` ${dataSets.other['beacon-rssi'][obsIndex]}${addUnitSuffix('beacon-rssi')}`;
 
@@ -319,13 +327,13 @@ const loadPage = () => {
           observationText += `, battery level ${batteryText}`;
         }
 
-        observationText += ',';
+        observationText += '<br>RuuviTags: ';
 
         let itemsAdded = 0;
         if (dataSets.rt) {
           obsIndex = dataSets.rt[Object.keys(dataSets.rt)[0]].temperature.length - 1;
           for (const tag in labelValues.rt) {
-            if ((itemsAdded % 4) === 0) {
+            if ((itemsAdded > 0 && itemsAdded % 4) === 0) {
               observationText += '<br>';
             }
 
@@ -341,11 +349,11 @@ const loadPage = () => {
 
         const forecast = data.weather.fmi.forecast;
         if (forecast) {
-          document.getElementById('forecast').innerHTML =
-            '<br><br>Forecast for ' +
+          observationText +=
+            '<br><span class="weight-bold">Forecast</span> for ' +
             DateTime.fromISO(forecast.time).toFormat('dd.MM.yyyy HH:mm') +
             `: temperature: ${forecast.temperature} ${addUnitSuffix('temperature')}, ` +
-            `cloudiness: ${forecast.cloudiness} ${addUnitSuffix('cloudiness')}, ` +
+            `cloudiness: ${forecast.cloudiness} %, ` +
             `wind: ${forecast['wind-direction'].long} ${forecast['wind-speed']} ${addUnitSuffix('wind')}, ` +
             `precipitation: ${forecast.precipitation} ${addUnitSuffix('precipitation')}, ` +
             `humidity: ${forecast.humidity} ${addUnitSuffix('humidity')}`;
@@ -354,7 +362,7 @@ const loadPage = () => {
         observationText = observationText.slice(0, -2);
       }
 
-      document.getElementById('lastObservation').innerHTML = observationText;
+      document.getElementById('infoText').innerHTML = observationText;
       document.getElementById('latestDiv').classList.remove('display-none');
     };
     showLastObservation();
@@ -616,14 +624,14 @@ const loadPage = () => {
         const currentHourData = priceData[currentIdx];
         if (currentHourData) {
           const currentPriceTime = DateTime.fromISO(currentHourData['start-time']).toFormat('HH:mm');
-          document.getElementById('lastObservation').innerHTML += '<br>Electricity price at ' +
+          document.getElementById('infoText').innerHTML += '<br><br>Electricity price: at ' +
             `${currentPriceTime}: ${currentHourData.price} c / kWh`;
         }
 
         const nextHourData = priceData[currentIdx + 1];
         if (nextHourData) {
           const nextPriceTime = DateTime.fromISO(nextHourData['start-time']).toFormat('HH:mm');
-          document.getElementById('forecast').innerHTML += '<br>Electricity price at ' +
+          document.getElementById('infoText').innerHTML += ', at ' +
             `${nextPriceTime}: ${nextHourData.price} c / kWh`;
         }
       };
@@ -671,8 +679,8 @@ const loadPage = () => {
             plotElectricityDataDay(elecData['data-day'], true);
 
             if (elecData['elec-price-avg'] !== null) {
-              document.getElementById('lastObservation').innerHTML +=
-                `<br>Average electricity price for the current month: ${elecData['elec-price-avg']} c / kWh`;
+              document.getElementById('infoText').innerHTML +=
+                `<br>Average for the current month: ${elecData['elec-price-avg']} c / kWh`;
             }
           }
         }).catch(error => {

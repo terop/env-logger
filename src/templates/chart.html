@@ -37,6 +37,10 @@
                 filter: blur(4px);
             }
 
+            .weight-bold {
+                font-weight: bold;
+            }
+
             #bodyDiv {
                 margin-left: 50px;
             }
@@ -76,8 +80,7 @@
                 margin-top: 20px;
             }
 
-            #lastObservation,
-            #forecast {
+            #infoText {
                 font-size: 0.9em;
             }
 
@@ -138,8 +141,7 @@
             </div>
 
             <div class="display-none" id="latestDiv">
-                <span id="lastObservation"></span>
-                <span id="forecast"></span>
+                <span id="infoText"></span>
             </div>
 
             <div class="display-none alert alert-danger" id="noDataError" role="alert">
