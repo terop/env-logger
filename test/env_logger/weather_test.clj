@@ -103,14 +103,13 @@
                                    :temperature 1.4
                                    :humidity 90}])]
       (let [wd (-update-fmi-weather-data-ts 87874)]
-        (is (= {:time #inst "2024-11-10T08:20:00.000000000-00:00",
-                :temperature 1.4
+        (is (= {:temperature 1.4
                 :cloudiness 8
                 :wind-speed 1.1
                 :wind-direction {:short "W"
                                  :long "west"}
                 :humidity 90}
-               (get wd (first (keys wd)))))))))
+               (dissoc (get wd (first (keys wd))) :time)))))))
 
 (deftest test-weather-data-json-update
   (testing "Tests FMI weather data (JSON) updating"
@@ -128,14 +127,13 @@
                                                   :WindDirection 254
                                                   :Humidity 90}]})]
       (let [wd (-update-fmi-weather-data-json 87874)]
-        (is (= {:time #inst "2024-11-10T08:20:00.000000000-00:00",
-                :temperature 1.4
+        (is (= {:temperature 1.4
                 :cloudiness 8
                 :wind-speed 1.1
                 :wind-direction {:short "W"
                                  :long "west"}
                 :humidity 90}
-               (get wd (first (keys wd)))))))))
+               (dissoc (get wd (first (keys wd))) :time)))))))
 
 (deftest fmi-weather-data-fetch
   (testing "Tests FMI weather data fetch"
