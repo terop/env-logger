@@ -293,7 +293,8 @@ def update_screen(display, observation, weather_data, elec_price_data, utc_offse
         display[1].text = f'Weather ({time_str}): temp {weather["temperature"]} ' + \
             f'\u00b0C, cloudiness {weather["cloudiness"]},'
         display[2].text = 'wind ' + \
-            f'{weather["wind-direction"]["short"]} {weather["wind-speed"]} m/s'
+            f'{weather["wind-direction"]["short"]} {weather["wind-speed"]} m/s, ' + \
+            f'humidity {int(weather["humidity"])} %H'
 
     if weather_data['fmi']['forecast']:
         forecast = weather_data['fmi']['forecast']
@@ -308,8 +309,8 @@ def update_screen(display, observation, weather_data, elec_price_data, utc_offse
                 display[3].text += f': temp {forecast["temperature"]} \u00b0C, ' + \
                     f'clouds {forecast["cloudiness"]} %,'
                 display[4].text = f'wind {forecast["wind-direction"]["short"]} ' + \
-                    f'{forecast["wind-speed"]} m/s, precipitation ' + \
-                    f'{forecast["precipitation"]} mm'
+                    f'{forecast["wind-speed"]} m/s, precip ' + \
+                    f'{forecast["precipitation"]} mm, humid {forecast["humidity"]} %H'
                 row = 6
     else:
         row = 2
