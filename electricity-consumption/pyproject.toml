@@ -13,6 +13,5 @@ dependencies = [
 ]
 
 [tool.ruff]
-lint.select = ["B", "D", "E", "F", "G", "I", "N", "PERF", "PIE", "PL", "PTH", "SIM", "RUF", "S", "TRY", "W"]
+lint.select = ["A", "B", "D", "E", "EM", "F", "G", "I", "LOG", "N", "PERF", "PIE", "PL", "PTH", "SIM", "RUF", "S", "TRY", "W"]
 lint.ignore = ["D203", "D213"]
-target-version = "py313"
