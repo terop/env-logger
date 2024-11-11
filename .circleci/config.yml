@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   build:
     docker:
-      - image: clojure:temurin-22-tools-deps-bookworm-slim
+      - image: clojure:temurin-21-tools-deps-bookworm-slim
         auth:
           username: mydockerhub-user
           password: $DOCKERHUB_PASSWORD
