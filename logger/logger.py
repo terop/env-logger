@@ -75,11 +75,9 @@ def get_env_data(env_settings):
     if terminal_ok:
         logging.info('Wio Terminal values: temperature %s, built-in light %s',
                      terminal_data['temperature'], terminal_data['builtInLight'])
-    final_data = {'outsideTemperature': round(arduino_data['extTempSensor'], 2)
-                  if arduino_ok else None,
-                  'insideLight': terminal_data['light'] if terminal_ok else None}
-
-    return final_data
+    return {'outsideTemperature': round(arduino_data['extTempSensor'], 2)
+            if arduino_ok else None,
+            'insideLight': terminal_data['light'] if terminal_ok else None}
 
 
 def store_ruuvitags(config, timestamp, tags):
