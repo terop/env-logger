@@ -142,10 +142,8 @@
        :cloudiness (round (Float/parseFloat (nth values 2)))
        :wind-direction (get-wd-str (Float/parseFloat
                                     (nth values 3)))
-       :precipitation (if (= (nth values 4) "NaN")
-                        0
-                        (Float/parseFloat (format "%.1f" (Float/parseFloat
-                                                          (nth values 4)))))
+       :precipitation (Float/parseFloat (format "%.1f" (Float/parseFloat
+                                                        (nth values 4))))
        :humidity (Float/parseFloat (format "%.1f" (Float/parseFloat
                                                    (nth values 5))))})))
 
@@ -255,7 +253,7 @@
                            "forecast::edited::weather::scandinavia::point::"
                            "simple&latlon="
                            "%s&parameters=Temperature,WindSpeedMS,"
-                           "TotalCloudCover,WindDirection,PrecipitationAmount,"
+                           "TotalCloudCover,WindDirection,Precipitation1h,"
                            "Humidity&starttime=%s&endtime=%s")
                       (str latitude "," longitude)
                       ;; Start time must always be ahead of the current time so

@@ -135,7 +135,7 @@
        :content ["2022-06-07T16:00:00Z"]}
       {:tag :BsWfs:ParameterName,
        :attrs nil,
-       :content ["PrecipitationAmount"]}
+       :content ["Precipitation1h"]}
       {:tag :BsWfs:ParameterValue, :attrs nil, :content ["1.0"]}]}]}
   {:tag :wfs:member,
    :attrs nil,
