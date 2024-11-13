@@ -1,9 +1,12 @@
 DATE := $(shell date +%Y-%m-%d)
 IMAGE_NAME := env-logger:$(DATE)
 
-build: uberjar update # build container
+build: clean uberjar update # build container
 	podman build -t $(IMAGE_NAME) .
 	podman tag $(IMAGE_NAME) $(shell whoami)/$(IMAGE_NAME)
+
+clean:
+	clojure -T:build clean
 
 uberjar: # build the jar
 	clojure -T:build uber
