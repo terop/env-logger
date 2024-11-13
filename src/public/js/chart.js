@@ -308,11 +308,13 @@ const loadPage = () => {
       }
 
       if (isShowAll()) {
-        observationText = observationText.slice(0, -2);
+        if (wd) {
+          observationText = observationText.slice(0, -2) + '<br>';
+        }
 
         let obsIndex = dataSets.other.brightness.length - 1;
 
-        observationText += `<br><span class="weight-bold">Observations</span> at ` +
+        observationText += `<span class="weight-bold">Observations</span> at ` +
           `${DateTime.fromJSDate(dataLabels.other[obsIndex]).toLocaleString(DateTime.TIME_SIMPLE)}: ` +
           `${lowerFL(labelValues.other.brightness)}: ${dataSets.other.brightness[obsIndex]}` +
           `${addUnitSuffix('brightness')}, `;
@@ -367,7 +369,7 @@ const loadPage = () => {
       }
 
       document.getElementById('infoText').innerHTML = observationText;
-      document.getElementById('latestDiv').classList.remove('display-none');
+      document.getElementById('infoText').classList.remove('display-none');
     };
     showLastObservation();
 
@@ -1255,9 +1257,9 @@ const loadPage = () => {
   if (isShowAll() && data.obs.length) {
     showElectricityPrice();
 
-    document.getElementById('showLatestObs').addEventListener('click',
+    document.getElementById('showInfoText').addEventListener('click',
       () => {
-        toggleVisibility('latestDiv');
+        toggleVisibility('infoText');
       },
       false);
 

@@ -54,9 +54,10 @@
                 margin-left: 30px;
             }
 
-            #latestDiv {
+            #infoText {
                 margin-top: 15px;
                 margin-bottom: 10px;
+                font-size: 0.9em;
             }
 
             #latestCheckboxDiv {
@@ -78,10 +79,6 @@
             #elecDataDiv {
                 width: 1300px;
                 margin-top: 20px;
-            }
-
-            #infoText {
-                font-size: 0.9em;
             }
 
             #loadingSpinner {
@@ -140,17 +137,15 @@
                 </form>
             </div>
 
-            <div class="display-none" id="latestDiv">
-                <span id="infoText"></span>
-            </div>
+            <div class="display-none" id="infoText"></div>
 
             <div class="display-none alert alert-danger" id="noDataError" role="alert">
                 No observations found
             </div>
             {% if logged-in? %}
                 <div id="latestCheckboxDiv">
-                    <input type="checkbox" id="showLatestObs" checked>
-                    <label for="showLatestObs">Show above info</label>
+                    <input type="checkbox" id="showInfoText" checked>
+                    <label for="showInfoText">Show above info</label>
                 </div>
 
                 <div id="weatherCheckboxDiv">
