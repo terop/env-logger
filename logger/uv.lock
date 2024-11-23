@@ -59,14 +59,14 @@ wheels = [
 
 [[package]]
 name = "dbus-fast"
-version = "2.24.3"
+version = "2.24.4"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/0a/37/a27e7f2dc6a18b5dcee70ffb08013a33770c2154a51fb5e2c04a7f4169fa/dbus_fast-2.24.3.tar.gz", hash = "sha256:9042a1b565ecac4f8e04df79376de1d1d31e4c82eddb6e71e8b8d82d0c94dd3d", size = 69620 }
+sdist = { url = "https://files.pythonhosted.org/packages/1f/91/b04e2dca706bddcd419352b5f623e8860c04adf2dd6ceef6116df4de4f6a/dbus_fast-2.24.4.tar.gz", hash = "sha256:58f97e8342d6cd11ebb2c8ac959c5bb342eb83e29180528690b323a5a5def41c", size = 69702 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/11/d4/155f79e1a2fdbb6eb1976c5300a589ce1dc62984b228eb099afb9a43359a/dbus_fast-2.24.3-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:eb3bb42348728219938769de89508c2826bcc779dac2b48182c215fd4fa71d27", size = 5362561 },
-    { url = "https://files.pythonhosted.org/packages/2f/a1/e040362d2dfb91cd7b923fc20fb9a96ca1c4b8dd0a8d6704ca7ba3cedd46/dbus_fast-2.24.3-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0295a281f61e69855f2442df2f0de775c361c2cf8bdc73dc1d67ceb3695cbb9a", size = 5462554 },
-    { url = "https://files.pythonhosted.org/packages/6a/72/467971c405f85f7b15cfa7a74cb7961181ed9631aa2d6c4c4e699f8c307a/dbus_fast-2.24.3-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:c6bed68d1de004edc6519e9b003ae277f803b3f5927e22b0b109c67ccd8e9655", size = 5306563 },
-    { url = "https://files.pythonhosted.org/packages/19/c2/29932e670edb3c7f53347c7349420cf9c13c2411aafc283f4bfba832b33a/dbus_fast-2.24.3-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:7fab714342c2c07fd12877015c38142eced5798569ddc24497b8fab640ba6c42", size = 5566233 },
+    { url = "https://files.pythonhosted.org/packages/a8/1b/720170947bc7c02174361748e26d6debadcb3cfcd9af1d1a337e110f2cdc/dbus_fast-2.24.4-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:c74cf8283678ccbcc73c136eddbd60187775283c75372bcdfa62affdc787bc11", size = 4312087 },
+    { url = "https://files.pythonhosted.org/packages/93/3b/15455593db1e24858c8e07cf2396326a7fb153ce1c83354029e830675569/dbus_fast-2.24.4-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f5bf5d2ccc43b1072493f5b916c7f55aad9e773438c0ef1fdba563f6c8c0f281", size = 4412064 },
+    { url = "https://files.pythonhosted.org/packages/53/3b/d91e8f6a9cc0288ad4f74c70d6df33ea09d38d10c729eac549205213a50d/dbus_fast-2.24.4-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:800066f870bf980939b14fa0a6eb262bf00d46f2436a47180686ea945900418e", size = 4256078 },
+    { url = "https://files.pythonhosted.org/packages/7e/fc/bcb5dcdb8e81e1559df0692b995dae192535ed95a1d54ae3195ce1f713fd/dbus_fast-2.24.4-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:9b94f0421451196e769bbd4c32c88b575bf6d639733311870d7698d142961d7b", size = 4515740 },
 ]
 
 [[package]]
@@ -204,7 +204,7 @@ wheels = [
 [[package]]
 name = "ruuvitag-sensor"
 version = "2.3.1"
-source = { git = "https://github.com/ttu/ruuvitag-sensor.git#cc8e811348a7752a9bb7b723c0bab1b6dd35e4bb" }
+source = { git = "https://github.com/ttu/ruuvitag-sensor.git#2ff65c2c8298dfa8ebf7779259a2db41fb0a9b30" }
 dependencies = [
     { name = "bleak" },
     { name = "ptyprocess", marker = "platform_system == 'Linux'" },
