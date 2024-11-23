@@ -23,7 +23,7 @@ import requests
 import serial
 from bleak import BleakScanner
 from bleak.exc import BleakError
-from requests.exceptions import ConnectionError
+from requests.exceptions import ConnectionError as requests_ConnectionError
 from urllib3.exceptions import ConnectTimeoutError, MaxRetryError, ReadTimeoutError
 
 
@@ -41,7 +41,7 @@ def get_env_data(env_settings):
     arduino_ok = True
     try:
         resp = requests.get(env_settings['arduino_url'], timeout=5)
-    except (ConnectionError, OSError) as ex:
+    except (requests_ConnectionError, OSError) as ex:
         logging.error('Connection problem to Arduino: %s', ex)
         arduino_ok = False
     if arduino_ok and not resp.ok:
