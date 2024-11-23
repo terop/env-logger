@@ -7,9 +7,9 @@
         yogthos/config {:mvn/version "1.2.1"}
         ring/ring-devel {:mvn/version "1.13.0"}
         ring/ring-defaults {:mvn/version "0.5.0"}
-        info.sunng/ring-jetty9-adapter {:mvn/version "0.35.1"}
+        info.sunng/ring-jetty9-adapter {:mvn/version "0.36.0"}
         clj-http/clj-http {:mvn/version "3.13.0"}
-        clojure.java-time/clojure.java-time {:mvn/version "1.4.2"}
+        clojure.java-time/clojure.java-time {:mvn/version "1.4.3"}
         org.threeten/threeten-extra {:mvn/version "1.8.0"}
         metosin/reitit {:mvn/version "0.7.2"}
         metosin/ring-http-response {:mvn/version "0.9.4"}
@@ -29,7 +29,7 @@
  :aliases
  {:run {:main-opts ["-m" "env-logger.handler"]
         :jvm-opts ["-Dconfig=resources/dev/config.edn"]}
-  :build {:deps {io.github.clojure/tools.build {:mvn/version "0.10.5"}}
+  :build {:deps {io.github.clojure/tools.build {:mvn/version "0.10.6"}}
           :ns-default build}
   :test {:extra-paths ["test"]
          :extra-deps {io.github.cognitect-labs/test-runner
