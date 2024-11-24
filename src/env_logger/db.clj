@@ -455,7 +455,7 @@
                 :humidity (Float/parseFloat
                            (NumberFormat/.format nf (:humidity row)))})))
     (catch PSQLException pe
-      (error pe "RuuviTag observation fetching failed")
+      (error pe "RuuviTag observation fetch failed")
       {})))
 
 (defn get-elec-data-day
@@ -502,7 +502,7 @@
                                      (Float/parseFloat
                                       (NumberFormat/.format nf (:consumption result))))}))))))
     (catch PSQLException pe
-      (error pe "Daily electricity data fetching failed")
+      (error pe "Daily electricity data fetch failed")
       [nil])))
 
 (defn get-elec-data-hour
@@ -529,7 +529,7 @@
           (merge row
                  {:start-time (-convert-time->iso8601-str (:start-time row))}))))
     (catch PSQLException pe
-      (error pe "Hourly electricity data fetching failed")
+      (error pe "Hourly electricity data fetch failed")
       nil)))
 
 (defn get-month-avg-elec-price
@@ -548,7 +548,7 @@
           (DecimalFormat/.applyPattern nf "0.0#")
           (NumberFormat/.format nf result))))
     (catch PSQLException pe
-      (error pe "Monthly average electricity price fetching failed")
+      (error pe "Monthly average electricity price fetch failed")
       nil)))
 
 (defn get-last-obs-id
@@ -635,4 +635,23 @@
           (t/format :iso-local-date (t/minus end-dt (t/hours 1))))))
     (catch PSQLException pe
       (error pe "Electricity price date interval end fetch failed")
+      nil)))
+
+(defn get-month-elec-consumption
+  "Returns the electricity consumption for the current month.."
+  [db-con]
+  (try
+    (let [today (t/local-date)
+          month-start (t/minus today (t/days (dec (t/as today :day-of-month))))
+          query (sql/format {:select [:%sum.consumption]
+                             :from :electricity_consumption
+                             :where [[:>= :time
+                                      (make-local-dt (str month-start) "start")]]})
+          result (:sum (jdbc/execute-one! db-con query rs-opts))]
+      (when result
+        (let [nf (NumberFormat/getInstance)]
+          (DecimalFormat/.applyPattern nf "0.0#")
+          (NumberFormat/.format nf result))))
+    (catch PSQLException pe
+      (error pe "Monthly electricity consumption fetch failed")
       nil)))

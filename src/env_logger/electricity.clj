@@ -30,16 +30,21 @@
           (if (or start-date end-date)
             (if-not start-date
               (bad-request "Missing parameter")
-              (serve-json {:data-hour (db/get-elec-data-hour con
-                                                             (db/make-local-dt start-date
-                                                                               "start")
-                                                             (when end-date
-                                                               (db/make-local-dt end-date
-                                                                                 "end")))
-                           :data-day (db/get-elec-data-day con start-date end-date)
+              (serve-json {:data-hour (db/get-elec-data-hour
+                                       con
+                                       (db/make-local-dt start-date
+                                                         "start")
+                                       (when end-date
+                                         (db/make-local-dt end-date
+                                                           "end")))
+                           :data-day (db/get-elec-data-day con
+                                                           start-date
+                                                           end-date)
                            :dates {:current {:start start-date
                                              :end end-date}}
-                           :elec-price-avg (db/get-month-avg-elec-price con)}))
+                           :month-price-avg (db/get-month-avg-elec-price con)
+                           :month-consumption (db/get-month-elec-consumption
+                                               con)}))
             (let [start-date (db/get-midnight-dt (:initial-show-days env))]
               (serve-json {:data-hour (db/get-elec-data-hour con
                                                              start-date
@@ -61,7 +66,9 @@
                                    :max (db/get-elec-price-interval-end con)
                                    :min (db/get-elec-consumption-interval-start
                                          con)}
-                           :elec-price-avg (db/get-month-avg-elec-price con)}))))))))
+                           :month-price-avg (db/get-month-avg-elec-price con)
+                           :month-consumption (db/get-month-elec-consumption
+                                               con)}))))))))
 
 (defn parse-consumption-data-file
   "Parses CSV file with electricity consumption data."

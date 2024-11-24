@@ -18,6 +18,7 @@
               get-latest-elec-consumption-record-time
               get-midnight-dt
               get-month-avg-elec-price
+              get-month-elec-consumption
               get-obs-date-interval
               get-obs-days
               get-obs-interval
@@ -695,6 +696,36 @@
                  :price 12.0})
     (is (= "7.0" (get-month-avg-elec-price test-ds)))
     (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))))
+
+(deftest test-get-month-elec-consumption
+  (testing "Calculating the electricity consumption of the current month"
+    (with-redefs [jdbc/execute-one!
+                  (fn [_ _ _]
+                    (throw (PSQLException.
+                            "Test exception"
+                            PSQLState/COMMUNICATION_ERROR)))]
+      (is (nil? (get-month-elec-consumption test-ds))))
+    (is (nil? (get-month-elec-consumption test-ds)))
+
+    (js/insert! test-ds
+                :electricity_consumption
+                {:time (t/sql-timestamp (t/zoned-date-time))
+                 :consumption 0.6})
+    (js/insert! test-ds
+                :electricity_consumption
+                {:time (t/sql-timestamp (t/minus (t/zoned-date-time)
+                                                       (t/hours 1)))
+                 :consumption 1.1})
+    (is (= "1.7" (get-month-elec-consumption test-ds)))
+    ;; Check that prices before the current month are not used
+    (js/insert! test-ds
+                :electricity_consumption
+                {:time (t/sql-timestamp (t/minus (t/zoned-date-time)
+                                                       (t/days 35)))
+                 :consumption 0.4})
+    (is (= "1.7" (get-month-elec-consumption test-ds)))
+    (jdbc/execute! test-ds (sql/format {:delete-from
+                                        :electricity_consumption}))))
 
 (deftest test-get-db-password
   (testing "Database password fetch"
