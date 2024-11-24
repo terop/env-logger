@@ -253,8 +253,11 @@ def prepare_elec_price_data(elec_price_data, utc_offset_hours):
     if next_hour in prices:
         values['next'] = [next_hour, prices[next_hour]]
 
-    if elec_price_data['elec-price-avg'] is not None:
-        values['average'] = elec_price_data['elec-price-avg']
+    if elec_price_data['month-price-avg'] is not None:
+        values['average'] = elec_price_data['month-price-avg']
+
+    if elec_price_data['month-consumption'] is not None:
+        values['month-consumption'] = elec_price_data['month-consumption']
 
     return values
 
@@ -311,9 +314,9 @@ def update_screen(display, observation, weather_data, elec_price_data, utc_offse
                 display[4].text = f'wind {forecast["wind-direction"]["short"]} ' + \
                     f'{forecast["wind-speed"]} m/s, precip ' + \
                     f'{forecast["precipitation"]} mm, humid {forecast["humidity"]} %H'
-                row = 6
+                row = 5
     else:
-        row = 2
+        row = 1
 
     if elec_price_data:
         if 'current' in elec_price_data:
@@ -325,10 +328,19 @@ def update_screen(display, observation, weather_data, elec_price_data, utc_offse
             display[row].text += f', {next_val[0].hour}:{next_val[0].minute:02}: ' + \
                 f'{next_val[1]} c'
         row += 1
-        if 'average' in elec_price_data:
-            display[row - 1].text += ','
-            display[row].text += 'current month average: ' \
-                f'{elec_price_data["average"]} c / kWh'
+        if 'average' in elec_price_data or 'month-consumption' in elec_price_data:
+            display[row].text += 'Current month: '
+
+            if 'month-consumption' in elec_price_data:
+                display[row].text += \
+                    f'consumption {elec_price_data["month-consumption"]} kWh'
+            if 'average' in elec_price_data:
+                if display[row].text[-1] != ' ':
+                    display[row].text += ','
+                    row += 1
+
+                display[row].text += \
+                    f'average price {elec_price_data["average"]} c / kWh'
             row += 1
 
     display[row].text = ''
