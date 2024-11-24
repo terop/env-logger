@@ -684,9 +684,19 @@ const loadPage = () => {
 
             plotElectricityDataDay(elecData['data-day'], true);
 
-            if (elecData['elec-price-avg'] !== null) {
-              document.getElementById('infoText').innerHTML +=
-                `<br>Average for the current month: ${elecData['elec-price-avg']} c / kWh`;
+            if (elecData['month-price-avg'] !== null || elecData['month-consumption'] !== null) {
+              let elecText = '<br>Current month: ';
+
+              if (elecData['month-consumption'] !== null) {
+                elecText += `consumption: ${elecData['month-consumption']} kWh`;
+              }
+              if (elecData['month-price-avg'] !== null) {
+                if (!elecText.endsWith(' ')) {
+                  elecText += ', ';DateTime
+                }
+                elecText += `average price: ${elecData['month-price-avg']} c / kWh`;
+              }
+              document.getElementById('infoText').innerHTML += elecText;
             }
           }
         }).catch(error => {
