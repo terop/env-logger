@@ -714,14 +714,14 @@
     (js/insert! test-ds
                 :electricity_consumption
                 {:time (t/sql-timestamp (t/minus (t/zoned-date-time)
-                                                       (t/hours 1)))
+                                                 (t/hours 1)))
                  :consumption 1.1})
     (is (= "1.7" (get-month-elec-consumption test-ds)))
     ;; Check that prices before the current month are not used
     (js/insert! test-ds
                 :electricity_consumption
                 {:time (t/sql-timestamp (t/minus (t/zoned-date-time)
-                                                       (t/days 35)))
+                                                 (t/days 35)))
                  :consumption 0.4})
     (is (= "1.7" (get-month-elec-consumption test-ds)))
     (jdbc/execute! test-ds (sql/format {:delete-from
