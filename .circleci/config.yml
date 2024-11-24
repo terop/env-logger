@@ -48,28 +48,6 @@ jobs:
           command: clojure -T:build build && clojure -X:test
 
       - run:
-          name: run linters
+          name: run verification script
           command: |
-            clojure -M:splint
-
-      - run:
-          name: run clj-kondo
-          command: |
-            apt-get install -y curl unzip
-            (cd /tmp
-             curl -sLO https://raw.githubusercontent.com/clj-kondo/clj-kondo/master/script/install-clj-kondo
-             chmod +x install-clj-kondo
-             ./install-clj-kondo --dir /tmp)
-             /tmp/clj-kondo --lint src test
-
-      - run:
-          name: run cljfmt
-          command: |
-            clojure -Ttools install io.github.weavejester/cljfmt '{:git/tag "0.13.0"}' :as cljfmt
-            clojure -Tcljfmt check
-
-      - run:
-          name: lint Python files
-          command: |
-            apt-get install -y python3.11-venv
-            python3 -m venv .venv && . .venv/bin/activate && pip3 install ruff && ruff check
+            CI=1 scripts/verification.sh
