@@ -42,6 +42,6 @@
                          ;; Any Eastwood options can be passed here as edn:
                          {}]
              :extra-deps {jonase/eastwood {:mvn/version "1.4.3"}}}
-  :splint {:extra-deps {io.github.noahtheduke/splint {:mvn/version "1.18.0"}
+  :splint {:extra-deps {io.github.noahtheduke/splint {:mvn/version "1.19.0"}
                         org.clojure/clojure {:mvn/version "1.11.4"}}
            :main-opts ["-m" "noahtheduke.splint"]}}}

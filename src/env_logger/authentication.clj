@@ -224,10 +224,9 @@
   (let [auth-data (:data-user-auth-data env)
         username (get-in request [:params "username"])
         password (get-in request [:params "password"])
-        valid? (and (and username
-                         (= username (:username auth-data)))
-                    (and password
-                         (h/check password (:password auth-data))))]
+        valid? (and (and username (= username (:username auth-data)))
+                    password
+                    (h/check password (:password auth-data)))]
     (if valid?
       (let [claims {:user (keyword username)
                     :exp (Instant/.getEpochSecond
