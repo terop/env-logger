@@ -8,22 +8,19 @@ import argparse
 import asyncio
 import json
 import logging
-import shlex
-import subprocess
 import sys
-from ast import literal_eval
 from collections import OrderedDict
 from datetime import datetime
 from pathlib import Path
 from statistics import mean, median
-from time import sleep
 
 import pytz
 import requests
 import serial
 from bleak import BleakScanner
-from bleak.exc import BleakError
+from bleak.exc import BleakDBusError, BleakError
 from requests.exceptions import ConnectionError as requests_ConnectionError
+from ruuvitag_sensor.ruuvi import RuuviTagSensor
 from urllib3.exceptions import ConnectTimeoutError, MaxRetryError, ReadTimeoutError
 
 
@@ -78,6 +75,85 @@ def get_env_data(env_settings):
     return {'outsideTemperature': round(arduino_data['extTempSensor'], 2)
             if arduino_ok else None,
             'insideLight': terminal_data['light'] if terminal_ok else None}
+
+
+async def scan_ruuvitags(rt_config, bt_device):
+    """Scan for RuuviTag(s)."""
+    found_tags = {}
+    pre_scan_sleep = 3
+
+    def _get_tag_name(mac):
+        """Get RuuviTag name based on tag MAC address."""
+        for tag in rt_config['tags']:
+            if mac == tag['mac']:
+                return tag['name']
+
+        return None
+
+    async def _async_scan(macs, timeout, run_until_compeletion=False):
+        expected_tag_count = len(macs)
+        found_count = 0
+        start_time = datetime.now()
+        timeout_advance = 2
+
+        if run_until_compeletion:
+            logging.info('Sleeping %s seconds before starting scan', pre_scan_sleep)
+            await asyncio.sleep(pre_scan_sleep)
+            logging.info('Starting scan')
+
+        async for tag_data in RuuviTagSensor.get_data_async(macs, bt_device):
+            elapsed_time = (datetime.now() - start_time).seconds
+            if not run_until_compeletion and elapsed_time + timeout_advance >= timeout:
+                logging.info('Stopping before timeout after running %s seconds',
+                             elapsed_time)
+                break
+
+            mac = tag_data[0]
+            if mac in found_tags:
+                continue
+
+            found_tags[mac] = {'name': _get_tag_name(mac),
+                               'temperature': tag_data[1]['temperature'],
+                               'pressure': tag_data[1]['pressure'],
+                               'humidity': tag_data[1]['humidity'],
+                               'battery_voltage': tag_data[1]['battery'] / 1000.0,
+                               'rssi': tag_data[1]['rssi']}
+            found_count += 1
+
+            if found_count == expected_tag_count:
+                break
+
+    macs = [tag['mac'] for tag in rt_config['tags']]
+
+    try:
+        scan_timeout = rt_config.get('scan_timeout', 5)
+        await asyncio.wait_for(_async_scan(macs, scan_timeout),
+                               timeout=scan_timeout)
+
+        if len(found_tags) < len(macs):
+            # Try scan again for remaining tags
+            logging.info('Retrying RuuviTag scan')
+            macs = [mac for mac in macs if mac not in found_tags]
+            min_retry_timeout = 5
+            # Use a shorter time for retry as there is likely less RuuviTags to
+            # look for
+            retry_timeout = min_retry_timeout if \
+                scan_timeout - 10 < min_retry_timeout else scan_timeout - 10
+
+            await asyncio.wait_for(_async_scan(macs, retry_timeout,
+                                               run_until_compeletion=True),
+                                   timeout=retry_timeout + pre_scan_sleep)
+
+    except (asyncio.CancelledError, TimeoutError, BleakDBusError) as err:
+        match err:
+            case asyncio.CancelledError():
+                logging.error('RuuviTag scan was cancelled')
+            case TimeoutError():
+                logging.error('RuuviTag scan timed out')
+            case _:
+                logging.error('RuuviTag scan failed for some other reason: %s', err)
+
+    return [tag for tag in found_tags.values()]
 
 
 def store_ruuvitags(config, timestamp, tags):
@@ -145,6 +221,19 @@ async def scan_ble_beacon(config, bt_device):
     return {}
 
 
+async def do_scan(config, bt_device):
+    """Scan for BLE beacon and RuuviTag(s)."""
+    results = {}
+
+    logging.info('BLE beacon scan started')
+    results['ble_beacon'] = await scan_ble_beacon(config['environment'], bt_device)
+
+    logging.info('RuuviTag scan started')
+    results['ruuvitag'] = await scan_ruuvitags(config['ruuvitag'], bt_device)
+
+    return results
+
+
 def store_to_db(config, timestamp, data):
     """Store the observation data to the backend database."""
     if data == {}:
@@ -208,36 +297,13 @@ def main():
     else:
         env_data = get_env_data(env_config)
 
-    logging.info('BLE beacon scan started')
-    env_data['beacon'] = asyncio.run(scan_ble_beacon(env_config, bt_device))
     timestamp = get_timestamp(config['timezone'])
+    scan_result = asyncio.run(do_scan(config, bt_device))
+
+    env_data['beacon'] = scan_result['ble_beacon']
     store_to_db(config, timestamp, env_data)
 
-    logging.info('RuuviTag scan started')
-    command = f'uv run python3 rt_scan.py --config {config_file} ' \
-        f'--bt-device {bt_device}'
-    ret_val = subprocess.run(shlex.split(command), capture_output=True, check=False)  # noqa: S603
-    ruuvitags = literal_eval(ret_val.stdout.decode().strip())
-
-    if ret_val.returncode:
-        print(ret_val.stderr.decode().strip(), file=sys.stderr)
-        sleep(2)
-        logging.info('Retrying RuuviTag scan')
-
-        tag_macs = []
-        names = [tag['name'] for tag in ruuvitags]
-
-        tag_macs = [tag['mac'] for tag in config['ruuvitag']['tags']
-                if tag['name'] not in names]
-
-        ret_val = subprocess.run(shlex.split(f'{command} --macs "{tag_macs}"'),  # noqa: S603
-                                 capture_output=True, check=False)
-        if not ret_val.returncode:
-            ruuvitags += literal_eval(ret_val.stdout.decode().strip())
-        else:
-            print(ret_val.stderr.decode().strip(), file=sys.stderr)
-
-    store_ruuvitags(config, timestamp, ruuvitags)
+    store_ruuvitags(config, timestamp, scan_result['ruuvitag'])
 
 
 if __name__ == '__main__':

@@ -204,7 +204,7 @@ wheels = [
 [[package]]
 name = "ruuvitag-sensor"
 version = "2.3.1"
-source = { git = "https://github.com/ttu/ruuvitag-sensor.git#2ff65c2c8298dfa8ebf7779259a2db41fb0a9b30" }
+source = { git = "https://github.com/ttu/ruuvitag-sensor.git#ccd71b9e23a8d6d99546a2555058b84f5bbe0a6c" }
 dependencies = [
     { name = "bleak" },
     { name = "ptyprocess", marker = "platform_system == 'Linux'" },
