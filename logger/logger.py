@@ -80,7 +80,8 @@ def get_env_data(env_settings):
 async def scan_ruuvitags(rt_config, bt_device):
     """Scan for RuuviTag(s)."""
     found_tags = {}
-    pre_scan_sleep = 3
+    scan_timeout = rt_config.get('scan_timeout', 5)
+    pre_scan_sleep = 4
 
     def _get_tag_name(mac):
         """Get RuuviTag name based on tag MAC address."""
@@ -90,26 +91,28 @@ async def scan_ruuvitags(rt_config, bt_device):
 
         return None
 
-    async def _async_scan(macs, timeout, run_until_compeletion=False):
+    async def _async_scan(macs, timeout, run_until_completion=False):
         expected_tag_count = len(macs)
         found_count = 0
         start_time = datetime.now()
         timeout_advance = 2
 
-        if run_until_compeletion:
+        if run_until_completion:
             logging.info('Sleeping %s seconds before starting scan', pre_scan_sleep)
             await asyncio.sleep(pre_scan_sleep)
             logging.info('Starting scan')
 
-        async for tag_data in RuuviTagSensor.get_data_async(macs, bt_device):
+        # In "timeout mode" look for all RuuviTags so that the stopping logic will work
+        macs_arg = [] if not run_until_completion else macs
+        async for tag_data in RuuviTagSensor.get_data_async(macs_arg, bt_device):
             elapsed_time = (datetime.now() - start_time).seconds
-            if not run_until_compeletion and elapsed_time + timeout_advance >= timeout:
+            if not run_until_completion and elapsed_time + timeout_advance >= timeout:
                 logging.info('Stopping before timeout after running %s seconds',
                              elapsed_time)
                 break
 
             mac = tag_data[0]
-            if mac in found_tags:
+            if mac not in macs or mac in found_tags:
                 continue
 
             found_tags[mac] = {'name': _get_tag_name(mac),
@@ -126,7 +129,6 @@ async def scan_ruuvitags(rt_config, bt_device):
     macs = [tag['mac'] for tag in rt_config['tags']]
 
     try:
-        scan_timeout = rt_config.get('scan_timeout', 5)
         await asyncio.wait_for(_async_scan(macs, scan_timeout),
                                timeout=scan_timeout)
 
@@ -134,18 +136,20 @@ async def scan_ruuvitags(rt_config, bt_device):
             # Try scan again for remaining tags
             logging.info('Retrying RuuviTag scan')
             macs = [mac for mac in macs if mac not in found_tags]
-            min_retry_timeout = 5
+            min_retry_timeout = 6
             # Use a shorter time for retry as there is likely less RuuviTags to
             # look for
             retry_timeout = min_retry_timeout if \
                 scan_timeout - 10 < min_retry_timeout else scan_timeout - 10
 
             await asyncio.wait_for(_async_scan(macs, retry_timeout,
-                                               run_until_compeletion=True),
+                                               run_until_completion=True),
                                    timeout=retry_timeout + pre_scan_sleep)
 
-    except (asyncio.CancelledError, TimeoutError, BleakDBusError) as err:
+    except (asyncio.CancelledError, BleakError, BleakDBusError, TimeoutError) as err:
         match err:
+            case BleakError():
+                logging.error('Error from Bleak: %s', err)
             case asyncio.CancelledError():
                 logging.error('RuuviTag scan was cancelled')
             case TimeoutError():
