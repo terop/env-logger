@@ -23,6 +23,8 @@ from requests.exceptions import ConnectionError as requests_ConnectionError
 from ruuvitag_sensor.ruuvi import RuuviTagSensor
 from urllib3.exceptions import ConnectTimeoutError, MaxRetryError, ReadTimeoutError
 
+logger = logging.getLogger(__name__)
+
 
 def get_timestamp(timezone):
     """Return the current timestamp for the given timezone in ISO 8601 format."""
@@ -39,10 +41,10 @@ def get_env_data(env_settings):
     try:
         resp = requests.get(env_settings['arduino_url'], timeout=5)
     except (requests_ConnectionError, OSError) as ex:
-        logging.error('Connection problem to Arduino: %s', ex)
+        logger.error('Connection problem to Arduino: %s', ex)
         arduino_ok = False
     if arduino_ok and not resp.ok:
-        logging.error('Cannot read Arduino data, status code: %s', resp.status_code)
+        logger.error('Cannot read Arduino data, status code: %s', resp.status_code)
         arduino_ok = False
 
     if arduino_ok:
@@ -51,9 +53,9 @@ def get_env_data(env_settings):
     # Read Wio Terminal
     terminal_ok = True
     if not Path(env_settings['terminal_serial']).exists():
-        logging.warning('Could not find Wio Terminal device "%s", '
-                        'skipping Wio Terminal read',
-                        env_settings['terminal_serial'])
+        logger.warning('Could not find Wio Terminal device "%s", '
+                       'skipping Wio Terminal read',
+                       env_settings['terminal_serial'])
         terminal_ok = False
     else:
         try:
@@ -61,16 +63,16 @@ def get_env_data(env_settings):
                  as ser:
                 raw_data = ser.readline()
                 if not raw_data.decode():
-                    logging.error('Got no serial data from Wio Terminal')
+                    logger.error('Got no serial data from Wio Terminal')
                     terminal_ok = False
 
                 terminal_data = json.loads(raw_data)
         except serial.serialutil.SerialException:
-            logging.exception('Cannot read Wio Terminal serial')
+            logger.exception('Cannot read Wio Terminal serial')
             terminal_ok = False
 
     if terminal_ok:
-        logging.info('Wio Terminal values: temperature %s, built-in light %s',
+        logger.info('Wio Terminal values: temperature %s, built-in light %s',
                      terminal_data['temperature'], terminal_data['builtInLight'])
     return {'outsideTemperature': round(arduino_data['extTempSensor'], 2)
             if arduino_ok else None,
@@ -98,17 +100,17 @@ async def scan_ruuvitags(rt_config, bt_device):
         timeout_advance = 2
 
         if run_until_completion:
-            logging.info('Sleeping %s seconds before starting scan', pre_scan_sleep)
+            logger.info('Sleeping %s seconds before starting scan', pre_scan_sleep)
             await asyncio.sleep(pre_scan_sleep)
-            logging.info('Starting scan')
+            logger.info('Starting scan')
 
         # In "timeout mode" look for all RuuviTags so that the stopping logic will work
         macs_arg = [] if not run_until_completion else macs
         async for tag_data in RuuviTagSensor.get_data_async(macs_arg, bt_device):
             elapsed_time = (datetime.now() - start_time).seconds
             if not run_until_completion and elapsed_time + timeout_advance >= timeout:
-                logging.info('Stopping before timeout after running %s seconds',
-                             elapsed_time)
+                logger.info('Stopping before timeout after running %s seconds',
+                            elapsed_time)
                 break
 
             mac = tag_data[0]
@@ -134,7 +136,7 @@ async def scan_ruuvitags(rt_config, bt_device):
 
         if len(found_tags) < len(macs):
             # Try scan again for remaining tags
-            logging.info('Retrying RuuviTag scan')
+            logger.info('Retrying RuuviTag scan')
             macs = [mac for mac in macs if mac not in found_tags]
             min_retry_timeout = 6
             # Use a shorter time for retry as there is likely less RuuviTags to
@@ -149,13 +151,13 @@ async def scan_ruuvitags(rt_config, bt_device):
     except (asyncio.CancelledError, BleakError, BleakDBusError, TimeoutError) as err:
         match err:
             case BleakError():
-                logging.error('Error from Bleak: %s', err)
+                logger.error('Error from Bleak: %s', err)
             case asyncio.CancelledError():
-                logging.error('RuuviTag scan was cancelled')
+                logger.error('RuuviTag scan was cancelled')
             case TimeoutError():
-                logging.error('RuuviTag scan timed out')
+                logger.error('RuuviTag scan timed out')
             case _:
-                logging.error('RuuviTag scan failed for some other reason: %s', err)
+                logger.error('RuuviTag scan failed for some other reason: %s', err)
 
     return [tag for tag in found_tags.values()]
 
@@ -171,12 +173,12 @@ def store_ruuvitags(config, timestamp, tags):
                                      'code': config['authentication_code']},
                              timeout=15)
     except (ConnectTimeoutError, MaxRetryError, OSError, ReadTimeoutError) as err:
-        logging.error('RuuviTag data store failed: %s', err)
+        logger.error('RuuviTag data store failed: %s', err)
         return
 
-    logging.info("RuuviTag observation: timestamp '%s', data: '%s', "
-                 "response: code %s, text '%s'",
-                 timestamp, json_data, resp.status_code, resp.text)
+    logger.info("RuuviTag observation: timestamp '%s', data: '%s', "
+                "response: code %s, text '%s'",
+                timestamp, json_data, resp.status_code, resp.text)
 
 
 async def scan_ble_beacon(config, bt_device):
@@ -203,12 +205,12 @@ async def scan_ble_beacon(config, bt_device):
         await asyncio.sleep(scan_time)
         await scanner.stop()
     except BleakError as be:
-        logging.error('BLE beacon scan failed: %s', be)
+        logger.error('BLE beacon scan failed: %s', be)
         return {}
 
     if data['rssi']:
         if not data['battery'] and config['ble_beacon_rescan_battery']:
-            logging.info('Rescanning BLE beacon for battery data')
+            logger.info('Rescanning BLE beacon for battery data')
             try:
                 scanner = BleakScanner(callback, adapter=bt_device)
 
@@ -216,7 +218,7 @@ async def scan_ble_beacon(config, bt_device):
                 await asyncio.sleep(4)
                 await scanner.stop()
             except BleakError as be:
-                logging.error('BLE beacon scan failed: %s', be)
+                logger.error('BLE beacon scan failed: %s', be)
 
         return {'mac': config['ble_beacon_mac'],
                 'rssi': round(mean(data['rssi'])),
@@ -229,10 +231,10 @@ async def do_scan(config, bt_device):
     """Scan for BLE beacon and RuuviTag(s)."""
     results = {}
 
-    logging.info('BLE beacon scan started')
+    logger.info('BLE beacon scan started')
     results['ble_beacon'] = await scan_ble_beacon(config['environment'], bt_device)
 
-    logging.info('RuuviTag scan started')
+    logger.info('RuuviTag scan started')
     results['ruuvitag'] = await scan_ruuvitags(config['ruuvitag'], bt_device)
 
     return results
@@ -241,7 +243,7 @@ async def do_scan(config, bt_device):
 def store_to_db(config, timestamp, data):
     """Store the observation data to the backend database."""
     if data == {}:
-        logging.error('Received no data, stopping')
+        logger.error('Received no data, stopping')
         return
 
     data['timestamp'] = timestamp
@@ -254,10 +256,10 @@ def store_to_db(config, timestamp, data):
                              timeout=15)
     except (ConnectTimeoutError, MaxRetryError, OSError, ReadTimeoutError,
             TimeoutError) as err:
-        logging.error('Observation data store failed: %s', err)
+        logger.error('Observation data store failed: %s', err)
         return
 
-    logging.info("Observation data: '%s', response: code %s, text '%s'",
+    logger.info("Observation data: '%s', response: code %s, text '%s'",
                  json.dumps(data), resp.status_code, resp.text)
 
 
@@ -281,19 +283,19 @@ def main():
     bt_device = args.bt_device if args.bt_device else 'hci0'
 
     if not Path(config_file).exists() or not Path(config_file).is_file():
-        logging.error('Could not find configuration file: %s', config_file)
+        logger.error('Could not find configuration file: %s', config_file)
         sys.exit(1)
 
     with Path(config_file).open('r', encoding='utf-8') as conf_file:
         try:
             config = json.load(conf_file)
         except json.JSONDecodeError:
-            logging.exception('Could not parse configuration file')
+            logger.exception('Could not parse configuration file')
             sys.exit(1)
 
     env_config = config['environment']
 
-    logging.info('Logger run started')
+    logger.info('Logger run started')
 
     if args.dummy:
         env_data = {'insideLight': 10,
