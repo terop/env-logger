@@ -21,6 +21,7 @@ from zoneinfo import ZoneInfo
 import psycopg
 
 smtp_connection = None
+logger = logging.getLogger(__name__)
 
 
 class ObservationMonitor:
@@ -45,7 +46,7 @@ class ObservationMonitor:
 
         Sends an email if the threshold is exceeded.
         """
-        logging.info('Starting observation inactivity check')
+        logger.info('Starting observation inactivity check')
 
         last_obs_time = self.get_obs_time()
         last_obs_time_tz = last_obs_time.astimezone(
@@ -54,8 +55,8 @@ class ObservationMonitor:
 
         if int(time_diff.total_seconds() / 60) > \
            int(self._config['observation']['Timeout']):
-            logging.warning('No observations received since %s',
-                            last_obs_time_tz.isoformat())
+            logger.warning('No observations received since %s',
+                           last_obs_time_tz.isoformat())
             if self._state['email_sent'] == 'False':
                 if send_email(self._config['email'],
                               'env-logger: observation inactivity warning',
@@ -71,8 +72,8 @@ class ObservationMonitor:
                        'env-logger: observation received',
                        'An observation has been detected at '
                        f'{last_obs_time_tz.isoformat()}.')
-            logging.info('An observation was detected at %s',
-                         last_obs_time_tz.isoformat())
+            logger.info('An observation was detected at %s',
+                        last_obs_time_tz.isoformat())
             self._state['email_sent'] = 'False'
 
     def get_state(self):
@@ -112,9 +113,9 @@ class OutsideTemperatureMonitor:
                     time_diff_min = (current_dt - recorded_tz).total_seconds() / 60
                     if time_diff_min > int(self._config['outsidetemp']['Timeout']) and \
                        time_diff_min < end_threshold:
-                        logging.warning('No outside temperature value received '
-                                        'since %s',
-                                        recorded_tz.isoformat())
+                        logger.warning('No outside temperature value received '
+                                       'since %s',
+                                       recorded_tz.isoformat())
                         return (True, recorded_tz.isoformat())
 
             return (False,)
@@ -124,7 +125,7 @@ class OutsideTemperatureMonitor:
 
         Sends an email if the threshold is exceeded.
         """
-        logging.info('Starting outside temperature value inactivity check')
+        logger.info('Starting outside temperature value inactivity check')
 
         ot_status = self.check_ot_rec_status()
 
@@ -147,7 +148,7 @@ class OutsideTemperatureMonitor:
             send_email(self._config['email'],
                        'env-logger: outside temperature value received',
                        f'An outside temperature value has been detected at {dt_str}.')
-            logging.info('An outside temperature value was detected at %s', dt_str)
+            logger.info('An outside temperature value was detected at %s', dt_str)
             self._state['email_sent'] = 'False'
 
     def get_state(self):
@@ -177,7 +178,7 @@ class BeaconMonitor:
 
         Sends an email if the threshold is exceeded.
         """
-        logging.info('Starting BLE beacon inactivity check')
+        logger.info('Starting BLE beacon inactivity check')
 
         last_obs_time = self.get_beacon_scan_time()
         last_obs_time_tz = last_obs_time.astimezone(ZoneInfo(
@@ -187,8 +188,8 @@ class BeaconMonitor:
         # Timeout is in hours
         if int(time_diff.total_seconds()) > \
            int(self._config['blebeacon']['Timeout']) * 60 * 60:
-            logging.warning('No BLE beacon has been scanned after %s',
-                            last_obs_time_tz.isoformat())
+            logger.warning('No BLE beacon has been scanned after %s',
+                           last_obs_time_tz.isoformat())
             if self._state['email_sent'] == 'False' and \
                send_email(self._config['email'],
                           'env-logger: BLE beacon inactivity warning',
@@ -201,8 +202,8 @@ class BeaconMonitor:
             send_email(self._config['email'],
                        'env-logger: BLE beacon scanned',
                        f'BLE beacon was detected at {last_obs_time_tz.isoformat()}.')
-            logging.info('BLE beacon was detected at %s',
-                         last_obs_time_tz.isoformat())
+            logger.info('BLE beacon was detected at %s',
+                        last_obs_time_tz.isoformat())
             self._state['email_sent'] = 'False'
 
     def get_state(self):
@@ -238,7 +239,7 @@ class RuuvitagMonitor:
 
         Sends an email if the threshold is exceeded.
         """
-        logging.info('Starting RuuviTag observation inactivity check')
+        logger.info('Starting RuuviTag observation inactivity check')
 
         last_obs_time = self.get_ruuvitag_scan_time()
 
@@ -252,9 +253,9 @@ class RuuvitagMonitor:
             if int(time_diff.total_seconds()) > \
                int(self._config['ruuvitag']['Timeout']) * 60:
                 if self._state[name]['email_sent'] == 'False':
-                    logging.warning('No RuuviTag observation for name "%s" has '
-                                    'been scanned after %s',
-                                    name, last_obs_time_tz.isoformat())
+                    logger.warning('No RuuviTag observation for name "%s" has '
+                                   'been scanned after %s',
+                                   name, last_obs_time_tz.isoformat())
                     if send_email(self._config['email'],
                                   f'env-logger: RuuviTag beacon "{name}" '
                                   'inactivity warning',
@@ -272,9 +273,9 @@ class RuuvitagMonitor:
                            f'env-logger: Ruuvitag beacon "{name}" scanned',
                            f'A RuuviTag observation for name "{name}" '
                            f'was detected at {last_obs_time_tz.isoformat()}.')
-                logging.info('A RuuviTag observation for name "%s" was '
-                             'detected at %s',
-                             name, last_obs_time_tz.isoformat())
+                logger.info('A RuuviTag observation for name "%s" was '
+                            'detected at %s',
+                            name, last_obs_time_tz.isoformat())
                 self._state[name]['email_sent'] = 'False'
 
     def get_state(self):
@@ -293,7 +294,7 @@ def create_smtp_connection(config):
             with Path.open(password_file, 'r') as pw_file:
                 email_password = pw_file.readline().strip()
         else:
-            logging.error('No email server password provided, exiting')
+            logger.error('No email server password provided, exiting')
             sys.exit(1)
 
     try:
@@ -301,7 +302,7 @@ def create_smtp_connection(config):
                                     context=ssl.create_default_context())
         instance.login(email_username, email_password)
     except smtplib.SMTPException:
-        logging.exception('Cannot open SMTP connection')
+        logger.exception('Cannot open SMTP connection')
         return None
 
     return instance
@@ -319,13 +320,13 @@ def send_email(config, subject, message):
     if not smtp_connection:
         smtp_connection = create_smtp_connection(config)
         if not smtp_connection:
-            logging.error('Could not open SMTP connection, aborting message sending')
+            logger.error('Could not open SMTP connection, aborting message sending')
             return False
 
     try:
         smtp_connection.send_message(msg)
     except smtplib.SMTPException:
-        logging.exception('Failed to send email with subject "%s"',
+        logger.exception('Failed to send email with subject "%s"',
                           subject)
         return False
 
@@ -347,7 +348,7 @@ def create_db_conn_string(db_config):
             with Path.open(password_file, 'r') as pw_file:
                 db_config['password'] = pw_file.readline().strip()
         else:
-            logging.error('No database server password provided, exiting')
+            logger.error('No database server password provided, exiting')
             sys.exit(1)
 
     return f'host={db_config["host"]} user={db_config["username"]} ' \
@@ -367,7 +368,7 @@ def main():
     config_file = args.config if args.config else 'monitor.cfg'
 
     if not Path(config_file).exists():
-        logging.error('Could not find configuration file "%s"', args.config_file)
+        logger.error('Could not find configuration file "%s"', args.config_file)
         sys.exit(1)
 
     config = configparser.ConfigParser()
@@ -377,7 +378,7 @@ def main():
     if 'STATE_FILE_DIRECTORY' in environ:
         state_file_dir = environ['STATE_FILE_DIRECTORY']
         if not Path(state_file_dir).exists() or not Path(state_file_dir).is_dir():
-            logging.error('State file directory "%s" does not exist', state_file_dir)
+            logger.error('State file directory "%s" does not exist', state_file_dir)
             sys.exit(1)
 
     state_file_name = 'monitor_state.json' if not state_file_dir \

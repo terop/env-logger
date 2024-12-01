@@ -16,6 +16,8 @@ from pathlib import Path
 import psycopg
 from pycaruna import Authenticator, CarunaPlus, TimeSpan
 
+logger = logging.getLogger(__name__)
+
 
 def fetch_consumption_data(config, manual_fetch_date=None):
     """Fetch electricity consumption data from the Caruna API.
@@ -28,12 +30,12 @@ def fetch_consumption_data(config, manual_fetch_date=None):
         try:
             fetch_dt = datetime.strptime(manual_fetch_date, '%Y-%m-%d')
         except ValueError:
-            logging.exception('Invalid date provided')
+            logger.exception('Invalid date provided')
             sys.exit(1)
 
         fetch_date = fetch_dt.date()
 
-    logging.info('Fetching consumption data for %s', str(fetch_date))
+    logger.info('Fetching consumption data for %s', str(fetch_date))
 
     password = config.get('password', None)
     if not password:
@@ -42,14 +44,14 @@ def fetch_consumption_data(config, manual_fetch_date=None):
             with Path.open(password_file, 'r') as pw_file:
                 password = pw_file.readline().strip()
         else:
-            logging.error('No Caruna password provided, exiting')
+            logger.error('No Caruna password provided, exiting')
             sys.exit(1)
 
     authenticator = Authenticator(config['username'], password)
     try:
         login_result = authenticator.login()
     except Exception:
-        logging.exception('Login failed')
+        logger.exception('Login failed')
         sys.exit(1)
 
     token = login_result['token']
@@ -59,10 +61,10 @@ def fetch_consumption_data(config, manual_fetch_date=None):
 
     metering_points = client.get_assets(customer_id)
     if len(metering_points) == 0 or not metering_points[0]:
-        logging.error('No metering points found')
+        logger.error('No metering points found')
         sys.exit(1)
     if 'assetId' not in metering_points[0]:
-        logging.error('Asset ID not found in metering point')
+        logger.error('Asset ID not found in metering point')
         sys.exit(1)
 
     asset_id = metering_points[0]['assetId']
@@ -74,8 +76,8 @@ def fetch_consumption_data(config, manual_fetch_date=None):
     for point in raw_consumption:
         if 'invoicedConsumption' in point:
             if point['invoicedConsumption'] is None:
-                logging.error('Got a None value for consumption at %s, exiting',
-                              point['timestamp'])
+                logger.error('Got a None value for consumption at %s, exiting',
+                             point['timestamp'])
                 sys.exit(1)
 
             consumption.append({'time': point['timestamp'],
@@ -96,7 +98,7 @@ def store_consumption(db_config, consumption_data):
                 cursor.execute(insert_query, (point['time'],
                                               point['consumption']))
     except psycopg.Error:
-        logging.exception('Data insert failed')
+        logger.exception('Data insert failed')
         sys.exit(1)
 
 
@@ -115,7 +117,7 @@ def create_db_conn_string(db_config):
             with Path.open(password_file, 'r') as pw_file:
                 db_config['password'] = pw_file.readline().strip()
         else:
-            logging.error('No database server password provided, exiting')
+            logger.error('No database server password provided, exiting')
             sys.exit(1)
 
     return f'host={db_config["host"]} user={db_config["username"]} ' \
@@ -127,21 +129,21 @@ def handle_storage(args, db_config, consumption_data):
     required_data_array_length = 24
 
     if args.verbose:
-        logging.info('Consumption data: length %s, array %s',
-                     len(consumption_data), consumption_data)
+        logger.info('Consumption data: length %s, array %s',
+                    len(consumption_data), consumption_data)
 
     if not args.force_store and len(consumption_data) < required_data_array_length:
-        logging.error('Data fetching failed, not enough data was received')
-        logging.info('Received data array length: %s', len(consumption_data))
+        logger.error('Data fetching failed, not enough data was received')
+        logger.info('Received data array length: %s', len(consumption_data))
         sys.exit(1)
 
     if args.no_store:
-        logging.info('Not storing data to database')
+        logger.info('Not storing data to database')
         return
 
     store_consumption(db_config, consumption_data)
 
-    logging.info('Successfully stored electricity consumption data')
+    logger.info('Successfully stored electricity consumption data')
 
 
 def main():
@@ -167,7 +169,7 @@ def main():
     config_file = args.config if args.config else 'config.json'
 
     if not Path(config_file).exists():
-        logging.error('Could not find configuration file "%s"', config_file)
+        logger.error('Could not find configuration file "%s"', config_file)
         sys.exit(1)
 
     with Path(config_file).open('r', encoding='utf-8') as cfg_file:

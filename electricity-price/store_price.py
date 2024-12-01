@@ -14,6 +14,8 @@ from pathlib import Path
 import psycopg
 from nordpool import elspot
 
+logger = logging.getLogger(__name__)
+
 VAT_MULTIPLIER = 1.255
 
 
@@ -31,7 +33,7 @@ def fetch_prices(config, fetch_date):
         try:
             start = datetime.strptime(fetch_date, '%Y-%m-%d')
         except ValueError:
-            logging.exception('Invalid date provided')
+            logger.exception('Invalid date provided')
             sys.exit(1)
     else:
         start += timedelta(days=1)
@@ -40,14 +42,14 @@ def fetch_prices(config, fetch_date):
 
     prices = []
 
-    logging.info('Fetching price data for area code %s for interval [%s, %s]',
-                 area_code, str(start), str(end))
+    logger.info('Fetching price data for area code %s for interval [%s, %s]',
+                area_code, str(start), str(end))
 
     prices_spot = elspot.Prices()
     price_data = prices_spot.hourly(areas=[area_code], end_date=end)
 
     if not price_data or area_code not in price_data['areas']:
-        logging.error('Price data fetch failed')
+        logger.error('Price data fetch failed')
         sys.exit(1)
 
     for value in price_data['areas'][area_code]['values']:
@@ -72,7 +74,7 @@ def store_prices(db_config, price_data):
                 cursor.execute(insert_query, (price['time'],
                                               round(float(price['price']), 2)))
     except psycopg.Error:
-        logging.exception('Price insert failed')
+        logger.exception('Price insert failed')
         sys.exit(1)
 
 
@@ -91,7 +93,7 @@ def create_db_conn_string(db_config):
             with Path.open(password_file, 'r') as pw_file:
                 db_config['password'] = pw_file.readline().strip()
         else:
-            logging.error('No database server password provided, exiting')
+            logger.error('No database server password provided, exiting')
             sys.exit(1)
 
     return f'host={db_config["host"]} user={db_config["username"]} ' \
@@ -115,7 +117,7 @@ def main():
     price_array_min_length = 20
 
     if not Path(config_file).exists():
-        logging.error('Could not find configuration file "%s"', config_file)
+        logger.error('Could not find configuration file "%s"', config_file)
         sys.exit(1)
 
     with Path(config_file).open('r', encoding='utf-8') as cfg_file:
@@ -124,12 +126,12 @@ def main():
     prices = fetch_prices(config['fetch'], args.date)
 
     if len(prices) < price_array_min_length:
-        logging.error('Price fetching failed, not enough data was received')
+        logger.error('Price fetching failed, not enough data was received')
         sys.exit(1)
 
     store_prices(config['db'], prices)
 
-    logging.info('Successfully stored electricity prices')
+    logger.info('Successfully stored electricity prices')
 
 
 if __name__ == '__main__':
