@@ -19,23 +19,9 @@ from pycaruna import Authenticator, CarunaPlus, TimeSpan
 logger = logging.getLogger(__name__)
 
 
-def fetch_consumption_data(config, manual_fetch_date=None):
-    """Fetch electricity consumption data from the Caruna API.
-
-    By default data for the previous day is fetched.
-    """
-    if not manual_fetch_date:
-        fetch_date = date.today() - timedelta(days=1)
-    else:
-        try:
-            fetch_dt = datetime.strptime(manual_fetch_date, '%Y-%m-%d')
-        except ValueError:
-            logger.exception('Invalid date provided')
-            sys.exit(1)
-
-        fetch_date = fetch_dt.date()
-
-    logger.info('Fetching consumption data for %s', str(fetch_date))
+def login_to_carunaplus(config):
+    """Log in to the Caruna+ service."""
+    logger.info('Logging in to Caruna+')
 
     password = config.get('password', None)
     if not password:
@@ -68,10 +54,31 @@ def fetch_consumption_data(config, manual_fetch_date=None):
         sys.exit(1)
 
     asset_id = metering_points[0]['assetId']
-    raw_consumption = client.get_energy(customer_id, asset_id, TimeSpan.DAILY,
-                                        fetch_date.year, fetch_date.month,
-                                        fetch_date.day)
 
+    return (client, customer_id, asset_id)
+
+
+def fetch_consumption_data(login_data, manual_fetch_date=None):
+    """Fetch electricity consumption data from the Caruna API.
+
+    By default data for the previous day is fetched.
+    """
+    if not manual_fetch_date:
+        fetch_date = date.today() - timedelta(days=1)
+    else:
+        try:
+            fetch_dt = datetime.strptime(manual_fetch_date, '%Y-%m-%d')
+        except ValueError:
+            logger.exception('Invalid date provided')
+            sys.exit(1)
+
+        fetch_date = fetch_dt.date()
+
+    logger.info('Fetching consumption data for %s', str(fetch_date))
+
+    raw_consumption = login_data[0].get_energy(login_data[1], login_data[2],
+                                               TimeSpan.DAILY, fetch_date.year,
+                                               fetch_date.month, fetch_date.day)
     consumption = []
     for point in raw_consumption:
         if 'invoicedConsumption' in point:
@@ -175,13 +182,15 @@ def main():
     with Path(config_file).open('r', encoding='utf-8') as cfg_file:
         config = json.load(cfg_file)
 
+    login_data = login_to_carunaplus(config['fetch'])
+
     if args.date:
         for date in args.date.split(','):
             handle_storage(args, config['db'],
-                           fetch_consumption_data(config['fetch'], date))
+                           fetch_consumption_data(login_data, date))
     else:
         handle_storage(args, config['db'],
-                       fetch_consumption_data(config['fetch']))
+                       fetch_consumption_data(login_data))
 
 
 if __name__ == '__main__':
