@@ -31,7 +31,7 @@ def get_timestamp(timezone):
     return datetime.now(pytz.timezone(timezone)).isoformat()
 
 
-def get_env_data(env_settings):
+def get_env_data(env_settings):  # noqa: PLR0912
     """Fetch the environment data from the Arduino and Wio Terminal.
 
     Returns the parsed JSON object or an empty dictionary on failure.
@@ -72,8 +72,13 @@ def get_env_data(env_settings):
                 logger.exception('Cannot read Wio Terminal serial')
                 terminal_ok = False
     else:
-        resp = requests.get(env_settings['wioterminal_url'], timeout=10)
-        if not resp.ok:
+        request_ok = True
+        try:
+            resp = requests.get(env_settings['wioterminal_url'], timeout=10)
+        except (requests_ConnectionError, OSError) as ex:
+            logger.error('Wio Terminal data request failed: %s', ex)
+            request_ok = False
+        if not request_ok or not resp.ok:
             terminal_ok = False
         else:
             terminal_data = resp.json()
