@@ -3,7 +3,9 @@
     "authentication_code": "badcode",
     "environment": {
         "arduino_url": "http://192.168.1.123",
-        "terminal_serial": "/dev/ttyACM0",
+        "use_serial_for_wioterminal": true,
+        "wioterminal_url": "http://192.168.1.124",
+        "wioterminal_serial": "/dev/ttyACM0",
         "upload_url": "https://example.com/env-logger/obs/observation",
         "ble_beacon_mac": "20:91:48:26:51:F1",
         "ble_beacon_rescan_battery": false

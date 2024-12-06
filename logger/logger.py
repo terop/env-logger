@@ -52,24 +52,31 @@ def get_env_data(env_settings):
 
     # Read Wio Terminal
     terminal_ok = True
-    if not Path(env_settings['terminal_serial']).exists():
-        logger.warning('Could not find Wio Terminal device "%s", '
-                       'skipping Wio Terminal read',
-                       env_settings['terminal_serial'])
-        terminal_ok = False
-    else:
-        try:
-            with serial.Serial(env_settings['terminal_serial'], 115200, timeout=10) \
-                 as ser:
-                raw_data = ser.readline()
-                if not raw_data.decode():
-                    logger.error('Got no serial data from Wio Terminal')
-                    terminal_ok = False
-
-                terminal_data = json.loads(raw_data)
-        except serial.serialutil.SerialException:
-            logger.exception('Cannot read Wio Terminal serial')
+    if env_settings['use_serial_for_wioterminal']:
+        if not Path(env_settings['wioterminal_serial']).exists():
+            logger.warning('Could not find Wio Terminal device "%s", '
+                           'skipping Wio Terminal read',
+                           env_settings['wioterminal_serial'])
             terminal_ok = False
+        else:
+            try:
+                with serial.Serial(env_settings['wioterminal_serial'], 115200,
+                                   timeout=10) as ser:
+                    raw_data = ser.readline()
+                    if not raw_data.decode():
+                        logger.error('Got no serial data from Wio Terminal')
+                        terminal_ok = False
+
+                        terminal_data = json.loads(raw_data)
+            except serial.serialutil.SerialException:
+                logger.exception('Cannot read Wio Terminal serial')
+                terminal_ok = False
+    else:
+        resp = requests.get(env_settings['wioterminal_url'], timeout=10)
+        if not resp.ok:
+            terminal_ok = False
+        else:
+            terminal_data = resp.json()
 
     if terminal_ok:
         logger.info('Wio Terminal values: temperature %s, built-in light %s',
