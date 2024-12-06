@@ -66,7 +66,7 @@ def get_env_data(env_settings):
                     if not raw_data.decode():
                         logger.error('Got no serial data from Wio Terminal')
                         terminal_ok = False
-
+                    else:
                         terminal_data = json.loads(raw_data)
             except serial.serialutil.SerialException:
                 logger.exception('Cannot read Wio Terminal serial')
