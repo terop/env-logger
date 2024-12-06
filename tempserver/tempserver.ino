@@ -14,7 +14,7 @@
 // Network SSID
 char ssid[] = SECRET_SSID;
 // Network password
-char pass[] = SECRET_PASS;
+char password[] = SECRET_PASS;
 // WiFi radio status
 int status = WL_IDLE_STATUS;
 // Network server
@@ -58,7 +58,7 @@ void setup() {
     Serial.print("Attempting to connect to network: ");
     Serial.println(ssid);
     // Connect to WPA/WPA2 network
-    status = WiFi.begin(ssid, pass);
+    status = WiFi.begin(ssid, password);
 
     // Wait 5 seconds for connection
     delay(5000);
