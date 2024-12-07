@@ -31,12 +31,11 @@ def get_timestamp(timezone):
     return datetime.now(pytz.timezone(timezone)).isoformat()
 
 
-def get_env_data(env_settings):  # noqa: PLR0912
-    """Fetch the environment data from the Arduino and Wio Terminal.
+def get_data_from_arduino(env_settings):
+    """Read environment data from Arduino.
 
-    Returns the parsed JSON object or an empty dictionary on failure.
+    Returns the received data or None on failure.
     """
-    # Read Arduino
     arduino_ok = True
     try:
         resp = requests.get(env_settings['arduino_url'], timeout=5)
@@ -48,47 +47,76 @@ def get_env_data(env_settings):  # noqa: PLR0912
         arduino_ok = False
 
     if arduino_ok:
-        arduino_data = resp.json()
-
-    # Read Wio Terminal
-    terminal_ok = True
-    if env_settings['use_serial_for_wioterminal']:
-        if not Path(env_settings['wioterminal_serial']).exists():
-            logger.warning('Could not find Wio Terminal device "%s", '
-                           'skipping Wio Terminal read',
-                           env_settings['wioterminal_serial'])
-            terminal_ok = False
-        else:
-            try:
-                with serial.Serial(env_settings['wioterminal_serial'], 115200,
-                                   timeout=10) as ser:
-                    raw_data = ser.readline()
-                    if not raw_data.decode():
-                        logger.error('Got no serial data from Wio Terminal')
-                        terminal_ok = False
-                    else:
-                        terminal_data = json.loads(raw_data)
-            except serial.serialutil.SerialException:
-                logger.exception('Cannot read Wio Terminal serial')
-                terminal_ok = False
-    else:
-        request_ok = True
         try:
-            resp = requests.get(env_settings['wioterminal_url'], timeout=10)
-        except (requests_ConnectionError, OSError) as ex:
-            logger.error('Wio Terminal data request failed: %s', ex)
-            request_ok = False
-        if not request_ok or not resp.ok:
+            arduino_data = resp.json()
+        except json.JSONDecodeError as err:
+            logger.error('Arduino JSON response decode failed: %s', err)
+            arduino_ok = False
+
+    return round(arduino_data['extTempSensor'], 2) if arduino_ok else None
+
+
+def get_data_from_wioterminal_serial(env_settings):
+    """Read environment data from Wio Terminal using serial.
+
+    Returns the received data or None on failure.
+    """
+    terminal_ok = True
+
+    if not Path(env_settings['wioterminal_serial']).exists():
+        logger.warning('Could not find Wio Terminal device "%s", '
+                       'skipping Wio Terminal read',
+                       env_settings['wioterminal_serial'])
+        terminal_ok = False
+    else:
+        try:
+            with serial.Serial(env_settings['wioterminal_serial'], 115200,
+                               timeout=10) as ser:
+                raw_data = ser.readline()
+                if not raw_data.decode():
+                    logger.error('Got no serial data from Wio Terminal')
+                    terminal_ok = False
+                else:
+                    terminal_data = json.loads(raw_data)
+        except serial.serialutil.SerialException:
+            logger.exception('Cannot read Wio Terminal serial')
             terminal_ok = False
-        else:
-            terminal_data = resp.json()
+        except json.JSONDecodeError as err:
+            logger.err('Wio Terminal JSON response decode failed: %s', err)
+            terminal_ok = False
 
     if terminal_ok:
         logger.info('Wio Terminal values: temperature %s, built-in light %s',
                      terminal_data['temperature'], terminal_data['builtInLight'])
-    return {'outsideTemperature': round(arduino_data['extTempSensor'], 2)
-            if arduino_ok else None,
-            'insideLight': terminal_data['light'] if terminal_ok else None}
+    return terminal_data['light'] if terminal_ok else None
+
+
+def get_data_from_wioterminal_http(env_settings):
+    """Read environment data from Wio Terminal using HTTP.
+
+    Returns the received data or None on failure.
+    """
+    request_ok = True
+
+    try:
+        resp = requests.get(env_settings['wioterminal_url'], timeout=10)
+    except (requests_ConnectionError, OSError) as ex:
+        logger.error('Wio Terminal data request failed: %s', ex)
+        request_ok = False
+
+    if not request_ok or not resp.ok:
+        terminal_ok = False
+    else:
+        try:
+            terminal_data = resp.json()
+        except json.JSONDecodeError as err:
+            logger.error('Wio Terminal JSON response decode failed: %s', err)
+            terminal_ok = False
+
+    if terminal_ok:
+        logger.info('Wio Terminal values: temperature %s, built-in light %s',
+                     terminal_data['temperature'], terminal_data['builtInLight'])
+    return terminal_data['light'] if terminal_ok else None
 
 
 async def scan_ruuvitags(rt_config, bt_device):
@@ -313,7 +341,10 @@ def main():
         env_data = {'insideLight': 10,
                     'outsideTemperature': 5}
     else:
-        env_data = get_env_data(env_config)
+        env_data = {'outsideTemperature': get_data_from_arduino(env_config),
+                    'insideLight': get_data_from_wioterminal_serial(env_config) if
+                    env_config['use_serial_for_wioterminal'] else
+                    get_data_from_wioterminal_http(env_config)}
 
     timestamp = get_timestamp(config['timezone'])
     scan_result = asyncio.run(do_scan(config, bt_device))
