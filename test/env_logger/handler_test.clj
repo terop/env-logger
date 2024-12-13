@@ -27,8 +27,10 @@
           (let [request {:params
                          {"observation"
                           (j/write-value-as-string {:timestamp ""
-                                                    :insideLight 0
                                                     :beacons ""
+                                                    :co2 600
+                                                    :insideLight 0
+                                                    :insideTemperature 21
                                                     :outsideTemperature 0})}}]
             (with-redefs [h/handle-observation-insert (fn [_] true)]
               (is (= "OK" (:body (h/observation-insert request)))))

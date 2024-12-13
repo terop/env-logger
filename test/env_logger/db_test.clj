@@ -111,7 +111,9 @@
 (deftest insert-observations
   (testing "Full observation insert"
     (let [observation {:timestamp (t/zoned-date-time)
+                       :co2 600
                        :insideLight 0
+                       :insideTemperature 21
                        :beacon {:mac "7C:EC:79:3F:BE:97"
                                 :rssi -68
                                 :battery_level nil}}
@@ -424,7 +426,9 @@
   (testing "Insert of a row into the observations table"
     (is (pos? (insert-plain-observation test-ds
                                         {:timestamp (t/zoned-date-time)
+                                         :co2 600
                                          :insideLight 0
+                                         :insideTemperature 21
                                          :outsideTemperature 5})))))
 
 (deftest db-connection-test

@@ -157,9 +157,11 @@
                                          (:timestamp observation))
                                         (t/hours (get-tz-offset
                                                   (:store-timezone env)))))
+                    :tb_image_name (get-tb-image db-con)
                     :brightness (:insideLight observation)
+                    :inside_temperature (:insideTemperature observation)
                     :outside_temperature (:outsideTemperature observation)
-                    :tb_image_name (get-tb-image db-con)}
+                    :co2 (:co2 observation)}
                    rs-opts)))
 
 (defn insert-beacon
@@ -230,7 +232,7 @@
 (defn insert-observation
   "Inserts a observation to the database."
   [db-con observation]
-  (if (= 5 (count observation))
+  (if (= 7 (count observation))
     (jdbc/with-transaction [tx db-con]
       (try
         (let [obs-id (insert-plain-observation tx

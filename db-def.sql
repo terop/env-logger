@@ -4,9 +4,11 @@
 CREATE TABLE observations (
        id SERIAL PRIMARY KEY,
        recorded TIMESTAMP WITH TIME ZONE UNIQUE NOT NULL,
-       brightness SMALLINT NOT NULL,
        tb_image_name VARCHAR(40),
-       outside_temperature REAL
+       brightness SMALLINT NOT NULL,
+       inside_temperature REAL,
+       outside_temperature REAL,
+       co2 SMALLINT
 );
 
 CREATE INDEX observations_recorded_brin ON observations USING BRIN (recorded);
