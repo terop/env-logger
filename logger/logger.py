@@ -86,9 +86,11 @@ def get_data_from_wioterminal_serial(env_settings):
             terminal_ok = False
 
     if terminal_ok:
-        logger.info('Wio Terminal values: temperature %s, built-in light %s',
-                     terminal_data['temperature'], terminal_data['builtInLight'])
-    return terminal_data['light'] if terminal_ok else None
+        logger.info('Wio Terminal values: humidity %s', terminal_data['humidity'])
+
+    return (terminal_data['light'] if terminal_ok else None,
+            round(terminal_data['temperature'], 2) if terminal_ok else None,
+            terminal_data['co2'] if terminal_ok else None)
 
 
 def get_data_from_wioterminal_http(env_settings):
@@ -114,9 +116,11 @@ def get_data_from_wioterminal_http(env_settings):
             terminal_ok = False
 
     if terminal_ok:
-        logger.info('Wio Terminal values: temperature %s, built-in light %s',
-                     terminal_data['temperature'], terminal_data['builtInLight'])
-    return terminal_data['light'] if terminal_ok else None
+        logger.info('Wio Terminal values: humidity %s', terminal_data['humidity'])
+
+    return (terminal_data['light'] if terminal_ok else None,
+            round(terminal_data['temperature'], 2) if terminal_ok else None,
+            terminal_data['co2'] if terminal_ok else None)
 
 
 async def scan_ruuvitags(rt_config, bt_device):
@@ -339,12 +343,18 @@ def main():
 
     if args.dummy:
         env_data = {'insideLight': 10,
+                    'insideTemperature': 21,
+                    'co2': 700,
                     'outsideTemperature': 5}
     else:
-        env_data = {'outsideTemperature': get_data_from_arduino(env_config),
-                    'insideLight': get_data_from_wioterminal_serial(env_config) if
-                    env_config['use_serial_for_wioterminal'] else
-                    get_data_from_wioterminal_http(env_config)}
+        env_data = {'outsideTemperature': get_data_from_arduino(env_config)}
+
+        terminal_data = get_data_from_wioterminal_serial(env_config) if \
+            env_config['use_serial_for_wioterminal'] else \
+            get_data_from_wioterminal_http(env_config)
+        env_data['insideLight'] = terminal_data[0]
+        env_data['insideTemperature'] = terminal_data[1]
+        env_data['co2'] = terminal_data[2]
 
     timestamp = get_timestamp(config['timezone'])
     scan_result = asyncio.run(do_scan(config, bt_device))
