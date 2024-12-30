@@ -123,7 +123,7 @@ def get_data_from_wioterminal_http(env_settings):
             terminal_data['co2'] if terminal_ok else None)
 
 
-async def scan_ruuvitags(rt_config, bt_device):
+async def scan_ruuvitags(rt_config, bt_device):  # noqa: C901
     """Scan for RuuviTag(s)."""
     found_tags = {}
     scan_timeout = rt_config.get('scan_timeout', 5)
