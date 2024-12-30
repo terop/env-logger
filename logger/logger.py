@@ -16,7 +16,6 @@ from statistics import mean, median
 
 import pytz
 import requests
-import serial
 from bleak import BleakScanner
 from bleak.exc import BleakDBusError, BleakError
 from requests.exceptions import ConnectionError as requests_ConnectionError
@@ -56,71 +55,35 @@ def get_data_from_arduino(env_settings):
     return round(arduino_data['extTempSensor'], 2) if arduino_ok else None
 
 
-def get_data_from_wioterminal_serial(env_settings):
-    """Read environment data from Wio Terminal using serial.
+def get_data_from_esp32(env_settings):
+    """Read environment data from Xiao ESP32 using HTTP.
 
     Returns the received data or None on failure.
     """
-    terminal_ok = True
-
-    if not Path(env_settings['wioterminal_serial']).exists():
-        logger.warning('Could not find Wio Terminal device "%s", '
-                       'skipping Wio Terminal read',
-                       env_settings['wioterminal_serial'])
-        terminal_ok = False
-    else:
-        try:
-            with serial.Serial(env_settings['wioterminal_serial'], 115200,
-                               timeout=10) as ser:
-                raw_data = ser.readline()
-                if not raw_data.decode():
-                    logger.error('Got no serial data from Wio Terminal')
-                    terminal_ok = False
-                else:
-                    terminal_data = json.loads(raw_data)
-        except serial.serialutil.SerialException:
-            logger.exception('Cannot read Wio Terminal serial')
-            terminal_ok = False
-        except json.JSONDecodeError as err:
-            logger.err('Wio Terminal JSON response decode failed: %s', err)
-            terminal_ok = False
-
-    if terminal_ok:
-        logger.info('Wio Terminal values: humidity %s', terminal_data['humidity'])
-
-    return (terminal_data['light'] if terminal_ok else None,
-            round(terminal_data['temperature'], 2) if terminal_ok else None,
-            terminal_data['co2'] if terminal_ok else None)
-
-
-def get_data_from_wioterminal_http(env_settings):
-    """Read environment data from Wio Terminal using HTTP.
-
-    Returns the received data or None on failure.
-    """
+    esp32_ok = True
     request_ok = True
 
     try:
-        resp = requests.get(env_settings['wioterminal_url'], timeout=10)
+        resp = requests.get(env_settings['esp32_url'], timeout=10)
     except (requests_ConnectionError, OSError) as ex:
-        logger.error('Wio Terminal data request failed: %s', ex)
+        logger.error('ESP32 data request failed: %s', ex)
         request_ok = False
 
     if not request_ok or not resp.ok:
-        terminal_ok = False
+        esp32_ok = False
     else:
         try:
-            terminal_data = resp.json()
+            esp32_data = resp.json()
         except json.JSONDecodeError as err:
-            logger.error('Wio Terminal JSON response decode failed: %s', err)
-            terminal_ok = False
+            logger.error('ESP32 JSON response decode failed: %s', err)
+            esp32_ok = False
 
-    if terminal_ok:
-        logger.info('Wio Terminal values: humidity %s', terminal_data['humidity'])
+    if esp32_ok:
+        logger.info('ESP32 values: humidity %s', esp32_data['humidity'])
 
-    return (terminal_data['light'] if terminal_ok else None,
-            round(terminal_data['temperature'], 2) if terminal_ok else None,
-            terminal_data['co2'] if terminal_ok else None)
+    return (esp32_data['light'] if esp32_ok else None,
+            round(esp32_data['temperature'], 2) if esp32_ok else None,
+            esp32_data['co2'] if esp32_ok else None)
 
 
 async def scan_ruuvitags(rt_config, bt_device):  # noqa: C901
@@ -349,18 +312,18 @@ def main():
     else:
         env_data = {'outsideTemperature': get_data_from_arduino(env_config)}
 
-        terminal_data = get_data_from_wioterminal_serial(env_config) if \
-            env_config['use_serial_for_wioterminal'] else \
-            get_data_from_wioterminal_http(env_config)
-        env_data['insideLight'] = terminal_data[0]
-        env_data['insideTemperature'] = terminal_data[1]
-        env_data['co2'] = terminal_data[2]
+        esp32_data = get_data_from_esp32(env_config)
+        env_data['insideLight'] = esp32_data[0]
+        env_data['insideTemperature'] = esp32_data[1]
+        env_data['co2'] = esp32_data[2]
 
     timestamp = get_timestamp(config['timezone'])
     scan_result = asyncio.run(do_scan(config, bt_device))
 
     env_data['beacon'] = scan_result['ble_beacon']
-    store_to_db(config, timestamp, env_data)
+    if env_data['insideLight'] is not None:
+        # Only send environment data when required values are available
+        store_to_db(config, timestamp, env_data)
 
     store_ruuvitags(config, timestamp, scan_result['ruuvitag'])
 

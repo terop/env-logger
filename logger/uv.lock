@@ -81,7 +81,6 @@ name = "logger"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
-    { name = "pyserial" },
     { name = "pytz" },
     { name = "requests" },
     { name = "ruuvitag-sensor" },
@@ -89,7 +88,6 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "pyserial", specifier = ">=3.5" },
     { name = "pytz", specifier = ">=2024.2" },
     { name = "requests", specifier = ">=2.32.3" },
     { name = "ruuvitag-sensor", git = "https://github.com/ttu/ruuvitag-sensor.git" },
@@ -156,15 +154,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/4d/12/a908f3f94952c8c9e
 wheels = [
     { url = "https://files.pythonhosted.org/packages/86/cc/ff00f7d2e1774e8bbab4da59793f094bdf97c9f0d178f6ace29a89413082/pyobjc_framework_libdispatch-10.3.2-cp313-cp313-macosx_10_13_universal2.whl", hash = "sha256:1357729d5fded08fbf746834ebeef27bee07d6acb991f3b8366e8f4319d882c4", size = 15576 },
     { url = "https://files.pythonhosted.org/packages/6b/27/530cd12bdc16938a85436ac5a81dccd85b35bac5e42144e623b69b052b76/pyobjc_framework_libdispatch-10.3.2-cp313-cp313t-macosx_10_13_universal2.whl", hash = "sha256:210398f9e1815ceeff49b578bf51c2d6a4a30d4c33f573da322f3d7da1add121", size = 15854 },
-]
-
-[[package]]
-name = "pyserial"
-version = "3.5"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/1e/7d/ae3f0a63f41e4d2f6cb66a5b57197850f919f59e558159a4dd3a818f5082/pyserial-3.5.tar.gz", hash = "sha256:3c77e014170dfffbd816e6ffc205e9842efb10be9f58ec16d3e8675b4925cddb", size = 159125 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/07/bc/587a445451b253b285629263eb51c2d8e9bcea4fc97826266d186f96f558/pyserial-3.5-py2.py3-none-any.whl", hash = "sha256:c4451db6ba391ca6ca299fb3ec7bae67a5c55dde170964c7a14ceefec02f2cf0", size = 90585 },
 ]
 
 [[package]]
