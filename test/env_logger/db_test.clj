@@ -101,10 +101,10 @@
   ([minus-time]
    (str "testbed-"
         (str/replace (if minus-time
-                       (t/format (t/formatter "Y-MM-dd HH:mmxxx")
+                       (t/format (t/formatter "y-MM-dd HH:mmxxx")
                                  (t/minus (t/offset-date-time)
                                           minus-time))
-                       (t/format (t/formatter "Y-MM-dd HH:mmxxx")
+                       (t/format (t/formatter "y-MM-dd HH:mmxxx")
                                  (t/offset-date-time)))
                      " " "T") ".jpg")))
 
