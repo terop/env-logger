@@ -127,6 +127,8 @@ def fetch_token():
                       'reloading board')
                 time.sleep(5)
                 supervisor.reload()
+        except ConnectionError:
+            connect_to_wlan()
 
     return resp.text
 
@@ -173,7 +175,7 @@ def get_backend_endpoint_content(endpoint, token):
                     supervisor.reload()
 
         return (token, resp.json())
-    except (TimeoutError, adafruit_requests.OutOfRetries) as ex:
+    except (ConnectionError, TimeoutError, adafruit_requests.OutOfRetries) as ex:
         print(f'Error: endpoint "{endpoint}" fetch failed: {ex}, reloading board')
         time.sleep(sleep_time)
         supervisor.reload()
@@ -201,6 +203,8 @@ def set_time(timezone):
             print(f'Error: an exception occurred in set_time: {ex}')
             time.sleep(5)
             supervisor.reload()
+        except ConnectionError:
+            connect_to_wlan()
 
 
 def adjust_backlight(display):
