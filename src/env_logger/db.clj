@@ -161,6 +161,7 @@
                     :brightness (:insideLight observation)
                     :inside_temperature (:insideTemperature observation)
                     :outside_temperature (:outsideTemperature observation)
+                    :outside_light (:outsideLight observation)
                     :co2 (:co2 observation)}
                    rs-opts)))
 
@@ -232,7 +233,7 @@
 (defn insert-observation
   "Inserts a observation to the database."
   [db-con observation]
-  (if (= 7 (count observation))
+  (if (>= (count observation) 7)
     (jdbc/with-transaction [tx db-con]
       (try
         (let [obs-id (insert-plain-observation tx

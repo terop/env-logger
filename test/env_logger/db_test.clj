@@ -113,6 +113,7 @@
     (let [observation {:timestamp (t/zoned-date-time)
                        :co2 600
                        :insideLight 0
+                       :outsideLight 150
                        :insideTemperature 21
                        :beacon {:mac "7C:EC:79:3F:BE:97"
                                 :rssi -68
@@ -170,17 +171,17 @@
             :beacon-rssi -68
             :beacon-battery nil
             :tb-image-name nil}
-           (-> (nth (get-obs-days test-ds 3) 1)
+           (-> (nth (get-obs-days test-ds 3) 2)
                (dissoc :recorded)
                (dissoc :weather-recorded))))))
 
 (deftest obs-interval-select
   (testing "Select observations between one or two dates"
-    (is (= 5 (count (get-obs-interval
+    (is (= 6 (count (get-obs-interval
                      test-ds
                      {:start nil
                       :end nil}))))
-    (is (= 3 (count (get-obs-interval
+    (is (= 4 (count (get-obs-interval
                      test-ds
                      {:start (t/format date-fmt
                                        (t/minus (t/local-date)
@@ -192,7 +193,7 @@
                       :end (t/format date-fmt
                                      (t/minus (t/local-date)
                                               (t/days 2)))}))))
-    (is (= 5 (count (get-obs-interval
+    (is (= 6 (count (get-obs-interval
                      test-ds
                      {:start (t/format date-fmt
                                        (t/minus (t/local-date)
@@ -428,6 +429,14 @@
                                         {:timestamp (t/zoned-date-time)
                                          :co2 600
                                          :insideLight 0
+                                         :outsideLight 100
+                                         :insideTemperature 21
+                                         :outsideTemperature 5})))
+    (is (pos? (insert-plain-observation test-ds
+                                        {:timestamp (t/zoned-date-time)
+                                         :co2 600
+                                         :insideLight 0
+                                         :outsideLight nil
                                          :insideTemperature 21
                                          :outsideTemperature 5})))))
 

@@ -8,6 +8,7 @@ CREATE TABLE observations (
        brightness SMALLINT NOT NULL,
        inside_temperature REAL,
        outside_temperature REAL,
+       outside_light INTEGER,
        co2 SMALLINT
 );
 

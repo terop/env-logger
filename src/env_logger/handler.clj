@@ -174,10 +174,10 @@
       (let [observation (j/read-value (get (:params request)
                                            "observation")
                                       json-decode-opts)]
-        (if-not (= (count observation) 6)
-          (bad-request "Bad request")
+        (if (>= (count observation) 6)
           (if (handle-observation-insert observation)
-            (serve-text "OK") auth/response-server-error))))))
+            (serve-text "OK") auth/response-server-error)
+          (bad-request "Bad request"))))))
 
 (defn rt-observation-insert
   "Function called when an RuuviTag observation is posted."
