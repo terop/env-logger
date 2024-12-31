@@ -4,6 +4,7 @@
     "environment": {
         "arduino_url": "http://192.168.1.123",
         "esp32_url": "http://192.168.1.124",
+        "outside_esp32_url": "http://192.168.1.125",
         "upload_url": "https://example.com/env-logger/obs/observation",
         "ble_beacon_mac": "20:91:48:26:51:F1",
         "ble_beacon_rescan_battery": false

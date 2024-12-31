@@ -38,8 +38,8 @@ def get_data_from_arduino(env_settings):
     arduino_ok = True
     try:
         resp = requests.get(env_settings['arduino_url'], timeout=5)
-    except (requests_ConnectionError, OSError) as ex:
-        logger.error('Connection problem to Arduino: %s', ex)
+    except (requests_ConnectionError, OSError) as err:
+        logger.error('Connection problem to Arduino: %s', err)
         arduino_ok = False
     if arduino_ok and not resp.ok:
         logger.error('Cannot read Arduino data, status code: %s', resp.status_code)
@@ -55,18 +55,18 @@ def get_data_from_arduino(env_settings):
     return round(arduino_data['extTempSensor'], 2) if arduino_ok else None
 
 
-def get_data_from_esp32(env_settings):
-    """Read environment data from Xiao ESP32 using HTTP.
+def get_esp32_env_data(env_settings):
+    """Read environment data from Xiao ESP32.
 
-    Returns the received data or None on failure.
+    Returns the received data or None on failure for values which cannot be read.
     """
     esp32_ok = True
     request_ok = True
 
     try:
         resp = requests.get(env_settings['esp32_url'], timeout=10)
-    except (requests_ConnectionError, OSError) as ex:
-        logger.error('ESP32 data request failed: %s', ex)
+    except (requests_ConnectionError, OSError) as err:
+        logger.error('ESP32 data request failed: %s', err)
         request_ok = False
 
     if not request_ok or not resp.ok:
@@ -84,6 +84,26 @@ def get_data_from_esp32(env_settings):
     return (esp32_data['light'] if esp32_ok else None,
             round(esp32_data['temperature'], 2) if esp32_ok else None,
             esp32_data['co2'] if esp32_ok else None)
+
+
+def get_outside_light_value(env_settings):
+    """Read light sensor value from outside Xiao ESP32.
+
+    Returns the received data or None on failure.
+    """
+    try:
+        resp = requests.get(env_settings['outside_esp32_url'], timeout=10)
+    except (requests_ConnectionError, OSError) as err:
+        logger.error('ESP32 data request failed: %s', err)
+        return None
+
+    try:
+        esp32_data = resp.json()
+    except json.JSONDecodeError as err:
+        logger.error('ESP32 JSON response decode failed: %s', err)
+        return None
+
+    return esp32_data['light']
 
 
 async def scan_ruuvitags(rt_config, bt_device):  # noqa: C901
@@ -312,10 +332,11 @@ def main():
     else:
         env_data = {'outsideTemperature': get_data_from_arduino(env_config)}
 
-        esp32_data = get_data_from_esp32(env_config)
+        esp32_data = get_esp32_env_data(env_config)
         env_data['insideLight'] = esp32_data[0]
         env_data['insideTemperature'] = esp32_data[1]
         env_data['co2'] = esp32_data[2]
+        env_data['outsideLight'] = get_outside_light_value(env_config)
 
     timestamp = get_timestamp(config['timezone'])
     scan_result = asyncio.run(do_scan(config, bt_device))
