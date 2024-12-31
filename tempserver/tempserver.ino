@@ -14,15 +14,16 @@
 // Network SSID
 char ssid[] = SECRET_SSID;
 // Network password
-char password[] = SECRET_PASS;
-// WiFi radio status
-int status = WL_IDLE_STATUS;
+char password[] = SECRET_PASSWORD;
 // Network server
 WiFiServer server(80);
 
 // Input pins
 const int PHOTORESISTOR_PIN = A4;
 const int THERMISTOR_PIN = A6;
+
+// Output pins
+const int RESET_PIN = 10;
 
 /* A reading from the ADC might give one value at one sample and then a little
    different the next time around. To eliminate noisy readings, we can sample
@@ -50,15 +51,22 @@ void setup() {
   // Initialise LED
   pinMode(LED_BUILTIN, OUTPUT);
 
-  // Open serial communications and wait for port to open
+  // Initialise reset pin
+  digitalWrite(RESET_PIN, HIGH);
+  pinMode(RESET_PIN, OUTPUT);
+
+  // Open serial communications
   Serial.begin(9600);
 
+  Serial.print("Attempting to connect to network: ");
+  Serial.println(ssid);
+
   // Attempt to connect to Wifi network
-  while (status != WL_CONNECTED) {
-    Serial.print("Attempting to connect to network: ");
-    Serial.println(ssid);
+  while (WiFi.status() != WL_CONNECTED) {
     // Connect to WPA/WPA2 network
-    status = WiFi.begin(ssid, password);
+    WiFi.begin(ssid, password);
+
+    Serial.println("Connecting");
 
     // Wait 5 seconds for connection
     delay(5000);
@@ -71,6 +79,8 @@ void setup() {
 }
 
 void loop() {
+  reconnectToWifi();
+
   // Listen for incoming clients
   WiFiClient client = server.available();
 
@@ -87,17 +97,17 @@ void loop() {
         // character) and the line is blank, the HTTP request has ended,
         // so you can send a reply
         if (c == '\n' && currentLineIsBlank) {
-          DynamicJsonDocument doc = readSensors();
+          JsonDocument doc = readSensors();
 
           // Send a standard http response header
           client.println("HTTP/1.1 200 OK");
           client.println("Content-Type: application/json");
           client.println("Connection: close");
           client.print("Content-Length: ");
-          client.println(measureJsonPretty(doc));
+          client.println(measureJson(doc));
           client.println();
 
-          serializeJsonPretty(doc, client);
+          serializeJson(doc, client);
           break;
         }
         if (c == '\n') {
@@ -115,6 +125,8 @@ void loop() {
 
     digitalWrite(LED_BUILTIN, LOW);
   }
+
+  delay(2000);
 }
 
 void printNetworkData() {
@@ -133,11 +145,37 @@ void printNetworkData() {
   Serial.println(rssi);
 }
 
+void reconnectToWifi() {
+  if (WiFi.status() != WL_CONNECTED) {
+    int connectionAttempts = 15;
+
+    Serial.println("WiFi connection dropped, attempting to reconnect");
+
+    WiFi.begin(ssid, password);
+
+    while (connectionAttempts && WiFi.status() != WL_CONNECTED) {
+      delay(2000);
+      Serial.println("Connecting");
+      connectionAttempts--;
+    }
+    if (!connectionAttempts) {
+      Serial.println("Failed to connect, restarting board");
+      digitalWrite(RESET_PIN, LOW);
+
+      Serial.println("Reset Failed");
+    }
+
+    Serial.println("Connected");
+    printNetworkData();
+  }
+}
+
+
 // Reads the sensors and returns them in a JSON object
-DynamicJsonDocument readSensors() {
+JsonDocument readSensors() {
   const int temperatureCount = 3;
   double temperatureSum = 0;
-  DynamicJsonDocument doc(96);
+  JsonDocument doc;
 
   for (int i = 0; i < temperatureCount; i++)
     temperatureSum += getTemperatureSensorValue();
@@ -199,11 +237,10 @@ double getTemperatureSensorValue() {
    Analog Pin
 */
 double readThermistor(int thermistorPin, double balanceResistor, double beta) {
-  // variables that live in this function
-  double rThermistor = 0;            // Holds thermistor resistance value
-  double tKelvin     = 0;            // Holds calculated temperature
-  double tCelsius    = 0;            // Hold temperature in celsius
-  double adcAverage  = 0;            // Holds the average voltage measurement
+  double rThermistor = 0;  // Holds thermistor resistance value
+  double tKelvin     = 0;  // Holds calculated temperature
+  double tCelsius    = 0;  // Hold temperature in celsius
+  double adcAverage  = 0;  // Holds the average voltage measurement
   int adcSamples[SAMPLE_NUMBER];  // Array to hold each voltage measurement
 
   /* Calculate thermistor's average resistance:
@@ -213,19 +250,19 @@ double readThermistor(int thermistorPin, double balanceResistor, double beta) {
 
   for (int i = 0; i < SAMPLE_NUMBER; i++) {
     adcSamples[i] = analogRead(thermistorPin);  // read from pin and store
-    delay(10);        // wait 10 milliseconds
+    delay(10);  // wait 10 milliseconds
   }
 
   /* Then, we will simply average all of those samples up for a "stiffer"
      measurement. */
   for (int i = 0; i < SAMPLE_NUMBER; i++) {
-    adcAverage += adcSamples[i];      // add all samples up . . .
+    adcAverage += adcSamples[i];  // add all samples up
   }
-  adcAverage /= SAMPLE_NUMBER;        // . . . average it w/ divide
+  adcAverage /= SAMPLE_NUMBER;  // average by dividing
 
   /* Here we calculate the thermistor’s resistance using the equation
      discussed in the article. */
-  rThermistor = balanceResistor * ( (MAX_ADC / adcAverage) - 1);
+  rThermistor = balanceResistor * ((MAX_ADC / adcAverage) - 1);
 
   /* Here is where the Beta equation is used, but it is different
      from what the article describes. Don't worry! It has been rearranged
@@ -242,7 +279,7 @@ double readThermistor(int thermistorPin, double balanceResistor, double beta) {
      Celsius, when I first try the program out. I prefer Fahrenheit, but
      I leave it up to you to either change this function, or create
      another function which converts between the two units. */
-  tCelsius = tKelvin - 273.15;  // convert kelvin to celsius
+  tCelsius = tKelvin - 273.15;  // convert kelvin to Celsius
 
   return tCelsius;
 }
