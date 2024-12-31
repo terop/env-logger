@@ -5,7 +5,7 @@ const DateTime = luxon.DateTime;
 // Data field names
 const fieldNames = {
   weather: ['fmi-temperature', 'cloudiness', 'wind-speed'],
-  other: ['brightness', 'o-temperature', 'beacon-rssi', 'beacon-battery']
+  other: ['inside-light', 'o-temperature', 'beacon-rssi', 'beacon-battery']
 };
 
 let labelValues = {
@@ -102,7 +102,7 @@ const loadPage = () => {
 
     // "null pad" RuuviTag observations to align latest observations with non-RuuviTag observations
     for (const key of Object.keys(dataSets.rt)) {
-      const lenDiff = dataSets.other.brightness.length - dataSets.rt[key].temperature.length;
+      const lenDiff = dataSets.other['inside-light'].length - dataSets.rt[key].temperature.length;
       for (let j = 0; j < lenDiff; j++) {
         dataSets.rt[key].temperature.unshift(null);
         dataSets.rt[key].humidity.unshift(null);
@@ -207,7 +207,7 @@ const loadPage = () => {
       }
 
       labelValues.other = {
-        brightness: 'Brightness',
+        'inside-light': 'Inside light',
         'o-temperature': 'Outside temperature',
         'beacon-rssi': beaconName
           ? `Beacon "${beaconName}" RSSI`
@@ -312,12 +312,12 @@ const loadPage = () => {
           observationText = observationText.slice(0, -2) + '<br>';
         }
 
-        let obsIndex = dataSets.other.brightness.length - 1;
+        let obsIndex = dataSets.other['inside-light'].length - 1;
 
         observationText += `<span class="weight-bold">Observations</span> at ` +
           `${DateTime.fromJSDate(dataLabels.other[obsIndex]).toLocaleString(DateTime.TIME_SIMPLE)}: ` +
-          `${lowerFL(labelValues.other.brightness)}: ${dataSets.other.brightness[obsIndex]}` +
-          `${addUnitSuffix('brightness')}, `;
+          `${lowerFL(labelValues.other['inside-light'])}: ${dataSets.other['inside-light'][obsIndex]}` +
+          `${addUnitSuffix('inside-light')}, `;
         observationText += `${lowerFL(labelValues.other['o-temperature'])}:`;
         if (dataSets.other['o-temperature'][obsIndex] !== null) {
           observationText += ` ${dataSets.other['o-temperature'][obsIndex]}` +

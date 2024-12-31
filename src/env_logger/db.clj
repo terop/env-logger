@@ -158,7 +158,7 @@
                                         (t/hours (get-tz-offset
                                                   (:store-timezone env)))))
                     :tb_image_name (get-tb-image db-con)
-                    :brightness (:insideLight observation)
+                    :inside_light (:insideLight observation)
                     :inside_temperature (:insideTemperature observation)
                     :outside_temperature (:outsideTemperature observation)
                     :outside_light (:outsideLight observation)
@@ -323,7 +323,7 @@
              :or {where nil
                   limit nil}}]
   (let [base-query {:select [:o.recorded
-                             :o.brightness
+                             :o.inside_light
                              [:w.time "weather_recorded"]
                              [:w.temperature "fmi_temperature"]
                              :w.cloudiness

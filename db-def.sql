@@ -5,7 +5,7 @@ CREATE TABLE observations (
        id SERIAL PRIMARY KEY,
        recorded TIMESTAMP WITH TIME ZONE UNIQUE NOT NULL,
        tb_image_name VARCHAR(40),
-       brightness SMALLINT NOT NULL,
+       inside_light SMALLINT NOT NULL,
        inside_temperature REAL,
        outside_temperature REAL,
        outside_light INTEGER,

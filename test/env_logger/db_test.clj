@@ -83,7 +83,7 @@
   (js/insert! test-ds
               :observations
               {:recorded (t/minus current-dt (t/days 4))
-               :brightness 5})
+               :inside_light 5})
   (test-fn)
   (jdbc/execute! test-ds (sql/format {:delete-from :beacons}))
   (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))
@@ -162,7 +162,7 @@
 
 (deftest n-days-observations
   (testing "Selecting observations from N days"
-    (is (= {:brightness 0
+    (is (= {:inside-light 0
             :cloudiness 2
             :wind-speed 5.0
             :fmi-temperature 20.0
