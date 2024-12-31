@@ -352,7 +352,7 @@ def update_screen(display, observation, weather_data, elec_price_data, utc_offse
 
     display[row].text = rt_recorded
     row += 1
-    display[row].text = f'Brightness {observation["data"]["brightness"]}, '
+    display[row].text = f'Inside light {observation["data"]["inside-light"]}, '
     display[row].text += 'outside temp'
     if observation['data']['o-temperature'] is not None:
         display[row].text += f' {observation["data"]["o-temperature"]} \u00b0C'
