@@ -1274,12 +1274,6 @@ const loadPage = () => {
       },
       false);
 
-    document.getElementById('showWeatherChart').addEventListener('click',
-      () => {
-        toggleVisibility('weatherDiv');
-      },
-      false);
-
     document.getElementById('otherHideAll')
       .addEventListener('click',
         () => {

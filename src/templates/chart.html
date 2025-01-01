@@ -101,6 +101,12 @@
                 width: 1350px;
                 margin-top: 20px;
             }
+
+            .accordionButtonDiv {
+                margin-top: 10px;
+                margin-left: 20px;
+                margin-bottom: 20px;
+            }
         </style>
 
         <title>Environment log viewer - observations</title>
@@ -148,29 +154,31 @@
                     <label for="showInfoText">Show above info</label>
                 </div>
 
-                <div id="weatherCheckboxDiv">
-                    <input type="checkbox" id="showWeatherChart" checked>
-                    <label for="showWeatherChart">Show weather chart</label>
-                </div>
-            {% endif %}
-            <div id="weatherDiv">
-                <div id="weatherPlot"></div>
-
-                <input type="button" id="weatherHideAll" class="btn btn-danger" value="Hide all series">
-            </div>
-
-            {% if logged-in? %}
                 <div class="accordion" id="plotAccordion">
                     <div class="accordion-item">
                         <h2 class="accordion-header">
-                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#otherPlotAccordion" aria-expanded="true" aria-controls="otherPlotAccordion">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#weatherPlotAccordion" aria-expanded="false" aria-controls="weatherPlotAccordion">
+                                Weather observations
+                            </button>
+                        </h2>
+                        <div id="weatherPlotAccordion" class="accordion-collapse collapse">
+                            <div id="weatherPlot"></div>
+
+                            <div class="accordionButtonDiv">
+                                <input type="button" id="weatherHideAll" class="btn btn-danger" value="Hide all series">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#otherPlotAccordion" aria-expanded=false" aria-controls="otherPlotAccordion">
                                 Other observations
                             </button>
                         </h2>
-                        <div id="otherPlotAccordion" class="accordion-collapse collapse show">
+                        <div id="otherPlotAccordion" class="accordion-collapse collapse">
                             <div id="otherPlot"></div>
 
-                            <div style="margin-left: 20px; margin-bottom: 20px">
+                            <div class="accordionButtonDiv">
                                 <input type="button" id="otherHideAll" class="btn btn-danger" value="Hide all series">
                             </div>
                         </div>
@@ -184,7 +192,7 @@
                         <div id="ruuvitagPlotAccordion" class="accordion-collapse collapse">
                             <div id="ruuvitagPlot"></div>
 
-                            <div style="margin-left: 20px; margin-bottom: 20px">
+                            <div class="accordionButtonDiv">
                                 <input type="button" id="ruuvitagShowAll" class="btn btn-secondary" value="Show all series"
                                        style="margin-right: 10px">
                                 <input type="button" id="ruuvitagHideAll" class="btn btn-danger" value="Hide all series">
@@ -211,11 +219,11 @@
                     <div class="accordion" id="elecPlotAccordion">
                         <div class="accordion-item">
                             <h2 class="accordion-header">
-                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#elecHourPlotAccordion" aria-expanded="true" aria-controls="elecHourPlotAccordion">
+                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#elecHourPlotAccordion" aria-expanded="true" aria-controls="elecHourPlotAccordion">
                                     Hourly electricity data
                                 </button>
                             </h2>
-                            <div id="elecHourPlotAccordion" class="accordion-collapse collapse">
+                            <div id="elecHourPlotAccordion" class="accordion-collapse collapse show">
                                 <div id="hourElecDataPlot"></div>
                             </div>
                         </div>
@@ -230,6 +238,12 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            {% else %}
+                <div id="weatherDiv">
+                    <div id="weatherPlot"></div>
+
+                    <input type="button" id="weatherHideAll" class="btn btn-danger" value="Hide all series">
                 </div>
             {% endif %}
 
