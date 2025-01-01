@@ -5,7 +5,7 @@ const DateTime = luxon.DateTime;
 // Data field names
 const fieldNames = {
   weather: ['fmi-temperature', 'cloudiness', 'wind-speed'],
-  other: ['inside-light', 'o-temperature', 'beacon-rssi', 'beacon-battery']
+  other: ['inside-light', 'inside-temperature', 'co2', 'outside-temperature', 'beacon-rssi', 'beacon-battery']
 };
 
 let labelValues = {
@@ -208,7 +208,9 @@ const loadPage = () => {
 
       labelValues.other = {
         'inside-light': 'Inside light',
-        'o-temperature': 'Outside temperature',
+        'inside-temperature': 'Inside temperature',
+        'co2': 'Inside CO\u2082',
+        'outside-temperature': 'Outside temperature',
         'beacon-rssi': beaconName
           ? `Beacon "${beaconName}" RSSI`
           : 'Beacon RSSI',
@@ -259,7 +261,8 @@ const loadPage = () => {
         `${keyName.includes('rssi') ? ' dBm' : ''}` +
         `${keyName.includes('battery') ? ' %' : ''}` +
         `${keyName.includes('precipitation') ? ' mm' : ''}` +
-        `${keyName.includes('light') ? ' lux' : ''}`;
+        `${keyName.includes('light') ? ' lux' : ''}` +
+        `${keyName.includes('co2') || keyName.includes('co\u2082') ? ' ppm' : ''}`;
     };
 
     // Change the first letter to lowercase
@@ -319,9 +322,19 @@ const loadPage = () => {
           `${DateTime.fromJSDate(dataLabels.other[obsIndex]).toLocaleString(DateTime.TIME_SIMPLE)}: ` +
           `${lowerFL(labelValues.other['inside-light'])}: ${dataSets.other['inside-light'][obsIndex]}` +
           `${addUnitSuffix('inside-light')}, `;
-        observationText += `${lowerFL(labelValues.other['o-temperature'])}:`;
-        if (dataSets.other['o-temperature'][obsIndex] !== null) {
-          observationText += ` ${dataSets.other['o-temperature'][obsIndex]}` +
+        observationText += `${lowerFL(labelValues.other['inside-temperature'])}:`;
+        if (dataSets.other['inside-temperature'][obsIndex] !== null) {
+          observationText += ` ${dataSets.other['inside-temperature'][obsIndex]}` +
+            `${addUnitSuffix('temperature')}, `;
+        }
+        observationText += `${lowerFL(labelValues.other['co2'])}:`;
+        if (dataSets.other['co2'][obsIndex] !== null) {
+          observationText += ` ${dataSets.other['co2'][obsIndex]}` +
+            `${addUnitSuffix('co2')}, `;
+        }
+        observationText += `${lowerFL(labelValues.other['outside-temperature'])}:`;
+        if (dataSets.other['outside-temperature'][obsIndex] !== null) {
+          observationText += ` ${dataSets.other['outside-temperature'][obsIndex]}` +
             `${addUnitSuffix('temperature')}, `;
         }
 

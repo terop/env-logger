@@ -324,11 +324,13 @@
                   limit nil}}]
   (let [base-query {:select [:o.recorded
                              :o.inside_light
+                             :o.inside_temperature
+                             :o.co2
                              [:w.time "weather_recorded"]
                              [:w.temperature "fmi_temperature"]
                              :w.cloudiness
                              :w.wind_speed
-                             [:o.outside_temperature "o_temperature"]
+                             :o.outside_temperature
                              :b.mac_address
                              [:b.rssi "beacon_rssi"]
                              [:b.battery_level "beacon_battery"]
@@ -359,8 +361,9 @@
                                            (:weather-recorded row)))
                       :beacon-name (get beacon-name
                                         (:mac-address row)
-                                        (:mac-address row))})
-              :mac-address))))
+                                        (:mac-address row))
+                      :co2 (:co-2 row)})
+              :mac-address :co-2))))
 
 (defn get-obs-days
   "Fetches the observations from the last N days."

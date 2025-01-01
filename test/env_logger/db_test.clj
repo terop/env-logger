@@ -163,10 +163,12 @@
 (deftest n-days-observations
   (testing "Selecting observations from N days"
     (is (= {:inside-light 0
+            :inside-temperature 21.0
+            :co2 600
             :cloudiness 2
             :wind-speed 5.0
             :fmi-temperature 20.0
-            :o-temperature 5.0
+            :outside-temperature 5.0
             :beacon-name "7C:EC:79:3F:BE:97"
             :beacon-rssi -68
             :beacon-battery nil
