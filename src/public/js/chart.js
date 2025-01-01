@@ -258,7 +258,8 @@ const loadPage = () => {
         `${keyName.includes('humidity') ? ' %H' : ''}` +
         `${keyName.includes('rssi') ? ' dBm' : ''}` +
         `${keyName.includes('battery') ? ' %' : ''}` +
-        `${keyName.includes('precipitation') ? ' mm' : ''}`;
+        `${keyName.includes('precipitation') ? ' mm' : ''}` +
+        `${keyName.includes('light') ? ' lux' : ''}`;
     };
 
     // Change the first letter to lowercase
