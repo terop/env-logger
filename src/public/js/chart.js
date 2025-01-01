@@ -1241,6 +1241,25 @@ const loadPage = () => {
     updateAnnotationAndRangeYValues(plot, traceData);
   };
 
+  // Hide all series for a plot
+  const plotHideAll = (plot) => {
+    setAllTracesVisibility(plot, false);
+    resetAnnotationAndRangeYValues(document.getElementById(plot));
+  };
+
+  // Show all series for a plot
+  const plotShowAll = (plot) => {
+    setAllTracesVisibility(plot, true);
+
+    const plotElem = document.getElementById(plot);
+    const traceData = [];
+
+    for (const trace of plotElem.data) {
+      traceData.push(trace.y);
+    }
+    updateAnnotationAndRangeYValues(plotElem, traceData);
+  };
+
   document.getElementById('updateBtn').addEventListener('click',
     updateButtonClickHandler,
     false);
@@ -1259,9 +1278,8 @@ const loadPage = () => {
 
   document.getElementById('weatherHideAll')
     .addEventListener('click',
-      () => {
-        setAllTracesVisibility('weatherPlot', false);
-        resetAnnotationAndRangeYValues(document.getElementById('weatherPlot'));
+                      () => {
+                        plotHideAll('weatherPlot');
       },
       false);
 
@@ -1276,32 +1294,29 @@ const loadPage = () => {
 
     document.getElementById('otherHideAll')
       .addEventListener('click',
-        () => {
-          setAllTracesVisibility('otherPlot', false);
-          resetAnnotationAndRangeYValues(document.getElementById('otherPlot'));
+                        () => {
+                          plotHideAll('otherPlot');
+        },
+        false);
+
+    document.getElementById('otherShowAll')
+      .addEventListener('click',
+                        () => {
+                          plotShowAll('otherPlot');
         },
         false);
 
     document.getElementById('ruuvitagHideAll')
       .addEventListener('click',
-        () => {
-          setAllTracesVisibility('ruuvitagPlot', false);
-          resetAnnotationAndRangeYValues(document.getElementById('ruuvitagPlot'));
+                        () => {
+                          plotHideAll('ruuvitagPlot');
         },
         false);
 
     document.getElementById('ruuvitagShowAll')
       .addEventListener('click',
-        () => {
-          setAllTracesVisibility('ruuvitagPlot', true);
-
-          const plot = document.getElementById('ruuvitagPlot');
-          const traceData = [];
-
-          for (const trace of plot.data) {
-            traceData.push(trace.y);
-          }
-          updateAnnotationAndRangeYValues(plot, traceData);
+                        () => {
+                          plotShowAll('ruuvitagPlot');
         },
         false);
 
