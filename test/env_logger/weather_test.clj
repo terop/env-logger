@@ -127,13 +127,15 @@
                                                   :WindDirection 254
                                                   :Humidity 90}]})]
       (let [wd (-update-fmi-weather-data-json 87874)]
-        (is (= {:temperature 1.4
-                :cloudiness 8
-                :wind-speed 1.1
-                :wind-direction {:short "W"
-                                 :long "west"}
-                :humidity 90}
-               (dissoc (get wd (first (keys wd))) :time)))))))
+        (if (< (rem (t/as (t/local-date-time) :minute-of-hour) 10) 3)
+          (is (nil? wd))
+          (is (= {:temperature 1.4
+                  :cloudiness 8
+                  :wind-speed 1.1
+                  :wind-direction {:short "W"
+                                   :long "west"}
+                  :humidity 90}
+                 (dissoc (get wd (first (keys wd))) :time))))))))
 
 (deftest fmi-weather-data-fetch
   (testing "Tests FMI weather data fetch"

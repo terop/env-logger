@@ -154,7 +154,7 @@
   (try
     ;; The first check is to prevent pointless fetch attempts when data
     ;; is not yet available
-    (when (and (>= (rem (LocalDateTime/.getMinute (t/local-date-time)) 10) 3)
+    (when (and (>= (rem (t/as (t/local-date-time) :minute-of-hour) 10) 3)
                (nil? (get @fmi-current (-convert-dt->tz-iso8601-str
                                         (calculate-start-time)))))
       (let [url (format (str "https://www.ilmatieteenlaitos.fi/api/weather/"
