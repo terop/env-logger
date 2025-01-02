@@ -91,36 +91,26 @@
           end-date-val (get (:params request) "endDate")
           end-date (when (seq end-date-val) end-date-val)
           obs-dates (db/get-obs-date-interval con)
-          logged-in? (authenticated? (:session request))
           initial-days (:initial-show-days env)
           ruuvitag-names (:ruuvitag-names env)]
       (if (or start-date end-date)
-        {:obs-data (if logged-in?
-                     (db/get-obs-interval con
-                                          {:start start-date
-                                           :end end-date})
-                     (db/get-weather-obs-interval con
-                                                  {:start start-date
-                                                   :end end-date}))
-         :rt-data (when logged-in?
-                    (db/get-ruuvitag-obs
-                     con
-                     (db/make-local-dt start-date "start")
-                     (db/make-local-dt end-date "end")
-                     ruuvitag-names))
+        {:obs-data (db/get-obs-interval con
+                                        {:start start-date
+                                         :end end-date})
+         :rt-data (db/get-ruuvitag-obs
+                   con
+                   (db/make-local-dt start-date "start")
+                   (db/make-local-dt end-date "end")
+                   ruuvitag-names)
          :obs-dates {:current {:start start-date
                                :end end-date}}}
-        {:obs-data (if logged-in?
-                     (db/get-obs-days con
-                                      initial-days)
-                     (db/get-weather-obs-days con
-                                              initial-days))
-         :rt-data (when logged-in?
-                    (db/get-ruuvitag-obs
-                     con
-                     (db/get-midnight-dt initial-days)
-                     (t/local-date-time)
-                     ruuvitag-names))
+        {:obs-data (db/get-obs-days con
+                                    initial-days)
+         :rt-data (db/get-ruuvitag-obs
+                   con
+                   (db/get-midnight-dt initial-days)
+                   (t/local-date-time)
+                   ruuvitag-names)
          :obs-dates {:current {:start
                                (when (:end obs-dates)
                                  (t/format :iso-local-date
@@ -136,18 +126,15 @@
 (defn get-display-data
   "Returns the data to be displayed in the front-end."
   [request]
-  (serve-json
-   (merge {:weather-data
-           (if-not (authenticated? (:session request))
-             (:current (:fmi (get-weather-data)))
-             (get-weather-data))}
-          (merge {:mode (if (authenticated? (:session request)) "all" "weather")
-                  :tb-image-basepath (:tb-image-basepath env)}
-                 (when (authenticated? (:session request))
-                   {:rt-names (:ruuvitag-names env)
-                    :rt-default-show (:ruuvitag-default-show env)
-                    :rt-default-values (:ruuvitag-default-values env)}))
-          (get-plot-page-data request))))
+  (if-not (authenticated? (:session request))
+    auth/response-unauthorized
+    (serve-json
+     (merge {:weather-data (get-weather-data)
+             :tb-image-basepath (:tb-image-basepath env)
+             :rt-names (:ruuvitag-names env)
+             :rt-default-show (:ruuvitag-default-show env)
+             :rt-default-values (:ruuvitag-default-values env)}
+            (get-plot-page-data request)))))
 
 (defn handle-observation-insert
   "Handles the insertion of an observation to the database."
@@ -294,11 +281,10 @@
    (ring/router
     ;; Index
     [["/" {:get #(if-not (db/test-db-connection db/postgres-ds)
-                   (serve-template "templates/error.html"
-                                   {})
-                   (serve-template "templates/chart.html"
-                                   {:logged-in? (authenticated? (:session
-                                                                 %))}))}]
+                   (serve-template "templates/error.html" {})
+                   (if-not (authenticated? (:session %))
+                     (serve-template "templates/login.html" {})
+                     (serve-template "templates/chart.html" {})))}]
      ;; Login and logout
      ["/login" {:get #(if-not (authenticated? (:session %))
                         (serve-template "templates/login.html" {})

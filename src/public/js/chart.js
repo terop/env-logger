@@ -32,16 +32,11 @@ let annotationIndexes = {
   other: []
 };
 let bleBeaconNames = [];
-let mode = null;
 let testbedImageBasepath = '';
 let testbedImageNames = [];
 let rtNames = [];
 
 const loadPage = () => {
-  const isShowAll = () => {
-    return mode === 'all';
-  };
-
   // Parse RuuviTag observations
   // rtObservations - observations as JSON
   // rtLabels - RuuviTag labels
@@ -142,33 +137,25 @@ const loadPage = () => {
       }
     };
 
-    if (isShowAll()) {
-      dataLabels.other.push(new Date(observation.recorded));
+    dataLabels.other.push(new Date(observation.recorded));
 
-      recordAnnotationIndexes('other', observation.recorded);
+    recordAnnotationIndexes('other', observation.recorded);
 
-      if (observation['weather-recorded']) {
-        dataLabels.weather.push(new Date(observation['weather-recorded']));
+    if (observation['weather-recorded']) {
+      dataLabels.weather.push(new Date(observation['weather-recorded']));
 
-        recordAnnotationIndexes('weather', observation['weather-recorded']);
-      }
+      recordAnnotationIndexes('weather', observation['weather-recorded']);
+    }
 
-      // Weather
-      if (observation['weather-recorded']) {
-        processFields('weather', observation, fieldNames.weather);
-      }
-
-      // Other
-      processFields('other', observation, fieldNames.other);
-
-      bleBeaconNames.push(observation['beacon-name']);
-    } else {
-      dataLabels.weather.push(new Date(observation.time));
-
-      recordAnnotationIndexes('weather', observation.time);
-
+    // Weather
+    if (observation['weather-recorded']) {
       processFields('weather', observation, fieldNames.weather);
     }
+
+    // Other
+    processFields('other', observation, fieldNames.other);
+
+    bleBeaconNames.push(observation['beacon-name']);
     testbedImageNames.push(observation['tb-image-name']);
   };
 
@@ -195,35 +182,33 @@ const loadPage = () => {
     });
 
     // Data labels
-    if (isShowAll()) {
-      parseRTData(data.rt, rtNames);
+    parseRTData(data.rt, rtNames);
 
-      let beaconName = null;
-      for (const item of bleBeaconNames) {
-        if (item !== null) {
-          beaconName = item;
-          break;
-        }
+    let beaconName = null;
+    for (const item of bleBeaconNames) {
+      if (item !== null) {
+        beaconName = item;
+        break;
       }
+    }
 
-      labelValues.other = {
-        'inside-light': 'Inside light',
-        'inside-temperature': 'Inside temperature',
-        'co2': 'Inside CO\u2082',
-        'outside-temperature': 'Outside temperature',
-        'beacon-rssi': beaconName
-          ? `Beacon "${beaconName}" RSSI`
-          : 'Beacon RSSI',
-        'beacon-battery': beaconName
-          ? `Beacon "${beaconName}" battery level`
-          : 'Beacon battery level'
+    labelValues.other = {
+      'inside-light': 'Inside light',
+      'inside-temperature': 'Inside temperature',
+      'co2': 'Inside CO\u2082',
+      'outside-temperature': 'Outside temperature',
+      'beacon-rssi': beaconName
+        ? `Beacon "${beaconName}" RSSI`
+        : 'Beacon RSSI',
+      'beacon-battery': beaconName
+        ? `Beacon "${beaconName}" battery level`
+        : 'Beacon battery level'
+    };
+    for (const name of rtNames) {
+      labelValues.rt[name] = {
+        temperature: `"${name}" temperature`,
+        humidity: `"${name}" humidity`
       };
-      for (const name of rtNames) {
-        labelValues.rt[name] = {
-          temperature: `"${name}" temperature`,
-          humidity: `"${name}" humidity`
-        };
-      }
     }
     labelValues.weather = {
       'fmi-temperature': 'Temperature',
@@ -243,12 +228,10 @@ const loadPage = () => {
     document.getElementById('noDataError').style.display = 'block';
     hideElement('weatherDiv');
     hideElement('imageButtonDiv');
-    if (isShowAll()) {
-      hideElement('latestCheckboxDiv');
-      hideElement('weatherCheckboxDiv');
-      hideElement('plotAccordion');
-      hideElement('elecDataDiv');
-    }
+    hideElement('latestCheckboxDiv');
+    hideElement('weatherCheckboxDiv');
+    hideElement('plotAccordion');
+    hideElement('elecDataDiv');
   } else {
     labelValues = transformData();
 
@@ -288,13 +271,13 @@ const loadPage = () => {
         return;
       }
 
-      if (isShowAll() && data.weather.ast) {
+      if (data.weather.ast) {
         observationText += `<span class="weight-bold">Sun</span>: sunrise ${data.weather.ast.sunrise}, sunset ${data.weather.ast.sunset}<br>`;
       }
 
-      const wd = (isShowAll() ? data.weather.fmi.current : data.weather);
+      const wd = data.weather.fmi.current;
       if (wd) {
-        observationText += isShowAll() ? '<span class="weight-bold">Weather</span>' : 'Weather';
+        observationText += '<span class="weight-bold">Weather</span>';
         observationText += ` at ${DateTime.now().setLocale('fi').toLocaleString()}` +
           ` ${DateTime.fromISO(wd.time).toLocaleString(DateTime.TIME_SIMPLE)}: `;
         for (const key of weatherKeys) {
@@ -311,75 +294,71 @@ const loadPage = () => {
         }
       }
 
-      if (isShowAll()) {
-        if (wd) {
-          observationText = observationText.slice(0, -2) + '<br>';
-        }
+      if (wd) {
+        observationText = observationText.slice(0, -2) + '<br>';
+      }
 
-        let obsIndex = dataSets.other['inside-light'].length - 1;
+      let obsIndex = dataSets.other['inside-light'].length - 1;
 
-        observationText += `<span class="weight-bold">Observations</span> at ` +
-          `${DateTime.fromJSDate(dataLabels.other[obsIndex]).toLocaleString(DateTime.TIME_SIMPLE)}: ` +
-          `${lowerFL(labelValues.other['inside-light'])}: ${dataSets.other['inside-light'][obsIndex]}` +
-          `${addUnitSuffix('inside-light')}, `;
-        observationText += `${lowerFL(labelValues.other['inside-temperature'])}:`;
-        if (dataSets.other['inside-temperature'][obsIndex] !== null) {
-          observationText += ` ${dataSets.other['inside-temperature'][obsIndex]}` +
-            `${addUnitSuffix('temperature')}, `;
-        }
-        observationText += `${lowerFL(labelValues.other['co2'])}:`;
-        if (dataSets.other['co2'][obsIndex] !== null) {
-          observationText += ` ${dataSets.other['co2'][obsIndex]}` +
-            `${addUnitSuffix('co2')}, `;
-        }
-        observationText += `${lowerFL(labelValues.other['outside-temperature'])}:`;
-        if (dataSets.other['outside-temperature'][obsIndex] !== null) {
-          observationText += ` ${dataSets.other['outside-temperature'][obsIndex]}` +
-            `${addUnitSuffix('temperature')}, `;
-        }
+      observationText += `<span class="weight-bold">Observations</span> at ` +
+        `${DateTime.fromJSDate(dataLabels.other[obsIndex]).toLocaleString(DateTime.TIME_SIMPLE)}: ` +
+        `${lowerFL(labelValues.other['inside-light'])}: ${dataSets.other['inside-light'][obsIndex]}` +
+        `${addUnitSuffix('inside-light')}, `;
+      observationText += `${lowerFL(labelValues.other['inside-temperature'])}:`;
+      if (dataSets.other['inside-temperature'][obsIndex] !== null) {
+        observationText += ` ${dataSets.other['inside-temperature'][obsIndex]}` +
+          `${addUnitSuffix('temperature')}, `;
+      }
+      observationText += `${lowerFL(labelValues.other['co2'])}:`;
+      if (dataSets.other['co2'][obsIndex] !== null) {
+        observationText += ` ${dataSets.other['co2'][obsIndex]}` +
+          `${addUnitSuffix('co2')}, `;
+      }
+      observationText += `${lowerFL(labelValues.other['outside-temperature'])}:`;
+      if (dataSets.other['outside-temperature'][obsIndex] !== null) {
+        observationText += ` ${dataSets.other['outside-temperature'][obsIndex]}` +
+          `${addUnitSuffix('temperature')}, `;
+      }
 
-        observationText += `beacon "${bleBeaconNames[obsIndex]}": RSSI`;
-        if (dataSets.other['beacon-rssi'][obsIndex] !== null) {
-          observationText += ` ${dataSets.other['beacon-rssi'][obsIndex]}${addUnitSuffix('beacon-rssi')}`;
+      observationText += `beacon "${bleBeaconNames[obsIndex]}": RSSI`;
+      if (dataSets.other['beacon-rssi'][obsIndex] !== null) {
+        observationText += ` ${dataSets.other['beacon-rssi'][obsIndex]}${addUnitSuffix('beacon-rssi')}`;
 
-          const battery = dataSets.other['beacon-battery'][obsIndex];
-          const batteryText = battery ? `${battery} ${addUnitSuffix('beacon-battery')}` : 'NA';
-          observationText += `, battery level ${batteryText}`;
-        }
+        const battery = dataSets.other['beacon-battery'][obsIndex];
+        const batteryText = battery ? `${battery} ${addUnitSuffix('beacon-battery')}` : 'NA';
+        observationText += `, battery level ${batteryText}`;
+      }
 
-        observationText += '<br>RuuviTags: ';
+      observationText += '<br>RuuviTags: ';
 
-        let itemsAdded = 0;
-        if (dataSets.rt) {
-          obsIndex = dataSets.rt[Object.keys(dataSets.rt)[0]].temperature.length - 1;
-          for (const tag in labelValues.rt) {
-            if ((itemsAdded > 0 && itemsAdded % 4) === 0) {
-              observationText += '<br>';
-            }
-
-            observationText += `${labelValues.rt[tag].temperature}: ` +
-              `${dataSets.rt[tag].temperature[obsIndex]}` +
-              `${addUnitSuffix('temperature')}, ` +
-              `${labelValues.rt[tag].humidity}: ${dataSets.rt[tag].humidity[obsIndex]}` +
-              `${addUnitSuffix('humidity')}, `;
-            itemsAdded += 2;
+      let itemsAdded = 0;
+      if (dataSets.rt) {
+        obsIndex = dataSets.rt[Object.keys(dataSets.rt)[0]].temperature.length - 1;
+        for (const tag in labelValues.rt) {
+          if ((itemsAdded > 0 && itemsAdded % 4) === 0) {
+            observationText += '<br>';
           }
-          observationText = observationText.slice(0, -2);
-        }
 
-        const forecast = data.weather.fmi.forecast;
-        if (forecast) {
-          observationText +=
-            '<br><span class="weight-bold">Forecast</span> for ' +
-            DateTime.fromISO(forecast.time).toFormat('dd.MM.yyyy HH:mm') +
-            `: temperature: ${forecast.temperature} ${addUnitSuffix('temperature')}, ` +
-            `cloudiness: ${forecast.cloudiness} %, ` +
-            `wind: ${forecast['wind-direction'].long} ${forecast['wind-speed']} ${addUnitSuffix('wind')}, ` +
-            `precipitation: ${forecast.precipitation} ${addUnitSuffix('precipitation')}, ` +
-            `humidity: ${forecast.humidity} ${addUnitSuffix('humidity')}`;
+          observationText += `${labelValues.rt[tag].temperature}: ` +
+            `${dataSets.rt[tag].temperature[obsIndex]}` +
+            `${addUnitSuffix('temperature')}, ` +
+            `${labelValues.rt[tag].humidity}: ${dataSets.rt[tag].humidity[obsIndex]}` +
+            `${addUnitSuffix('humidity')}, `;
+          itemsAdded += 2;
         }
-      } else {
         observationText = observationText.slice(0, -2);
+      }
+
+      const forecast = data.weather.fmi.forecast;
+      if (forecast) {
+        observationText +=
+          '<br><span class="weight-bold">Forecast</span> for ' +
+          DateTime.fromISO(forecast.time).toFormat('dd.MM.yyyy HH:mm') +
+          `: temperature: ${forecast.temperature} ${addUnitSuffix('temperature')}, ` +
+          `cloudiness: ${forecast.cloudiness} %, ` +
+          `wind: ${forecast['wind-direction'].long} ${forecast['wind-speed']} ${addUnitSuffix('wind')}, ` +
+          `precipitation: ${forecast.precipitation} ${addUnitSuffix('precipitation')}, ` +
+          `humidity: ${forecast.humidity} ${addUnitSuffix('humidity')}`;
       }
 
       document.getElementById('infoText').innerHTML = observationText;
@@ -1049,27 +1028,25 @@ const loadPage = () => {
 
     document.getElementById('weatherPlot').on('plotly_legendclick', updatePlot);
 
-    if (isShowAll()) {
-      Plotly.newPlot('otherPlot',
-        generateTraceConfig('other'),
-        generateLayoutConfig('other'));
+    Plotly.newPlot('otherPlot',
+                   generateTraceConfig('other'),
+                   generateLayoutConfig('other'));
 
-      document.getElementById('otherPlot').on('plotly_click', (data) => {
-        document.getElementById('showImages').checked = true;
-        document.getElementById('imageDiv').classList.remove('display-none');
+    document.getElementById('otherPlot').on('plotly_click', (data) => {
+      document.getElementById('showImages').checked = true;
+      document.getElementById('imageDiv').classList.remove('display-none');
 
-        showTestbedImage(data.points[0].x);
-      });
+      showTestbedImage(data.points[0].x);
+    });
 
-      document.getElementById('otherPlot').on('plotly_legendclick', updatePlot);
+    document.getElementById('otherPlot').on('plotly_legendclick', updatePlot);
 
-      Plotly.newPlot('ruuvitagPlot',
-        generateTraceConfig('ruuvitag'),
-        generateLayoutConfig('ruuvitag'));
-      resetAnnotationAndRangeYValues(document.getElementById('ruuvitagPlot'));
+    Plotly.newPlot('ruuvitagPlot',
+                   generateTraceConfig('ruuvitag'),
+                   generateLayoutConfig('ruuvitag'));
+    resetAnnotationAndRangeYValues(document.getElementById('ruuvitagPlot'));
 
-      document.getElementById('ruuvitagPlot').on('plotly_legendclick', updatePlot);
-    }
+    document.getElementById('ruuvitagPlot').on('plotly_legendclick', updatePlot);
   }
 
   const toggleClassForElement = (elementId, className) => {
@@ -1109,7 +1086,7 @@ const loadPage = () => {
     const diff = DateTime.fromISO(endDate).diff(
       DateTime.fromISO(startDate), ['days']);
 
-    if (isShowAll() || diff.days >= 7) {
+    if (diff.days >= 7) {
       isSpinnerShown = true;
       toggleLoadingSpinner();
     }
@@ -1158,10 +1135,8 @@ const loadPage = () => {
 
         plotUpdateAfterReset('weather');
 
-        if (isShowAll()) {
-          plotUpdateAfterReset('other');
-          plotUpdateAfterReset('ruuvitag');
-        }
+        plotUpdateAfterReset('other');
+        plotUpdateAfterReset('ruuvitag');
       })
       .catch(error => {
         console.log(`Display data fetch error: ${error}`);
@@ -1277,11 +1252,9 @@ const loadPage = () => {
     updateButtonClickHandler,
     false);
 
-  if (isShowAll()) {
-    document.getElementById('elecUpdateBtn').addEventListener('click',
-      elecUpdateButtonClickHandler,
-      false);
-  }
+  document.getElementById('elecUpdateBtn').addEventListener('click',
+    elecUpdateButtonClickHandler,
+    false);
 
   document.getElementById('showImages').addEventListener('click',
     () => {
@@ -1296,7 +1269,7 @@ const loadPage = () => {
       },
       false);
 
-  if (isShowAll() && data.obs.length) {
+  if (data.obs.length) {
     showElectricityPrice();
 
     document.getElementById('showInfoText').addEventListener('click',
@@ -1367,14 +1340,11 @@ axios.get('data/display')
   .then(resp => {
     const rData = resp.data;
 
-    mode = rData.mode;
     testbedImageBasepath = rData['tb-image-basepath'];
     data.weather = rData['weather-data'];
     data.obs = rData['obs-data'];
-    if (mode === 'all') {
-      rtNames = rData['rt-names'];
-      data.rt = rData['rt-data'];
-    }
+    rtNames = rData['rt-names'];
+    data.rt = rData['rt-data'];
 
     if (rData['obs-dates']['min-max']) {
       const intMinMax = rData['obs-dates']['min-max'];

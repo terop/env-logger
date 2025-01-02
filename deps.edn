@@ -12,7 +12,7 @@
         clojure.java-time/clojure.java-time {:mvn/version "1.4.3"}
         org.threeten/threeten-extra {:mvn/version "1.8.0"}
         metosin/reitit {:mvn/version "0.7.2"}
-        metosin/ring-http-response {:mvn/version "0.9.4"}
+        metosin/ring-http-response {:mvn/version "0.9.5"}
         selmer/selmer {:mvn/version "1.12.61"}
         metosin/jsonista {:mvn/version "0.3.13"}
         org.postgresql/postgresql {:mvn/version "42.7.4"}

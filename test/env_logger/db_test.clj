@@ -25,9 +25,6 @@
               get-observations
               get-ruuvitag-obs
               get-tz-offset
-              get-weather-obs-days
-              get-weather-obs-interval
-              get-weather-observations
               image-age-check
               insert-beacon
               insert-elec-consumption-data
@@ -267,46 +264,6 @@
   (testing "TZ offset adding"
     (let [orig-dt (t/local-date-time)]
       (is (= orig-dt (add-tz-offset-to-dt orig-dt))))))
-
-(deftest weather-obs-interval-select
-  (testing "Select weather observations between one or two dates"
-    (is (= 1 (count (get-weather-obs-interval test-ds
-                                              {:start nil
-                                               :end nil}))))
-    (is (= 1 (count (get-weather-obs-interval
-                     test-ds
-                     {:start (t/format date-fmt
-                                       (t/minus current-dt
-                                                (t/days 1)))
-                      :end nil}))))
-    (is (zero? (count (get-weather-obs-interval
-                       test-ds
-                       {:start nil
-                        :end (t/format date-fmt
-                                       (t/minus current-dt
-                                                (t/days 2)))}))))
-    (is (zero? (count (get-weather-obs-interval
-                       test-ds
-                       {:start (t/format date-fmt
-                                         (t/minus current-dt
-                                                  (t/days 5)))
-                        :end (t/format date-fmt
-                                       (t/minus current-dt
-                                                (t/days 3)))}))))))
-
-(deftest weather-days-observations
-  (testing "Selecting weather observations from N days"
-    (is (= {:cloudiness 2
-            :wind-speed 5.0
-            :fmi-temperature 20.0
-            :tb-image-name nil}
-           (dissoc (first (get-weather-obs-days test-ds 1))
-                   :time)))))
-
-(deftest weather-observation-select
-  (testing "Selecting weather observations with an arbitrary WHERE clause"
-    (is (zero? (count (get-weather-observations test-ds
-                                                :where [:= 1 0]))))))
 
 (deftest last-observation-id
   (testing "Query of last observation's ID"

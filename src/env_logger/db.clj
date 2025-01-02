@@ -380,42 +380,6 @@
                    dates
                    :recorded))
 
-(defn get-weather-observations
-  "Fetches weather observations filtered by the provided SQL WHERE clause."
-  [db-con & {:keys [where]}]
-  (let [tz-offset (get-tz-offset (:display-timezone env))]
-    (for [row (jdbc/execute! db-con
-                             (sql/format {:select [:w.time
-                                                   [:w.temperature
-                                                    "fmi_temperature"]
-                                                   :w.cloudiness
-                                                   :w.wind_speed
-                                                   :o.tb_image_name]
-                                          :from [[:weather-data :w]]
-                                          :join [[:observations :o]
-                                                 [:= :w.obs_id :o.id]]
-                                          :where where
-                                          :order-by [[:w.id :asc]]})
-                             rs-opts)]
-      (merge row
-             {:time (convert->epoch-ms tz-offset
-                                       (:time row))}))))
-
-(defn get-weather-obs-days
-  "Fetches the weather observations from the last N days."
-  [db-con n]
-  (get-weather-observations db-con
-                            :where [:>= :time
-                                    (get-midnight-dt n)]))
-
-(defn get-weather-obs-interval
-  "Fetches weather observations in an interval between the provided dates."
-  [db-con dates]
-  (get-by-interval get-weather-observations
-                   db-con
-                   dates
-                   :time))
-
 (defn get-obs-date-interval
   "Fetches the date interval (start and end) of all observations."
   [db-con]
