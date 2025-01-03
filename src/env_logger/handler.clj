@@ -20,7 +20,7 @@
                                site-defaults
                                secure-site-defaults]]
              [reload :refer [wrap-reload]]]
-            [ring.util.http-response :refer [bad-request found]]
+            [ring.util.http-response :refer [bad-request content-type found]]
             [ring.util.response :refer [header]]
             [taoensso.timbre :refer [error set-min-level!]]
             [env-logger
@@ -347,8 +347,12 @@
     {:data {:muuntaja m/instance
             :middleware [muuntaja/format-middleware]}})
    (ring/routes
+    (ring/redirect-trailing-slash-handler)
     (ring/create-resource-handler {:path "/"})
-    (ring/create-default-handler))
+    (ring/create-default-handler
+     {:not-found
+      (constantly (content-type {:status 404, :body "Page not found"}
+                                "text/plain"))}))
    {:middleware (get-middleware)}))
 
 (defn -main
