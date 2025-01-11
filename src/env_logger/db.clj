@@ -16,7 +16,7 @@
            (java.util Date
                       TimeZone)
            org.postgresql.util.PSQLException))
-(refer-clojure :exclude '[filter for group-by into partition-by set update])
+(refer-clojure :exclude '[distinct filter for group-by into partition-by set update])
 (require '[honey.sql :as sql])
 
 (defn db-conf
@@ -94,9 +94,7 @@
                                           (sql/format
                                            {:select [:tb_image_name]
                                             :from [:observations]
-                                            :where [[:raw
-                                                     (str "tb_image_name IS "
-                                                          "NOT NULL")]]
+                                            :where [:is-not :tb_image_name nil]
                                             :order-by [[:id :desc]]
                                             :limit [1]})
                                           rs-opts))]

@@ -1,7 +1,6 @@
 (ns env-logger.handler
   "The main namespace of the application"
-  (:require [clojure set]
-            [clojure.string :refer [ends-with?]]
+  (:require [clojure.string :refer [ends-with?]]
             [config.core :refer [env]]
             [buddy.auth :refer [authenticated?]]
             [buddy.auth.middleware :refer [wrap-authentication
