@@ -1320,13 +1320,6 @@ const loadPage = () => {
         },
         false);
 
-    document.getElementById('plotAccordion')
-      .addEventListener('shown.bs.collapse', () => {
-        // Scroll page to bottom after loading the image for improved viewing
-        scrollToBottom(0);
-      },
-      false);
-
     document.getElementById('elecPlotAccordion')
       .addEventListener('shown.bs.collapse', () => {
         // Scroll page to bottom after loading the image for improved viewing
