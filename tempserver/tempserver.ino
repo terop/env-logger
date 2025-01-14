@@ -30,7 +30,7 @@ const int RESET_PIN = 10;
    the ADC pin a few times and then average the samples to get something more
    solid. This constant is utilized in the readThermistor function.
 */
-const int SAMPLE_NUMBER = 10;
+const int SAMPLE_NUMBER = 20;
 
 // This helps calculate the thermistor's resistance
 const double MAX_ADC = 1023.0;
