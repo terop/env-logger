@@ -43,7 +43,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "nordpool", git = "https://github.com/terop/nordpool" },
+    { name = "nordpool", specifier = ">=0.4.3" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2.3" },
 ]
 
@@ -58,12 +58,16 @@ wheels = [
 
 [[package]]
 name = "nordpool"
-version = "0.4.3"
-source = { git = "https://github.com/terop/nordpool#8c702e404a40eaf26f62c5bf91db5f8c98b64f29" }
+version = "0.4.4"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "python-dateutil" },
     { name = "pytz" },
     { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e4/1d/50b11831892760a3d2a08207947d6780f452fbad9d710dda249c0c654a78/nordpool-0.4.4.tar.gz", hash = "sha256:d358151a43035c00a7f62c5d22122467d3d97a9bf757ffbb23f590b6510685c1", size = 4530 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/63/ea/81484b86516605aa9219fe85a58007c44892648c88c252cf6c0359bb3dbf/nordpool-0.4.4-py3-none-any.whl", hash = "sha256:8a51d0673b970e475f57969136d128760b5597ca90806d5d7c5c398772b1f144", size = 5148 },
 ]
 
 [[package]]
