@@ -1,5 +1,6 @@
 (ns env-logger.weather-test
   (:require [clojure.test :refer [deftest is testing]]
+            [tupelo.core :refer [rel=]]
             [clojure.string :as str]
             [clojure.xml :refer [parse]]
             [config.core :refer [env]]
@@ -12,7 +13,9 @@
              [weather
               :refer
               [-convert-dt->tz-iso8601-str
+               -calculate-feels-like-temp
                calculate-start-time
+               -calculate-summer-simmer
                extract-forecast-data
                -fetch-astronomy-data
                -update-fmi-weather-forecast
@@ -51,6 +54,7 @@
             :wind-direction {:long "south east", :short "SE"}
             :precipitation 1.0
             :humidity 93.0
+            :radiation 85.0
             :time #inst "2022-06-07T16:00:00.000000000-00:00"}
            (extract-forecast-data
             (load-file "test/env_logger/wfs_forecast_data.txt"))))))
@@ -102,14 +106,15 @@
                                    :windspeed 1.1
                                    :temperature 1.4
                                    :humidity 90}])]
-      (let [wd (-update-fmi-weather-data-ts 87874)]
-        (is (= {:temperature 1.4
-                :cloudiness 8
-                :wind-speed 1.1
-                :wind-direction {:short "W"
-                                 :long "west"}
-                :humidity 90}
-               (dissoc (get wd (first (keys wd))) :time)))))))
+      (let [wd-all (-update-fmi-weather-data-ts 87874)
+            wd (get wd-all (first (keys wd-all)))]
+        (is (rel= 1.4 (:temperature wd) :tol 0.01))
+        (is (rel= 1.1 (:wind-speed wd) :tol 0.01))
+        (is (= 8 (:cloudiness wd)))
+        (is (= {:short "W"
+                :long "west"} (:wind-direction wd)))
+        (is (rel= 90.0 (:humidity wd) :tol 0.01))
+        (is (rel= -0.4 (:feels-like wd) :tol 0.01))))))
 
 (deftest test-weather-data-json-update
   (testing "Tests FMI weather data (JSON) updating"
@@ -126,16 +131,18 @@
                                                   :WindSpeedMS 1.1
                                                   :WindDirection 254
                                                   :Humidity 90}]})]
-      (let [wd (-update-fmi-weather-data-json 87874)]
+      (let [wd-all (-update-fmi-weather-data-json 87874)
+            wd (get wd-all (first (keys wd-all)))]
         (if (< (rem (t/as (t/local-date-time) :minute-of-hour) 10) 3)
           (is (nil? wd))
-          (is (= {:temperature 1.4
-                  :cloudiness 8
-                  :wind-speed 1.1
-                  :wind-direction {:short "W"
-                                   :long "west"}
-                  :humidity 90}
-                 (dissoc (get wd (first (keys wd))) :time))))))))
+          (do
+            (is (rel= 1.4 (:temperature wd) :tol 0.01))
+            (is (rel= 1.1 (:wind-speed wd) :tol 0.01))
+            (is (= 8 (:cloudiness wd)))
+            (is (= {:short "W"
+                    :long "west"} (:wind-direction wd)))
+            (is (rel= 90.0 (:humidity wd) :tol 0.01))
+            (is (rel= -0.4 (:feels-like wd) :tol 0.01))))))))
 
 (deftest fmi-weather-data-fetch
   (testing "Tests FMI weather data fetch"
@@ -168,6 +175,22 @@
                                       "Test exception"
                                       PSQLState/COMMUNICATION_ERROR)))]
       (is (false? (store-weather-data? {} (t/sql-timestamp)))))))
+
+(deftest test-calculate-summer-simmer
+  (testing "Summer simmer value calculation"
+    (is (rel= 5.0 (-calculate-summer-simmer 5.0 90.0) :tol 0.01))
+    (is (rel= 14.5 (-calculate-summer-simmer 14.5 90.0) :tol 0.01))
+    (is (rel= 14.64 (-calculate-summer-simmer 14.6 85.0) :tol 0.01))
+    (is (rel= 28.44 (-calculate-summer-simmer 25.0 93.0) :tol 0.01))))
+
+(deftest test-calculate-feels-like-temp
+  (testing "Feels like temperature value calculation"
+    (is (rel= -6.3 (-calculate-feels-like-temp -2 3.5 65 0.0) :tol 0.01))
+    (is (rel= -17.0 (-calculate-feels-like-temp -10 6 55 0.0) :tol 0.01))
+    (is (rel= 3.3 (-calculate-feels-like-temp 4 0.5 77 50) :tol 0.01))
+    (is (rel= 13.8 (-calculate-feels-like-temp 15.0 2.0 75 100) :tol 0.01))
+    (is (rel= 18.3 (-calculate-feels-like-temp 20.0 6.0 70 0) :tol 0.01))
+    (is (rel= 28.5 (-calculate-feels-like-temp 27.0 1.5 66 150) :tol 0.01))))
 
 (deftest test-get-wd-str
   (testing "Test wind direction to string conversion"
@@ -242,13 +265,15 @@
   (testing "Tests FMI and astronomy data query"
     (let [weather-data (get-weather-data)]
       (is (nil? (:ast weather-data)))
-      (is (= {:time #inst "2022-06-07T16:00:00.000000000-00:00"
-              :temperature 17.0
-              :wind-speed 4.0
-              :cloudiness 0
-              :wind-direction {:short "SE"
-                               :long "south east"}
-              :precipitation 1.0
-              :humidity 93.0}
-             (:forecast (:fmi weather-data))))
+      (let [forecast (:forecast (:fmi weather-data))]
+        (is (= #inst "2022-06-07T16:00:00.000000000-00:00"
+               (:time forecast)))
+        (is (rel= 17.0 (:temperature forecast) :tol 0.01))
+        (is (rel= 4.0 (:wind-speed forecast) :tol 0.01))
+        (is (zero? (:cloudiness forecast)))
+        (is (= {:short "SE"
+                :long "south east"} (:wind-direction forecast)))
+        (is (rel= 1.0 (:precipitation forecast) :tol 0.01))
+        (is (rel= 93.0 (:humidity forecast) :tol 0.01))
+        (is (rel= 15.8 (:feels-like forecast) :tol 0.01)))
       (is (empty? (:not-found weather-data))))))

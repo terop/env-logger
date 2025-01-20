@@ -214,7 +214,8 @@ const loadPage = () => {
       'fmi-temperature': 'Temperature',
       'cloudiness': 'Cloudiness',
       'wind-speed': 'Wind speed',
-      'humidity': 'Humidity'
+      'humidity': 'Humidity',
+      'feels-like': 'Feels like'
     };
 
     return labelValues;
@@ -264,7 +265,7 @@ const loadPage = () => {
     // Show last observation and some other data for quick viewing
     const showLastObservation = () => {
       let observationText = '';
-      const weatherKeys = ['fmi-temperature', 'cloudiness', 'wind-speed', 'humidity'];
+      const weatherKeys = ['fmi-temperature', 'feels-like', 'cloudiness', 'wind-speed', 'humidity'];
 
       if (!data.weather) {
         console.log('Error: no weather data');
@@ -281,15 +282,18 @@ const loadPage = () => {
         observationText += ` at ${DateTime.now().setLocale('fi').toLocaleString()}` +
           ` ${DateTime.fromISO(wd.time).toLocaleString(DateTime.TIME_SIMPLE)}: `;
         for (const key of weatherKeys) {
-          if (key === 'wind-speed') {
+          switch (key) {
+          case 'wind-speed':
             observationText += `wind: ${wd['wind-direction'].long} ` +
               `${wd[key]} ${addUnitSuffix(key)}, `;
-          } else if (key === 'fmi-temperature') {
+            break;
+          case 'fmi-temperature':
             observationText += `${lowerFL(labelValues.weather[key])}: ` +
               `${wd.temperature} ${addUnitSuffix(key)}, `;
-          } else {
+            break;
+          default:
             observationText += `${lowerFL(labelValues.weather[key])}: ${wd[key]}` +
-              `${addUnitSuffix(key)}, `;
+              `${key === 'feels-like' ? addUnitSuffix('temperature') : addUnitSuffix(key)}, `;
           }
         }
       }
@@ -355,6 +359,7 @@ const loadPage = () => {
           '<br><span class="weight-bold">Forecast</span> for ' +
           DateTime.fromISO(forecast.time).toFormat('dd.MM.yyyy HH:mm') +
           `: temperature: ${forecast.temperature} ${addUnitSuffix('temperature')}, ` +
+          `feels like: ${forecast['feels-like']} ${addUnitSuffix('temperature')}, ` +
           `cloudiness: ${forecast.cloudiness} %, ` +
           `wind: ${forecast['wind-direction'].long} ${forecast['wind-speed']} ${addUnitSuffix('wind')}, ` +
           `precipitation: ${forecast.precipitation} ${addUnitSuffix('precipitation')}, ` +

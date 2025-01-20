@@ -3,7 +3,7 @@
   (:require [clojure.xml :refer [parse]]
             [clojure.zip :refer [xml-zip]]
             [clojure.data.zip.xml :as zx]
-            [clojure.math :refer [round]]
+            [clojure.math :refer [pow round]]
             [clojure.string :as str]
             [config.core :refer [env]]
             [taoensso.timbre :refer [error info warn]]
@@ -36,7 +36,8 @@
                             (t/minutes (- curr-minute
                                           (- curr-minute
                                              (mod curr-minute 10))))
-                            (t/seconds (ZonedDateTime/.getSecond (t/zoned-date-time))))]
+                            (t/seconds (ZonedDateTime/.getSecond
+                                        (t/zoned-date-time))))]
     start-time))
 
 (defn -convert-dt->tz-iso8601-str
@@ -71,6 +72,38 @@
     (catch PSQLException pe
       (error pe "Weather data storage check failed")
       false)))
+
+(defn -calculate-summer-simmer
+  "Calculate the summer simmer value."
+  [temperature humidity-percent]
+  (if (<= temperature 14.5)
+    temperature
+    (let [humidity-ref 0.5
+          humidity (/ humidity-percent 100.0)]
+      (/ (- (* 1.8 temperature) (* (* 0.55 (- 1 humidity))
+                                   (- (* 1.8 temperature) 26))
+            (* 0.55 (- 1 humidity-ref) 26))
+         (* 1.8 (- 1 (* 0.55 (- 1 humidity-ref))))))))
+
+(defn -calculate-feels-like-temp
+  "Calculate the 'feels like' temperature. The formula is based on FMI
+  'feels like' temperature calculation."
+  [temperature wind-speed humidity radiation]
+  ;; Formula taken from https://github.com/saaste/fmi-weather-client/blob/
+  ;; master/fmi_weather_client/parsers/forecast.py#L150
+  (if (< wind-speed 0.0)
+    temperature
+    (let [chill (+ 15 (* (- 1 (/ 15 37)) temperature)
+                   (* (/ 15 37) (pow (inc wind-speed) 0.16) (- temperature 37)))
+          heat (-calculate-summer-simmer temperature humidity)
+          radiation-correction (if radiation (/ (* 0.7 0.07 radiation)
+                                                (- (+ wind-speed 10) 0.25))
+                                   0)]
+      (Float/parseFloat (format "%.1f"
+                                (+ temperature
+                                   (- chill temperature)
+                                   (- heat temperature)
+                                   radiation-correction))))))
 
 ;; FMI
 
@@ -145,7 +178,9 @@
        :precipitation (Float/parseFloat (format "%.1f" (Float/parseFloat
                                                         (nth values 4))))
        :humidity (Float/parseFloat (format "%.1f" (Float/parseFloat
-                                                   (nth values 5))))})))
+                                                   (nth values 5))))
+       :radiation (Float/parseFloat (format "%.1f" (Float/parseFloat
+                                                    (nth values 6))))})))
 
 (defn -update-fmi-weather-data-json
   "Updates the latest FMI weather data from the FMI JSON for the given weather
@@ -178,7 +213,12 @@
                                   (:TotalCloudCover obs) 9)
                     :wind-speed (:WindSpeedMS obs)
                     :wind-direction (get-wd-str (:WindDirection obs))
-                    :humidity (:Humidity obs)}]
+                    :humidity (:Humidity obs)
+                    :feels-like (-calculate-feels-like-temp
+                                 (:t2m obs)
+                                 (:WindSpeedMS obs)
+                                 (:Humidity obs)
+                                 nil)}]
             (when-not (nil? (:temperature wd))
               (swap! fmi-current conj
                      {(-convert-time->iso8601-str (:time wd)) wd}))))))
@@ -222,7 +262,12 @@
                                   (int (:cloudiness obs)) 9)
                     :wind-speed (:windspeed obs)
                     :wind-direction (get-wd-str (:winddirection obs))
-                    :humidity (:humidity obs)}]
+                    :humidity (:humidity obs)
+                    :feels-like (-calculate-feels-like-temp
+                                 (:temperature obs)
+                                 (:windspeed obs)
+                                 (:humidity obs)
+                                 nil)}]
             (when wd
               (swap! fmi-current
                      conj
@@ -254,7 +299,7 @@
                            "simple&latlon="
                            "%s&parameters=Temperature,WindSpeedMS,"
                            "TotalCloudCover,WindDirection,Precipitation1h,"
-                           "Humidity&starttime=%s&endtime=%s")
+                           "Humidity,RadiationGlobal&starttime=%s&endtime=%s")
                       (str latitude "," longitude)
                       ;; Start time must always be ahead of the current time so
                       ;; that forecast for the next hour is fetched
@@ -272,7 +317,15 @@
                                                 (:fetched @fmi-forecast)
                                                 :minutes)) 30)))
           (if-let [forecast (extract-forecast-data (parse url))]
-            (reset! fmi-forecast (assoc forecast :fetched (t/local-date-time)))
+            (reset! fmi-forecast
+                    (dissoc (assoc forecast
+                                   :fetched (t/local-date-time)
+                                   :feels-like (-calculate-feels-like-temp
+                                                (:temperature forecast)
+                                                (:wind-speed forecast)
+                                                (:humidity forecast)
+                                                (:radiation forecast)))
+                            :radiation))
             (do
               (info (str "Retrying forecast fetch, attempt "
                          (- retry-count (dec @index))

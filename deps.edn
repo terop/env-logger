@@ -34,7 +34,8 @@
   :test {:extra-paths ["test"]
          :extra-deps {io.github.cognitect-labs/test-runner
                       {:git/tag "v0.5.1" :git/sha "dfb30dd"}
-                      clj-http-fake/clj-http-fake {:mvn/version "1.0.4"}}
+                      clj-http-fake/clj-http-fake {:mvn/version "1.0.4"}
+                      tupelo/tupelo {:mvn/version "24.12.03b"}}
          :main-opts ["-m" "cognitect.test-runner"]
          :jvm-opts ["-Dconfig=resources/dev/config.edn"]
          :exec-fn cognitect.test-runner.api/test}
