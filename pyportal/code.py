@@ -298,8 +298,8 @@ def update_screen(display, observation, weather_data, elec_price_data, utc_offse
         time_str = f'{dt_time.hour + utc_offset_hour:02}:{dt_time.minute:02}'
 
         display[1].text = f'Weather ({time_str}): temp {weather["temperature"]} ' + \
-            f'\u00b0C, cloudiness {weather["cloudiness"]},'
-        display[2].text = 'wind ' + \
+            f'\u00b0C, feel {weather["feels-like"]} \u00b0C,'
+        display[2].text = f'clouds {weather["cloudiness"]}, wind ' + \
             f'{weather["wind-direction"]["short"]} {weather["wind-speed"]} m/s, ' + \
             f'humidity {int(weather["humidity"])} %H'
 
@@ -314,10 +314,11 @@ def update_screen(display, observation, weather_data, elec_price_data, utc_offse
                 display[3].text += f' ({forecast_dt.hour + utc_offset_hour:02}:' + \
                     f'{forecast_dt.minute:02})'
                 display[3].text += f': temp {forecast["temperature"]} \u00b0C, ' + \
-                    f'clouds {forecast["cloudiness"]} %,'
-                display[4].text = f'wind {forecast["wind-direction"]["short"]} ' + \
+                    f'feel {forecast["feels-like"]} \u00b0C, '
+                display[4].text = f'clouds {forecast["cloudiness"]} %, ' + \
+                    f'wind {forecast["wind-direction"]["short"]} ' + \
                     f'{forecast["wind-speed"]} m/s, precip ' + \
-                    f'{forecast["precipitation"]} mm, humid {forecast["humidity"]} %H'
+                    f'{forecast["precipitation"]} mm'
                 row = 5
     else:
         row = 1
