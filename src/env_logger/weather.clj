@@ -10,7 +10,7 @@
             [jsonista.core :as j]
             [clj-http.client :as client]
             [next.jdbc :as jdbc]
-            [java-time.api :as t]
+            [java-time.api :as jt]
             [env-logger [db :refer [rs-opts -convert-time->iso8601-str]]])
   (:import (java.time LocalDateTime ZonedDateTime)
            java.time.temporal.ChronoUnit
@@ -31,20 +31,20 @@
   DateTime object. The time is the closest even ten minutes in the past,
   example: for 08:27 it would be 08:20."
   []
-  (let [curr-minute (ZonedDateTime/.getMinute (t/zoned-date-time))
-        start-time (t/minus (t/zoned-date-time)
-                            (t/minutes (- curr-minute
-                                          (- curr-minute
-                                             (mod curr-minute 10))))
-                            (t/seconds (ZonedDateTime/.getSecond
-                                        (t/zoned-date-time))))]
+  (let [curr-minute (ZonedDateTime/.getMinute (jt/zoned-date-time))
+        start-time (jt/minus (jt/zoned-date-time)
+                             (jt/minutes (- curr-minute
+                                            (- curr-minute
+                                               (mod curr-minute 10))))
+                             (jt/seconds (ZonedDateTime/.getSecond
+                                          (jt/zoned-date-time))))]
     start-time))
 
 (defn -convert-dt->tz-iso8601-str
   "Formats and returns a datetime as an ISO 8601 formatted start time string
   having the :weather-zone value timezone before ISO 8601 conversion."
   [datetime]
-  (-convert-time->iso8601-str (t/with-zone
+  (-convert-time->iso8601-str (jt/with-zone
                                 datetime
                                 (:weather-timezone env))))
 
@@ -65,9 +65,9 @@
                                                    :order-by [[:id :desc]]
                                                    :limit 1})
                                                  rs-opts))]
-        (t/after?
-         (t/local-date-time cand-dt)
-         (t/local-date-time latest-stored))
+        (jt/after?
+         (jt/local-date-time cand-dt)
+         (jt/local-date-time latest-stored))
         true))
     (catch PSQLException pe
       (error pe "Weather data storage check failed")
@@ -165,9 +165,9 @@
                                         :wfs:member
                                         :BsWfs:BsWfsElement
                                         :BsWfs:Time))]
-      {:time (t/sql-timestamp
-              (t/local-date-time (t/instant date-text)
-                                 (:weather-timezone env)))
+      {:time (jt/sql-timestamp
+              (jt/local-date-time (jt/instant date-text)
+                                  (:weather-timezone env)))
        :temperature (Float/parseFloat (format "%.1f" (Float/parseFloat
                                                       (nth values 0))))
        :wind-speed (Float/parseFloat (format "%.1f" (Float/parseFloat
@@ -189,7 +189,7 @@
   (try
     ;; The first check is to prevent pointless fetch attempts when data
     ;; is not yet available
-    (when (and (>= (rem (t/as (t/local-date-time) :minute-of-hour) 10) 3)
+    (when (and (>= (rem (jt/as (jt/local-date-time) :minute-of-hour) 10) 3)
                (nil? (get @fmi-current (-convert-dt->tz-iso8601-str
                                         (calculate-start-time)))))
       (let [url (format (str "https://www.ilmatieteenlaitos.fi/api/weather/"
@@ -202,12 +202,12 @@
                    (seq (:observations parsed-json)))
           (let [obs (last (:observations parsed-json))
                 time-str (subs (str/replace (:localtime obs) "T" "") 0 12)
-                local-dt (t/local-date-time "yyyyMMddHHmm" time-str)
+                local-dt (jt/local-date-time "yyyyMMddHHmm" time-str)
                 ;; Assume that the timestamp is always in local (i.e.
                 ;; Europe/Helsinki) timezone
-                wd {:time (t/sql-timestamp
-                           (t/zoned-date-time local-dt
-                                              "Europe/Helsinki"))
+                wd {:time (jt/sql-timestamp
+                           (jt/zoned-date-time local-dt
+                                               "Europe/Helsinki"))
                     :temperature (:t2m obs)
                     :cloudiness (if-not (nil? (:TotalCloudCover obs))
                                   (:TotalCloudCover obs) 9)
@@ -245,18 +245,18 @@
         (when (seq parsed-json)
           (let [obs (last parsed-json)
                 time-str (subs (str/replace (:time obs) "T" "") 0 12)
-                local-dt (t/local-date-time "yyyyMMddHHmm" time-str)
+                local-dt (jt/local-date-time "yyyyMMddHHmm" time-str)
                 offset (ChronoUnit/.between
                         ChronoUnit/HOURS
-                        (LocalDateTime/.atZone local-dt (t/zone-id (:tz obs)))
+                        (LocalDateTime/.atZone local-dt (jt/zone-id (:tz obs)))
                         (LocalDateTime/.atZone local-dt
-                                               (t/zone-id (:weather-timezone
-                                                           env))))
+                                               (jt/zone-id (:weather-timezone
+                                                            env))))
                 wd {:time
-                    (t/sql-timestamp
-                     (t/minus
-                      (t/zoned-date-time local-dt (:tz obs))
-                      (t/hours offset))),
+                    (jt/sql-timestamp
+                     (jt/minus
+                      (jt/zoned-date-time local-dt (:tz obs))
+                      (jt/hours offset))),
                     :temperature (:temperature obs)
                     :cloudiness (if-not (nil? (:cloudiness obs))
                                   (int (:cloudiness obs)) 9)
@@ -284,15 +284,15 @@
   (or (get @fmi-current
            (-convert-dt->tz-iso8601-str (calculate-start-time)))
       (get @fmi-current (-convert-dt->tz-iso8601-str
-                         (t/minus (calculate-start-time) (t/minutes 10))))))
+                         (jt/minus (calculate-start-time) (jt/minutes 10))))))
 
 (defn -update-fmi-weather-forecast
   "Updates the latest FMI forecaster edited weather forecast from the FMI WFS
   for the given weather observation station."
   [latitude longitude]
   (future
-    (let [start-time (t/plus (t/zoned-date-time) (t/minutes 10))
-          end-time (t/plus start-time (t/hours 1))
+    (let [start-time (jt/plus (jt/zoned-date-time) (jt/minutes 10))
+          end-time (jt/plus start-time (jt/hours 1))
           url (format (str "https://opendata.fmi.fi/wfs?service=WFS&version="
                            "2.0.0&request=getFeature&storedquery_id=fmi::"
                            "forecast::edited::weather::scandinavia::point::"
@@ -309,17 +309,17 @@
       (try
         (while (and (pos? @index)
                     (or (nil? @fmi-forecast)
-                        (< (abs (t/time-between (t/local-date-time
-                                                 (:time @fmi-forecast))
-                                                (t/local-date-time)
-                                                :minutes)) 15)
-                        (> (abs (t/time-between (t/local-date-time)
-                                                (:fetched @fmi-forecast)
-                                                :minutes)) 30)))
+                        (< (abs (jt/time-between (jt/local-date-time
+                                                  (:time @fmi-forecast))
+                                                 (jt/local-date-time)
+                                                 :minutes)) 15)
+                        (> (abs (jt/time-between (jt/local-date-time)
+                                                 (:fetched @fmi-forecast)
+                                                 :minutes)) 30)))
           (if-let [forecast (extract-forecast-data (parse url))]
             (reset! fmi-forecast
                     (dissoc (assoc forecast
-                                   :fetched (t/local-date-time)
+                                   :fetched (jt/local-date-time)
                                    :feels-like (-calculate-feels-like-temp
                                                 (:temperature forecast)
                                                 (:wind-speed forecast)
@@ -350,7 +350,7 @@
                     api-key
                     (str latitude)
                     (str longitude))
-        date-str (str (t/local-date))]
+        date-str (str (jt/local-date))]
     (when (or (empty? @ast-data)
               (nil? (get @ast-data date-str)))
       (let [resp (try
@@ -393,4 +393,4 @@
   []
   {:fmi {:current (get-fmi-weather-data)
          :forecast (dissoc @fmi-forecast :fetched)}
-   :ast (get @ast-data (str (t/local-date)))})
+   :ast (get @ast-data (str (jt/local-date)))})

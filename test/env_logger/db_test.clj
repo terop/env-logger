@@ -1,7 +1,7 @@
 (ns env-logger.db-test
   (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [clojure.string :as str]
-            [java-time.api :as t]
+            [java-time.api :as jt]
             [next.jdbc :as jdbc]
             [next.jdbc [result-set :as rs] [sql :as js]]
             [env-logger.db
@@ -67,7 +67,7 @@
                  {:builder-fn rs/as-unqualified-lower-maps})))
 
 ;; Current datetime used in tests
-(def current-dt (t/local-date-time))
+(def current-dt (jt/local-date-time))
 (def date-fmt :iso-local-date)
 
 (defn clean-test-database
@@ -79,7 +79,7 @@
   (jdbc/execute! test-ds (sql/format {:delete-from :electricity_consumption}))
   (js/insert! test-ds
               :observations
-              {:recorded (t/minus current-dt (t/days 4))
+              {:recorded (jt/minus current-dt (jt/days 4))
                :inside_light 5})
   (test-fn)
   (jdbc/execute! test-ds (sql/format {:delete-from :beacons}))
@@ -98,16 +98,16 @@
   ([minus-time]
    (str "testbed-"
         (str/replace (if minus-time
-                       (t/format (t/formatter "y-MM-dd HH:mmxxx")
-                                 (t/minus (t/offset-date-time)
-                                          minus-time))
-                       (t/format (t/formatter "y-MM-dd HH:mmxxx")
-                                 (t/offset-date-time)))
+                       (jt/format (jt/formatter "y-MM-dd HH:mmxxx")
+                                  (jt/minus (jt/offset-date-time)
+                                            minus-time))
+                       (jt/format (jt/formatter "y-MM-dd HH:mmxxx")
+                                  (jt/offset-date-time)))
                      " " "T") ".jpg")))
 
 (deftest insert-observations
   (testing "Full observation insert"
-    (let [observation {:timestamp (t/zoned-date-time)
+    (let [observation {:timestamp (jt/zoned-date-time)
                        :co2 600
                        :insideLight 0
                        :outsideLight 150
@@ -115,20 +115,20 @@
                        :beacon {:mac "7C:EC:79:3F:BE:97"
                                 :rssi -68
                                 :battery_level nil}}
-          weather-data {:time (t/sql-timestamp current-dt)
+          weather-data {:time (jt/sql-timestamp current-dt)
                         :temperature 20
                         :cloudiness 2
                         :wind-speed 5.0}]
       (is (true? (insert-observation test-ds
                                      (merge observation
-                                            {:timestamp (t/minus (:timestamp observation)
-                                                                 (t/seconds 5))
+                                            {:timestamp (jt/minus (:timestamp observation)
+                                                                  (jt/seconds 5))
                                              :outsideTemperature 5
                                              :weather-data weather-data}))))
       (is (true? (insert-observation test-ds
                                      (merge observation
-                                            {:timestamp (t/minus (:timestamp observation)
-                                                                 (t/seconds 10))
+                                            {:timestamp (jt/minus (:timestamp observation)
+                                                                  (jt/seconds 10))
                                              :outsideTemperature nil
                                              :weather-data nil}))))
       (is (false? (insert-observation test-ds {})))
@@ -182,30 +182,30 @@
                       :end nil}))))
     (is (= 4 (count (get-obs-interval
                      test-ds
-                     {:start (t/format date-fmt
-                                       (t/minus (t/local-date)
-                                                (t/days 2)))
+                     {:start (jt/format date-fmt
+                                        (jt/minus (jt/local-date)
+                                                  (jt/days 2)))
                       :end nil}))))
     (is (= 2 (count (get-obs-interval
                      test-ds
                      {:start nil
-                      :end (t/format date-fmt
-                                     (t/minus (t/local-date)
-                                              (t/days 2)))}))))
+                      :end (jt/format date-fmt
+                                      (jt/minus (jt/local-date)
+                                                (jt/days 2)))}))))
     (is (= 6 (count (get-obs-interval
                      test-ds
-                     {:start (t/format date-fmt
-                                       (t/minus (t/local-date)
-                                                (t/days 6)))
-                      :end (t/format date-fmt (t/local-date-time))}))))
+                     {:start (jt/format date-fmt
+                                        (jt/minus (jt/local-date)
+                                                  (jt/days 6)))
+                      :end (jt/format date-fmt (jt/local-date-time))}))))
     (is (zero? (count (get-obs-interval
                        test-ds
-                       {:start (t/format date-fmt
-                                         (t/minus (t/local-date)
-                                                  (t/days 11)))
-                        :end (t/format date-fmt
-                                       (t/minus (t/local-date)
-                                                (t/days 10)))}))))
+                       {:start (jt/format date-fmt
+                                          (jt/minus (jt/local-date)
+                                                    (jt/days 11)))
+                        :end (jt/format date-fmt
+                                        (jt/minus (jt/local-date)
+                                                  (jt/days 10)))}))))
     (is (zero? (count (get-obs-interval
                        test-ds
                        {:start "foobar"
@@ -228,9 +228,9 @@
 
 (deftest start-and-end-date-query
   (testing "Selecting start and end dates of all observations"
-    (is (= {:start (t/format date-fmt (t/minus current-dt
-                                               (t/days 4)))
-            :end (t/format date-fmt current-dt)}
+    (is (= {:start (jt/format date-fmt (jt/minus current-dt
+                                                 (jt/days 4)))
+            :end (jt/format date-fmt current-dt)}
            (get-obs-date-interval test-ds)))
     (with-redefs [jdbc/execute-one! (fn [_ _] {:start nil
                                                :end nil})]
@@ -262,7 +262,7 @@
 
 (deftest test-add-tz-offset-to-dt
   (testing "TZ offset adding"
-    (let [orig-dt (t/local-date-time)]
+    (let [orig-dt (jt/local-date-time)]
       (is (= orig-dt (add-tz-offset-to-dt orig-dt))))))
 
 (deftest last-observation-id
@@ -283,7 +283,7 @@
     (let [obs-id (:min (jdbc/execute-one! test-ds
                                           (sql/format {:select [:%min.id]
                                                        :from :observations})))
-          weather-data {:time (t/local-date-time)
+          weather-data {:time (jt/local-date-time)
                         :temperature 20
                         :cloudiness 2
                         :wind-speed 5.0}]
@@ -307,7 +307,7 @@
                                                [ruuvitag-obs])))
       (is (true? (insert-ruuvitag-observations
                   test-ds
-                  (t/zoned-date-time "2019-01-25T20:45:18+02:00")
+                  (jt/zoned-date-time "2019-01-25T20:45:18+02:00")
                   [ruuvitag-obs])))
       (is (true? (insert-ruuvitag-observations
                   test-ds
@@ -385,14 +385,14 @@
 (deftest plain-observation-insert
   (testing "Insert of a row into the observations table"
     (is (pos? (insert-plain-observation test-ds
-                                        {:timestamp (t/zoned-date-time)
+                                        {:timestamp (jt/zoned-date-time)
                                          :co2 600
                                          :insideLight 0
                                          :outsideLight 100
                                          :insideTemperature 21
                                          :outsideTemperature 5})))
     (is (pos? (insert-plain-observation test-ds
-                                        {:timestamp (t/zoned-date-time)
+                                        {:timestamp (jt/zoned-date-time)
                                          :co2 600
                                          :insideLight 0
                                          :outsideLight nil
@@ -411,18 +411,18 @@
 
 (deftest testbed-image-age-check-test
   (testing "Testbed image date checking"
-    (is (false? (image-age-check (get-image-name (t/minutes 10))
-                                 (t/zoned-date-time)
+    (is (false? (image-age-check (get-image-name (jt/minutes 10))
+                                 (jt/zoned-date-time)
                                  9)))
     (is (true? (image-age-check (get-image-name nil)
-                                (t/zoned-date-time)
+                                (jt/zoned-date-time)
                                 1)))
     (is (true? (image-age-check (get-image-name nil)
-                                (t/zoned-date-time)
+                                (jt/zoned-date-time)
                                 5)))
     (is (true? (image-age-check (get-image-name nil)
-                                (t/minus (t/zoned-date-time)
-                                         (t/minutes 10))
+                                (jt/minus (jt/zoned-date-time)
+                                          (jt/minutes 10))
                                 9)))))
 
 (deftest get-ruuvitag-obs-test
@@ -456,15 +456,15 @@
              :temperature 15.0
              :humidity 30.0}
            (dissoc (first (get-ruuvitag-obs test-ds
-                                            (t/minus (t/local-date-time)
-                                                     (t/minutes 5))
-                                            (t/local-date-time)
+                                            (jt/minus (jt/local-date-time)
+                                                      (jt/minutes 5))
+                                            (jt/local-date-time)
                                             ["balcony"]))
                    :recorded)))
     (is (= 2 (count (get-ruuvitag-obs test-ds
-                                      (t/minus (t/local-date-time)
-                                               (t/minutes 5))
-                                      (t/local-date-time)
+                                      (jt/minus (jt/local-date-time)
+                                                (jt/minutes 5))
+                                      (jt/local-date-time)
                                       ["indoor"]))))))
 
 (deftest get-elec-data-test
@@ -480,18 +480,18 @@
                                         nil))))
     (js/insert! test-ds
                 :electricity_price
-                {:start_time (t/sql-timestamp (t/zoned-date-time 2022 10 8
-                                                                 18 0 0))
+                {:start_time (jt/sql-timestamp (jt/zoned-date-time 2022 10 8
+                                                                   18 0 0))
                  :price 10.0})
     (js/insert! test-ds
                 :electricity_price
-                {:start_time (t/sql-timestamp (t/zoned-date-time 2022 10 7
-                                                                 22 0 0))
+                {:start_time (jt/sql-timestamp (jt/zoned-date-time 2022 10 7
+                                                                   22 0 0))
                  :price 4.0})
     (js/insert! test-ds
                 :electricity_consumption
-                {:time (t/sql-timestamp (t/zoned-date-time 2022 10 7
-                                                           22 0 0))
+                {:time (jt/sql-timestamp (jt/zoned-date-time 2022 10 7
+                                                             22 0 0))
                  :consumption 1.0})
     ;; Hour data tests
     (let [res (get-elec-data-hour test-ds
@@ -545,9 +545,9 @@
 
 (deftest get-midnight-dt-test
   (testing "Datetime at midnight calculation"
-    (let [ref (t/local-date-time 2023 2 21 0 0 0)]
-      (with-redefs [t/local-date-time (fn [] (LocalDateTime/of 2023 2 22
-                                                               21 15 16))]
+    (let [ref (jt/local-date-time 2023 2 21 0 0 0)]
+      (with-redefs [jt/local-date-time (fn [] (LocalDateTime/of 2023 2 22
+                                                                21 15 16))]
         (is (= ref (get-midnight-dt 1)))))))
 
 (deftest convert->epoch-ms-test
@@ -555,23 +555,23 @@
     (let [tz-offset (get-tz-offset "UTC")]
       (is (= 1620734400000
              (convert->epoch-ms tz-offset
-                                (t/sql-timestamp
-                                 (t/local-date-time 2021 5 11 12 0)))))
+                                (jt/sql-timestamp
+                                 (jt/local-date-time 2021 5 11 12 0)))))
       (is (= 1609593180000
              (convert->epoch-ms tz-offset
-                                (t/sql-timestamp
-                                 (t/local-date-time 2021 1 2 13 13))))))))
+                                (jt/sql-timestamp
+                                 (jt/local-date-time 2021 1 2 13 13))))))))
 
 (deftest test-iso8601-str-generation
   (testing "ZonedDateTime to ISO 8601 string conversion"
-    (let [now (ZonedDateTime/now (t/zone-id "UTC"))]
+    (let [now (ZonedDateTime/now (jt/zone-id "UTC"))]
       (is (= (str (first (str/split (str now) #"\.")) "Z")
              (-convert-time->iso8601-str now))))))
 
 (deftest test-elec-consumption-data-insert
   (testing "Insert of electricity consumption data"
     (let [consumption-data [[current-dt 0.1]
-                            [(t/plus current-dt (t/hours 1)) 0.12]]]
+                            [(jt/plus current-dt (jt/hours 1)) 0.12]]]
       (is (true? (insert-elec-consumption-data test-ds consumption-data)))
       (is (= (count consumption-data)
              (:count (jdbc/execute-one! test-ds
@@ -597,7 +597,7 @@
                             PSQLState/COMMUNICATION_ERROR)))]
       (is (nil? (get-latest-elec-consumption-record-time test-ds))))
     (is (nil? (get-latest-elec-consumption-record-time test-ds)))
-    (let [consumption-data [[(t/local-date-time 2023 2 7 19 50) 0.1]]]
+    (let [consumption-data [[(jt/local-date-time 2023 2 7 19 50) 0.1]]]
       (insert-elec-consumption-data test-ds consumption-data)
       (with-redefs [get-tz-offset (fn [_] 0)]
         (is (= "7.2.2023 19:50" (get-latest-elec-consumption-record-time test-ds))))
@@ -612,7 +612,7 @@
                             PSQLState/COMMUNICATION_ERROR)))]
       (is (nil? (get-elec-consumption-interval-start test-ds))))
     (is (nil? (get-elec-consumption-interval-start test-ds)))
-    (let [consumption-data [[(t/local-date-time 2023 2 22 19 50) 0.1]]]
+    (let [consumption-data [[(jt/local-date-time 2023 2 22 19 50) 0.1]]]
       (insert-elec-consumption-data test-ds consumption-data))
     (is (= "2023-02-22" (get-elec-consumption-interval-start test-ds)))
     (jdbc/execute! test-ds (sql/format {:delete-from :electricity_consumption}))))
@@ -629,13 +629,13 @@
 
     (js/insert! test-ds
                 :electricity_price
-                {:start_time (t/sql-timestamp (t/zoned-date-time 2023 9 4
-                                                                 18 0 0))
+                {:start_time (jt/sql-timestamp (jt/zoned-date-time 2023 9 4
+                                                                   18 0 0))
                  :price 10.0})
     (js/insert! test-ds
                 :electricity_price
-                {:start_time (t/sql-timestamp (t/zoned-date-time 2023 9 5
-                                                                 22 0 0))
+                {:start_time (jt/sql-timestamp (jt/zoned-date-time 2023 9 5
+                                                                   22 0 0))
                  :price 4.0})
     (is (= "2023-09-05" (get-elec-price-interval-end test-ds)))
     (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))))
@@ -652,19 +652,19 @@
 
     (js/insert! test-ds
                 :electricity_price
-                {:start_time (t/sql-timestamp (t/zoned-date-time))
+                {:start_time (jt/sql-timestamp (jt/zoned-date-time))
                  :price 10.0})
     (js/insert! test-ds
                 :electricity_price
-                {:start_time (t/sql-timestamp (t/minus (t/zoned-date-time)
-                                                       (t/hours 1)))
+                {:start_time (jt/sql-timestamp (jt/minus (jt/zoned-date-time)
+                                                         (jt/hours 1)))
                  :price 4.0})
     (is (= "7.0" (get-month-avg-elec-price test-ds)))
     ;; Check that prices before the current month are not used
     (js/insert! test-ds
                 :electricity_price
-                {:start_time (t/sql-timestamp (t/minus (t/zoned-date-time)
-                                                       (t/days 40)))
+                {:start_time (jt/sql-timestamp (jt/minus (jt/zoned-date-time)
+                                                         (jt/days 40)))
                  :price 12.0})
     (is (= "7.0" (get-month-avg-elec-price test-ds)))
     (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))))
@@ -681,19 +681,19 @@
 
     (js/insert! test-ds
                 :electricity_consumption
-                {:time (t/sql-timestamp (t/zoned-date-time))
+                {:time (jt/sql-timestamp (jt/zoned-date-time))
                  :consumption 0.6})
     (js/insert! test-ds
                 :electricity_consumption
-                {:time (t/sql-timestamp (t/minus (t/zoned-date-time)
-                                                 (t/hours 1)))
+                {:time (jt/sql-timestamp (jt/minus (jt/zoned-date-time)
+                                                   (jt/hours 1)))
                  :consumption 1.1})
     (is (= "1.7" (get-month-elec-consumption test-ds)))
     ;; Check that prices before the current month are not used
     (js/insert! test-ds
                 :electricity_consumption
-                {:time (t/sql-timestamp (t/minus (t/zoned-date-time)
-                                                 (t/days 35)))
+                {:time (jt/sql-timestamp (jt/minus (jt/zoned-date-time)
+                                                   (jt/days 35)))
                  :consumption 0.4})
     (is (= "1.7" (get-month-elec-consumption test-ds)))
     (jdbc/execute! test-ds (sql/format {:delete-from

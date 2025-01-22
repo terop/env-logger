@@ -6,7 +6,7 @@
             [config.core :refer [env]]
             [clj-http.fake :refer [with-fake-routes]]
             [jsonista.core :as j]
-            [java-time.api :as t]
+            [java-time.api :as jt]
             [next.jdbc :as jdbc]
             [env-logger
              [db :refer [get-tz-offset]]
@@ -34,7 +34,7 @@
 
 (deftest test-iso8601-and-tz-str-formatting
   (testing "Date and time to ISO 8601 with timezone string conversion"
-    (let [now (ZonedDateTime/now (t/zone-id "Europe/Helsinki"))]
+    (let [now (ZonedDateTime/now (jt/zone-id "Europe/Helsinki"))]
       (is (= (str (first (str/split
                           (str (ZonedDateTime/.minusHours
                                 now
@@ -61,32 +61,32 @@
 
 (deftest test-start-time-calculation
   (testing "Tests the start time calculation"
-    (with-redefs [t/zoned-date-time (fn []
-                                      (ZonedDateTime/of 2020 12 28
-                                                        9 3 50 0
-                                                        (t/zone-id
-                                                         "Europe/Helsinki")))]
+    (with-redefs [jt/zoned-date-time (fn []
+                                       (ZonedDateTime/of 2020 12 28
+                                                         9 3 50 0
+                                                         (jt/zone-id
+                                                          "Europe/Helsinki")))]
       (is (= "2020-12-28T09:00"
-             (first (str/split (str (t/local-date-time (calculate-start-time)))
+             (first (str/split (str (jt/local-date-time (calculate-start-time)))
                                #"\.")))))
-    (with-redefs [t/zoned-date-time (fn []
-                                      (ZonedDateTime/of 2020 12 28
-                                                        9 9 50 0
-                                                        (t/zone-id
-                                                         "Europe/Helsinki")))]
+    (with-redefs [jt/zoned-date-time (fn []
+                                       (ZonedDateTime/of 2020 12 28
+                                                         9 9 50 0
+                                                         (jt/zone-id
+                                                          "Europe/Helsinki")))]
       (is (= "2020-12-28T09:00"
-             (first (str/split (str (t/local-date-time (calculate-start-time)))
+             (first (str/split (str (jt/local-date-time (calculate-start-time)))
                                #"\[")))))))
 
 (deftest test-forecast-data-update
   (testing "Tests FMI forecast data update"
     (with-redefs [parse (fn [_]
                           (load-file "test/env_logger/wfs_forecast_data.txt"))
-                  t/zoned-date-time (fn []
-                                      (ZonedDateTime/of 2022 6 7
-                                                        19 0 0 0
-                                                        (t/zone-id
-                                                         "Europe/Helsinki")))]
+                  jt/zoned-date-time (fn []
+                                       (ZonedDateTime/of 2022 6 7
+                                                         19 0 0 0
+                                                         (jt/zone-id
+                                                          "Europe/Helsinki")))]
       (let [res (-update-fmi-weather-forecast 12.34 56.78)]
         (is (nil? @res))))
     (with-redefs [parse (fn [_]
@@ -133,7 +133,7 @@
                                                   :Humidity 90}]})]
       (let [wd-all (-update-fmi-weather-data-json 87874)
             wd (get wd-all (first (keys wd-all)))]
-        (if (< (rem (t/as (t/local-date-time) :minute-of-hour) 10) 3)
+        (if (< (rem (jt/as (jt/local-date-time) :minute-of-hour) 10) 3)
           (is (nil? wd))
           (do
             (is (rel= 1.4 (:temperature wd) :tol 0.01))
@@ -154,27 +154,27 @@
     (is (false? (store-weather-data? {} nil)))
     (with-redefs [jdbc/execute-one!
                   (fn [_ _ _]
-                    {:time (t/sql-timestamp
-                            (t/local-date-time 2022 10 1 11 20 0))})]
+                    {:time (jt/sql-timestamp
+                            (jt/local-date-time 2022 10 1 11 20 0))})]
       (is (false? (store-weather-data?
                    {}
-                   (t/sql-timestamp (t/local-date-time 2022 10 1 11 20 0)))))
+                   (jt/sql-timestamp (jt/local-date-time 2022 10 1 11 20 0)))))
       (is (false? (store-weather-data?
                    {}
-                   (t/sql-timestamp (t/local-date-time 2022 10 1 11 15 0)))))
+                   (jt/sql-timestamp (jt/local-date-time 2022 10 1 11 15 0)))))
       (is (true? (store-weather-data?
                   {}
-                  (t/sql-timestamp (t/local-date-time 2022 10 1 11 21 0))))))
+                  (jt/sql-timestamp (jt/local-date-time 2022 10 1 11 21 0))))))
     (with-redefs [jdbc/execute-one!
                   (fn [_ _ _] {:time nil})]
       (is (true? (store-weather-data?
                   {}
-                  (t/sql-timestamp (t/local-date-time 2022 10 1 11 20 0))))))
+                  (jt/sql-timestamp (jt/local-date-time 2022 10 1 11 20 0))))))
     (with-redefs [jdbc/execute-one!
                   (fn [_ _ _] (throw (PSQLException.
                                       "Test exception"
                                       PSQLState/COMMUNICATION_ERROR)))]
-      (is (false? (store-weather-data? {} (t/sql-timestamp)))))))
+      (is (false? (store-weather-data? {} (jt/sql-timestamp)))))))
 
 (deftest test-calculate-summer-simmer
   (testing "Summer simmer value calculation"

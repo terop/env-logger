@@ -5,7 +5,7 @@
             [buddy.auth :refer [authenticated?]]
             [buddy.auth.middleware :refer [wrap-authentication
                                            wrap-authorization]]
-            [java-time.api :as t]
+            [java-time.api :as jt]
             [jsonista.core :as j]
             [muuntaja.core :as m]
             [next.jdbc :as jdbc]
@@ -45,11 +45,11 @@
 (defn convert-epoch-ms->string
   "Converts an Unix epoch timestamp to a 'human readable' value."
   [epoch-ts]
-  (t/format "d.L.Y HH:mm:ss"
-            (t/plus (t/zoned-date-time
-                     (str (Instant/ofEpochMilli epoch-ts)))
-                    (t/hours (db/get-tz-offset
-                              (:store-timezone env))))))
+  (jt/format "d.L.Y HH:mm:ss"
+             (jt/plus (jt/zoned-date-time
+                       (str (Instant/ofEpochMilli epoch-ts)))
+                      (jt/hours (db/get-tz-offset
+                                 (:store-timezone env))))))
 
 (defn get-latest-obs-data
   "Get data for the latest observation."
@@ -63,9 +63,9 @@
                              (take (count (:ruuvitag-names env))
                                    (reverse (db/get-ruuvitag-obs
                                              con
-                                             (t/minus (t/local-date-time)
-                                                      (t/minutes 45))
-                                             (t/local-date-time)
+                                             (jt/minus (jt/local-date-time)
+                                                       (jt/minutes 45))
+                                             (jt/local-date-time)
                                              (:ruuvitag-names env)))))]
         (if-not data
           (serve-json {:data []
@@ -108,16 +108,16 @@
          :rt-data (db/get-ruuvitag-obs
                    con
                    (db/get-midnight-dt initial-days)
-                   (t/local-date-time)
+                   (jt/local-date-time)
                    ruuvitag-names)
          :obs-dates {:current {:start
                                (when (:end obs-dates)
-                                 (t/format :iso-local-date
-                                           (t/minus (t/local-date
-                                                     (t/formatter
-                                                      :iso-local-date)
-                                                     (:end obs-dates))
-                                                    (t/days initial-days))))
+                                 (jt/format :iso-local-date
+                                            (jt/minus (jt/local-date
+                                                       (jt/formatter
+                                                        :iso-local-date)
+                                                       (:end obs-dates))
+                                                      (jt/days initial-days))))
                                :end (:end obs-dates)}
                      :min-max {:start (:start obs-dates)
                                :end (:end obs-dates)}}}))))

@@ -6,7 +6,7 @@
             [clojure.string :as str]
             [buddy.auth :refer [authenticated?]]
             [config.core :refer [env]]
-            [java-time.api :as t]
+            [java-time.api :as jt]
             [next.jdbc :as jdbc]
             [ring.util.http-response :refer [bad-request]]
             [env-logger
@@ -54,15 +54,15 @@
                                       (db/add-tz-offset-to-dt start-date)
                                       nil)
                            :dates {:current {:start
-                                             (t/format :iso-local-date
-                                                       (if (= (:display-timezone
-                                                               env) "UTC")
-                                                         (t/plus start-date
-                                                                 (t/hours
-                                                                  (db/get-tz-offset
-                                                                   (:store-timezone
-                                                                    env))))
-                                                         start-date))}
+                                             (jt/format :iso-local-date
+                                                        (if (= (:display-timezone
+                                                                env) "UTC")
+                                                          (jt/plus start-date
+                                                                   (jt/hours
+                                                                    (db/get-tz-offset
+                                                                     (:store-timezone
+                                                                      env))))
+                                                          start-date))}
                                    :max (db/get-elec-price-interval-end con)
                                    :min (db/get-elec-consumption-interval-start
                                          con)}

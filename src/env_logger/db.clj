@@ -5,7 +5,7 @@
             [taoensso.timbre :refer [error info]]
             [next.jdbc :as jdbc]
             [next.jdbc [result-set :as rs] [sql :as js]]
-            [java-time.api :as t])
+            [java-time.api :as jt])
   (:import java.sql.Connection
            (java.text NumberFormat
                       DecimalFormat)
@@ -77,10 +77,10 @@
   [image-name ref-dt diff-minutes]
   (let [match (re-find tb-image-pattern
                        image-name)
-        image-dt (t/zoned-date-time (t/formatter :iso-offset-date-time)
-                                    (nth match 1))]
+        image-dt (jt/zoned-date-time (jt/formatter :iso-offset-date-time)
+                                     (nth match 1))]
     (try
-      (<= (t/as (t/interval image-dt ref-dt) :minutes)
+      (<= (jt/as (jt/interval image-dt ref-dt) :minutes)
           diff-minutes)
       (catch DateTimeException _
         ;; ref-dt < image-dt results in a DateTimeException
@@ -100,7 +100,7 @@
                                           rs-opts))]
     (when (and tb-image-name
                (image-age-check tb-image-name
-                                (t/zoned-date-time)
+                                (jt/zoned-date-time)
                                 (:image-max-time-diff env)))
       tb-image-name)))
 
@@ -114,24 +114,24 @@
   "Returns a LocalDateTime at midnight with N days subtracted from the current
   date and time."
   [n-days]
-  (let [ldt (t/local-date-time)]
-    (t/minus (t/minus ldt
-                      (t/days n-days)
-                      (t/hours (LocalDateTime/.getHour ldt))
-                      (t/minutes (LocalDateTime/.getMinute ldt))
-                      (t/seconds (LocalDateTime/.getSecond ldt))
-                      (t/nanos (LocalDateTime/.getNano ldt)))
+  (let [ldt (jt/local-date-time)]
+    (jt/minus (jt/minus ldt
+                        (jt/days n-days)
+                        (jt/hours (LocalDateTime/.getHour ldt))
+                        (jt/minutes (LocalDateTime/.getMinute ldt))
+                        (jt/seconds (LocalDateTime/.getSecond ldt))
+                        (jt/nanos (LocalDateTime/.getNano ldt)))
              ;; Correct generated datetime value when UTC is used as display
              ;; timezone
-             (t/hours (if (= (:display-timezone env) "UTC")
-                        (get-tz-offset (:store-timezone env))
-                        0)))))
+              (jt/hours (if (= (:display-timezone env) "UTC")
+                          (get-tz-offset (:store-timezone env))
+                          0)))))
 
 (defn convert->epoch-ms
   "Converts the given datetime value to Unix epoch time in milliseconds."
   [tz-offset dt]
-  (let [^LocalDateTime subs-dt (t/minus (t/local-date-time dt)
-                                        (t/hours tz-offset))]
+  (let [^LocalDateTime subs-dt (jt/minus (jt/local-date-time dt)
+                                         (jt/hours tz-offset))]
     (* (LocalDateTime/.toEpochSecond subs-dt ZoneOffset/UTC)
        1000)))
 
@@ -139,7 +139,7 @@
   "Converts a ZonedDateTime or a java.sql.Timestamp object to a ISO 8601
   formatted datetime string."
   [datetime]
-  (str/replace (str (first (str/split (str (t/instant datetime))
+  (str/replace (str (first (str/split (str (jt/instant datetime))
                                       #"\.\d+"))
                     (if (not= java.sql.Timestamp (type datetime))
                       "Z" ""))
@@ -150,11 +150,11 @@
   [db-con observation]
   (:id (js/insert! db-con
                    :observations
-                   {:recorded (t/sql-timestamp
-                               (t/minus (t/zoned-date-time
-                                         (:timestamp observation))
-                                        (t/hours (get-tz-offset
-                                                  (:store-timezone env)))))
+                   {:recorded (jt/sql-timestamp
+                               (jt/minus (jt/zoned-date-time
+                                          (:timestamp observation))
+                                         (jt/hours (get-tz-offset
+                                                    (:store-timezone env)))))
                     :tb_image_name (get-tb-image db-con)
                     :inside_light (:insideLight observation)
                     :inside_temperature (:insideTemperature observation)
@@ -215,12 +215,12 @@
                                (if timestamp
                                  (assoc values
                                         :recorded
-                                        (t/sql-timestamp
-                                         (t/minus (t/zoned-date-time
-                                                   timestamp)
-                                                  (t/hours (get-tz-offset
-                                                            (:store-timezone
-                                                             env))))))
+                                        (jt/sql-timestamp
+                                         (jt/minus (jt/zoned-date-time
+                                                    timestamp)
+                                                   (jt/hours (get-tz-offset
+                                                              (:store-timezone
+                                                               env))))))
                                  values)
                                rs-opts))))]
       (every? pos? (map insert-fn observations)))
@@ -274,25 +274,25 @@
   "Creates SQL datetime in local time from the provided date string.
   Allowed values for the 'mode' parameter: start,end."
   [date mode]
-  (t/minus (t/local-date-time (format "%sT%s"
-                                      date
-                                      (if (= mode "start")
-                                        "00:00:00"
-                                        "23:59:59")))
+  (jt/minus (jt/local-date-time (format "%sT%s"
+                                        date
+                                        (if (= mode "start")
+                                          "00:00:00"
+                                          "23:59:59")))
            ;; Correct generated datetime value when UTC is used as display
            ;; timezone
-           (t/hours (if (= (:display-timezone env) "UTC")
-                      (get-tz-offset (:store-timezone env))
-                      0))))
+            (jt/hours (if (= (:display-timezone env) "UTC")
+                        (get-tz-offset (:store-timezone env))
+                        0))))
 
 (defn add-tz-offset-to-dt
   "Add the TZ offset of the 'storing timezone' to the provided datetime if the
  system has different timezone than the 'storing timezone'."
   [dt]
   (if-not (= (ZoneId/systemDefault)
-             (t/zone-id (:store-timezone env)))
-    (t/plus dt
-            (t/hours (get-tz-offset (:store-timezone env))))
+             (jt/zone-id (:store-timezone env)))
+    (jt/plus dt
+             (jt/hours (get-tz-offset (:store-timezone env))))
     dt))
 
 (defmacro get-by-interval
@@ -306,10 +306,10 @@
        (let [~start-dt (if (:start ~dates)
                          (make-local-dt (:start ~dates) "start")
                          ;; Hack to avoid SQL WHERE hacks
-                         (t/local-date-time 2010 1 1))
+                         (jt/local-date-time 2010 1 1))
              ~end-dt (if (:end ~dates)
                        (make-local-dt (:end ~dates) "end")
-                       (t/local-date-time))]
+                       (jt/local-date-time))]
          (~fetch-fn ~db-con :where [:and
                                     [:>= ~dt-column ~start-dt]
                                     [:<= ~dt-column ~end-dt]])))))
@@ -389,8 +389,8 @@
                                       :from :observations}))]
       (if (and (:start result)
                (:end result))
-        {:start (t/format :iso-local-date (t/local-date-time (:start result)))
-         :end (t/format :iso-local-date (t/local-date-time (:end result)))}
+        {:start (jt/format :iso-local-date (jt/local-date-time (:start result)))
+         :end (jt/format :iso-local-date (jt/local-date-time (:end result)))}
         result))
     (catch PSQLException pe
       (error pe "Observation date interval fetch failed")
@@ -441,14 +441,15 @@
                                                              :date]]
                                                    :from [:electricity_price]})
                                       rs-opts))]
-                        (add-tz-offset-to-dt (t/local-date-time dt))))]
+                        (add-tz-offset-to-dt (jt/local-date-time dt))))]
       (DecimalFormat/.applyPattern nf "0.0#")
       (if-not end-val
         [nil]
-        (for [date (take (inc (t/time-between (t/local-date start)
-                                              (t/local-date end-val)
-                                              :days))
-                         (t/iterate t/plus (t/local-date start) (t/days 1)))]
+        (for [date (take (inc (jt/time-between (jt/local-date start)
+                                               (jt/local-date end-val)
+                                               :days))
+                         (jt/iterate jt/plus (jt/local-date start)
+                                     (jt/days 1)))]
           (let [query (sql/format {:select [[:%sum.consumption :consumption]
                                             [:%avg.price :price]]
                                    :from [[:electricity_price :p]]
@@ -462,13 +463,14 @@
                 result (jdbc/execute-one! db-con query rs-opts)]
             (when (:price result)
               (merge result
-                     {:date (t/format :iso-local-date date)
+                     {:date (jt/format :iso-local-date date)
                       :price (when (:price result)
                                (Float/parseFloat
                                 (NumberFormat/.format nf (:price result))))
                       :consumption (when (:consumption result)
                                      (Float/parseFloat
-                                      (NumberFormat/.format nf (:consumption result))))}))))))
+                                      (NumberFormat/.format nf (:consumption
+                                                                result))))}))))))
     (catch PSQLException pe
       (error pe "Daily electricity data fetch failed")
       [nil])))
@@ -504,8 +506,8 @@
   "Returns the average electricity price for the current month."
   [db-con]
   (try
-    (let [today (t/local-date)
-          month-start (t/minus today (t/days (dec (t/as today :day-of-month))))
+    (let [today (jt/local-date)
+          month-start (jt/minus today (jt/days (dec (jt/as today :day-of-month))))
           query (sql/format {:select [:%avg.price]
                              :from :electricity_price
                              :where [[:>= :start_time
@@ -567,9 +569,9 @@
                       (sql/format {:select [[[:max :time] :time]]
                                    :from [:electricity_consumption]})
                       rs-opts))]
-      (t/format
+      (jt/format
        "d.L.Y HH:mm"
-       (add-tz-offset-to-dt (t/local-date-time time))))
+       (add-tz-offset-to-dt (jt/local-date-time time))))
     (catch PSQLException pe
       (error pe "Electricity consumption latest consumption date fetch failed")
       nil)))
@@ -583,7 +585,7 @@
                                      {:select [[:%min.time "start"]]
                                       :from :electricity_consumption}))]
       (when (:start result)
-        (t/format :iso-local-date (t/local-date-time (:start result)))))
+        (jt/format :iso-local-date (jt/local-date-time (:start result)))))
     (catch PSQLException pe
       (error pe "Electricity consumption date interval start fetch failed")
       nil)))
@@ -597,10 +599,10 @@
                                      {:select [[:%max.start_time "end"]]
                                       :from :electricity_price}))]
       (when (:end result)
-        (let [end-dt (add-tz-offset-to-dt (t/local-date-time (:end result)))]
+        (let [end-dt (add-tz-offset-to-dt (jt/local-date-time (:end result)))]
           ;; Remove one hour to get rid of the last value (midnight) which ends
           ;; up on the following day
-          (t/format :iso-local-date (t/minus end-dt (t/hours 1))))))
+          (jt/format :iso-local-date (jt/minus end-dt (jt/hours 1))))))
     (catch PSQLException pe
       (error pe "Electricity price date interval end fetch failed")
       nil)))
@@ -609,8 +611,8 @@
   "Returns the electricity consumption for the current month.."
   [db-con]
   (try
-    (let [today (t/local-date)
-          month-start (t/minus today (t/days (dec (t/as today :day-of-month))))
+    (let [today (jt/local-date)
+          month-start (jt/minus today (jt/days (dec (jt/as today :day-of-month))))
           query (sql/format {:select [:%sum.consumption]
                              :from :electricity_consumption
                              :where [[:>= :time
