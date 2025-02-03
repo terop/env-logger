@@ -1,4 +1,4 @@
-/* global alert,axios,luxon,Plotly */
+/* global axios,luxon,Plotly */
 
 const DateTime = luxon.DateTime;
 
@@ -254,13 +254,13 @@ const loadPage = () => {
       return str.charAt(0).toLowerCase() + str.slice(1);
     };
 
-    /* eslint-disable no-var */
+
     var scrollToBottom = (timeout) => {
       window.setTimeout(() => {
         window.scroll(0, document.body.scrollHeight);
       }, timeout);
     };
-    /* eslint-enable no-var */
+
 
     // Show last observation and some other data for quick viewing
     const showLastObservation = () => {
@@ -372,10 +372,10 @@ const loadPage = () => {
     showLastObservation();
 
     // Show the hourly electricity price and consumption data in a chart
-    /* eslint-disable no-var */
+
     var plotElectricityDataHour = (elecData, updateDate = false,
       removeLast = false) => {
-      /* eslint-disable no-unused-vars */
+
       const generateElecAnnotationConfig = (xValues, yValues) => {
         const currentIdx = getClosestElecPriceDataIndex(xValues);
         const shapes = [];
@@ -415,7 +415,7 @@ const loadPage = () => {
 
         return shapes;
       };
-      /* eslint-enable no-unused-vars */
+
 
       const xValues = [];
       const data = {
@@ -590,7 +590,7 @@ const loadPage = () => {
           generateElecLayoutConfig());
       }
     };
-    /* eslint-enable no-var */
+
 
     // Determine the index of electricity price data value which is closest to the current hour
     const getClosestElecPriceDataIndex = (xValues) => {
@@ -616,7 +616,7 @@ const loadPage = () => {
     };
 
     // Fetch and display current electricity price data
-    /* eslint-disable no-var */
+
     var showElectricityPrice = () => {
       // Displays the latest price as text
       const showLatestPrice = (priceData) => {
@@ -705,7 +705,7 @@ const loadPage = () => {
           console.log(`Electricity data fetch error: ${error}`);
         });
     };
-    /* eslint-enable no-var */
+
 
     const showTestbedImage = (pointDt) => {
       const pattern = /testbed-(.+).png/;
@@ -791,7 +791,7 @@ const loadPage = () => {
       }
     };
 
-    /* eslint-disable no-var */
+
     var generateTraceConfig = (plotType) => {
       const xValues = plotType === 'weather' ? dataLabels.weather : dataLabels.other;
       const traces = [];
@@ -844,7 +844,7 @@ const loadPage = () => {
 
       return traces;
     };
-    /* eslint-enable no-var */
+
 
     const generateAnnotationConfig = (plotType, traceData) => {
       if (annotationIndexes[plotType].length) {
@@ -879,16 +879,16 @@ const loadPage = () => {
       return null;
     };
 
-    /* eslint-disable no-var */
+
     var generateLayoutConfig = (plotType, isUpdate = false) => {
       const xValues = plotType === 'weather' ? dataLabels.weather : dataLabels.other;
       const diffInDays = DateTime.fromJSDate(xValues[xValues.length - 1]).diff(
         DateTime.fromJSDate(xValues[0]), 'days').toObject().days;
-      /* eslint-disable multiline-ternary */
+
       const plotTitleStart = (plotType === 'weather')
         ? 'FMI weather' : plotType === 'other'
           ? 'Other' : 'Ruuvitag';
-      /* eslint-enable multiline-ternary */
+
 
       const traceData = [];
       if (!isUpdate) {
@@ -973,16 +973,16 @@ const loadPage = () => {
 
       Plotly.relayout(plot, update);
     };
-    /* eslint-enable no-var */
+
 
     // Event handler for trace click events
     const updatePlot = (event) => {
       const plotTitle = event.layout.title.text.toLowerCase();
-      /* eslint-disable multiline-ternary */
+
       const plotType = plotTitle.includes('weather')
         ? 'weather' : plotTitle.includes('other')
           ? 'other' : 'ruuvitag';
-      /* eslint-enable multiline-ternary */
+
       const plot = document.getElementById(`${plotType}Plot`);
       const eData = event.data;
       const traceIndex = event.curveNumber;

@@ -1,4 +1,4 @@
-/* global alert,axios */
+/* global axios */
 
 let username = '';
 
