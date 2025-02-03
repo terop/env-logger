@@ -469,7 +469,9 @@ const loadPage = () => {
         return {
           width: 1300,
           height: 650,
-          title: 'Hourly electricity price and consumption',
+          title: {
+            text: 'Hourly electricity price and consumption'
+          },
           xaxis: {
             title: 'Time',
             type: 'date',
@@ -554,7 +556,9 @@ const loadPage = () => {
         return {
           width: 1300,
           height: 550,
-          title: 'Daily electricity price and consumption',
+          title: {
+            text: 'Daily electricity price and consumption'
+          },
           xaxis: {
             title: 'Time',
             type: 'date',
@@ -907,7 +911,9 @@ const loadPage = () => {
       const layout = {
         width: 1300,
         height: 700,
-        title: `${plotTitleStart} observations`,
+        title: {
+          text: `${plotTitleStart} observations`
+        },
         xaxis: {
           title: 'Time',
           type: 'date',
