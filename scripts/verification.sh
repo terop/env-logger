@@ -34,3 +34,9 @@ if [ "${CI}" ]; then
 else
     ruff check
 fi
+
+# Only run ESLint locally due to difficulties to install it on CI machines
+if [ -z "${CI}" ]; then
+    echo 'Running ESLint for JavaScript files'
+    npx eslint src/
+fi
