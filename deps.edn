@@ -29,7 +29,7 @@
  :aliases
  {:run {:main-opts ["-m" "env-logger.handler"]
         :jvm-opts ["-Dconfig=resources/dev/config.edn"]}
-  :build {:deps {io.github.clojure/tools.build {:mvn/version "0.10.6"}}
+  :build {:deps {io.github.clojure/tools.build {:mvn/version "0.10.7"}}
           :ns-default build}
   :test {:extra-paths ["test"]
          :extra-deps {io.github.cognitect-labs/test-runner
