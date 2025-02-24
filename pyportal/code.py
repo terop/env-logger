@@ -1,5 +1,6 @@
 """Code for showing various data on a PyPortal Titano display."""
 
+import gc
 import time
 from collections import OrderedDict
 from secrets import secrets
@@ -394,7 +395,7 @@ def main():
     utc_offset_hour = set_time(secrets['timezone'])
     print('Current time set')
 
-    display = SimpleTextDisplay(title=' ', colors=[SimpleTextDisplay.WHITE], font=FONT)
+    display = SimpleTextDisplay(colors=[SimpleTextDisplay.WHITE], font=FONT)
     init_fetch_done = False
     time_set_seconds_slept = 0
     token = None
@@ -407,6 +408,7 @@ def main():
     board.DISPLAY.brightness = BACKLIGHT_DEFAULT_VALUE
 
     while True:
+        gc.collect()
         if not token:
             token = fetch_token()
             if not token:
@@ -435,8 +437,10 @@ def main():
                 init_fetch_done = True
                 update_data = True
 
+        gc.collect()
         update_screen(display, observation, weather_data, elec_price_data,
                       utc_offset_hour, not update_data)
+        gc.collect()
 
         if time_set_seconds_slept >= TIME_SET_SLEEP_TIME:
             set_time(secrets['timezone'])
