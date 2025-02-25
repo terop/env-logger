@@ -1,1 +1,3 @@
 arduino_secrets.h
+sensirion_gas_index_algorithm.c
+sensirion_gas_index_algorithm.h
