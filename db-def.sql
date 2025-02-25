@@ -9,7 +9,9 @@ CREATE TABLE observations (
        inside_temperature REAL,
        outside_temperature REAL,
        outside_light INTEGER,
-       co2 SMALLINT
+       co2 SMALLINT,
+       voc_index SMALLINT,
+       nox_index SMALLINT
 );
 
 CREATE INDEX observations_recorded_brin ON observations USING BRIN (recorded);

@@ -112,6 +112,8 @@
                        :insideLight 0
                        :outsideLight 150
                        :insideTemperature 21
+                       :vocIndex 100
+                       :noxIndex 1
                        :beacon {:mac "7C:EC:79:3F:BE:97"
                                 :rssi -68
                                 :battery_level nil}}
@@ -121,13 +123,15 @@
                         :wind-speed 5.0}]
       (is (true? (insert-observation test-ds
                                      (merge observation
-                                            {:timestamp (jt/minus (:timestamp observation)
+                                            {:timestamp (jt/minus (:timestamp
+                                                                   observation)
                                                                   (jt/seconds 5))
                                              :outsideTemperature 5
                                              :weather-data weather-data}))))
       (is (true? (insert-observation test-ds
                                      (merge observation
-                                            {:timestamp (jt/minus (:timestamp observation)
+                                            {:timestamp (jt/minus (:timestamp
+                                                                   observation)
                                                                   (jt/seconds 10))
                                              :outsideTemperature nil
                                              :weather-data nil}))))
@@ -390,14 +394,18 @@
                                          :insideLight 0
                                          :outsideLight 100
                                          :insideTemperature 21
-                                         :outsideTemperature 5})))
+                                         :outsideTemperature 5
+                                         :vocIndex 100
+                                         :noxIndex 1})))
     (is (pos? (insert-plain-observation test-ds
                                         {:timestamp (jt/zoned-date-time)
                                          :co2 600
                                          :insideLight 0
                                          :outsideLight nil
                                          :insideTemperature 21
-                                         :outsideTemperature 5})))))
+                                         :outsideTemperature 5
+                                         :vocIndex 100
+                                         :noxIndex nil})))))
 
 (deftest db-connection-test
   (testing "Connection to the DB"
