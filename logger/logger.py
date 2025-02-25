@@ -81,9 +81,10 @@ def get_esp32_env_data(env_settings):
     if esp32_ok:
         logger.info('ESP32 values: humidity %s', esp32_data['humidity'])
 
-    return (esp32_data['light'] if esp32_ok else None,
-            round(esp32_data['temperature'], 2) if esp32_ok else None,
-            esp32_data['co2'] if esp32_ok else None)
+        return (esp32_data['light'], round(esp32_data['temperature'], 2),
+                esp32_data['co2'], esp32_data['vocIndex'], esp32_data['noxIndex'])
+    else:
+        return (None, None, None, None, None)
 
 
 def get_outside_light_value(env_settings):
@@ -328,6 +329,8 @@ def main():
         env_data = {'insideLight': 10,
                     'insideTemperature': 21,
                     'co2': 700,
+                    'vocIndex': 100,
+                    'noxIndex': 1,
                     'outsideTemperature': 5}
     else:
         env_data = {'outsideTemperature': get_data_from_arduino(env_config)}
@@ -336,6 +339,8 @@ def main():
         env_data['insideLight'] = esp32_data[0]
         env_data['insideTemperature'] = esp32_data[1]
         env_data['co2'] = esp32_data[2]
+        env_data['vocIndex'] = esp32_data[3]
+        env_data['noxIndex'] = esp32_data[4]
         env_data['outsideLight'] = get_outside_light_value(env_config)
 
     timestamp = get_timestamp(config['timezone'])
