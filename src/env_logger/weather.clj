@@ -80,7 +80,7 @@
     temperature
     (let [humidity-ref 0.5
           humidity (/ humidity-percent 100.0)]
-      (/ (- (* 1.8 temperature) (* (* 0.55 (- 1 humidity))
+      (/ (- (* 1.8 temperature) (* 0.55 (- 1 humidity)
                                    (- (* 1.8 temperature) 26))
             (* 0.55 (- 1 humidity-ref) 26))
          (* 1.8 (- 1 (* 0.55 (- 1 humidity-ref))))))))

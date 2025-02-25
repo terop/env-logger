@@ -169,8 +169,8 @@
   "Insert a beacon into the beacons table."
   [db-con obs-id observation]
   (let [beacon (:beacon observation)]
-    (if (and (and (seq (:mac beacon))
-                  (> (count (:mac beacon)) 16))
+    (if (and (seq (:mac beacon))
+             (> (count (:mac beacon)) 16)
              (integer? (:rssi beacon))
              (or (when (nil? (:battery beacon)) true)
                  (integer? (:battery beacon))))
