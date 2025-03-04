@@ -1,6 +1,5 @@
 """Code for showing various data on a PyPortal Titano display."""
 
-import gc
 import time
 from collections import OrderedDict
 from secrets import secrets
@@ -408,46 +407,50 @@ def main():
     board.DISPLAY.brightness = BACKLIGHT_DEFAULT_VALUE
 
     while True:
-        gc.collect()
-        if not token:
-            token = fetch_token()
+        try:
             if not token:
-                continue
+                token = fetch_token()
+                if not token:
+                    continue
 
-        if BACKLIGHT_DIMMING_ENABLED:
-            adjust_backlight(board.DISPLAY)
+            if BACKLIGHT_DIMMING_ENABLED:
+                adjust_backlight(board.DISPLAY)
 
-        if not elec_price_metadata['fetched'] or \
-           (datetime.now() - elec_price_metadata['fetched']).total_seconds() > \
-           elec_price_fetch_threshold:
-            token, elec_price_metadata['raw_data'] = get_backend_endpoint_content(
-                'data/elec-data', token)
-            elec_price_metadata['fetched'] = datetime.now()
+            if not elec_price_metadata['fetched'] or \
+               (datetime.now() - elec_price_metadata['fetched']).total_seconds() > \
+               elec_price_fetch_threshold:
+                token, elec_price_metadata['raw_data'] = get_backend_endpoint_content(
+                    'data/elec-data', token)
+                elec_price_metadata['fetched'] = datetime.now()
 
-        now = datetime.now()
-        update_data = now.minute % DATA_STORAGE_INTERVAL == 0 and \
-            now.second == data_update_second_threshold
+            now = datetime.now()
+            update_data = now.minute % DATA_STORAGE_INTERVAL == 0 and \
+                now.second == data_update_second_threshold
 
-        if update_data or not init_fetch_done:
-            elec_price_data = prepare_elec_price_data(elec_price_metadata['raw_data'],
-                                                      utc_offset_hour)
-            token, observation = get_backend_endpoint_content('data/latest-obs', token)
-            token, weather_data = get_backend_endpoint_content('data/weather', token)
-            if not init_fetch_done:
-                init_fetch_done = True
-                update_data = True
+            if update_data or not init_fetch_done:
+                elec_price_data = prepare_elec_price_data(
+                    elec_price_metadata['raw_data'],
+                    utc_offset_hour)
+                token, observation = get_backend_endpoint_content('data/latest-obs',
+                                                                  token)
+                token, weather_data = get_backend_endpoint_content('data/weather',
+                                                                   token)
+                if not init_fetch_done:
+                    init_fetch_done = True
+                    update_data = True
 
-        gc.collect()
-        update_screen(display, observation, weather_data, elec_price_data,
-                      utc_offset_hour, not update_data)
-        gc.collect()
+            update_screen(display, observation, weather_data, elec_price_data,
+                          utc_offset_hour, not update_data)
 
-        if time_set_seconds_slept >= TIME_SET_SLEEP_TIME:
-            set_time(secrets['timezone'])
-            time_set_seconds_slept = 0
+            if time_set_seconds_slept >= TIME_SET_SLEEP_TIME:
+                set_time(secrets['timezone'])
+                time_set_seconds_slept = 0
 
-        time_set_seconds_slept += 1
-        time.sleep(1)
+            time_set_seconds_slept += 1
+            time.sleep(1)
+        except MemoryError:
+            # Reset board without prints as there may not be memory to print anything
+            supervisor.reload()
 
 
 main()
