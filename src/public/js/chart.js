@@ -105,38 +105,34 @@ const loadPage = () => {
     }
   };
 
+  /* dataMode - string, which mode to process data in, values: weather, other
+   * observation - object, observation to process
+   * selectKeys - array, which data keys to select */
+  const processFields = (dataMode, observation, selectKeys) => {
+    for (const key in observation) {
+      if (selectKeys.includes(key)) {
+        if (dataSets[dataMode][key] !== undefined) {
+          dataSets[dataMode][key].push(observation[key]);
+        } else {
+          dataSets[dataMode][key] = [observation[key]];
+        }
+      }
+    }
+  };
+
+  const recordAnnotationIndexes = (dataMode, observationTime) => {
+    const recorded = DateTime.fromMillis(observationTime);
+    if (recorded.hour === 0 && recorded.minute === 0) {
+      annotationIndexes[dataMode].push(recorded.toJSDate());
+    }
+  };
+
   /* Parse an observation.
    *
    * Arguments:
    * observation - an observation as JSON
    */
   const parseData = (observation) => {
-    // dataMode - string, which mode to process data in, values: weather, other
-    // observation - object, observation to process
-    // selectKeys - array, which data keys to select
-    const processFields = (dataMode, observation, selectKeys) => {
-      for (const key in observation) {
-        if (selectKeys.includes(key)) {
-          if (dataSets[dataMode][key] !== undefined) {
-            dataSets[dataMode][key].push(observation[key]);
-          } else {
-            dataSets[dataMode][key] = [observation[key]];
-          }
-        }
-      }
-    };
-
-    const recordAnnotationIndexes = (dataMode, observationTime) => {
-      // Skip the first few observations as a line annotation is not needed
-      // in the beginning of a chart
-      if (dataLabels[dataMode].length > 2) {
-        const recorded = DateTime.fromMillis(observationTime);
-        if (recorded.hour === 0 && recorded.minute === 0) {
-          annotationIndexes[dataMode].push(recorded.toJSDate());
-        }
-      }
-    };
-
     dataLabels.other.push(new Date(observation.recorded));
 
     recordAnnotationIndexes('other', observation.recorded);
@@ -850,6 +846,9 @@ const loadPage = () => {
       if (annotationIndexes[plotType].length) {
         const shapes = [];
         let yValues = [];
+        let oneDay = false;
+        let index = null;
+        let shape = {};
 
         if (traceData.length) {
           yValues = getDataExtremeValues(traceData);
@@ -860,18 +859,32 @@ const loadPage = () => {
           yValues = [-1, 4];
         }
 
-        for (const value of annotationIndexes[plotType]) {
-          shapes.push({
-            type: 'line',
-            x0: value,
-            y0: yValues[0],
-            x1: value,
-            y1: yValues[1],
-            line: {
-              color: '#838b93',
-              width: 1
-            }
-          });
+        const labels = dataLabels[plotType];
+        if (labels[0].getDate() === labels[labels.length - 1].getDate()) {
+          oneDay = true;
+        }
+
+        for (let i = 0; i < annotationIndexes[plotType].length; i++) {
+          index = annotationIndexes[plotType][i];
+          shape = {
+              type: 'line',
+              x0: index,
+              y0: yValues[0],
+              x1: index,
+              y1: yValues[1],
+              line: {
+                color: '#838b93',
+                width: 1
+              }
+          };
+
+          if (oneDay) {
+            shape['visible'] = false;
+            shapes.push(shape);
+          } else if (i > 0) {
+            // Do not show the needless annotation at the beginning of the chart
+            shapes.push(shape);
+          }
         }
 
         return shapes;
@@ -949,9 +962,11 @@ const loadPage = () => {
       const dataExtremes = [-1, 4];
 
       update['yaxis.range'] = dataExtremes;
-      for (let i = 0; i < plot.layout.shapes.length; i++) {
-        update[`shapes[${i}].y0`] = dataExtremes[0];
-        update[`shapes[${i}].y1`] = dataExtremes[1];
+      if (plot.layout.shapes) {
+        for (let i = 0; i < plot.layout.shapes.length; i++) {
+          update[`shapes[${i}].y0`] = dataExtremes[0];
+          update[`shapes[${i}].y1`] = dataExtremes[1];
+        }
       }
 
       Plotly.relayout(plot, update);
@@ -966,9 +981,11 @@ const loadPage = () => {
       dataExtremes[1] += padding;
 
       update['yaxis.range'] = dataExtremes;
-      for (let i = 0; i < plot.layout.shapes.length; i++) {
-        update[`shapes[${i}].y0`] = dataExtremes[0];
-        update[`shapes[${i}].y1`] = dataExtremes[1];
+      if (plot.layout.shapes) {
+        for (let i = 0; i < plot.layout.shapes.length; i++) {
+          update[`shapes[${i}].y0`] = dataExtremes[0];
+          update[`shapes[${i}].y1`] = dataExtremes[1];
+        }
       }
 
       Plotly.relayout(plot, update);
