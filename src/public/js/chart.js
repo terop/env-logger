@@ -368,7 +368,6 @@ const loadPage = () => {
     showLastObservation();
 
     // Show the hourly electricity price and consumption data in a chart
-
     var plotElectricityDataHour = (elecData, updateDate = false,
       removeLast = false) => {
 
@@ -411,7 +410,6 @@ const loadPage = () => {
 
         return shapes;
       };
-
 
       const xValues = [];
       const data = {
@@ -595,11 +593,14 @@ const loadPage = () => {
       let smallest = Infinity;
       let smallestIdx = -1;
 
-      for (let i = 0; i < xValues.length; i++) {
+      for (let i = xValues.length - 1; i >= 0; i--) {
         const diff = Math.abs(DateTime.fromJSDate(xValues[i]).diff(now).milliseconds);
         if (diff < smallest) {
           smallest = diff;
           smallestIdx = i;
+        }
+        if (diff > smallest) {
+          break;
         }
       }
 
@@ -695,6 +696,26 @@ const loadPage = () => {
                 elecText += `average price: ${elecData['month-price-avg']} c / kWh`;
               }
               document.getElementById('infoText').innerHTML += elecText;
+            }
+
+            if (DateTime.fromISO(document.getElementById('elecEndDate').value) >=
+                DateTime.fromISO(DateTime.now().toISODate())) {
+              // Regularly update the current hour annotation to match the current hour
+              setInterval(() => {
+                const plot = document.getElementById('hourElecDataPlot');
+                const xData = plot.data[0].x;
+                const currentIdx = getClosestElecPriceDataIndex(xData);
+                let update = {};
+                let shapes = plot.layout.shapes;
+                let hourAnnotation = shapes.splice(-1, 1)[0];
+
+                hourAnnotation.x0 = xData[currentIdx];
+                hourAnnotation.x1 = xData[currentIdx];
+                shapes.push(hourAnnotation);
+
+                update.shapes = shapes;
+                Plotly.relayout(plot, update);
+              }, 60000);
             }
           }
         }).catch(error => {
