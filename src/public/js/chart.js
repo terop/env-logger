@@ -467,19 +467,25 @@ const loadPage = () => {
             text: 'Hourly electricity price and consumption'
           },
           xaxis: {
-            title: 'Time',
+            title: {
+              text: 'Time'
+            },
             type: 'date',
             dtick: getXAxisTickSize(diffInDays),
             tickformat: '%H',
             tickangle: -45
           },
           yaxis: {
-            title: 'Price (c / kWh)',
+            title: {
+              text: 'Price (c / kWh)'
+            },
             range: [extValuesPrice[0] - 0.5,
               extValuesPrice[extValuesPrice.length - 1] + 0.5]
           },
           yaxis2: {
-            title: 'Consumption (kWh)',
+            title: {
+              text: 'Consumption (kWh)'
+            },
             overlaying: 'y',
             side: 'right',
             range: [extValuesConsp[0] - 0.1, extValuesConsp[extValuesConsp.length - 1] + 0.1]
@@ -554,16 +560,22 @@ const loadPage = () => {
             text: 'Daily electricity price and consumption'
           },
           xaxis: {
-            title: 'Time',
+            title: {
+              text: 'Time'
+            },
             type: 'date',
             dtick: 86400000,
             tickformat: '%d.%m.%Y'
           },
           yaxis: {
-            title: 'Average price (c / kWh)'
+            title: {
+              text: 'Average price (c / kWh)'
+            }
           },
           yaxis2: {
-            title: 'Consumption (kWh)',
+            title: {
+              text: 'Consumption (kWh)'
+            },
             overlaying: 'y',
             side: 'right'
           },
@@ -949,7 +961,9 @@ const loadPage = () => {
           text: `${plotTitleStart} observations`
         },
         xaxis: {
-          title: 'Time',
+          title: {
+            text: 'Time'
+          },
           type: 'date',
           range: [xValues[0], xValues[xValues.length - 1]],
           dtick: getXAxisTickSize(diffInDays),
@@ -957,7 +971,9 @@ const loadPage = () => {
           tickangle: -45
         },
         yaxis: {
-          title: 'Value',
+          title: {
+            text: 'Value'
+          },
           range: [yMinMax[0] - padding, yMinMax[1] + padding]
         },
         legend: {
