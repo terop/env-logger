@@ -561,7 +561,7 @@ const loadPage = () => {
           },
           xaxis: {
             title: {
-              text: 'Time'
+              text: 'Date'
             },
             type: 'date',
             dtick: 86400000,
