@@ -58,17 +58,17 @@ wheels = [
 
 [[package]]
 name = "dbus-fast"
-version = "2.39.3"
+version = "2.44.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/0f/21/137611bfb01dcce4ad2e652d39c050345d9a1dc0252fb0fce7e76555c72c/dbus_fast-2.39.3.tar.gz", hash = "sha256:84b4ff23bcadfa794842e8d3eccb521907f7c6cb8d6534c895995840306512aa", size = 72048 }
+sdist = { url = "https://files.pythonhosted.org/packages/c2/a1/9693ec018feed2a7d3420eac6c807eabc6eb84227913104123c0d2ea5737/dbus_fast-2.44.1.tar.gz", hash = "sha256:b027e96c39ed5622bb54d811dcdbbe9d9d6edec3454808a85a1ceb1867d9e25c", size = 72424 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/24/13/28c74f8e44d7d30da7034e40d76117d15f52f473f48e6a52de223b0cebad/dbus_fast-2.39.3-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:467f819cd572df418350918ad7d697c6a2875529fa6ca03f2e5d48cb3d3391cd", size = 831485 },
-    { url = "https://files.pythonhosted.org/packages/63/48/db1b44d77adf938e3ef00534caee394412fd65414509b8ecc6d7e4fddeae/dbus_fast-2.39.3-cp313-cp313-manylinux_2_17_i686.manylinux_2_5_i686.manylinux1_i686.manylinux2014_i686.whl", hash = "sha256:f5c967e4910ba2ff6a1cd0a9f490a88edab2b206930491129a3ca5f74cc87cc9", size = 899524 },
-    { url = "https://files.pythonhosted.org/packages/e1/87/e2c4de074c67e23ab79b52ed86a2c37e116c487f08b98e77a6ae718597d1/dbus_fast-2.39.3-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d2605793983eb2e1adf9ccbc0854ffa76a7bc269907f02eec828c972cabc5dde", size = 885346 },
-    { url = "https://files.pythonhosted.org/packages/8d/ed/d4480998bce2a8a67d3df78dbfb4686bd24859f15b4e701ef70db303c76c/dbus_fast-2.39.3-cp313-cp313-manylinux_2_36_x86_64.whl", hash = "sha256:2f2c78cd5e2b472ff1c10aae3f4fd0121d30570f26a80abf4fbf9c0720bd4ca7", size = 885421 },
-    { url = "https://files.pythonhosted.org/packages/70/cc/6d4fc689956588084955d24375a3a83816f004bb0f83a590b98b75b42de0/dbus_fast-2.39.3-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:f3cc0f4ff6f834a0f11038728c22cbe7cca83e9518529a2d9f0c25ff71af608f", size = 846657 },
-    { url = "https://files.pythonhosted.org/packages/30/4a/ae41b8224c4cfa0138201ea8c9fc56dfcc9ea62c09c10b9123c6d7a38f96/dbus_fast-2.39.3-cp313-cp313-musllinux_1_2_i686.whl", hash = "sha256:8260973c5c5a0de51e408ac5f6b18e098b891e1257c4c91f73bd4a261e3b2796", size = 933593 },
-    { url = "https://files.pythonhosted.org/packages/b1/7e/5635a89ddd28e3c57ad44f3d009fb18fdf8dd1e68bfb3cf5ced2320af1f0/dbus_fast-2.39.3-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:065564c693d2a9dacca456c85d4bfc3622c43b0a54ff22f6ac9d9f525fe0ae58", size = 911935 },
+    { url = "https://files.pythonhosted.org/packages/a5/ee/78bf56862fd6ae87998f1ef1d47849a9c5915abb4f0449a72b2c0885482b/dbus_fast-2.44.1-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:89dc5db158bf9838979f732acc39e0e1ecd7e3295a09fa8adb93b09c097615a4", size = 834865 },
+    { url = "https://files.pythonhosted.org/packages/1b/67/2c0ef231189ff63fa49687f8529ad6bb5afc3bbfda5ba65d9ce3e816cfb8/dbus_fast-2.44.1-cp313-cp313-manylinux_2_17_i686.manylinux_2_5_i686.manylinux1_i686.manylinux2014_i686.whl", hash = "sha256:f11878c0c089d278861e48c02db8002496c2233b0f605b5630ef61f0b7fb0ea3", size = 905859 },
+    { url = "https://files.pythonhosted.org/packages/01/ef/9435eae3a658202c4342559b1dad82eb04edfa69fd803325e742c7627c6e/dbus_fast-2.44.1-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:afd81f483b3ffb71e88478cfabccc1fab8d7154fccb1c661bfafcff9b0cfd996", size = 888654 },
+    { url = "https://files.pythonhosted.org/packages/80/08/9e870f0c4d82f7d6c224f502e51416d9855b2580093bb21b0fc240077a93/dbus_fast-2.44.1-cp313-cp313-manylinux_2_36_x86_64.whl", hash = "sha256:ad499de96a991287232749c98a59f2436ed260f6fd9ad4cb3b04a4b1bbbef148", size = 891721 },
+    { url = "https://files.pythonhosted.org/packages/53/d2/256fe23f403f8bb22d4fb67b6ad21bcc1c98e4528e2d30a4ae9851fac066/dbus_fast-2.44.1-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:36c44286b11e83977cd29f9551b66b446bb6890dff04585852d975aa3a038ca2", size = 850255 },
+    { url = "https://files.pythonhosted.org/packages/28/ae/5d9964738bc9a59c9bb01bb4e196c541ed3495895297355c09283934756b/dbus_fast-2.44.1-cp313-cp313-musllinux_1_2_i686.whl", hash = "sha256:89f2f6eccbb0e464b90e5a8741deb9d6a91873eeb41a8c7b963962b39eb1e0cd", size = 939093 },
+    { url = "https://files.pythonhosted.org/packages/f5/3e/1c97abdf0f19ce26ac2f7f18c141495fc7459679d016475f4ad5dedef316/dbus_fast-2.44.1-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:bb74a227b071e1a7c517bf3a3e4a5a0a2660620084162e74f15010075534c9d5", size = 915980 },
 ]
 
 [[package]]
@@ -162,11 +162,11 @@ wheels = [
 
 [[package]]
 name = "pytz"
-version = "2025.1"
+version = "2025.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/5f/57/df1c9157c8d5a05117e455d66fd7cf6dbc46974f832b1058ed4856785d8a/pytz-2025.1.tar.gz", hash = "sha256:c2db42be2a2518b28e65f9207c4d05e6ff547d1efa4086469ef855e4ab70178e", size = 319617 }
+sdist = { url = "https://files.pythonhosted.org/packages/f8/bf/abbd3cdfb8fbc7fb3d4d38d320f2441b1e7cbe29be4f23797b4a2b5d8aac/pytz-2025.2.tar.gz", hash = "sha256:360b9e3dbb49a209c21ad61809c7fb453643e048b38924c765813546746e81c3", size = 320884 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/eb/38/ac33370d784287baa1c3d538978b5e2ea064d4c1b93ffbd12826c190dd10/pytz-2025.1-py2.py3-none-any.whl", hash = "sha256:89dd22dca55b46eac6eda23b2d72721bf1bdfef212645d81513ef5d03038de57", size = 507930 },
+    { url = "https://files.pythonhosted.org/packages/81/c4/34e93fe5f5429d7570ec1fa436f1986fb1f00c3e0f43a589fe2bbcd22c3f/pytz-2025.2-py2.py3-none-any.whl", hash = "sha256:5ddf76296dd8c44c26eb8f4b6f35488f3ccbf6fbbd7adee0b7262d43f0ec2f00", size = 509225 },
 ]
 
 [[package]]
@@ -208,11 +208,11 @@ dependencies = [
 
 [[package]]
 name = "typing-extensions"
-version = "4.12.2"
+version = "4.13.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/df/db/f35a00659bc03fec321ba8bce9420de607a1d37f8342eee1863174c69557/typing_extensions-4.12.2.tar.gz", hash = "sha256:1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8", size = 85321 }
+sdist = { url = "https://files.pythonhosted.org/packages/76/ad/cd3e3465232ec2416ae9b983f27b9e94dc8171d56ac99b345319a9475967/typing_extensions-4.13.1.tar.gz", hash = "sha256:98795af00fb9640edec5b8e31fc647597b4691f099ad75f469a2616be1a76dff", size = 106633 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/26/9f/ad63fc0248c5379346306f8668cda6e2e2e9c95e01216d2b8ffd9ff037d0/typing_extensions-4.12.2-py3-none-any.whl", hash = "sha256:04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d", size = 37438 },
+    { url = "https://files.pythonhosted.org/packages/df/c5/e7a0b0f5ed69f94c8ab7379c599e6036886bffcde609969a5325f47f1332/typing_extensions-4.13.1-py3-none-any.whl", hash = "sha256:4b6cf02909eb5495cfbc3f6e8fd49217e6cc7944e145cdda8caa3734777f9e69", size = 45739 },
 ]
 
 [[package]]
