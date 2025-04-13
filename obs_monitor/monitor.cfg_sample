@@ -15,6 +15,11 @@ Enabled = True
 # Timeout in minutes
 Timeout = 5
 
+[outsidelight]
+Enabled = True
+# Timeout in minutes
+Timeout = 5
+
 [blebeacon]
 Enabled = True
 # Timeout in hours

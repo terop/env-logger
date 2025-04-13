@@ -81,16 +81,19 @@ class ObservationMonitor:
         return self._state
 
 
-class OutsideTemperatureMonitor:
-    """Class for monitoring outside temperature values."""
+class ObservationsColumnMonitor:
+    """Class for monitoring a given column of the observations database table."""
 
-    def __init__(self, config, state):
+    def __init__(self, config, state, timeout, column_name, column_human_name):
         """Class constructor."""
         self._config = config
         self._state = state
+        self._timeout = timeout
+        self._column_name = column_name
+        self._column_human_name = column_human_name
 
-    def check_ot_rec_status(self):
-        """Return the outside temperature value status.
+    def check_column_status(self):
+        """Return the column value status.
 
         Returns False if a value is seen within the configured timeout. Otherwise True
         is returned with a timestamp value of the latest observed value.
@@ -101,44 +104,45 @@ class OutsideTemperatureMonitor:
 
         with psycopg.connect(create_db_conn_string(self._config['db'])) as conn, \
              conn.cursor() as cursor:
-            cursor.execute('SELECT outside_temperature FROM observations '
+            cursor.execute(f'SELECT {self._column_name} FROM observations ' # noqa: S608
                            'ORDER BY id DESC LIMIT 1')
             result = cursor.fetchone()
             if result[0] is None:
-                cursor.execute('SELECT recorded FROM observations WHERE '
-                               'outside_temperature IS NULL ORDER BY id DESC LIMIT 30')
+                cursor.execute('SELECT recorded FROM observations WHERE ' # noqa: S608
+                               f'{self._column_name} IS NULL ORDER BY id DESC LIMIT 30')
                 result = cursor.fetchall()
                 for res in result:
                     recorded_tz = res[0].astimezone(timezone)
                     time_diff_min = (current_dt - recorded_tz).total_seconds() / 60
-                    if time_diff_min > int(self._config['outsidetemp']['Timeout']) and \
+                    if time_diff_min > int(self._timeout) and \
                        time_diff_min < end_threshold:
-                        logger.warning('No outside temperature value received '
-                                       'since %s',
+                        logger.warning('No %s value received since %s',
+                                       self._column_human_name,
                                        recorded_tz.isoformat())
                         return (True, recorded_tz.isoformat())
 
             return (False,)
 
     def handle_status_data(self):
-        """Check the outside temperature status data.
+        """Check column status data.
 
         Sends an email if the threshold is exceeded.
         """
-        logger.info('Starting outside temperature value inactivity check')
+        logger.info('Starting %s value inactivity check', self._column_human_name)
 
-        ot_status = self.check_ot_rec_status()
+        column_status = self.check_column_status()
 
-        if ot_status[0]:
+        if column_status[0]:
             if self._state['email_sent'] == 'False':
                 if send_email(self._config['email'],
-                              'env-logger: outside temperature value inactivity '
+                              f'env-logger: {self._column_human_name} value inactivity '
                               'warning',
-                              'No outside temperature values have been received '
-                              'in the env-logger backend after {} (timeout {} '
-                              'minutes). Please check for possible problems.'
-                              .format(ot_status[1],
-                                      self._config['outsidetemp']['Timeout'])):
+                              'No {} values have been received in the env-logger '
+                              'backend after {} (timeout {} minutes). Please check for '
+                              'possible problems.'
+                              .format(self._column_human_name,
+                                      column_status[1],
+                                      self._timeout)):
                     self._state['email_sent'] = 'True'
                 else:
                     self._state['email_sent'] = 'False'
@@ -146,9 +150,11 @@ class OutsideTemperatureMonitor:
             dt_str = datetime.now(
                 tz=ZoneInfo(self._config['db']['DisplayTimezone'])).isoformat()
             send_email(self._config['email'],
-                       'env-logger: outside temperature value received',
-                       f'An outside temperature value has been detected at {dt_str}.')
-            logger.info('An outside temperature value was detected at %s', dt_str)
+                       f'env-logger: {self._column_human_name} value received',
+                       f'An {self._column_human_name} value has been detected '
+                       f'at {dt_str}.')
+            logger.info('An %s value was detected at %s',
+                        self._column_human_name, dt_str)
             self._state['email_sent'] = 'False'
 
     def get_state(self):
@@ -390,6 +396,7 @@ def main():
     except FileNotFoundError:
         state = {'observation': {'email_sent': 'False'},
                  'outsidetemp': {'email_sent': 'False'},
+                 'outsidelight': {'email_sent': 'False'},
                  'blebeacon': {'email_sent': 'False'},
                  'ruuvitag': {}}
         for name in config['ruuvitag']['Name'].split(','):
@@ -401,9 +408,17 @@ def main():
         obs.check_observation()
         state['observation'] = obs.get_state()
     if config['outsidetemp']['Enabled'] == 'True':
-        otm = OutsideTemperatureMonitor(config, state['outsidetemp'])
+        otm = ObservationsColumnMonitor(config, state['outsidetemp'],
+                                        config['outsidetemp']['Timeout'],
+                                        'outside_temperature', 'outside temperature')
         otm.handle_status_data()
         state['outsidetemp'] = otm.get_state()
+    if config['outsidelight']['Enabled'] == 'True':
+        olm = ObservationsColumnMonitor(config, state['outsidelight'],
+                                        config['outsidelight']['Timeout'],
+                                        'outside_light', 'outside light')
+        olm.handle_status_data()
+        state['outsidelight'] = olm.get_state()
     if config['blebeacon']['Enabled'] == 'True':
         beacon = BeaconMonitor(config, state['blebeacon'])
         beacon.check_beacon()
