@@ -1,4 +1,4 @@
-FROM amazoncorretto:23-alpine as corretto-jdk
+FROM amazoncorretto:24-alpine as corretto-jdk
 LABEL org.opencontainers.image.authors="tero.paloheimo@iki.fi"
 
 # Required for strip-debug to work
@@ -7,6 +7,7 @@ RUN apk add --no-cache binutils
 # Build small JRE image
 RUN $JAVA_HOME/bin/jlink \
     --verbose \
+    --module-path ${JAVA_HOME}/jmods \
     --add-modules ALL-MODULE-PATH \
     --strip-debug \
     --no-man-pages \
