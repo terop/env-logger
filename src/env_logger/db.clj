@@ -429,9 +429,9 @@
       {})))
 
 (defn get-elec-data-day
-  "Returns the electricity price and consumption values per day inside the given
-  time interval. If the end parameter is nil all the values after start will
-  be returned."
+  "Returns the average electricity price and consumption values per day inside
+  the given time interval. If the end parameter is nil all the values after
+  start will be returned."
   [db-con start end]
   (try
     (let [nf (NumberFormat/getInstance)

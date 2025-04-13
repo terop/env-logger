@@ -411,6 +411,14 @@ const loadPage = () => {
         return shapes;
       };
 
+      const arraySum = (array) => {
+        return array.reduce((acc, curr) => acc + curr, 0);
+      };
+
+      const arrayAverage = (array) => {
+        return array.length === 0 ? 0 : arraySum(array) / array.length;
+      };
+
       const xValues = [];
       const data = {
         price: [],
@@ -429,6 +437,10 @@ const loadPage = () => {
           ? DateTime.fromJSDate(xValues[xValues.length - 1]).toISODate()
           : DateTime.now().toISODate();
       }
+
+        document.getElementById('elecInfoBox').innerHTML = 'Current interval: consumption: ' +
+          `${arraySum(data.consumption).toFixed(2)} kWh, average price: ` +
+          `${arrayAverage(data.price).toFixed(2)} c / kWh`;
 
       const generateElecTraceConfig = () => {
         return [{
@@ -530,7 +542,7 @@ const loadPage = () => {
         return [{
           x: labels,
           y: data.price,
-          name: 'Price',
+          name: 'Average price',
           type: 'scattergl',
           mode: 'lines+markers',
           marker: {
