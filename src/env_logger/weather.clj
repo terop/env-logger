@@ -179,8 +179,9 @@
                                                         (nth values 4))))
        :humidity (Float/parseFloat (format "%.1f" (Float/parseFloat
                                                    (nth values 5))))
-       :radiation (Float/parseFloat (format "%.1f" (Float/parseFloat
-                                                    (nth values 6))))})))
+       :radiation (when-not (NaN? (Float/parseFloat (nth values 6)))
+                    (Float/parseFloat (format "%.1f" (Float/parseFloat
+                                                      (nth values 6)))))})))
 
 (defn -update-fmi-weather-data-json
   "Updates the latest FMI weather data from the FMI JSON for the given weather
