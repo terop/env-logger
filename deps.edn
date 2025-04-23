@@ -7,7 +7,7 @@
         yogthos/config {:mvn/version "1.2.1"}
         ring/ring-devel {:mvn/version "1.14.1"}
         ring/ring-defaults {:mvn/version "0.6.0"}
-        info.sunng/ring-jetty9-adapter {:mvn/version "0.37.2"}
+        info.sunng/ring-jetty9-adapter {:mvn/version "0.37.3"}
         clj-http/clj-http {:mvn/version "3.13.0"}
         clojure.java-time/clojure.java-time {:mvn/version "1.4.3"}
         org.threeten/threeten-extra {:mvn/version "1.8.0"}
@@ -21,7 +21,7 @@
         buddy/buddy-auth {:mvn/version "3.0.323"}
         buddy/buddy-hashers {:mvn/version "2.0.167"}
         buddy/buddy-sign {:mvn/version "3.6.1-359"}
-        com.taoensso/timbre {:mvn/version "6.6.1"}
+        com.taoensso/timbre {:mvn/version "6.7.0"}
         com.fzakaria/slf4j-timbre {:mvn/version "0.4.1"}
         terop/cljwebauthn
         {:git/url "https://github.com/terop/cljwebauthn.git"
