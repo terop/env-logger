@@ -137,12 +137,11 @@ class ObservationsColumnMonitor:
                 if send_email(self._config['email'],
                               f'env-logger: {self._column_human_name} value inactivity '
                               'warning',
-                              'No {} values have been received in the env-logger '
-                              'backend after {} (timeout {} minutes). Please check for '
+                              f'No {self._column_human_name} values have been received '
+                              f'in the env-logger backend after {column_status[1]} '
+                              f'f(timeout {self._timeout} minutes). Please check for '
                               'possible problems.'
-                              .format(self._column_human_name,
-                                      column_status[1],
-                                      self._timeout)):
+                              ):
                     self._state['email_sent'] = 'True'
                 else:
                     self._state['email_sent'] = 'False'

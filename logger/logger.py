@@ -169,8 +169,7 @@ async def scan_ruuvitags(rt_config, bt_device):  # noqa: C901
             min_retry_timeout = 6
             # Use a shorter time for retry as there is likely less RuuviTags to
             # look for
-            retry_timeout = min_retry_timeout if \
-                scan_timeout - 10 < min_retry_timeout else scan_timeout - 10
+            retry_timeout = max(scan_timeout - 10, min_retry_timeout)
 
             await asyncio.wait_for(_async_scan(macs, retry_timeout,
                                                run_until_completion=True),
