@@ -83,8 +83,7 @@ def get_esp32_env_data(env_settings):
 
         return (esp32_data['light'], round(esp32_data['temperature'], 2),
                 esp32_data['co2'], esp32_data['vocIndex'], esp32_data['noxIndex'])
-    else:
-        return (None, None, None, None, None)
+    return (None, None, None, None, None)
 
 
 def get_outside_light_value(env_settings):

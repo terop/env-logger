@@ -64,7 +64,7 @@ def main():
     with Path(filename).open('wb') as tb_image:
         tb_image.write(image)
 
-    print(filename)
+    print(filename) # noqa: RET503
 
 
 main()

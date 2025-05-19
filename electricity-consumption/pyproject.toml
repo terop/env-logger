@@ -13,5 +13,5 @@ dependencies = [
 ]
 
 [tool.ruff]
-lint.select = ["A", "B", "D", "E", "EM", "F", "FURB", "G", "I", "LOG", "N", "PERF", "PIE", "PL", "PTH", "SIM", "RUF", "S", "TRY", "UP", "W"]
+lint.select = ["A", "B", "D", "E", "EM", "F", "FURB", "G", "I", "LOG", "N", "PERF", "PIE", "PL", "PTH", "SIM", "RET", "RUF", "S", "TRY", "UP", "W"]
 lint.ignore = ["D203", "D213"]
