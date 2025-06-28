@@ -1,13 +1,12 @@
 (ns env-logger.handler-test
   (:require [clojure.test :refer [deftest is testing]]
             [jsonista.core :as j]
-            [env-logger
-             [authentication :as auth]
-             [db :as db]
-             [db-test :refer [test-ds]]
-             [electricity :as e]
-             [handler :as h]
-             [weather :as w]]))
+            [env-logger.authentication :as auth]
+            [env-logger.db :as db]
+            [env-logger.db-test :refer [test-ds]]
+            [env-logger.electricity :as e]
+            [env-logger.handler :as h]
+            [env-logger.weather :as w]))
 
 (deftest convert-epoch-ms->string-test
   (testing "Unix millisecond timestamp to string conversion"

@@ -9,10 +9,9 @@
             [java-time.api :as jt]
             [next.jdbc :as jdbc]
             [ring.util.http-response :refer [bad-request]]
-            [env-logger
-             [authentication :as auth]
-             [db :as db]
-             [render :refer [serve-json]]]))
+            [env-logger.authentication :as auth]
+            [env-logger.db :as db]
+            [env-logger.render :refer [serve-json]]))
 
 (defn electricity-data
   "Returns data for the electricity data endpoint."

@@ -2,9 +2,8 @@
   "A namespace for authentication related functions"
   (:require [config.core :refer [env]]
             [buddy.auth :refer [authenticated?]]
-            [buddy.auth.backends
-             [session :refer [session-backend]]
-             [token :refer [jwe-backend]]]
+            [buddy.auth.backends.session :refer [session-backend]]
+            [buddy.auth.backends.token :refer [jwe-backend]]
             [buddy.core.nonce :as nonce]
             [buddy.hashers :as h]
             [buddy.sign.jwt :as jwt]
@@ -15,10 +14,9 @@
             [next.jdbc.sql :as js]
             [ring.util.http-response :refer [created forbidden found ok status]]
             [taoensso.timbre :refer [error]]
-            [env-logger
-             [db :as db]
-             [render :refer [serve-json serve-template serve-text]]
-             [user :refer [get-user-id get-pw-hash]]])
+            [env-logger.db :as db]
+            [env-logger.render :refer [serve-json serve-template serve-text]]
+            [env-logger.user :refer [get-user-id get-pw-hash]])
   (:import java.time.Instant
            (com.webauthn4j.authenticator AuthenticatorImpl CoreAuthenticatorImpl)
            com.webauthn4j.converter.AttestedCredentialDataConverter

@@ -6,17 +6,16 @@
             [next.jdbc :as jdbc]
             [next.jdbc.sql :as js]
             [cljwebauthn.b64 :as b64]
-            [env-logger
-             [authentication :refer [save-authenticator
-                                     get-authenticators
-                                     wa-prepare-register
-                                     do-prepare-login
-                                     check-auth-code
-                                     unauthorized-handler
-                                     login-authenticate
-                                     token-login]]
-             [user :refer [get-pw-hash]]
-             [db-test :refer [test-ds]]]
+            [env-logger.authentication :refer [save-authenticator
+                                               get-authenticators
+                                               wa-prepare-register
+                                               do-prepare-login
+                                               check-auth-code
+                                               unauthorized-handler
+                                               login-authenticate
+                                               token-login]]
+            [env-logger.user :refer [get-pw-hash]]
+            [env-logger.db-test :refer [test-ds]]
             [buddy.hashers :as h])
   (:import com.webauthn4j.authenticator.AuthenticatorImpl
            com.webauthn4j.converter.AttestedCredentialDataConverter

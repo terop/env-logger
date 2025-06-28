@@ -4,10 +4,9 @@
             [config.core :refer [env]]
             [java-time.api :refer [format]]
             [jsonista.core :as j]
-            [env-logger
-             [db :as db]
-             [db-test :refer [test-ds]]
-             [electricity :as e]]))
+            [env-logger.db :as db]
+            [env-logger.db-test :refer [test-ds]]
+            [env-logger.electricity :as e]))
 
 (deftest electricity-data-test
   (testing "Electricity data fetch function"

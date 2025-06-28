@@ -3,7 +3,8 @@
             [clojure.string :as str]
             [java-time.api :as jt]
             [next.jdbc :as jdbc]
-            [next.jdbc [result-set :as rs] [sql :as js]]
+            [next.jdbc.result-set :as rs]
+            [next.jdbc.sql :as js]
             [env-logger.db
              :refer
              [db-conf

@@ -11,7 +11,7 @@
             [clj-http.client :as client]
             [next.jdbc :as jdbc]
             [java-time.api :as jt]
-            [env-logger [db :refer [rs-opts -convert-time->iso8601-str]]])
+            [env-logger.db :refer [rs-opts -convert-time->iso8601-str]])
   (:import (java.time LocalDateTime ZonedDateTime)
            java.time.temporal.ChronoUnit
            org.postgresql.util.PSQLException))

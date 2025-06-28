@@ -4,7 +4,8 @@
             [config.core :refer [env]]
             [taoensso.timbre :refer [error info]]
             [next.jdbc :as jdbc]
-            [next.jdbc [result-set :as rs] [sql :as js]]
+            [next.jdbc.result-set :as rs]
+            [next.jdbc.sql :as js]
             [java-time.api :as jt])
   (:import java.sql.Connection
            (java.text NumberFormat

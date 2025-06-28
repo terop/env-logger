@@ -8,24 +8,23 @@
             [jsonista.core :as j]
             [java-time.api :as jt]
             [next.jdbc :as jdbc]
-            [env-logger
-             [db :refer [get-tz-offset]]
-             [weather
-              :refer
-              [-convert-dt->tz-iso8601-str
-               -calculate-feels-like-temp
-               calculate-start-time
-               -calculate-summer-simmer
-               extract-forecast-data
-               -fetch-astronomy-data
-               -update-fmi-weather-forecast
-               -update-fmi-weather-data-json
-               -update-fmi-weather-data-ts
-               get-fmi-weather-data
-               get-wd-str
-               get-weather-data
-               store-weather-data?
-               wd-has-empty-values?]]])
+            [env-logger.db :refer [get-tz-offset]]
+            [env-logger.weather
+             :refer
+             [-convert-dt->tz-iso8601-str
+              -calculate-feels-like-temp
+              calculate-start-time
+              -calculate-summer-simmer
+              extract-forecast-data
+              -fetch-astronomy-data
+              -update-fmi-weather-forecast
+              -update-fmi-weather-data-json
+              -update-fmi-weather-data-ts
+              get-fmi-weather-data
+              get-wd-str
+              get-weather-data
+              store-weather-data?
+              wd-has-empty-values?]])
   (:import java.time.ZonedDateTime
            (org.postgresql.util PSQLException
                                 PSQLState)))

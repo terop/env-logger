@@ -10,28 +10,25 @@
             [muuntaja.core :as m]
             [next.jdbc :as jdbc]
             [reitit.ring :as ring]
-            [reitit.ring.middleware
-             [muuntaja :as muuntaja]
-             [parameters :as parameters]]
+            [reitit.ring.middleware.muuntaja :as muuntaja]
+            [reitit.ring.middleware.parameters :as parameters]
             [ring.adapter.jetty9 :refer [run-jetty]]
-            [ring.middleware
-             [defaults :refer [wrap-defaults
-                               site-defaults
-                               secure-site-defaults]]
-             [reload :refer [wrap-reload]]]
+            [ring.middleware.defaults :refer [wrap-defaults
+                                              site-defaults
+                                              secure-site-defaults]]
+            [ring.middleware.reload :refer [wrap-reload]]
             [ring.util.http-response :refer [bad-request content-type found]]
             [ring.util.response :refer [header]]
             [taoensso.timbre :refer [error set-min-level!]]
-            [env-logger
-             [authentication :as auth]
-             [db :as db]
-             [electricity :refer [electricity-data
-                                  parse-consumption-data-file]]
-             [render :refer [serve-text serve-json serve-template]]
-             [weather :refer [get-fmi-weather-data
-                              store-weather-data?
-                              get-weather-data
-                              fetch-all-weather-data]]])
+            [env-logger.authentication :as auth]
+            [env-logger.db :as db]
+            [env-logger.electricity :refer [electricity-data
+                                            parse-consumption-data-file]]
+            [env-logger.render :refer [serve-text serve-json serve-template]]
+            [env-logger.weather :refer [get-fmi-weather-data
+                                        store-weather-data?
+                                        get-weather-data
+                                        fetch-all-weather-data]])
   (:import (java.time Instant
                       ZoneId)
            java.time.DateTimeException

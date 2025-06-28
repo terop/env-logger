@@ -2,9 +2,8 @@
   (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [next.jdbc :as jdbc]
             [next.jdbc.sql :as js]
-            [env-logger
-             [user :refer [get-pw-hash get-user-id]]
-             [db-test :refer [test-ds]]])
+            [env-logger.user :refer [get-pw-hash get-user-id]]
+            [env-logger.db-test :refer [test-ds]])
   (:import (org.postgresql.util PSQLException
                                 PSQLState)))
 
