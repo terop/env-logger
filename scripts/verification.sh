@@ -28,7 +28,8 @@ clojure -Tcljfmt check
 
 # Only run ruff when called from the env-logger repository to avoid ruff failures
 # when called from other repositories
-if [ $(basename $(pwd)) = 'env-logger' ]; then
+if [ "${CI}" ] && [ ${CIRCLE_PROJECT_REPONAME} = 'env-logger' ] || \
+       [ $(basename $(pwd)) = 'env-logger' ]; then
     echo 'Running ruff for Python files'
     if [ "${CI}" ]; then
         apt-get install -y python3.11-venv
