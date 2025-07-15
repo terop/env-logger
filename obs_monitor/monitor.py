@@ -104,11 +104,11 @@ class ObservationsColumnMonitor:
 
         with psycopg.connect(create_db_conn_string(self._config['db'])) as conn, \
              conn.cursor() as cursor:
-            cursor.execute(f'SELECT {self._column_name} FROM observations ' # noqa: S608
+            cursor.execute(f'SELECT {self._column_name} FROM observations '  # noqa: S608
                            'ORDER BY id DESC LIMIT 1')
             result = cursor.fetchone()
             if result[0] is None:
-                cursor.execute('SELECT recorded FROM observations WHERE ' # noqa: S608
+                cursor.execute('SELECT recorded FROM observations WHERE '  # noqa: S608
                                f'{self._column_name} IS NULL ORDER BY id DESC LIMIT 30')
                 result = cursor.fetchall()
                 for res in result:
@@ -370,7 +370,7 @@ def main():
                         '(default: monitor.cfg)')
 
     args = parser.parse_args()
-    config_file = args.config if args.config else 'monitor.cfg'
+    config_file = args.config or 'monitor.cfg'
 
     if not Path(config_file).exists():
         logger.error('Could not find configuration file "%s"', args.config_file)

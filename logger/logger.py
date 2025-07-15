@@ -305,8 +305,8 @@ def main():
                         help='Bluetooth device to use (default: hci0)')
 
     args = parser.parse_args()
-    config_file = args.config if args.config else 'logger_config.json'
-    bt_device = args.bt_device if args.bt_device else 'hci0'
+    config_file = args.config or 'logger_config.json'
+    bt_device = args.bt_device or 'hci0'
 
     if not Path(config_file).exists() or not Path(config_file).is_file():
         logger.error('Could not find configuration file: %s', config_file)

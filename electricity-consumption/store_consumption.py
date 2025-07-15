@@ -173,7 +173,7 @@ def main():
                         help='print returned consumption data')
 
     args = parser.parse_args()
-    config_file = args.config if args.config else 'config.json'
+    config_file = args.config or 'config.json'
 
     if not Path(config_file).exists():
         logger.error('Could not find configuration file "%s"', config_file)

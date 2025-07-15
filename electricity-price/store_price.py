@@ -113,7 +113,7 @@ def main():
                         'which to fetch data')
 
     args = parser.parse_args()
-    config_file = args.config if args.config else 'config.json'
+    config_file = args.config or 'config.json'
     price_array_min_length = 20
 
     if not Path(config_file).exists():

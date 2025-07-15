@@ -50,7 +50,7 @@ def download_image():
     return resp.content
 
 
-def main(): # noqa: RET503
+def main():  # noqa: RET503
     """Run the module code."""
     image = download_image()
     if not image:
