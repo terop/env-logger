@@ -139,7 +139,7 @@ class ObservationsColumnMonitor:
                               'warning',
                               f'No {self._column_human_name} values have been received '
                               f'in the env-logger backend after {column_status[1]} '
-                              f'f(timeout {self._timeout} minutes). Please check for '
+                              f'(timeout {self._timeout} minutes). Please check for '
                               'possible problems.'
                               ):
                     self._state['email_sent'] = 'True'
