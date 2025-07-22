@@ -3,7 +3,7 @@ IMAGE_NAME := env-logger:$(DATE)
 
 build: clean uberjar update # build container
 	podman build -t $(IMAGE_NAME) .
-	podman tag $(IMAGE_NAME) $(shell whoami)/$(IMAGE_NAME)
+	podman tag $(IMAGE_NAME) ${REGISTRY}/$(shell whoami)/$(IMAGE_NAME)
 
 clean:
 	clojure -T:build clean
