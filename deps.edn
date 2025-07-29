@@ -7,7 +7,7 @@
         yogthos/config {:mvn/version "1.2.1"}
         ring/ring-devel {:mvn/version "1.14.2"}
         ring/ring-defaults {:mvn/version "0.6.0"}
-        info.sunng/ring-jetty9-adapter {:mvn/version "0.37.4"}
+        info.sunng/ring-jetty9-adapter {:mvn/version "0.37.5"}
         clj-http/clj-http {:mvn/version "3.13.1"}
         clojure.java-time/clojure.java-time {:mvn/version "1.4.3"}
         org.threeten/threeten-extra {:mvn/version "1.8.0"}
@@ -16,7 +16,7 @@
         selmer/selmer {:mvn/version "1.12.62"}
         metosin/jsonista {:mvn/version "0.3.13"}
         org.postgresql/postgresql {:mvn/version "42.7.7"}
-        com.github.seancorfield/honeysql {:mvn/version "2.7.1310"}
+        com.github.seancorfield/honeysql {:mvn/version "2.7.1325"}
         com.github.seancorfield/next.jdbc {:mvn/version "1.3.1048"}
         buddy/buddy-auth {:mvn/version "3.0.323"}
         buddy/buddy-hashers {:mvn/version "2.0.167"}
@@ -29,7 +29,7 @@
  :aliases
  {:run {:main-opts ["-m" "env-logger.handler"]
         :jvm-opts ["-Dconfig=resources/dev/config.edn"]}
-  :build {:deps {io.github.clojure/tools.build {:mvn/version "0.10.9"}}
+  :build {:deps {io.github.clojure/tools.build {:mvn/version "0.10.10"}}
           :ns-default build}
   :test {:extra-paths ["test"]
          :extra-deps {io.github.cognitect-labs/test-runner
