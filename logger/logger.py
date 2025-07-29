@@ -9,6 +9,7 @@ import asyncio
 import json
 import logging
 import sys
+import time
 from collections import OrderedDict
 from datetime import datetime
 from pathlib import Path
@@ -191,20 +192,26 @@ async def scan_ruuvitags(rt_config, bt_device):  # noqa: C901
 def store_ruuvitags(config, timestamp, tags):
     """Send provided RuuviTag data to the backend."""
     json_data = json.dumps(tags)
+    max_attempts = 2
+    attempt_count = 0
 
-    try:
-        resp = requests.post(config['ruuvitag']['url'],
-                             params={'observation': json_data,
-                                     'timestamp': timestamp,
-                                     'code': config['authentication_code']},
-                             timeout=15)
-    except (ConnectTimeoutError, MaxRetryError, OSError, ReadTimeoutError) as err:
-        logger.error('RuuviTag data store failed: %s', err)
-        return
+    while attempt_count < max_attempts:
+        try:
+            resp = requests.post(config['ruuvitag']['url'],
+                                 params={'observation': json_data,
+                                         'timestamp': timestamp,
+                                         'code': config['authentication_code']},
+                                 timeout=15)
+        except (ConnectTimeoutError, MaxRetryError, OSError, ReadTimeoutError) as err:
+            logger.error('RuuviTag data store failed: %s', err)
+            attempt_count += 1
+            time.sleep(10)
+            continue
 
-    logger.info("RuuviTag observation: timestamp '%s', data: '%s', "
-                "response: code %s, text '%s'",
-                timestamp, json_data, resp.status_code, resp.text)
+        logger.info("RuuviTag observation: timestamp '%s', data: '%s', "
+                    "response: code %s, text '%s'",
+                    timestamp, json_data, resp.status_code, resp.text)
+        break
 
 
 async def scan_ble_beacon(config, bt_device):
@@ -266,27 +273,33 @@ async def do_scan(config, bt_device):
     return results
 
 
-def store_to_db(config, timestamp, data):
+def store_observation(config, timestamp, data):
     """Store the observation data to the backend database."""
     if data == {}:
         logger.error('Received no data, stopping')
         return
 
+    max_attempts = 2
+    attempt_count = 0
     data['timestamp'] = timestamp
     data = OrderedDict(sorted(data.items()))
 
-    try:
-        resp = requests.post(config['environment']['upload_url'],
-                             params={'observation': json.dumps(data),
-                                     'code': config['authentication_code']},
-                             timeout=15)
-    except (ConnectTimeoutError, MaxRetryError, OSError, ReadTimeoutError,
-            TimeoutError) as err:
-        logger.error('Observation data store failed: %s', err)
-        return
+    while attempt_count < max_attempts:
+        try:
+            resp = requests.post(config['environment']['upload_url'],
+                                 params={'observation': json.dumps(data),
+                                         'code': config['authentication_code']},
+                                 timeout=15)
+        except (ConnectTimeoutError, MaxRetryError, OSError, ReadTimeoutError,
+                TimeoutError) as err:
+            logger.error('Observation data store failed: %s', err)
+            attempt_count += 1
+            time.sleep(10)
+            continue
 
-    logger.info("Observation data: '%s', response: code %s, text '%s'",
-                 json.dumps(data), resp.status_code, resp.text)
+        logger.info("Observation data: '%s', response: code %s, text '%s'",
+                    json.dumps(data), resp.status_code, resp.text)
+        break
 
 
 def main():
@@ -347,7 +360,7 @@ def main():
     env_data['beacon'] = scan_result['ble_beacon']
     if env_data['insideLight'] is not None:
         # Only send environment data when required values are available
-        store_to_db(config, timestamp, env_data)
+        store_observation(config, timestamp, env_data)
 
     store_ruuvitags(config, timestamp, scan_result['ruuvitag'])
 
