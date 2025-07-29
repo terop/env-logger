@@ -223,10 +223,8 @@ const loadPage = () => {
 
   if (data.obs.length === 0) {
     document.getElementById('noDataError').style.display = 'block';
-    hideElement('weatherDiv');
     hideElement('imageButtonDiv');
     hideElement('latestCheckboxDiv');
-    hideElement('weatherCheckboxDiv');
     hideElement('plotAccordion');
     hideElement('elecDataDiv');
   } else {
