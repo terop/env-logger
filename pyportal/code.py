@@ -48,7 +48,13 @@ requests = None
 
 def connect_to_wlan():
     """Connect to WLAN."""
-    esp32_cs = DigitalInOut(board.ESP_CS)
+    try:
+        esp32_cs = DigitalInOut(board.ESP_CS)
+    except ValueError as ve:
+        print(f'Error: ESP32 error: {ve}')
+        time.sleep(5)
+        supervisor.reload()
+
     esp32_ready = DigitalInOut(board.ESP_BUSY)
     esp32_reset = DigitalInOut(board.ESP_RESET)
 
