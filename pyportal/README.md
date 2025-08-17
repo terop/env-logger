@@ -18,15 +18,9 @@ not be needed.
 
     * `adafruit_bitmap_font/`
     * `adafruit_bus_device/`
-    * `adafruit_display_text/`
-    * `adafruit_esp32spi/`
     * `adafruit_io/`
-    * `adafruit_portalbase/`
-    * `adafruit_connection_manager.mpy`
-    * `adafruit_requests.mpy`
     * `adafruit_simple_text_display.mpy`
     * `adafruit_datetime.mpy`
-    * `neopixel.mpy`
     * `simpleio.mpy`
 
     See the PyPortal documentation on how to acquire and copy them to the device.

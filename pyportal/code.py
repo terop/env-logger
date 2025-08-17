@@ -4,15 +4,16 @@ import time
 from collections import OrderedDict
 from secrets import secrets
 
-import adafruit_connection_manager
 import adafruit_requests
 import board
 import busio
+import neopixel
 import rtc
 import supervisor
 from adafruit_bitmap_font import bitmap_font
 from adafruit_datetime import datetime, timedelta
 from adafruit_esp32spi import adafruit_esp32spi
+from adafruit_esp32spi.adafruit_esp32spi_wifimanager import WiFiManager
 from adafruit_simple_text_display import SimpleTextDisplay
 from digitalio import DigitalInOut
 
@@ -43,7 +44,7 @@ BACKLIGHT_DIMMING_VALUE = 0.5
 # Network failure threshold after which the board is rebooted
 NW_FAILURE_THRESHOLD = 3
 
-requests = None
+wifi = None
 
 
 def connect_to_wlan():
@@ -59,42 +60,14 @@ def connect_to_wlan():
     esp32_reset = DigitalInOut(board.ESP_RESET)
 
     spi = busio.SPI(board.SCK, board.MOSI, board.MISO)
-    radio = adafruit_esp32spi.ESP_SPIcontrol(spi, esp32_cs, esp32_ready, esp32_reset)
-
-    failure_count = 0
-
-    if radio.status == adafruit_esp32spi.WL_IDLE_STATUS:
-        print('ESP32 found and in idle mode')
-        print(f'Firmware version: {radio.firmware_version}')
-        print(f'MAC addr: {[hex(i) for i in radio.MAC_address]}')
+    esp = adafruit_esp32spi.ESP_SPIcontrol(spi, esp32_cs, esp32_ready, esp32_reset)
+    status_pixel = neopixel.NeoPixel(board.NEOPIXEL, 1, brightness=0.2)
+    global wifi  # noqa: PLW0603
+    wifi = WiFiManager(esp, secrets['ssid'], secrets['password'],
+                       status_pixel=status_pixel)
 
     print('Connecting to AP')
-    radio.reset()
-    time.sleep(2)
-
-    while not radio.is_connected:
-        try:
-            radio.connect_AP(secrets['ssid'], secrets['password'])
-        except (RuntimeError, ConnectionError) as ex:
-            print(f'Error: could not connect to AP, retrying: {ex}')
-
-            failure_count += 1
-            if failure_count >= NW_FAILURE_THRESHOLD:
-                print(f'Error: AP connection failed {failure_count} times, '
-                      'resetting ESP')
-                failure_count = 0
-                radio.reset()
-
-            time.sleep(5)
-            continue
-        print(f'Connected to {str(radio.ap_info.ssid, "utf-8")}    ', end='')
-        print(f'RSSI: {radio.ap_info.rssi}')
-        print(f'My IP address is {radio.pretty_ip(radio.ip_address)}')
-
-    pool = adafruit_connection_manager.get_radio_socketpool(radio)
-    ssl_context = adafruit_connection_manager.get_radio_ssl_context(radio)
-    global requests  # noqa: PLW0603
-    requests = adafruit_requests.Session(pool, ssl_context)
+    wifi.connect()
 
 
 def fetch_token():
@@ -104,11 +77,11 @@ def fetch_token():
 
     while True:
         try:
-            resp = requests.post(f'{BACKEND_URL}/token-login',
-                                 data={'username':
-                                       secrets['data-read-user']['username'],
-                                       'password':
-                                       secrets['data-read-user']['password']})
+            resp = wifi.post(f'{BACKEND_URL}/token-login',
+                             data={'username':
+                                   secrets['data-read-user']['username'],
+                                   'password':
+                                   secrets['data-read-user']['password']})
             if resp.status_code != HTTP_STATUS_CODE_OK:
                 backend_failure_count += 1
                 print('Error: token acquisition failed, backend failure '
@@ -133,8 +106,6 @@ def fetch_token():
                       'reloading board')
                 time.sleep(5)
                 supervisor.reload()
-        except ConnectionError:
-            connect_to_wlan()
 
     return resp.text
 
@@ -158,8 +129,8 @@ def get_backend_endpoint_content(endpoint, token):
     try:
         while failure_count <= NW_FAILURE_THRESHOLD:
             try:
-                resp = requests.get(f'{BACKEND_URL}/{endpoint}',
-                                    headers={'Authorization': f'Token {token}'})
+                resp = wifi.get(f'{BACKEND_URL}/{endpoint}',
+                                headers={'Authorization': f'Token {token}'})
                 if resp.status_code != HTTP_STATUS_CODE_OK:
                     if resp.status_code == HTTP_STATUS_CODE_UNAUTHORIZED:
                         print('Error: request was unauthorized, getting new token')
@@ -191,8 +162,8 @@ def set_time(timezone):
     """Get and set local time for the board. Returns the offset to UTC in hours."""
     while True:
         try:
-            with requests.get(f'{BACKEND_URL}/misc/time',
-                              data={'timezone': timezone}) as resp:
+            with wifi.get(f'{BACKEND_URL}/misc/time',
+                          data={'timezone': timezone}) as resp:
                 time_info = resp.json()
                 if 'error' in time_info:
                     print(f'Error: time fetching failed: "{time_info["error"]}", '
@@ -209,8 +180,6 @@ def set_time(timezone):
             print(f'Error: an exception occurred in set_time: {ex}')
             time.sleep(5)
             supervisor.reload()
-        except ConnectionError:
-            connect_to_wlan()
 
 
 def adjust_backlight(display):
