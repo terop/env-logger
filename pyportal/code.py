@@ -192,18 +192,18 @@ def adjust_backlight(display):
         display.brightness = BACKLIGHT_DEFAULT_VALUE
 
 
-def prepare_elec_price_data(elec_price_data, utc_offset_hours):
-    """Fetch and prepare electricity price data for display."""
-    if not elec_price_data:
+def prepare_elec_data(elec_data, utc_offset_hours):
+    """Fetch and prepare electricity data for display."""
+    if not elec_data:
         return None
 
-    if 'error' in elec_price_data and elec_price_data['error'] != 'not-enabled':
-        print(f'Electricity price data fetch failed: {elec_price_data["error"]}')
+    if 'error' in elec_data and elec_data['error'] != 'not-enabled':
+        print(f'Electricity price data fetch failed: {elec_data["error"]}')
         return None
 
     prices = OrderedDict()
     tz_delta = timedelta(hours=utc_offset_hours)
-    for item in elec_price_data['data-hour']:
+    for item in elec_data['data-hour']:
         prices[datetime.fromisoformat(item['start-time'].replace('Z', '')) +
                tz_delta] = item['price']
 
@@ -232,16 +232,19 @@ def prepare_elec_price_data(elec_price_data, utc_offset_hours):
     if next_hour in prices:
         values['next'] = [next_hour, prices[next_hour]]
 
-    if elec_price_data['month-price-avg'] is not None:
-        values['average'] = elec_price_data['month-price-avg']
+    if elec_data['month-price-avg'] is not None:
+        values['average'] = elec_data['month-price-avg']
 
-    if elec_price_data['month-consumption'] is not None:
-        values['month-consumption'] = elec_price_data['month-consumption']
+    if elec_data['month-consumption'] is not None:
+        values['month-consumption'] = elec_data['month-consumption']
+
+    if elec_data['month-cost'] is not None:
+        values['month-cost'] = elec_data['month-cost']
 
     return values
 
 
-def update_screen(display, observation, weather_data, elec_price_data, utc_offset_hour,  # noqa: PLR0912, PLR0913, PLR0915
+def update_screen(display, observation, weather_data, elec_data, utc_offset_hour,  # noqa: PLR0912, PLR0913, PLR0915
                   time_update_only=False):
     """Update screen contents."""
     c_time = time.localtime()
@@ -298,29 +301,32 @@ def update_screen(display, observation, weather_data, elec_price_data, utc_offse
     else:
         row = 1
 
-    if elec_price_data:
-        if 'current' in elec_price_data:
-            current_val = elec_price_data['current']
+    if elec_data:
+        if 'current' in elec_data:
+            current_val = elec_data['current']
             display[row].text = 'Elec price: ' + \
                 f'{current_val[0].hour}:{current_val[0].minute:02}: {current_val[1]} c'
-        if 'next' in elec_price_data:
-            next_val = elec_price_data['next']
+        if 'next' in elec_data:
+            next_val = elec_data['next']
             display[row].text += f', {next_val[0].hour}:{next_val[0].minute:02}: ' + \
                 f'{next_val[1]} c'
         row += 1
-        if 'average' in elec_price_data or 'month-consumption' in elec_price_data:
+        if 'average' in elec_data or 'month-consumption' in elec_data:
             display[row].text += 'Current month: '
 
-            if 'month-consumption' in elec_price_data:
+            if 'month-consumption' in elec_data:
                 display[row].text += \
-                    f'consumption {elec_price_data["month-consumption"]} kWh'
-            if 'average' in elec_price_data:
+                    f'consumption {elec_data["month-consumption"]} kWh'
+            if 'average' in elec_data:
                 if display[row].text[-1] != ' ':
                     display[row].text += ','
                     row += 1
 
                 display[row].text += \
-                    f'average price {elec_price_data["average"]} c / kWh'
+                    f'average price {elec_data["average"]} c / kWh'
+
+            if 'month-cost' in elec_data:
+                display[row].text += f', cost {elec_data["month-cost"]} €'
             row += 1
 
     display[row].text = ''
@@ -403,7 +409,7 @@ def main():
                 now.second == data_update_second_threshold
 
             if update_data or not init_fetch_done:
-                elec_price_data = prepare_elec_price_data(
+                elec_data = prepare_elec_data(
                     elec_price_metadata['raw_data'],
                     utc_offset_hour)
                 token, observation = get_backend_endpoint_content('data/latest-obs',
@@ -414,7 +420,7 @@ def main():
                     init_fetch_done = True
                     update_data = True
 
-            update_screen(display, observation, weather_data, elec_price_data,
+            update_screen(display, observation, weather_data, elec_data,
                           utc_offset_hour, not update_data)
 
             if time_set_seconds_slept >= TIME_SET_SLEEP_TIME:
