@@ -12,6 +12,7 @@
                       DecimalFormat)
            (java.time DateTimeException
                       LocalDateTime
+                      YearMonth
                       ZoneId
                       ZoneOffset)
            (java.util Date
@@ -611,7 +612,7 @@
       nil)))
 
 (defn get-month-elec-consumption
-  "Returns the electricity consumption for the current month.."
+  "Returns the electricity consumption for the current month."
   [db-con]
   (try
     (let [today (jt/local-date)
@@ -627,4 +628,82 @@
           (NumberFormat/.format nf result))))
     (catch PSQLException pe
       (error pe "Monthly electricity consumption fetch failed")
+      nil)))
+
+(defn get-interval-elec-cost
+  "Returns electricity cost (electricity price and transfer) for a given
+  interval. Note! Only works correctly across an two months or less interval."
+  [db-con interval-start interval-end]
+  (try
+    (let [spot-cost
+          (:price (jdbc/execute-one! db-con
+                                     (sql/format {:select [[[:raw "SUM(p.price * c.consumption)"]
+                                                            :price]]
+                                                  :from [[:electricity_price :p]]
+                                                  :join [[:electricity_consumption :c]
+                                                         [:= :c.time :p.start_time]]
+                                                  :where [:and
+                                                          [:>= :c.time interval-start]
+                                                          [:<= :c.time interval-end]]})
+                                     rs-opts))
+          total-cons (:cons (jdbc/execute-one! db-con
+                                               (sql/format {:select [[[:raw "SUM(consumption)"]
+                                                                      :cons]]
+                                                            :from [:electricity_consumption]
+                                                            :where [:and
+                                                                    [:>= :time interval-start]
+                                                                    [:<= :time interval-end]]})
+                                               rs-opts))]
+      (when (and spot-cost total-cons)
+        (let [nf (NumberFormat/getInstance)
+              transfer-base-fee (:elec-transfer-base-fee env)
+              contract-base-fee (:elec-contract-base-fee env)
+              inter-month-interval? (not= (jt/as interval-start :month-of-year)
+                                          (jt/as interval-end :month-of-year))
+              month-one-day-fraction (when inter-month-interval?
+                                       (let [days (YearMonth/.lengthOfMonth
+                                                   (YearMonth/of
+                                                    (jt/as interval-start
+                                                           :year)
+                                                    (jt/as interval-start
+                                                           :month-of-year)))]
+                                         (/ (inc (- days (jt/as interval-start
+                                                                :day-of-month)))
+                                            days)))
+              days-in-month (YearMonth/.lengthOfMonth (YearMonth/of
+                                                       (jt/as interval-start :year)
+                                                       (jt/as interval-start
+                                                              :month-of-year)))
+              interval-days (jt/as (jt/duration interval-start
+                                                interval-end)
+                                   :days)
+              month-two-day-fraction (if inter-month-interval?
+                                       (/ (jt/as interval-end :day-of-month)
+                                          (YearMonth/.lengthOfMonth
+                                           (YearMonth/of
+                                            (jt/as interval-end
+                                                   :year)
+                                            (jt/as interval-end
+                                                   :month-of-year))))
+                                       (/ interval-days days-in-month))
+              transfer-base-fee-part (if inter-month-interval?
+                                       (+ (* month-one-day-fraction transfer-base-fee)
+                                          (* month-two-day-fraction transfer-base-fee))
+                                       (* month-two-day-fraction transfer-base-fee))
+              contract-base-fee-part (if inter-month-interval?
+                                       (+ (* month-one-day-fraction contract-base-fee)
+                                          (* month-two-day-fraction contract-base-fee))
+                                       (* month-two-day-fraction contract-base-fee))
+              transfer-price (+ transfer-base-fee-part
+                                (* (:elec-tax env) total-cons)
+                                (* (:elec-transfer-fee env) total-cons))
+              elec-price (+ contract-base-fee-part
+                            (* (:elec-contract-margin env) total-cons)
+                            (/ spot-cost 100))
+              total-price (+ elec-price transfer-price)]
+          ;; TODO refactor number formatting to its own function
+          (DecimalFormat/.applyPattern nf "0.0#")
+          (NumberFormat/.format nf total-price))))
+    (catch PSQLException pe
+      (error pe "Electricity cost calculation failed")
       nil)))

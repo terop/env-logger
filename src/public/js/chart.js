@@ -438,7 +438,8 @@ const loadPage = () => {
 
         document.getElementById('elecInfoBox').innerHTML = 'Current interval: consumption: ' +
           `${arraySum(data.consumption).toFixed(2)} kWh, average price: ` +
-          `${arrayAverage(data.price).toFixed(2)} c / kWh`;
+          `${arrayAverage(data.price).toFixed(2)} c / kWh, ` +
+          'total cost: <span id="intervalCost"></span> €';
 
       const generateElecTraceConfig = () => {
         return [{
@@ -635,7 +636,6 @@ const loadPage = () => {
     };
 
     // Fetch and display current electricity price data
-
     var showElectricityPrice = () => {
       // Displays the latest price as text
       const showLatestPrice = (priceData) => {
@@ -705,6 +705,9 @@ const loadPage = () => {
 
             plotElectricityDataDay(elecData['data-day'], true);
 
+            document.getElementById('intervalCost').innerText =
+              elecData['interval-cost'] !== null ? elecData['interval-cost'] : 0;
+
             if (elecData['month-price-avg'] !== null || elecData['month-consumption'] !== null) {
               let elecText = '<br>Current month: ';
 
@@ -713,9 +716,15 @@ const loadPage = () => {
               }
               if (elecData['month-price-avg'] !== null) {
                 if (!elecText.endsWith(' ')) {
-                  elecText += ', ';DateTime
+                  elecText += ', ';
                 }
                 elecText += `average price: ${elecData['month-price-avg']} c / kWh`;
+              }
+              if (elecData['month-cost'] !== null) {
+                if (!elecText.endsWith(' ')) {
+                  elecText += ', ';
+                }
+                elecText += `total cost: ${elecData['month-cost']} €`;
               }
               document.getElementById('infoText').innerHTML += elecText;
             }
@@ -1264,6 +1273,9 @@ const loadPage = () => {
 
           plotElectricityDataHour(elecData['data-hour']);
           plotElectricityDataDay(elecData['data-day']);
+
+          document.getElementById('intervalCost').innerText =
+            elecData['interval-cost'] !== null ? elecData['interval-cost'] : 0;
         }
       })
       .catch(error => {

@@ -13,6 +13,22 @@
             [env-logger.db :as db]
             [env-logger.render :refer [serve-json]]))
 
+(defn calculate-month-cost
+  "Calculates the electricity cost for the current month."
+  []
+  (let [today (jt/local-date)
+        month-start (jt/minus today (jt/days (dec (jt/as today :day-of-month))))
+        start (db/make-local-dt (str month-start) "start")]
+    (db/get-interval-elec-cost db/postgres-ds
+                               start
+                               (jt/local-date-time))))
+
+(defn calculate-interval-cost
+  "Calculates the electricity cost for an given interval."
+  [start end]
+  (db/get-interval-elec-cost db/postgres-ds
+                             start end))
+
 (defn electricity-data
   "Returns data for the electricity data endpoint."
   [request]
@@ -23,51 +39,58 @@
       (let [start-date-val (get (:params request) "startDate")
             start-date (when (seq start-date-val) start-date-val)
             end-date-val (get (:params request) "endDate")
-            end-date (when (seq end-date-val) end-date-val)]
+            end-date (when (seq end-date-val) end-date-val)
+            resp-data {:month-price-avg (db/get-month-avg-elec-price con)
+                       :month-consumption (db/get-month-elec-consumption con)
+                       :month-cost (calculate-month-cost)}]
         (if-not (:show-elec-price env)
           (serve-json {:error "not-enabled"})
           (if (or start-date end-date)
             (if-not start-date
               (bad-request "Missing parameter")
-              (serve-json {:data-hour (db/get-elec-data-hour
-                                       con
-                                       (db/make-local-dt start-date
-                                                         "start")
-                                       (when end-date
-                                         (db/make-local-dt end-date
-                                                           "end")))
-                           :data-day (db/get-elec-data-day con
-                                                           start-date
-                                                           end-date)
-                           :dates {:current {:start start-date
-                                             :end end-date}}
-                           :month-price-avg (db/get-month-avg-elec-price con)
-                           :month-consumption (db/get-month-elec-consumption
-                                               con)}))
-            (let [start-date (db/get-midnight-dt (:initial-show-days env))]
-              (serve-json {:data-hour (db/get-elec-data-hour con
-                                                             start-date
-                                                             nil)
-                           :data-day (db/get-elec-data-day
-                                      con
-                                      (db/add-tz-offset-to-dt start-date)
-                                      nil)
-                           :dates {:current {:start
-                                             (jt/format :iso-local-date
-                                                        (if (= (:display-timezone
-                                                                env) "UTC")
-                                                          (jt/plus start-date
-                                                                   (jt/hours
-                                                                    (db/get-tz-offset
-                                                                     (:store-timezone
-                                                                      env))))
-                                                          start-date))}
-                                   :max (db/get-elec-price-interval-end con)
-                                   :min (db/get-elec-consumption-interval-start
-                                         con)}
-                           :month-price-avg (db/get-month-avg-elec-price con)
-                           :month-consumption (db/get-month-elec-consumption
-                                               con)}))))))))
+              (serve-json (merge resp-data
+                                 {:data-hour (db/get-elec-data-hour
+                                              con
+                                              (db/make-local-dt start-date
+                                                                "start")
+                                              (when end-date
+                                                (db/make-local-dt end-date
+                                                                  "end")))
+                                  :data-day (db/get-elec-data-day con
+                                                                  start-date
+                                                                  end-date)
+                                  :dates {:current {:start start-date
+                                                    :end end-date}}
+                                  :interval-cost (calculate-interval-cost
+                                                  (db/make-local-dt start-date "start")
+                                                  (db/make-local-dt end-date "end"))})))
+            (let [start-date (db/get-midnight-dt (:initial-show-days env))
+                  interval-end (db/get-elec-price-interval-end con)]
+              (serve-json (merge resp-data
+                                 {:data-hour (db/get-elec-data-hour con
+                                                                    start-date
+                                                                    nil)
+                                  :data-day (db/get-elec-data-day
+                                             con
+                                             (db/add-tz-offset-to-dt start-date)
+                                             nil)
+                                  :dates {:current {:start
+                                                    (jt/format :iso-local-date
+                                                               (if (= (:display-timezone
+                                                                       env) "UTC")
+                                                                 (jt/plus start-date
+                                                                          (jt/hours
+                                                                           (db/get-tz-offset
+                                                                            (:store-timezone
+                                                                             env))))
+                                                                 start-date))}
+                                          :max interval-end
+                                          :min (db/get-elec-consumption-interval-start
+                                                con)}
+                                  :interval-cost (calculate-interval-cost
+                                                  start-date
+                                                  (db/make-local-dt interval-end
+                                                                    "end"))})))))))))
 
 (defn parse-consumption-data-file
   "Parses CSV file with electricity consumption data."

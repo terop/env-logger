@@ -32,6 +32,16 @@
  :beacon-name {"7C:EC:79:3F:BE:98" "Beacon 1"}
  ;; Enable / disable electricity price showing
  :show-elec-price false
+  ;; Electricity contract base fee (in Euros)
+ :elec-contract-base-fee 5.0
+ ;; Electricity contract spot price margin (in Euros)
+ :elec-contract-margin 0.040
+ ;; Electricity transfer base fee (in Euros)
+ :elec-transfer-base-fee 6.0
+ ;; Electricity transfer price per kWh (in Euros)
+ :elec-transfer-fee 0.04
+ ;; Electricity tax per kWh (in Euros)
+ :elec-tax 0.02827515
  ;; WebAuthn site property settings
  :webauthn {;; Hostname
             :hostname "localhost"
