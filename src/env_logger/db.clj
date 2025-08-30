@@ -8,8 +8,7 @@
             [next.jdbc.sql :as js]
             [java-time.api :as jt])
   (:import java.sql.Connection
-           (java.text NumberFormat
-                      DecimalFormat)
+           (java.text DecimalFormat)
            (java.time DateTimeException
                       LocalDateTime
                       YearMonth
@@ -61,6 +60,7 @@
 
 (def tb-image-pattern
   #"testbed-(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:?\+\d{2}(:?:\d{2})?|Z)).+")
+(def df-inst (DecimalFormat. "0.0#"))
 
 (defn test-db-connection
   "Tests the connection to the DB."
@@ -146,6 +146,11 @@
                     (if (not= java.sql.Timestamp (type datetime))
                       "Z" ""))
                "ZZ" "Z"))
+
+(defn round-number
+  "Rounds the given number up to two decimals."
+  [number]
+  (Float/parseFloat (DecimalFormat/.format df-inst number)))
 
 (defn insert-plain-observation
   "Insert a row into observations table."
@@ -405,8 +410,7 @@
   and having the given name(s)."
   [db-con start end names]
   (try
-    (let [nf (NumberFormat/getInstance)
-          query (sql/format {:select [:recorded
+    (let [query (sql/format {:select [:recorded
                                       :name
                                       :temperature
                                       :humidity]
@@ -417,15 +421,12 @@
                                      [:<= :recorded end]]
                              :order-by [[:id :asc]]})
           tz-offset (get-tz-offset (:display-timezone env))]
-      (DecimalFormat/.applyPattern nf "0.0#")
       (for [row (jdbc/execute! db-con query rs-opts)]
         (merge row
                {:recorded (convert->epoch-ms tz-offset
                                              (:recorded row))
-                :temperature (Float/parseFloat
-                              (NumberFormat/.format nf (:temperature row)))
-                :humidity (Float/parseFloat
-                           (NumberFormat/.format nf (:humidity row)))})))
+                :temperature (round-number (:temperature row))
+                :humidity (round-number (:humidity row))})))
     (catch PSQLException pe
       (error pe "RuuviTag observation fetch failed")
       {})))
@@ -436,8 +437,7 @@
   start will be returned."
   [db-con start end]
   (try
-    (let [nf (NumberFormat/getInstance)
-          end-val (or end
+    (let [end-val (or end
                       (when-let [dt (:date
                                      (jdbc/execute-one!
                                       db-con
@@ -446,7 +446,6 @@
                                                    :from [:electricity_price]})
                                       rs-opts))]
                         (add-tz-offset-to-dt (jt/local-date-time dt))))]
-      (DecimalFormat/.applyPattern nf "0.0#")
       (if-not end-val
         [nil]
         (for [date (take (inc (jt/time-between (jt/local-date start)
@@ -469,12 +468,9 @@
               (merge result
                      {:date (jt/format :iso-local-date date)
                       :price (when (:price result)
-                               (Float/parseFloat
-                                (NumberFormat/.format nf (:price result))))
+                               (round-number (:price result)))
                       :consumption (when (:consumption result)
-                                     (Float/parseFloat
-                                      (NumberFormat/.format nf (:consumption
-                                                                result))))}))))))
+                                     (round-number (:consumption result)))}))))))
     (catch PSQLException pe
       (error pe "Daily electricity data fetch failed")
       [nil])))
@@ -518,9 +514,7 @@
                                       (make-local-dt (str month-start) "start")]]})
           result (:avg (jdbc/execute-one! db-con query rs-opts))]
       (when result
-        (let [nf (NumberFormat/getInstance)]
-          (DecimalFormat/.applyPattern nf "0.0#")
-          (NumberFormat/.format nf result))))
+        (round-number result)))
     (catch PSQLException pe
       (error pe "Monthly average electricity price fetch failed")
       nil)))
@@ -623,9 +617,7 @@
                                       (make-local-dt (str month-start) "start")]]})
           result (:sum (jdbc/execute-one! db-con query rs-opts))]
       (when result
-        (let [nf (NumberFormat/getInstance)]
-          (DecimalFormat/.applyPattern nf "0.0#")
-          (NumberFormat/.format nf result))))
+        (round-number result)))
     (catch PSQLException pe
       (error pe "Monthly electricity consumption fetch failed")
       nil)))
@@ -655,8 +647,7 @@
                                                                     [:<= :time interval-end]]})
                                                rs-opts))]
       (when (and spot-cost total-cons)
-        (let [nf (NumberFormat/getInstance)
-              transfer-base-fee (:elec-transfer-base-fee env)
+        (let [transfer-base-fee (:elec-transfer-base-fee env)
               contract-base-fee (:elec-contract-base-fee env)
               inter-month-interval? (not= (jt/as interval-start :month-of-year)
                                           (jt/as interval-end :month-of-year))
@@ -701,9 +692,7 @@
                             (* (:elec-contract-margin env) total-cons)
                             (/ spot-cost 100))
               total-price (+ elec-price transfer-price)]
-          ;; TODO refactor number formatting to its own function
-          (DecimalFormat/.applyPattern nf "0.0#")
-          (NumberFormat/.format nf total-price))))
+          (round-number total-price))))
     (catch PSQLException pe
       (error pe "Electricity cost calculation failed")
       nil)))

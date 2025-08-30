@@ -37,7 +37,8 @@
               make-local-dt
               add-tz-offset-to-dt
               test-db-connection
-              validate-date]])
+              validate-date
+              round-number]])
   (:import (org.postgresql.util PSQLException
                                 PSQLState)
            (java.time LocalDateTime
@@ -668,14 +669,14 @@
                 {:start_time (jt/sql-timestamp (jt/minus (jt/zoned-date-time)
                                                          (jt/hours 1)))
                  :price 4.0})
-    (is (= "7.0" (get-month-avg-elec-price test-ds)))
+    (is (== 7.0 (get-month-avg-elec-price test-ds)))
     ;; Check that prices before the current month are not used
     (js/insert! test-ds
                 :electricity_price
                 {:start_time (jt/sql-timestamp (jt/minus (jt/zoned-date-time)
                                                          (jt/days 40)))
                  :price 12.0})
-    (is (= "7.0" (get-month-avg-elec-price test-ds)))
+    (is (== 7.0 (get-month-avg-elec-price test-ds)))
     (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))))
 
 (deftest test-get-month-elec-consumption
@@ -696,15 +697,15 @@
                 :electricity_consumption
                 {:time (jt/sql-timestamp (jt/minus (jt/zoned-date-time)
                                                    (jt/hours 1)))
-                 :consumption 1.1})
-    (is (= "1.7" (get-month-elec-consumption test-ds)))
+                 :consumption 1.4})
+    (is (== 2.0 (get-month-elec-consumption test-ds)))
     ;; Check that prices before the current month are not used
     (js/insert! test-ds
                 :electricity_consumption
                 {:time (jt/sql-timestamp (jt/minus (jt/zoned-date-time)
                                                    (jt/days 35)))
                  :consumption 0.4})
-    (is (= "1.7" (get-month-elec-consumption test-ds)))
+    (is (== 2.0 (get-month-elec-consumption test-ds)))
     (jdbc/execute! test-ds (sql/format {:delete-from
                                         :electricity_consumption}))))
 
@@ -717,3 +718,9 @@
     ;; Reading the password from a file is not tested because of the difficulty
     ;; of setting environment variables in Clojure / Java
     ))
+
+(deftest test-round-number
+  (testing "Rounding of number"
+    (is (== 12.0 (round-number 12.00003456)))
+    (is (== 42.0 (round-number 42.0)))
+    (is (== 100.0 (round-number 100)))))
