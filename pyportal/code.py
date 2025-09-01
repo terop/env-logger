@@ -326,7 +326,12 @@ def update_screen(display, observation, weather_data, elec_data, utc_offset_hour
                     f'average price {elec_data["average"]} c / kWh'
 
             if 'month-cost' in elec_data:
-                display[row].text += f', cost {elec_data["month-cost"]} €'
+                if 'average' in elec_data or 'month-consumption' in elec_data:
+                    display[row].text += ', '
+                    if 'month-consumption' not in elec_data and 'average' in elec_data:
+                        row += 1
+
+                display[row].text += f'cost {elec_data["month-cost"]} €'
             row += 1
 
     display[row].text = ''
