@@ -17,11 +17,10 @@
   "Calculates the electricity cost for the current month."
   []
   (let [today (jt/local-date)
-        month-start (jt/minus today (jt/days (dec (jt/as today :day-of-month))))
-        start (db/make-local-dt (str month-start) "start")]
+        month-start (jt/minus today (jt/days (dec (jt/as today :day-of-month))))]
     (db/get-interval-elec-cost db/postgres-ds
-                               start
-                               (jt/local-date-time))))
+                               (db/make-local-dt (str month-start) "start")
+                               (db/make-local-dt (str today) "end"))))
 
 (defn calculate-interval-cost
   "Calculates the electricity cost for an given interval."
@@ -35,16 +34,16 @@
   (if-not (authenticated? (if (:identity request)
                             request (:session request)))
     auth/response-unauthorized
-    (with-open [con (jdbc/get-connection db/postgres-ds)]
-      (let [start-date-val (get (:params request) "startDate")
-            start-date (when (seq start-date-val) start-date-val)
-            end-date-val (get (:params request) "endDate")
-            end-date (when (seq end-date-val) end-date-val)
-            resp-data {:month-price-avg (db/get-month-avg-elec-price con)
-                       :month-consumption (db/get-month-elec-consumption con)
-                       :month-cost (calculate-month-cost)}]
-        (if-not (:show-elec-price env)
-          (serve-json {:error "not-enabled"})
+    (if-not (:show-elec-price env)
+      (serve-json {:error "not-enabled"})
+      (with-open [con (jdbc/get-connection db/postgres-ds)]
+        (let [start-date-val (get (:params request) "startDate")
+              start-date (when (seq start-date-val) start-date-val)
+              end-date-val (get (:params request) "endDate")
+              end-date (when (seq end-date-val) end-date-val)
+              resp-data {:month-price-avg (db/get-month-avg-elec-price con)
+                         :month-consumption (db/get-month-elec-consumption con)
+                         :month-cost (calculate-month-cost)}]
           (if (or start-date end-date)
             (if-not start-date
               (bad-request "Missing parameter")
