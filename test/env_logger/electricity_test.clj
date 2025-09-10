@@ -30,7 +30,9 @@
                     db/get-elec-consumption-interval-start (fn [_] "2023-02-21")
                     db/get-elec-price-interval-end (fn [_] "2023-09-05")
                     db/get-month-avg-elec-price (fn [_] "10.0")
-                    db/get-month-elec-consumption (fn [_] "70.1")]
+                    db/get-month-elec-consumption (fn [_] "70.1")
+                    e/calculate-interval-cost (fn [_ _] 0.31)
+                    e/calculate-month-cost (fn [] 0.32)]
         (let [resp (e/electricity-data
                     {:params {"endDate" "2022-10-08"}})]
           (is (= 400 (:status resp)))
@@ -49,7 +51,7 @@
                 "data-hour" [{"consumption" 0.5, "start-time" 123, "price" 10.0}]
                 "data-day" [{"consumption" 1.8, "date" "2023-09-04", "price" 7.0}]
                 "month-price-avg" "10.0" "month-consumption" "70.1"
-                "month-cost" 0.32 "interval-cost" 2.21}
+                "month-cost" 0.32 "interval-cost" 0.31}
                (j/read-value (:body (e/electricity-data
                                      {:params {}})))))))))
 
