@@ -1,12 +1,14 @@
 (ns env-logger.electricity-test
   (:require [clojure.test :refer [deftest is testing]]
+            [tupelo.core :refer [rel=]]
             [buddy.auth :refer [authenticated?]]
             [config.core :refer [env]]
-            [java-time.api :refer [format]]
+            [java-time.api :as jt]
             [jsonista.core :as j]
             [env-logger.db :as db]
             [env-logger.db-test :refer [test-ds]]
-            [env-logger.electricity :as e]))
+            [env-logger.electricity :as e])
+  (:import java.time.LocalDate))
 
 (deftest electricity-data-test
   (testing "Electricity data fetch function"
@@ -18,7 +20,7 @@
         (is (= {"error" "not-enabled"}
                (j/read-value (:body (e/electricity-data {}))))))
       (with-redefs [authenticated? (fn [_] true)
-                    format (fn [_ _] "2023-02-22")
+                    jt/format (fn [_ _] "2023-02-22")
                     db/get-elec-data-hour (fn [_ _ _]
                                             [{:start-time 123
                                               :price 10.0
@@ -68,3 +70,22 @@
       (is (= (float 0.12) (nth (first data) 1)))
       (is (= java.sql.Timestamp (type (nth (nth data 3) 0))))
       (is (= (float 0.15) (nth (nth data 3) 1))))))
+
+(deftest calculate-month-cost-test
+  (testing "Month cost calculation"
+    (with-redefs [db/postgres-ds test-ds]
+      (with-redefs [jt/local-date (fn [] (LocalDate/of 2025 9 1))]
+        (is (rel= 0.37 (e/calculate-month-cost) :tol 0.01)))
+      (with-redefs [jt/local-date (fn [] (LocalDate/of 2025 9 30))]
+        (is (rel= 11.0 (e/calculate-month-cost) :tol 0.01))))))
+
+(deftest calculate-interval-cost-test
+  (testing "Interval cost calculation"
+    (with-redefs [db/postgres-ds test-ds]
+      (is (rel= 0.37 (e/calculate-interval-cost (jt/local-date-time 2025 9 1 0 0 0)
+                                                (jt/local-date-time 2025 9 1 23 59 59))
+                :tol 0.01))
+
+      (is (rel= 11.0 (e/calculate-interval-cost (jt/local-date-time 2025 9 1 0 0 0)
+                                                (jt/local-date-time 2025 9 30 23 59 59))
+                :tol 0.01)))))
