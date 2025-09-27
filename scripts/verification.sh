@@ -22,7 +22,7 @@ fi
 
 echo 'Running cljfmt'
 if [ "${CI}" ]; then
-    clojure -Ttools install io.github.weavejester/cljfmt '{:git/tag "0.13.1"}' :as cljfmt
+    clojure -Ttools install io.github.weavejester/cljfmt '{:git/tag "0.13.4"}' :as cljfmt
 fi
 clojure -Tcljfmt check
 
@@ -32,7 +32,7 @@ if [ "${CI}" ] && [ ${CIRCLE_PROJECT_REPONAME} = 'env-logger' ] || \
        [ $(basename $(pwd)) = 'env-logger' ]; then
     echo 'Running ruff for Python files'
     if [ "${CI}" ]; then
-        apt-get install -y python3.11-venv
+        apt-get install -y python3.13-venv
         # shellcheck disable=SC1091
         python3 -m venv .venv && . .venv/bin/activate && pip3 install ruff && ruff check
     else

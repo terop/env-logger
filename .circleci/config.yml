@@ -3,13 +3,13 @@ version: 2.1
 jobs:
   build:
     docker:
-      - image: clojure:temurin-24-tools-deps-bookworm-slim
+      - image: clojure:temurin-25-tools-deps-trixie-slim
         auth:
           username: mydockerhub-user
           password: $DOCKERHUB_PASSWORD
         environment:
           TEST_DATABASE_URL: postgresql://postgres@localhost/env_logger_test
-      - image: cimg/postgres:17.5
+      - image: cimg/postgres:17.6
         auth:
           username: mydockerhub-user
           password: $DOCKERHUB_PASSWORD
