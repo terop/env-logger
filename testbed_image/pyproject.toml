@@ -6,7 +6,7 @@ readme = "README.md"
 authors = [
   {name = "Tero Paloheimo", email = "tero.paloheimo@iki.fi"}
 ]
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 dependencies = [
     "beautifulsoup4>=4.12.3",
     "lxml>=5.3.0",
