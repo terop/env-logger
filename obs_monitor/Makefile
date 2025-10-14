@@ -6,4 +6,4 @@ image: update
 	podman tag $(IMAGE_NAME) ${REGISTRY}/$(shell whoami)/$(IMAGE_NAME)
 
 update: # update base image
-	podman pull python:3.13-slim ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+	podman pull python:3.14-slim ghcr.io/astral-sh/uv:python3.14-trixie-slim
