@@ -104,7 +104,7 @@ class ObservationsColumnMonitor:
 
         with psycopg.connect(create_db_conn_string(self._config['db'])) as conn, \
              conn.cursor() as cursor:
-            cursor.execute(f'SELECT {self._column_name} FROM observations '  # noqa: S608
+            cursor.execute(f'SELECT {self._column_name}, recorded FROM observations '  # noqa: S608
                            'ORDER BY id DESC LIMIT 1')
             result = cursor.fetchone()
             if result[0] is None:
@@ -121,7 +121,7 @@ class ObservationsColumnMonitor:
                                        recorded_tz.isoformat())
                         return (True, recorded_tz.isoformat())
 
-            return (False,)
+            return (False, result[1].astimezone(timezone))
 
     def handle_status_data(self):
         """Check column status data.
@@ -130,15 +130,15 @@ class ObservationsColumnMonitor:
         """
         logger.info('Starting %s value inactivity check', self._column_human_name)
 
-        column_status = self.check_column_status()
+        column_status, last_recorded = self.check_column_status()
 
-        if column_status[0]:
+        if column_status:
             if self._state['email_sent'] == 'False':
                 if send_email(self._config['email'],
                               f'env-logger: {self._column_human_name} value inactivity '
                               'warning',
                               f'No {self._column_human_name} values have been received '
-                              f'in the env-logger backend after {column_status[1]} '
+                              f'in the env-logger backend after {last_recorded} '
                               f'(timeout {self._timeout} minutes). Please check for '
                               'possible problems.'
                               ):
@@ -146,14 +146,12 @@ class ObservationsColumnMonitor:
                 else:
                     self._state['email_sent'] = 'False'
         elif self._state['email_sent'] == 'True':
-            dt_str = datetime.now(
-                tz=ZoneInfo(self._config['db']['DisplayTimezone'])).isoformat()
             send_email(self._config['email'],
                        f'env-logger: {self._column_human_name} value received',
                        f'An {self._column_human_name} value has been detected '
-                       f'at {dt_str}.')
+                       f'at {last_recorded.isoformat()}.')
             logger.info('An %s value was detected at %s',
-                        self._column_human_name, dt_str)
+                        self._column_human_name, last_recorded.isoformat())
             self._state['email_sent'] = 'False'
 
     def get_state(self):
