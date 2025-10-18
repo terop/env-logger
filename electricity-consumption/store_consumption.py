@@ -19,6 +19,26 @@ from pycaruna import Authenticator, CarunaPlus, TimeSpan
 logger = logging.getLogger(__name__)
 
 
+def check_day_data(db_config, check_date):
+    """Check if consumption data for the given date exists.
+
+    Returns True if data exists and False otherwise.
+    """
+    min_value_threshold = 20
+    start_dt = datetime(check_date.year, check_date.month, check_date.day, 0, 0, 0)
+    end_dt = start_dt + timedelta(days=1)
+
+    try:
+        with psycopg.connect(create_db_conn_string(db_config)) as conn, \
+             conn.cursor() as cursor:
+            cursor.execute('SELECT COUNT(id) FROM electricity_consumption WHERE time '
+                           '>= %s AND time < %s', (start_dt, end_dt))
+            return cursor.fetchone()[0] > min_value_threshold
+    except psycopg.Error:
+        logger.exception('Previous day data check failed')
+        sys.exit(1)
+
+
 def login_to_carunaplus(config):
     """Log in to the Caruna+ service."""
     logger.info('Logging in to Caruna+')
@@ -74,7 +94,7 @@ def fetch_consumption_data(login_data, manual_fetch_date=None):
 
         fetch_date = fetch_dt.date()
 
-    logger.info('Fetching consumption data for %s', str(fetch_date))
+    logger.info('Fetching consumption data for %s', fetch_date)
 
     raw_consumption = login_data[0].get_energy(login_data[1], login_data[2],
                                                TimeSpan.DAILY, fetch_date.year,
@@ -165,8 +185,11 @@ def main():
     parser.add_argument('--date', type=str, help='date (in YYYY-MM-DD format) for '
                         'which to fetch data, multiple comma separated values are '
                         'supported')
+    parser.add_argument('--check-for-missing', action='store_true',
+                        help='check for missing data from the day before yesterday')
     parser.add_argument('--force-store', action='store_true',
-                        help='store data despite missing values')
+                        help='store data despite missing values or existing data '
+                        'is found')
     parser.add_argument('--no-store', action='store_true',
                         help='do not store consumption data to database')
     parser.add_argument('--verbose', action='store_true',
@@ -182,12 +205,25 @@ def main():
     with Path(config_file).open('r', encoding='utf-8') as cfg_file:
         config = json.load(cfg_file)
 
+    if not args.date and not args.no_store and not args.force_store:
+        day_diff = 2 if args.check_for_missing else 1
+        check_date = date.today() - timedelta(days=day_diff)
+
+        if check_day_data(config['db'], check_date):
+            logger.info('Not storing data again because existing data is found')
+            return
+
     login_data = login_to_carunaplus(config['fetch'])
 
     if args.date:
-        for date in args.date.split(','):
+        for fetch_date in args.date.split(','):
             handle_storage(args, config['db'],
-                           fetch_consumption_data(login_data, date))
+                           fetch_consumption_data(login_data, fetch_date))
+    elif args.check_for_missing:
+        fetch_date = date.today() - timedelta(days=2)
+
+        handle_storage(args, config['db'],
+                       fetch_consumption_data(login_data, fetch_date.isoformat()))
     else:
         handle_storage(args, config['db'],
                        fetch_consumption_data(login_data))
