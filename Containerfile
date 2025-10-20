@@ -1,4 +1,4 @@
-FROM amazoncorretto:25-alpine as corretto-jdk
+FROM docker.io/amazoncorretto:25-alpine as corretto-jdk
 LABEL org.opencontainers.image.authors="tero.paloheimo@iki.fi"
 
 # Required for strip-debug to work
@@ -15,7 +15,7 @@ RUN $JAVA_HOME/bin/jlink \
     --output /customjre
 
 # Main app image
-FROM alpine:latest
+FROM docker.io/alpine:latest
 ENV JAVA_HOME=/jre
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
