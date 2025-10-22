@@ -19,9 +19,11 @@ logger = logging.getLogger(__name__)
 VAT_MULTIPLIER = 1.255
 
 
-def fetch_prices(config, fetch_date):
-    """Fetch electricity spot prices from the Nord Pool API for the given price area.
+def fetch_prices(config, fetch_date, hourly=True):
+    """Fetch electricity spot prices from the Nord Pool API.
 
+    Prices are fetched for the given price area with either a 15 or 60 minutes time
+    resolution).
     By default the next day is used or desired date can be provided.
     """
     area_code = config['area_code']
@@ -42,11 +44,15 @@ def fetch_prices(config, fetch_date):
 
     prices = []
 
-    logger.info('Fetching price data for area code %s for interval [%s, %s]',
-                area_code, str(start), str(end))
+    logger.info('Fetching %s minute resolution price data for area code %s '
+                'for interval [%s, %s]',
+                60 if hourly else 15, area_code, start, end)
 
     prices_spot = elspot.Prices()
-    price_data = prices_spot.hourly(areas=[area_code], end_date=end)
+    if hourly:
+        price_data = prices_spot.hourly(areas=[area_code], end_date=end)
+    else:
+        price_data = prices_spot.fetch(areas=[area_code], end_date=end, resolution=15)
 
     if not price_data or area_code not in price_data['areas']:
         logger.error('Price data fetch failed')
@@ -63,9 +69,10 @@ def fetch_prices(config, fetch_date):
     return prices
 
 
-def store_prices(db_config, price_data):
+def store_prices(db_config, price_data, hourly=True):
     """Store the prices to a database pointed by the DB config."""
-    insert_query = 'INSERT INTO electricity_price (start_time, price) VALUES (%s, %s)'
+    insert_query = f'INSERT INTO electricity_price{"" if hourly else "_minute"} ' \
+        '(start_time, price) VALUES (%s, %s)'  # noqa: S608
 
     try:
         with psycopg.connect(create_db_conn_string(db_config)) as conn, \
@@ -100,6 +107,19 @@ def create_db_conn_string(db_config):
         f'password={db_config["password"]} dbname={db_config["name"]}'
 
 
+def fetch_and_store(config, fetch_date, hourly=True):
+    """Fetch and store electricity prices for all time resolutions."""
+    price_array_min_length = 20
+
+    prices = fetch_prices(config['fetch'], fetch_date, hourly)
+
+    if len(prices) < price_array_min_length:
+        logger.error('Price fetching failed, not enough data was received')
+        sys.exit(1)
+
+    store_prices(config['db'], prices, hourly)
+
+
 def main():
     """Run the module code."""
     logging.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s',
@@ -114,7 +134,6 @@ def main():
 
     args = parser.parse_args()
     config_file = args.config or 'config.json'
-    price_array_min_length = 20
 
     if not Path(config_file).exists():
         logger.error('Could not find configuration file "%s"', config_file)
@@ -123,13 +142,11 @@ def main():
     with Path(config_file).open('r', encoding='utf-8') as cfg_file:
         config = json.load(cfg_file)
 
-    prices = fetch_prices(config['fetch'], args.date)
+    # 60 minute resolution
+    fetch_and_store(config, args.date, True)
 
-    if len(prices) < price_array_min_length:
-        logger.error('Price fetching failed, not enough data was received')
-        sys.exit(1)
-
-    store_prices(config['db'], prices)
+    # 15 minute resolution
+    fetch_and_store(config, args.date, False)
 
     logger.info('Successfully stored electricity prices')
 
