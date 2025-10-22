@@ -431,6 +431,13 @@
       (error pe "RuuviTag observation fetch failed")
       {})))
 
+(defn get-elec-fees
+  "Returns electricity fees (contract, transfer and tax) in cent per kWh."
+  []
+  (* (+ (:elec-contract-margin env)
+        (:elec-tax env)
+        (:elec-transfer-fee env)) 100))
+
 (defn get-elec-data-day
   "Returns the average electricity price and consumption values per day inside
   the given time interval. If the end parameter is nil all the values after
@@ -465,12 +472,13 @@
                                             (make-local-dt date "end")]]})
                 result (jdbc/execute-one! db-con query rs-opts)]
             (when (:price result)
-              (merge result
-                     {:date (jt/format :iso-local-date date)
-                      :price (when (:price result)
-                               (round-number (:price result)))
-                      :consumption (when (:consumption result)
-                                     (round-number (:consumption result)))}))))))
+              (let [fees (get-elec-fees)]
+                (merge result
+                       {:date (jt/format :iso-local-date date)
+                        :price (when (:price result)
+                                 (round-number (+ (:price result) fees)))
+                        :consumption (when (:consumption result)
+                                       (round-number (:consumption result)))})))))))
     (catch PSQLException pe
       (error pe "Daily electricity data fetch failed")
       [nil])))
@@ -495,9 +503,11 @@
                              :order-by [[:p.start_time :asc]]})
           rows (jdbc/execute! db-con query rs-opts)]
       (when (pos? (count rows))
-        (for [row rows]
-          (merge row
-                 {:start-time (-convert-time->iso8601-str (:start-time row))}))))
+        (let [fees (get-elec-fees)]
+          (for [row rows]
+            (merge row
+                   {:price (round-number (+ (:price row) fees))
+                    :start-time (-convert-time->iso8601-str (:start-time row))})))))
     (catch PSQLException pe
       (error pe "Hourly electricity data fetch failed")
       nil)))
@@ -514,7 +524,7 @@
                                       (make-local-dt (str month-start) "start")]]})
           result (:avg (jdbc/execute-one! db-con query rs-opts))]
       (when result
-        (round-number result)))
+        (round-number (+ result (get-elec-fees)))))
     (catch PSQLException pe
       (error pe "Monthly average electricity price fetch failed")
       nil)))
