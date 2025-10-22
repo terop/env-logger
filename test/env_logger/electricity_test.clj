@@ -75,17 +75,17 @@
   (testing "Month cost calculation"
     (with-redefs [db/postgres-ds test-ds]
       (with-redefs [jt/local-date (fn [] (LocalDate/of 2025 9 1))]
-        (is (rel= 0.37 (e/calculate-month-cost) :tol 0.01)))
+        (is (rel= 0.32 (e/calculate-month-cost) :tol 0.01)))
       (with-redefs [jt/local-date (fn [] (LocalDate/of 2025 9 30))]
-        (is (rel= 11.0 (e/calculate-month-cost) :tol 0.01))))))
+        (is (rel= 9.57 (e/calculate-month-cost) :tol 0.01))))))
 
 (deftest calculate-interval-cost-test
   (testing "Interval cost calculation"
     (with-redefs [db/postgres-ds test-ds]
-      (is (rel= 0.37 (e/calculate-interval-cost (jt/local-date-time 2025 9 1 0 0 0)
+      (is (rel= 0.32 (e/calculate-interval-cost (jt/local-date-time 2025 9 1 0 0 0)
                                                 (jt/local-date-time 2025 9 1 23 59 59))
                 :tol 0.01))
 
-      (is (rel= 11.0 (e/calculate-interval-cost (jt/local-date-time 2025 9 1 0 0 0)
+      (is (rel= 9.57 (e/calculate-interval-cost (jt/local-date-time 2025 9 1 0 0 0)
                                                 (jt/local-date-time 2025 9 30 23 59 59))
                 :tol 0.01)))))

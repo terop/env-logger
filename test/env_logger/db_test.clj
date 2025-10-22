@@ -1,5 +1,6 @@
 (ns env-logger.db-test
   (:require [clojure.test :refer [deftest is testing use-fixtures]]
+            [tupelo.core :refer [rel=]]
             [clojure.string :as str]
             [java-time.api :as jt]
             [next.jdbc :as jdbc]
@@ -14,6 +15,7 @@
               get-elec-data-day
               get-elec-data-hour
               get-elec-consumption-interval-start
+              get-elec-fees
               get-elec-price-interval-end
               get-last-obs-id
               get-latest-elec-consumption-record-time
@@ -506,16 +508,18 @@
     ;; Hour data tests
     (let [res (get-elec-data-hour test-ds
                                   (make-local-dt "2022-10-08" "start")
-                                  (make-local-dt "2022-10-08" "end"))]
+                                  (make-local-dt "2022-10-08" "end"))
+          row (first res)]
       (is (= 1 (count res)))
-      (is (= {:price 10.0 :consumption nil}
-             (dissoc (first res) :start-time))))
+      (is (rel= 15.89 (:price row) :tol 0.01))
+      (is (nil? (:consumption row))))
     (let [res (get-elec-data-hour test-ds
                                   (make-local-dt "2022-10-07" "start")
-                                  (make-local-dt "2022-10-08" "end"))]
+                                  (make-local-dt "2022-10-08" "end"))
+          row (first res)]
       (is (= 2 (count res)))
-      (is (= {:price 4.0 :consumption 1.0}
-             (dissoc (first res) :start-time))))
+      (is (rel= 9.89 (:price row) :tol 0.01))
+      (is (rel= 1.0 (:consumption row) :tol 0.01)))
     (is (= 2 (count (get-elec-data-hour test-ds
                                         (make-local-dt "2022-10-07" "start")
                                         nil))))
@@ -530,12 +534,20 @@
                                     (make-local-dt "2022-10-08" "start")
                                     (make-local-dt "2022-10-08" "end")))))
     ;; Day data tests
-    (is (= [{:consumption 1.0 :price 4.0 :date "2022-10-07"}
-            {:consumption nil :price 10.0 :date "2022-10-08"}]
-           (get-elec-data-day test-ds "2022-10-07" "2022-10-08")))
-    (is (= [{:consumption 1.0 :price 4.0 :date "2022-10-07"}
-            {:consumption nil :price 10.0 :date "2022-10-08"}]
-           (get-elec-data-day test-ds "2022-10-07" nil)))
+    (let [result (get-elec-data-day test-ds "2022-10-07" "2022-10-08")
+          one (first result)
+          two (nth result 1)]
+      (is (= {:consumption 1.0 :date "2022-10-07"} (dissoc one :price)))
+      (is (rel= 9.89 (:price one) :tol 0.01))
+      (is (= {:consumption nil :date "2022-10-08"} (dissoc two :price)))
+      (is (rel= 15.89 (:price two) :tol 0.01)))
+    (let [result (get-elec-data-day test-ds "2022-10-07" nil)
+          one (first result)
+          two (nth result 1)]
+      (is (= {:consumption 1.0 :date "2022-10-07"} (dissoc one :price)))
+      (is (rel= 9.89 (:price one) :tol 0.01))
+      (is (= {:consumption nil :date "2022-10-08"} (dissoc two :price)))
+      (is (rel= 15.89 (:price two) :tol 0.01)))
     (is (nil? (first (get-elec-data-day test-ds "2022-10-10" "2022-10-10"))))
     (with-redefs [jdbc/execute-one! (fn [_ _ _]
                                       (throw (PSQLException.
@@ -544,6 +556,10 @@
       (is (nil? (first (get-elec-data-day test-ds "2022-10-08" nil)))))
     (jdbc/execute! test-ds (sql/format {:delete-from :electricity_consumption}))
     (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))))
+
+(deftest get-elec-fees-test
+  (testing "Electricity fee calculation"
+    (is (rel= 5.89 (get-elec-fees) :tol 0.01))))
 
 (deftest get-tz-offset-test
   (testing "Timezone offset calculation"
@@ -669,14 +685,16 @@
                 {:start_time (jt/sql-timestamp (jt/minus (jt/zoned-date-time)
                                                          (jt/hours 1)))
                  :price 4.0})
-    (is (== 7.0 (get-month-avg-elec-price test-ds)))
+    (is (rel= 12.89 (get-month-avg-elec-price test-ds)
+              :tol 0.01))
     ;; Check that prices before the current month are not used
     (js/insert! test-ds
                 :electricity_price
                 {:start_time (jt/sql-timestamp (jt/minus (jt/zoned-date-time)
                                                          (jt/days 40)))
                  :price 12.0})
-    (is (== 7.0 (get-month-avg-elec-price test-ds)))
+    (is (rel= 12.89 (get-month-avg-elec-price test-ds)
+              :tol 0.01))
     (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))))
 
 (deftest test-get-month-elec-consumption
