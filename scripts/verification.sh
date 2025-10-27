@@ -2,7 +2,7 @@
 
 set -e
 
-# This a script to run various verification jobs for the Clojure code
+# This a script to run various verification jobs for code
 # in this repository
 
 echo 'Running splint'
@@ -40,8 +40,9 @@ if [ "${CI}" ] && [ ${CIRCLE_PROJECT_REPONAME} = 'env-logger' ] || \
     fi
 fi
 
-# Only run ESLint locally due to difficulties to install it on CI machines
-if [ -z "${CI}" ]; then
-    echo 'Running ESLint for JavaScript files'
-    npx eslint src/
+if [ "${CI}" ]; then
+    apt-get install -y npm
+    npm install --save-dev eslint@latest @eslint/js@latest
 fi
+echo 'Running ESLint for JavaScript files'
+npx eslint src/
