@@ -78,6 +78,13 @@ CREATE TABLE electricity_price (
        price REAL NOT NULL
 );
 
+-- Electricity price table for 15 minute resolution
+CREATE TABLE electricity_price_minute (
+       id SERIAL PRIMARY KEY,
+       start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+       price REAL NOT NULL
+);
+
 -- Electricity consumption table
 CREATE TABLE electricity_consumption (
        id SERIAL PRIMARY KEY,

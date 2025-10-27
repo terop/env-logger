@@ -367,7 +367,7 @@ const loadPage = () => {
 
     // Show the hourly electricity price and consumption data in a chart
     var plotElectricityDataHour = (elecData, updateDate = false,
-      removeLast = false) => {
+                                   removeLast = false) => {
 
       const generateElecAnnotationConfig = (xValues, yValues) => {
         const currentIdx = getClosestElecPriceDataIndex(xValues);
@@ -463,7 +463,8 @@ const loadPage = () => {
           yaxis: 'y2',
           xhoverformat: '<b>%d.%m. %H:%M</b>',
           hovertemplate: '%{text}',
-          text: data.consumption.map((value) => `${value} kWh`)
+          text: data.consumption.map((value) => `${value} kWh`),
+          textposition: 'none'
         }];
       };
 
@@ -609,6 +610,99 @@ const loadPage = () => {
     };
 
 
+    // Show the 15 minute electricity price data in a chart
+    var plotElectricityPriceMinute = (priceData) => {
+
+      const generateBarColourValues = (xValues) => {
+        const defaultColour = '#1565a3';
+        const currentHourColour = '#60a5fa';
+
+        if (DateTime.now().day !== DateTime.fromJSDate(xValues[0]).day) {
+          return Array(xValues.length).fill(defaultColour);
+        } else {
+          const currentHour = DateTime.now().hour;
+          let colours = [];
+
+          for (const item of xValues) {
+            colours.push(DateTime.fromJSDate(item).hour === currentHour ?
+                         currentHourColour : defaultColour);
+          }
+
+          return colours;
+        }
+      };
+
+      const xValues = [];
+      const data = {
+        price: []
+      };
+
+      for (const item of priceData) {
+        xValues.push(DateTime.fromISO(item['start-time']).toJSDate());
+        data.price.push(item.price);
+      }
+
+      const generateElecTraceConfig = () => {
+        return [{
+          x: xValues,
+          y: data.price,
+          name: 'Price',
+          type: 'bar',
+          xhoverformat: '<b>%d.%m. %H:%M</b>',
+          hovertemplate: '%{y}%{text}',
+          text: Array(xValues.length).fill(' c / kWh'),
+          textposition: 'none',
+          marker: {
+            color: generateBarColourValues(xValues)
+          }
+        }];
+      };
+
+      const extValuesPrice = getDataExtremeValues([data.price]);
+
+      const generateElecLayoutConfig = (diffInDays) => {
+        return {
+          width: 1300,
+          height: 650,
+          title: {
+            text: 'Electricity price (15 minute resolution)'
+          },
+          xaxis: {
+            title: {
+              text: 'Time'
+            },
+            type: 'date',
+            dtick: getXAxisTickSize(diffInDays),
+            tickformat: '%H'
+          },
+          yaxis: {
+            title: {
+              text: 'Price (c / kWh)'
+            },
+            range: [extValuesPrice[0] - 0.4,
+                    extValuesPrice[extValuesPrice.length - 1] + 0.4]
+          },
+          legend: {
+            orientation: 'h'
+          },
+          hovermode: 'x unified'
+        };
+      };
+
+      const diffInDays = DateTime.fromJSDate(xValues[xValues.length - 1]).diff(
+        DateTime.fromJSDate(xValues[0]), 'days').toObject().days;
+      if (!document.getElementById('minuteElecDataPlot').data) {
+        Plotly.newPlot('minuteElecDataPlot',
+          generateElecTraceConfig(),
+          generateElecLayoutConfig(diffInDays));
+      } else {
+        Plotly.react('minuteElecDataPlot',
+          generateElecTraceConfig(),
+          generateElecLayoutConfig(diffInDays));
+      }
+    };
+
+
     // Determine the index of electricity price data value which is closest to the current hour
     const getClosestElecPriceDataIndex = (xValues) => {
       const now = DateTime.now();
@@ -635,8 +729,8 @@ const loadPage = () => {
       return smallestIdx;
     };
 
-    // Fetch and display current electricity price data
-    var showElectricityPrice = () => {
+    // Fetch and display current electricity data
+    var showElectricityData = () => {
       // Displays the latest price as text
       const showLatestPrice = (priceData) => {
         const now = DateTime.now();
@@ -687,6 +781,7 @@ const loadPage = () => {
 
               document.getElementById('elecStartDate').max = dateMax;
               document.getElementById('elecEndDate').max = dateMax;
+              document.getElementById('elecMinuteDate').max = dateMax;
             }
 
             if (elecData.dates.min) {
@@ -751,6 +846,31 @@ const loadPage = () => {
           }
         }).catch(error => {
           console.log(`Electricity data fetch error: ${error}`);
+        });
+
+      const currentDate = DateTime.now().toISODate();
+      let dateField = document.getElementById('elecMinuteDate');
+      dateField.value = currentDate;
+      axios.get('data/elec-price-minute',
+                {
+                  params: {
+                    date: currentDate,
+                    getDate: true
+                  }
+                })
+        .then(resp => {
+          const elecData = resp.data;
+
+          if (!elecData.prices) {
+            document.getElementById('elecMinuteAccordion').style.display = 'none';
+            return;
+          }
+
+          plotElectricityPriceMinute(elecData.prices);
+          dateField.min = elecData['date-min'];
+        })
+        .catch(error => {
+          console.log(`Electricity price fetch error: ${error}`);
         });
     };
 
@@ -1283,6 +1403,37 @@ const loadPage = () => {
       });
   };
 
+
+  const elecMinuteDateUpdateBtnClickHandler = (event) => {
+    const minuteDate = document.getElementById('elecMinuteDate').value;
+
+    if ((minuteDate && DateTime.fromISO(minuteDate).invalid)) {
+      alert('Error: electricity price date is invalid');
+      event.preventDefault();
+      return;
+    }
+
+    axios.get('data/elec-price-minute',
+              {
+                params: {
+                  date: minuteDate
+                }
+              })
+      .then(resp => {
+        const elecData = resp.data;
+
+        if (elecData.error) {
+          console.log(`Electricity data fetch error: ${elecData.error}`);
+          return;
+        }
+
+        plotElectricityPriceMinute(elecData.prices);
+      })
+      .catch(error => {
+        console.log(`Electricity price fetch error: ${error}`);
+      });
+  };
+
   // Set visibility (shown / hidden) for all traces
   const setAllTracesVisibility = (plotId, showTraces) => {
     const plot = document.getElementById(plotId);
@@ -1335,29 +1486,97 @@ const loadPage = () => {
     updateAnnotationAndRangeYValues(plotElem, traceData);
   };
 
-  document.getElementById('updateBtn').addEventListener('click',
+  const updateMinuteElecPrice = (direction) => {
+    let dateField = document.getElementById('elecMinuteDate');
+
+    const fetchPrice = (newDate) => {
+      axios.get('data/elec-price-minute',
+                {
+                  params: {
+                    date: newDate.toISODate()
+                  }
+                })
+        .then(resp => {
+          const elecData = resp.data;
+
+          if (elecData.error) {
+            console.log(`Electricity data fetch error: ${elecData.error}`);
+            return;
+          }
+
+          dateField.value = newDate.toISODate();
+          plotElectricityPriceMinute(elecData.prices);
+        })
+        .catch(error => {
+          console.log(`Electricity price fetch error: ${error}`);
+        });
+    };
+
+    if (direction === 'forward') {
+      const newDate = DateTime.fromISO(dateField.value).plus({days: 1});
+
+      if (DateTime.fromISO(dateField.max) >= newDate) {
+        fetchPrice(newDate);
+      } else {
+        alert('You are already at the newest date');
+      }
+    } else {
+      const newDate = DateTime.fromISO(dateField.value).minus({days: 1});
+
+      if (DateTime.fromISO(dateField.min) <= newDate) {
+        fetchPrice(newDate);
+      } else {
+        alert('You are already at the oldest date');
+      }
+    }
+  };
+
+  // Click handlers
+  document.getElementById('updateBtn').addEventListener(
+    'click',
     updateButtonClickHandler,
     false);
 
-  document.getElementById('elecUpdateBtn').addEventListener('click',
+  document.getElementById('elecUpdateBtn').addEventListener(
+    'click',
     elecUpdateButtonClickHandler,
     false);
 
-  document.getElementById('showImages').addEventListener('click',
+  document.getElementById('elecMinuteDateUpdateBtn').addEventListener(
+    'click',
+    elecMinuteDateUpdateBtnClickHandler,
+    false);
+
+  document.getElementById('elecMinuteDayBackward').addEventListener(
+    'click',
+    () => {
+      updateMinuteElecPrice('backward');
+    },
+    false);
+
+   document.getElementById('elecMinuteDayForward').addEventListener(
+    'click',
+    () => {
+      updateMinuteElecPrice('forward');
+    },
+    false);
+
+  document.getElementById('showImages').addEventListener(
+    'click',
     () => {
       toggleVisibility('imageDiv');
     },
     false);
 
-  document.getElementById('weatherHideAll')
-    .addEventListener('click',
-                      () => {
-                        plotHideAll('weatherPlot');
-      },
-      false);
+  document.getElementById('weatherHideAll').addEventListener(
+    'click',
+    () => {
+      plotHideAll('weatherPlot');
+    },
+    false);
 
   if (data.obs.length) {
-    showElectricityPrice();
+    showElectricityData();
 
     document.getElementById('showInfoText').addEventListener('click',
       () => {

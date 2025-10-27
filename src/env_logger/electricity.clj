@@ -74,15 +74,15 @@
                                              (db/add-tz-offset-to-dt start-date)
                                              nil)
                                   :dates {:current {:start
-                                                    (jt/format :iso-local-date
-                                                               (if (= (:display-timezone
-                                                                       env) "UTC")
-                                                                 (jt/plus start-date
-                                                                          (jt/hours
-                                                                           (db/get-tz-offset
-                                                                            (:store-timezone
-                                                                             env))))
-                                                                 start-date))}
+                                                    (jt/format
+                                                     :iso-local-date
+                                                     (if (= (:display-timezone
+                                                             env) "UTC")
+                                                       (jt/plus start-date
+                                                                (jt/hours
+                                                                 (db/get-tz-offset
+                                                                  (:store-timezone env))))
+                                                       start-date))}
                                           :max interval-end
                                           :min (db/get-elec-consumption-interval-start
                                                 con)}
@@ -90,6 +90,30 @@
                                                   start-date
                                                   (db/make-local-dt interval-end
                                                                     "end"))})))))))))
+
+(defn electricity-price-minute
+  "Returns data for the electricity price with 15 minute resolution endpoint."
+  [request]
+  (if-not (authenticated? (if (:identity request)
+                            request (:session request)))
+    auth/response-unauthorized
+    (if-not (:show-elec-price env)
+      (serve-json {:error "not-enabled"})
+      (let [date-val (get (:params request) "date")
+            date (when (seq date-val) date-val)
+            get-date (get (:params request) "getDate")]
+        (if-not date
+          (bad-request "Missing parameter")
+          (let [resp-data {:prices (db/get-elec-price-minute
+                                    db/postgres-ds
+                                    (db/make-local-dt date "start")
+                                    (db/make-local-dt date "end"))}]
+            (serve-json
+             (if get-date
+               (assoc resp-data
+                      :date-min
+                      (db/get-elec-price-minute-interval-start db/postgres-ds))
+               resp-data))))))))
 
 (defn parse-consumption-data-file
   "Parses CSV file with electricity consumption data."
