@@ -115,6 +115,10 @@
             #elecMinuteDate {
                 margin-left: 10px;
             }
+
+            #elecPriceShowFees {
+                margin-left: 80px;
+            }
         </style>
 
         <title>Environment log viewer - observations</title>
@@ -217,7 +221,11 @@
 
                     <input type="date" id="elecEndDate">
                     <input type="button" class="btn btn-primary" id="elecUpdateBtn" value="Update">
+
+                    <input type="checkbox" id="elecPriceShowFees" checked />
+                    <label for="elecPriceShowFees">Show price with fees</label>
                 </form>
+
                 <div id="elecInfoBox"></div>
 
                 <div class="accordion" id="elecPlotAccordion">
