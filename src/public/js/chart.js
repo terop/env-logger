@@ -757,7 +757,12 @@ const loadPage = () => {
         }
       };
 
-      axios.get('data/elec-data')
+      axios.get('data/elec-data',
+               {
+                 params: {
+                   addFees: document.getElementById('elecPriceShowFees').checked
+                 }
+               })
         .then(resp => {
           const elecData = resp.data;
 
@@ -813,7 +818,7 @@ const loadPage = () => {
                 if (!elecText.endsWith(' ')) {
                   elecText += ', ';
                 }
-                elecText += `average price: ${elecData['month-price-avg']} c / kWh`;
+                elecText += `average price: <span id="elecMonthAvg">${elecData['month-price-avg']}</span> c / kWh`;
               }
               if (elecData['month-cost'] !== null) {
                 if (!elecText.endsWith(' ')) {
@@ -855,7 +860,8 @@ const loadPage = () => {
                 {
                   params: {
                     date: currentDate,
-                    getDate: true
+                    getDate: true,
+                    addFees: document.getElementById('elecPriceShowFees').checked
                   }
                 })
         .then(resp => {
@@ -1373,7 +1379,8 @@ const loadPage = () => {
       {
         params: {
           startDate,
-          endDate
+          endDate,
+          addFees: document.getElementById('elecPriceShowFees').checked
         }
       })
       .then(resp => {
@@ -1394,6 +1401,9 @@ const loadPage = () => {
           plotElectricityDataHour(elecData['data-hour']);
           plotElectricityDataDay(elecData['data-day']);
 
+          if (elecData['month-price-avg']) {
+            document.getElementById('elecMonthAvg').innerText = elecData['month-price-avg'];
+          }
           document.getElementById('intervalCost').innerText =
             elecData['interval-cost'] !== null ? elecData['interval-cost'] : 0;
         }
@@ -1416,7 +1426,8 @@ const loadPage = () => {
     axios.get('data/elec-price-minute',
               {
                 params: {
-                  date: minuteDate
+                  date: minuteDate,
+                  addFees: document.getElementById('elecPriceShowFees').checked
                 }
               })
       .then(resp => {
@@ -1493,7 +1504,8 @@ const loadPage = () => {
       axios.get('data/elec-price-minute',
                 {
                   params: {
-                    date: newDate.toISODate()
+                    date: newDate.toISODate(),
+                    addFees: document.getElementById('elecPriceShowFees').checked
                   }
                 })
         .then(resp => {

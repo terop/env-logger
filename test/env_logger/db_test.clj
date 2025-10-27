@@ -487,11 +487,13 @@
     ;; Tests with no data for both day and hour
     (is (nil? (get-elec-data-hour test-ds
                                   (make-local-dt "2022-10-08" "start")
-                                  (make-local-dt "2022-10-08" "end"))))
-    (is (nil? (first (get-elec-data-day test-ds "2022-10-08" "2022-10-08"))))
+                                  (make-local-dt "2022-10-08" "end")
+                                  true)))
+    (is (nil? (first (get-elec-data-day test-ds "2022-10-08" "2022-10-08" true))))
     (is (nil? (first (get-elec-data-day test-ds
                                         "2022-10-08"
-                                        nil))))
+                                        nil
+                                        true))))
     (js/insert! test-ds
                 :electricity_price
                 {:start_time (jt/sql-timestamp (jt/zoned-date-time 2022 10 8
@@ -510,52 +512,68 @@
     ;; Hour data tests
     (let [res (get-elec-data-hour test-ds
                                   (make-local-dt "2022-10-08" "start")
-                                  (make-local-dt "2022-10-08" "end"))
+                                  (make-local-dt "2022-10-08" "end")
+                                  true)
           row (first res)]
       (is (= 1 (count res)))
       (is (rel= 15.89 (:price row) :tol 0.01))
       (is (nil? (:consumption row))))
     (let [res (get-elec-data-hour test-ds
                                   (make-local-dt "2022-10-07" "start")
-                                  (make-local-dt "2022-10-08" "end"))
+                                  (make-local-dt "2022-10-08" "end")
+                                  true)
           row (first res)]
       (is (= 2 (count res)))
       (is (rel= 9.89 (:price row) :tol 0.01))
       (is (rel= 1.0 (:consumption row) :tol 0.01)))
+    (let [res (get-elec-data-hour test-ds
+                                  (make-local-dt "2022-10-07" "start")
+                                  (make-local-dt "2022-10-08" "end")
+                                  false)
+          row (first res)]
+      (is (rel= 4.0 (:price row) :tol 0.01)))
     (is (= 2 (count (get-elec-data-hour test-ds
                                         (make-local-dt "2022-10-07" "start")
-                                        nil))))
+                                        nil
+                                        false))))
     (is (nil? (get-elec-data-hour test-ds
                                   (make-local-dt "2022-10-10" "start")
-                                  (make-local-dt "2022-10-10" "end"))))
+                                  (make-local-dt "2022-10-10" "end")
+                                  true)))
     (with-redefs [jdbc/execute! (fn [_ _ _]
                                   (throw (PSQLException.
                                           "Test exception"
                                           PSQLState/COMMUNICATION_ERROR)))]
       (is (nil? (get-elec-data-hour test-ds
                                     (make-local-dt "2022-10-08" "start")
-                                    (make-local-dt "2022-10-08" "end")))))
+                                    (make-local-dt "2022-10-08" "end")
+                                    true))))
     ;; Day data tests
-    (let [result (get-elec-data-day test-ds "2022-10-07" "2022-10-08")
+    (let [result (get-elec-data-day test-ds "2022-10-07" "2022-10-08" true)
           one (first result)
           two (nth result 1)]
       (is (= {:consumption 1.0 :date "2022-10-07"} (dissoc one :price)))
       (is (rel= 9.89 (:price one) :tol 0.01))
       (is (= {:consumption nil :date "2022-10-08"} (dissoc two :price)))
       (is (rel= 15.89 (:price two) :tol 0.01)))
-    (let [result (get-elec-data-day test-ds "2022-10-07" nil)
+    (let [result (get-elec-data-day test-ds "2022-10-07" nil true)
           one (first result)
           two (nth result 1)]
       (is (= {:consumption 1.0 :date "2022-10-07"} (dissoc one :price)))
       (is (rel= 9.89 (:price one) :tol 0.01))
       (is (= {:consumption nil :date "2022-10-08"} (dissoc two :price)))
       (is (rel= 15.89 (:price two) :tol 0.01)))
-    (is (nil? (first (get-elec-data-day test-ds "2022-10-10" "2022-10-10"))))
+    (let [result (get-elec-data-day test-ds "2022-10-07" "2022-10-08" false)
+          one (first result)
+          two (nth result 1)]
+      (is (rel= 4.0 (:price one) :tol 0.01))
+      (is (rel= 10.0 (:price two) :tol 0.01)))
+    (is (nil? (first (get-elec-data-day test-ds "2022-10-10" "2022-10-10" true))))
     (with-redefs [jdbc/execute-one! (fn [_ _ _]
                                       (throw (PSQLException.
                                               "Test exception"
                                               PSQLState/COMMUNICATION_ERROR)))]
-      (is (nil? (first (get-elec-data-day test-ds "2022-10-08" nil)))))
+      (is (nil? (first (get-elec-data-day test-ds "2022-10-08" nil true)))))
     (jdbc/execute! test-ds (sql/format {:delete-from :electricity_consumption}))
     (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))))
 
@@ -695,8 +713,8 @@
                       (throw (PSQLException.
                               "Test exception"
                               PSQLState/COMMUNICATION_ERROR)))]
-        (is (nil? (get-elec-price-minute test-ds start end))))
-      (is (nil? (get-elec-price-minute test-ds start end)))
+        (is (nil? (get-elec-price-minute test-ds start end true))))
+      (is (nil? (get-elec-price-minute test-ds start end true)))
 
       (js/insert! test-ds
                   :electricity_price_minute
@@ -704,11 +722,12 @@
                                                                      0 0 0))
                    :price 4.0})
       (is (rel= 9.89
-                (:price (first (get-elec-price-minute test-ds start end)))
+                (:price (first (get-elec-price-minute test-ds start end true)))
                 :tol 0.01))
       (is (nil? (get-elec-price-minute test-ds
                                        (jt/plus start (jt/days 1))
-                                       (jt/plus end (jt/days 1)))))
+                                       (jt/plus end (jt/days 1))
+                                       true)))
       (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price_minute})))))
 
 (deftest test-get-month-avg-elec-price
@@ -718,8 +737,8 @@
                     (throw (PSQLException.
                             "Test exception"
                             PSQLState/COMMUNICATION_ERROR)))]
-      (is (nil? (get-month-avg-elec-price test-ds))))
-    (is (nil? (get-month-avg-elec-price test-ds)))
+      (is (nil? (get-month-avg-elec-price test-ds true))))
+    (is (nil? (get-month-avg-elec-price test-ds true)))
 
     (js/insert! test-ds
                 :electricity_price
@@ -730,7 +749,7 @@
                 {:start_time (jt/sql-timestamp (jt/minus (jt/zoned-date-time)
                                                          (jt/hours 1)))
                  :price 4.0})
-    (is (rel= 12.89 (get-month-avg-elec-price test-ds)
+    (is (rel= 12.89 (get-month-avg-elec-price test-ds true)
               :tol 0.01))
     ;; Check that prices before the current month are not used
     (js/insert! test-ds
@@ -738,7 +757,7 @@
                 {:start_time (jt/sql-timestamp (jt/minus (jt/zoned-date-time)
                                                          (jt/days 40)))
                  :price 12.0})
-    (is (rel= 12.89 (get-month-avg-elec-price test-ds)
+    (is (rel= 12.89 (get-month-avg-elec-price test-ds true)
               :tol 0.01))
     (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))))
 

@@ -21,17 +21,17 @@
                (j/read-value (:body (e/electricity-data {}))))))
       (with-redefs [authenticated? (fn [_] true)
                     jt/format (fn [_ _] "2023-02-22")
-                    db/get-elec-data-hour (fn [_ _ _]
+                    db/get-elec-data-hour (fn [_ _ _ _]
                                             [{:start-time 123
                                               :price 10.0
                                               :consumption 0.5}])
-                    db/get-elec-data-day (fn [_ _ _]
+                    db/get-elec-data-day (fn [_ _ _ _]
                                            [{:date "2023-09-04"
                                              :price 7.0
                                              :consumption 1.8}])
                     db/get-elec-consumption-interval-start (fn [_] "2023-02-21")
                     db/get-elec-price-interval-end (fn [_] "2023-09-05")
-                    db/get-month-avg-elec-price (fn [_] "10.0")
+                    db/get-month-avg-elec-price (fn [_ _] "10.0")
                     db/get-month-elec-consumption (fn [_] "70.1")
                     e/calculate-interval-cost (fn [_ _] 0.31)
                     e/calculate-month-cost (fn [] 0.32)]
@@ -71,8 +71,8 @@
           (is (= 400 (:status resp)))
           (is (= "Missing parameter" (:body resp)))))
       (with-redefs [authenticated? (fn [_] true)
-                    db/get-elec-price-minute (fn [_ _ _] [{:start-time 123
-                                                           :price 10.0}])
+                    db/get-elec-price-minute (fn [_ _ _ _] [{:start-time 123
+                                                             :price 10.0}])
                     db/get-elec-price-minute-interval-start (fn [_]
                                                               "2025-10-25")]
         (is (= {"prices" [{"start-time" 123 "price" 10.0}]}

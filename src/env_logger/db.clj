@@ -442,7 +442,7 @@
   "Returns the average electricity price and consumption values per day inside
   the given time interval. If the end parameter is nil all the values after
   start will be returned."
-  [db-con start end]
+  [db-con start end add-fees]
   (try
     (let [end-val (or end
                       (when-let [dt (:date
@@ -472,13 +472,14 @@
                                             (make-local-dt date "end")]]})
                 result (jdbc/execute-one! db-con query rs-opts)]
             (when (:price result)
-              (let [fees (get-elec-fees)]
-                (merge result
-                       {:date (jt/format :iso-local-date date)
-                        :price (when (:price result)
-                                 (round-number (+ (:price result) fees)))
-                        :consumption (when (:consumption result)
-                                       (round-number (:consumption result)))})))))))
+              (merge result
+                     {:date (jt/format :iso-local-date date)
+                      :price (when (:price result)
+                               (round-number (if add-fees
+                                               (+ (:price result) (get-elec-fees))
+                                               (:price result))))
+                      :consumption (when (:consumption result)
+                                     (round-number (:consumption result)))}))))))
     (catch PSQLException pe
       (error pe "Daily electricity data fetch failed")
       [nil])))
@@ -487,7 +488,7 @@
   "Returns the electricity price and consumption values per hour inside the given
   time interval. If the end parameter is nil all the values after start will
   be returned."
-  [db-con start end]
+  [db-con start end add-fees]
   (try
     (let [query (sql/format {:select [:p.start_time
                                       :p.price
@@ -506,7 +507,8 @@
         (let [fees (get-elec-fees)]
           (for [row rows]
             (merge row
-                   {:price (round-number (+ (:price row) fees))
+                   {:price (round-number (if add-fees (+ (:price row) fees)
+                                             (:price row)))
                     :start-time (-convert-time->iso8601-str (:start-time row))})))))
     (catch PSQLException pe
       (error pe "Hourly electricity data fetch failed")
@@ -515,7 +517,7 @@
 (defn get-elec-price-minute
   "Returns the electricity price values with 15 minute resolution for the given
   time interval."
-  [db-con start end]
+  [db-con start end add-fees]
   (try
     (let [query (sql/format {:select [:p.start_time
                                       :p.price]
@@ -529,7 +531,8 @@
         (let [fees (get-elec-fees)]
           (for [row rows]
             (merge row
-                   {:price (round-number (+ (:price row) fees))
+                   {:price (round-number (if add-fees (+ (:price row) fees)
+                                             (:price row)))
                     :start-time (-convert-time->iso8601-str (:start-time row))})))))
     (catch PSQLException pe
       (error pe "Minute resolution electricity price fetch failed")
@@ -537,7 +540,7 @@
 
 (defn get-month-avg-elec-price
   "Returns the average electricity price for the current month."
-  [db-con]
+  [db-con add-fees]
   (try
     (let [today (jt/local-date)
           month-start (jt/minus today (jt/days (dec (jt/as today :day-of-month))))
@@ -547,7 +550,7 @@
                                       (make-local-dt (str month-start) "start")]]})
           result (:avg (jdbc/execute-one! db-con query rs-opts))]
       (when result
-        (round-number (+ result (get-elec-fees)))))
+        (round-number (if add-fees (+ result (get-elec-fees)) result))))
     (catch PSQLException pe
       (error pe "Monthly average electricity price fetch failed")
       nil)))

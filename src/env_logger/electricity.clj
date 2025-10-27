@@ -41,7 +41,10 @@
               start-date (when (seq start-date-val) start-date-val)
               end-date-val (get (:params request) "endDate")
               end-date (when (seq end-date-val) end-date-val)
-              resp-data {:month-price-avg (db/get-month-avg-elec-price con)
+              add-fees-val (get (:params request) "addFees")
+              add-fees (when (seq add-fees-val) (Boolean/parseBoolean add-fees-val))
+              resp-data {:month-price-avg (db/get-month-avg-elec-price con
+                                                                       add-fees)
                          :month-consumption (db/get-month-elec-consumption con)
                          :month-cost (calculate-month-cost)}]
           (if (or start-date end-date)
@@ -54,10 +57,12 @@
                                                                 "start")
                                               (when end-date
                                                 (db/make-local-dt end-date
-                                                                  "end")))
+                                                                  "end"))
+                                              add-fees)
                                   :data-day (db/get-elec-data-day con
                                                                   start-date
-                                                                  end-date)
+                                                                  end-date
+                                                                  add-fees)
                                   :dates {:current {:start start-date
                                                     :end end-date}}
                                   :interval-cost (calculate-interval-cost
@@ -68,11 +73,13 @@
               (serve-json (merge resp-data
                                  {:data-hour (db/get-elec-data-hour con
                                                                     start-date
-                                                                    nil)
+                                                                    nil
+                                                                    add-fees)
                                   :data-day (db/get-elec-data-day
                                              con
                                              (db/add-tz-offset-to-dt start-date)
-                                             nil)
+                                             nil
+                                             add-fees)
                                   :dates {:current {:start
                                                     (jt/format
                                                      :iso-local-date
@@ -101,13 +108,16 @@
       (serve-json {:error "not-enabled"})
       (let [date-val (get (:params request) "date")
             date (when (seq date-val) date-val)
-            get-date (get (:params request) "getDate")]
+            get-date (get (:params request) "getDate")
+            add-fees-val (get (:params request) "addFees")
+            add-fees (when (seq add-fees-val) (Boolean/parseBoolean add-fees-val))]
         (if-not date
           (bad-request "Missing parameter")
           (let [resp-data {:prices (db/get-elec-price-minute
                                     db/postgres-ds
                                     (db/make-local-dt date "start")
-                                    (db/make-local-dt date "end"))}]
+                                    (db/make-local-dt date "end")
+                                    add-fees)}]
             (serve-json
              (if get-date
                (assoc resp-data
