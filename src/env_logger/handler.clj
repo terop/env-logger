@@ -23,6 +23,7 @@
             [env-logger.authentication :as auth]
             [env-logger.db :as db]
             [env-logger.electricity :refer [electricity-data
+                                            electricity-price-minute
                                             parse-consumption-data-file]]
             [env-logger.render :refer [serve-text serve-json serve-template]]
             [env-logger.weather :refer [get-fmi-weather-data
@@ -311,7 +312,8 @@
                                                    % (:session %)))
                            auth/response-unauthorized
                            (serve-json (get-weather-data)))}]
-      ["/elec-data" {:get electricity-data}]]
+      ["/elec-data" {:get electricity-data}]
+      ["/elec-price-minute" {:get electricity-price-minute}]]
      ;; Observation storing
      ["/obs"
       ;; Standard observation

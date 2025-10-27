@@ -50,7 +50,9 @@
             }
 
             #updateBtn,
-            #elecUpdateBtn {
+            #elecUpdateBtn,
+            #elecMinuteDateUpdateBtn,
+            #elecMinuteDayBackward {
                 margin-left: 30px;
             }
 
@@ -104,6 +106,14 @@
                 margin-top: 10px;
                 margin-left: 20px;
                 margin-bottom: 20px;
+            }
+
+            #elecMinuteDateDiv {
+                margin: 10px 0 5px 10px;
+            }
+
+            #elecMinuteDate {
+                margin-left: 10px;
             }
         </style>
 
@@ -211,6 +221,35 @@
                 <div id="elecInfoBox"></div>
 
                 <div class="accordion" id="elecPlotAccordion">
+                    <div class="accordion-item" id="elecMinuteAccordion">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#elecMinutePlotAccordion"
+                                    aria-expanded="true" aria-controls="elecMinutePlotAccordion">
+                                Electricity price (15 minute resolution)
+                            </button>
+                        </h2>
+                        <div id="elecMinutePlotAccordion" class="accordion-collapse collapse show">
+                            <div id="elecMinuteDateDiv">
+                                <form>
+                                    <label for="elecMinuteDate">Date</label>
+                                    <input type="date" id="elecMinuteDate">
+                                    <input type="button" class="btn btn-primary" id="elecMinuteDateUpdateBtn" value="Update">
+
+                                    <button type="button" id="elecMinuteDayBackward" class="btn btn-light" title="Backward one day">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-left-short" viewBox="0 0 16 16">
+                                            <path fill-rule="evenodd" d="M12 8a.5.5 0 0 1-.5.5H5.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 7.5H11.5a.5.5 0 0 1 .5.5"/>
+                                        </svg>
+                                    </button>
+                                    <button type="button" id="elecMinuteDayForward" class="btn btn-light" title="Forward one day">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-right-short" viewBox="0 0 16 16">
+                                            <path fill-rule="evenodd" d="M4 8a.5.5 0 0 1 .5-.5h5.793L8.146 5.354a.5.5 0 1 1 .708-.708l3 3a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708-.708L10.293 8.5H4.5A.5.5 0 0 1 4 8"/>
+                                        </svg>
+                                    </button>
+                                </form>
+                            </div>
+                            <div id="minuteElecDataPlot"></div>
+                        </div>
+                    </div>
                     <div class="accordion-item">
                         <h2 class="accordion-header">
                             <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#elecHourPlotAccordion"

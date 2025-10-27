@@ -17,9 +17,11 @@
               get-elec-consumption-interval-start
               get-elec-fees
               get-elec-price-interval-end
+              get-elec-price-minute
               get-last-obs-id
               get-latest-elec-consumption-record-time
               get-midnight-dt
+              get-elec-price-minute-interval-start
               get-month-avg-elec-price
               get-month-elec-consumption
               get-obs-date-interval
@@ -665,6 +667,49 @@
                  :price 4.0})
     (is (= "2023-09-05" (get-elec-price-interval-end test-ds)))
     (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))))
+
+(deftest test-get-minute-elec-price-interval-start
+  (testing "Fetching of 15 minute electricity prices interval start"
+    (with-redefs [jdbc/execute-one!
+                  (fn [_ _]
+                    (throw (PSQLException.
+                            "Test exception"
+                            PSQLState/COMMUNICATION_ERROR)))]
+      (is (nil? (get-elec-price-minute-interval-start test-ds))))
+    (is (nil? (get-elec-price-minute-interval-start test-ds)))
+
+    (js/insert! test-ds
+                :electricity_price_minute
+                {:start_time (jt/sql-timestamp (jt/zoned-date-time 2025 10 25
+                                                                   0 0 0))
+                 :price 4.0})
+    (is (= "2025-10-25" (get-elec-price-minute-interval-start test-ds)))
+    (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price_minute}))))
+
+(deftest test-get-elec-price-minute
+  (testing "Fetching of 15 minute resolution electricity prices"
+    (let [start (make-local-dt "2025-10-25" "start")
+          end (make-local-dt "2025-10-25" "end")]
+      (with-redefs [jdbc/execute-one!
+                    (fn [_ _]
+                      (throw (PSQLException.
+                              "Test exception"
+                              PSQLState/COMMUNICATION_ERROR)))]
+        (is (nil? (get-elec-price-minute test-ds start end))))
+      (is (nil? (get-elec-price-minute test-ds start end)))
+
+      (js/insert! test-ds
+                  :electricity_price_minute
+                  {:start_time (jt/sql-timestamp (jt/zoned-date-time 2025 10 25
+                                                                     0 0 0))
+                   :price 4.0})
+      (is (rel= 9.89
+                (:price (first (get-elec-price-minute test-ds start end)))
+                :tol 0.01))
+      (is (nil? (get-elec-price-minute test-ds
+                                       (jt/plus start (jt/days 1))
+                                       (jt/plus end (jt/days 1)))))
+      (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price_minute})))))
 
 (deftest test-get-month-avg-elec-price
   (testing "Calculating the average electricity price of the current month"

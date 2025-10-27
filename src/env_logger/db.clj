@@ -512,6 +512,29 @@
       (error pe "Hourly electricity data fetch failed")
       nil)))
 
+(defn get-elec-price-minute
+  "Returns the electricity price values with 15 minute resolution for the given
+  time interval."
+  [db-con start end]
+  (try
+    (let [query (sql/format {:select [:p.start_time
+                                      :p.price]
+                             :from [[:electricity_price_minute :p]]
+                             :where [:and
+                                     [:>= :p.start_time start]
+                                     [:<= :p.start_time end]]
+                             :order-by [[:p.start_time :asc]]})
+          rows (jdbc/execute! db-con query rs-opts)]
+      (when (pos? (count rows))
+        (let [fees (get-elec-fees)]
+          (for [row rows]
+            (merge row
+                   {:price (round-number (+ (:price row) fees))
+                    :start-time (-convert-time->iso8601-str (:start-time row))})))))
+    (catch PSQLException pe
+      (error pe "Minute resolution electricity price fetch failed")
+      nil)))
+
 (defn get-month-avg-elec-price
   "Returns the average electricity price for the current month."
   [db-con]
@@ -613,6 +636,20 @@
           (jt/format :iso-local-date (jt/minus end-dt (jt/hours 1))))))
     (catch PSQLException pe
       (error pe "Electricity price date interval end fetch failed")
+      nil)))
+
+(defn get-elec-price-minute-interval-start
+  "Fetches the date interval start of 15 minute electricity price data."
+  [db-con]
+  (try
+    (let [result (jdbc/execute-one! db-con
+                                    (sql/format
+                                     {:select [[:%min.start_time "start"]]
+                                      :from :electricity_price_minute}))]
+      (when (:start result)
+        (jt/format :iso-local-date (jt/local-date-time (:start result)))))
+    (catch PSQLException pe
+      (error pe "15 minue electricity price date interval start fetch failed")
       nil)))
 
 (defn get-month-elec-consumption

@@ -57,6 +57,33 @@
                (j/read-value (:body (e/electricity-data
                                      {:params {}})))))))))
 
+(deftest electricity-price-minute-test
+  (testing "Electricity minute price fetching"
+    (with-redefs [db/postgres-ds test-ds]
+      (with-redefs [authenticated? (fn [_] false)]
+        (is (= 401 (:status (e/electricity-price-minute {})))))
+      (with-redefs [env {:show-elec-price false}
+                    authenticated? (fn [_] true)]
+        (is (= {"error" "not-enabled"}
+               (j/read-value (:body (e/electricity-price-minute {}))))))
+      (with-redefs [authenticated? (fn [_] true)]
+        (let [resp (e/electricity-price-minute {})]
+          (is (= 400 (:status resp)))
+          (is (= "Missing parameter" (:body resp)))))
+      (with-redefs [authenticated? (fn [_] true)
+                    db/get-elec-price-minute (fn [_ _ _] [{:start-time 123
+                                                           :price 10.0}])
+                    db/get-elec-price-minute-interval-start (fn [_]
+                                                              "2025-10-25")]
+        (is (= {"prices" [{"start-time" 123 "price" 10.0}]}
+               (j/read-value (:body (e/electricity-price-minute
+                                     {:params {"date" "2025-10-27"}})))))
+        (is (= {"prices" [{"start-time" 123 "price" 10.0}]
+                "date-min" "2025-10-25"}
+               (j/read-value (:body (e/electricity-price-minute
+                                     {:params {"date" "2025-10-27"
+                                               "getDate" true}})))))))))
+
 (deftest parse-consumption-data-file-test
   (testing "Electricity consumption data file parsing"
     (is (= {:error "no-data"} (e/parse-consumption-data-file
