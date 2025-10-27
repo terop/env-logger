@@ -1,4 +1,5 @@
 /* global axios */
+/* eslint no-unused-vars: ["error", { "argsIgnorePattern": "^_" }] */
 
 let username = '';
 

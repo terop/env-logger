@@ -4,6 +4,7 @@ target/
 .cpcache/
 .eastwood
 .lsp/
+node_modules/
 resources/dev/config.edn
 resources/prod/config.edn
 resources/config.edn

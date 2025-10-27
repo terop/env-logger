@@ -1,4 +1,5 @@
 /* global axios,username */
+/* eslint no-unused-vars: ["error", { "argsIgnorePattern": "^_" }] */
 
 const publicKeyCredentialCreationOptions = (server, username) => ({
   challenge: Uint8Array.from(
