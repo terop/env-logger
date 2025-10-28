@@ -118,7 +118,7 @@ def clear_display(display):
         display[i].text = ''
 
 
-def get_backend_endpoint_content(endpoint, token):
+def get_backend_endpoint_content(endpoint, token, params=None):
     """Fetch the JSON content of the given backend endpoint.
 
     Returns a (token, JSON value) tuple.
@@ -129,8 +129,13 @@ def get_backend_endpoint_content(endpoint, token):
     try:
         while failure_count <= NW_FAILURE_THRESHOLD:
             try:
-                resp = wifi.get(f'{BACKEND_URL}/{endpoint}',
-                                headers={'Authorization': f'Token {token}'})
+                if params:
+                    resp = wifi.get(f'{BACKEND_URL}/{endpoint}',
+                                    data=params,
+                                    headers={'Authorization': f'Token {token}'})
+                else:
+                    resp = wifi.get(f'{BACKEND_URL}/{endpoint}',
+                                    headers={'Authorization': f'Token {token}'})
                 if resp.status_code != HTTP_STATUS_CODE_OK:
                     if resp.status_code == HTTP_STATUS_CODE_UNAUTHORIZED:
                         print('Error: request was unauthorized, getting new token')
@@ -406,7 +411,8 @@ def main():
                (datetime.now() - elec_price_metadata['fetched']).total_seconds() > \
                elec_price_fetch_threshold:
                 token, elec_price_metadata['raw_data'] = get_backend_endpoint_content(
-                    'data/elec-data', token)
+                    'data/elec-data', token,
+                    {'addFees': 'true'})
                 elec_price_metadata['fetched'] = datetime.now()
 
             now = datetime.now()
