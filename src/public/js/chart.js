@@ -609,29 +609,29 @@ const loadPage = () => {
       }
     };
 
+    // Highlight the current hour's values in the 15 minute electricity
+    // price data chart
+    const generateElecMinuteChartBarColourValues = (xValues) => {
+      const defaultColour = '#1565a3';
+      const currentHourColour = '#60a5fa';
+
+      if (DateTime.now().day !== DateTime.fromJSDate(xValues[0]).day) {
+        return Array(xValues.length).fill(defaultColour);
+      } else {
+        const currentHour = DateTime.now().hour;
+        let colours = [];
+
+        for (const item of xValues) {
+          colours.push(DateTime.fromJSDate(item).hour === currentHour ?
+                       currentHourColour : defaultColour);
+        }
+
+        return colours;
+      }
+    };
 
     // Show the 15 minute electricity price data in a chart
     var plotElectricityPriceMinute = (priceData) => {
-
-      const generateBarColourValues = (xValues) => {
-        const defaultColour = '#1565a3';
-        const currentHourColour = '#60a5fa';
-
-        if (DateTime.now().day !== DateTime.fromJSDate(xValues[0]).day) {
-          return Array(xValues.length).fill(defaultColour);
-        } else {
-          const currentHour = DateTime.now().hour;
-          let colours = [];
-
-          for (const item of xValues) {
-            colours.push(DateTime.fromJSDate(item).hour === currentHour ?
-                         currentHourColour : defaultColour);
-          }
-
-          return colours;
-        }
-      };
-
       const xValues = [];
       const data = {
         price: []
@@ -653,7 +653,7 @@ const loadPage = () => {
           text: Array(xValues.length).fill(' c / kWh'),
           textposition: 'none',
           marker: {
-            color: generateBarColourValues(xValues)
+            color: generateElecMinuteChartBarColourValues(xValues)
           }
         }];
       };
@@ -846,7 +846,7 @@ const loadPage = () => {
 
                 update.shapes = shapes;
                 Plotly.relayout(plot, update);
-              }, 60000);
+              }, 120000);
             }
           }
         }).catch(error => {
@@ -874,6 +874,12 @@ const loadPage = () => {
 
           plotElectricityPriceMinute(elecData.prices);
           dateField.min = elecData['date-min'];
+
+          setInterval(() => {
+            const plot = document.getElementById('minuteElecDataPlot');
+            const update = {'marker.color': [generateElecMinuteChartBarColourValues(plot.data[0].x)]};
+            Plotly.restyle(plot, update, [0]);
+          }, 120000);
         })
         .catch(error => {
           console.log(`Electricity price fetch error: ${error}`);
