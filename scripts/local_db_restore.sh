@@ -44,24 +44,16 @@ while getopts 'hkl' OPTION; do
 done
 shift "$((OPTIND - 1))"
 
-if [ ${local_db} ] && [ ${kubernetes_db} ]; then
+if [ "${local_db}" ] && [ "${kubernetes_db}" ]; then
     echo "Error: both -k and -l flags cannot be specified simultaneously" >&2
     exit 1
 fi
-if [ -z ${local_db} ] && [ -z ${kubernetes_db} ]; then
+if [ -z "${local_db}" ] && [ -z "${kubernetes_db}" ]; then
     echo "Error: either -k or -l flag must be specified" >&2
     exit 1
 fi
 
-if [ ${kubernetes_db} ]; then
-    if [ -z "${DB_PASSWD}" ]; then
-        echo "Error: DB_PASSWD env variable must be specified" >&2
-        exit 1
-    fi
-    if [ -z "${DB_USER}" ]; then
-        echo "Error: DB_USER env variable must be specified" >&2
-        exit 1
-    fi
+if [ "${kubernetes_db}" ]; then
     if [ -z "${POD_NAME}" ]; then
         echo "Error: POD_NAME env variable must be specified" >&2
         exit 1
@@ -80,16 +72,17 @@ if [ -z "${snapshot_name}" ]; then
     exit 1
 fi
 
-file_out=$(file -ib ${snapshot_name})
+file_out=$(file -ib "${snapshot_name}")
+# shellcheck disable=SC2046
 if [ $(echo "${file_out}"|grep -c xz) -eq 1 ]; then
     echo "Compressed snapshot, decompressing before restore"
-    unxz ${snapshot_name}
-    snapshot_name=$(echo ${snapshot_name}|sed 's/.xz//')
+    unxz "${snapshot_name}"
+    snapshot_name=$(echo "${snapshot_name}"|sed 's/.xz//')
 fi
 
 echo "Adding new values"
-if [ ${local_db} ]; then
-    psql "${db_name}" < "${snapshot_name}"
+if [ "${local_db}" ]; then
+   pg_restore -c -d "${db_name}" < "${snapshot_name}"
 else
-    kubectl exec -i ${POD_NAME} -- /bin/sh -c "PGPASSWORD='${DB_PASSWD}' psql -U ${DB_USER} -d ${db_name}" < "${snapshot_name}"
+    kubectl exec -i "${POD_NAME}" -c postgres -- pg_restore -c -d "${db_name}" < "${snapshot_name}"
 fi

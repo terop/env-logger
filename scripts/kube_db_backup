@@ -4,7 +4,6 @@
 # Kubernetes. db_backup.sh must reside in the same directory as this script.
 
 # NOTE! Change the values below before running
-db_user=myuser
 pod_name=postgrespod
 
 set -e
@@ -39,5 +38,4 @@ fi
 export PATH="/usr/local/bin:${PATH}"
 export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 
-export POSTGRES_PASSWORD=$(kubectl get secret --namespace default postgresql -o jsonpath="{.data.password}" | base64 -d)
-DB_PASSWD=${POSTGRES_PASSWORD} DB_USER=${db_user} POD_NAME=${pod_name} ./db_backup.sh -k "${db_name}"
+POD_NAME=${pod_name} ./db_backup.sh -k "${db_name}"
