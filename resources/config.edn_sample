@@ -42,6 +42,13 @@
  :elec-transfer-fee 0.0266
  ;; Electricity tax per kWh (in Euros)
  :elec-tax 0.02827515
+ ;; OpenID Connect authentication settings
+ :oid-auth {;; Base URL for all endpoints
+            :base-url "https://example.com/keycloak/realms/myrealm"
+            ;; Client name
+            :client-id "myclient"
+            ;; JWT subject UUIDs of authorised users
+            :authorised-subject-uuids ["my-uuid"]}
  ;; WebAuthn site property settings
  :webauthn {;; Hostname
             :hostname "localhost"

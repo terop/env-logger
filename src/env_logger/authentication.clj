@@ -22,7 +22,11 @@
            com.webauthn4j.converter.AttestedCredentialDataConverter
            (com.webauthn4j.converter.util CborConverter ObjectConverter)
            org.postgresql.util.PSQLException
-           webauthn4j.AttestationStatementEnvelope))
+           webauthn4j.AttestationStatementEnvelope
+           org.jose4j.jwk.HttpsJwks
+           org.jose4j.keys.resolvers.HttpsJwksVerificationKeyResolver
+           org.jose4j.jwt.JwtClaims
+           (org.jose4j.jwt.consumer InvalidJwtException JwtConsumer JwtConsumerBuilder)))
 (refer-clojure :exclude '[filter for group-by into partition-by set update])
 (require '[honey.sql :as sql])
 
@@ -234,3 +238,79 @@
             token (jwt/encrypt claims jwe-secret {:alg :a256kw :enc :a128gcm})]
         (serve-text token))
       response-unauthorized)))
+
+;; OpenID Connect
+
+(defn- validate-access-token
+  "Validate provided access token in JWT format."
+  [jwt-string]
+  (let [http-jwks (HttpsJwks. (str (:base-url (:oid-auth env))
+                                   "/protocol/openid-connect/certs"))
+        http-key-resolver (HttpsJwksVerificationKeyResolver. http-jwks)
+        jwt-consumer (-> (JwtConsumerBuilder.)
+                         JwtConsumerBuilder/.setRequireExpirationTime
+                         (JwtConsumerBuilder/.setAllowedClockSkewInSeconds 30)
+                         JwtConsumerBuilder/.setRequireSubject
+                         JwtConsumerBuilder/.setRequireIssuedAt
+                         (JwtConsumerBuilder/.setExpectedAudience
+                          (into-array ["account"]))
+                         (JwtConsumerBuilder/.setExpectedIssuer
+                          (:base-url (:oid-auth env)))
+                         (JwtConsumerBuilder/.setVerificationKeyResolver
+                          http-key-resolver)
+                         .build)]
+    (try
+      (contains? (set (:authorised-subject-uuids (:oid-auth env)))
+                 (JwtClaims/.getSubject (JwtConsumer/.processToClaims jwt-consumer
+                                                                      jwt-string)))
+      (catch InvalidJwtException _
+        (error "Access token JWT validation failed")
+        nil))))
+
+(defn- validate-id-token
+  "Validate provided ID token."
+  [jwt-string]
+  (let [http-jwks (HttpsJwks. (str (:base-url (:oid-auth env))
+                                   "/protocol/openid-connect/certs"))
+        http-key-resolver (HttpsJwksVerificationKeyResolver. http-jwks)
+        jwt-consumer (-> (JwtConsumerBuilder.)
+                         (JwtConsumerBuilder/.setExpectedAudience
+                          (into-array [(:client-id (:oid-auth env))]))
+                         (JwtConsumerBuilder/.setExpectedIssuer
+                          (:base-url (:oid-auth env)))
+                         (JwtConsumerBuilder/.setVerificationKeyResolver
+                          http-key-resolver)
+                         ;; Allow big skew because ID tokens have the same value
+                         ;; in iat and exp claims
+                         (JwtConsumerBuilder/.setAllowedClockSkewInSeconds 2592000)
+                         JwtConsumerBuilder/.setRequireIssuedAt
+                         JwtConsumerBuilder/.setRequireSubject
+                         .build)]
+    (try
+      (contains? (set (:authorised-subject-uuids (:oid-auth env)))
+                 (JwtClaims/.getSubject (JwtConsumer/.processToClaims jwt-consumer
+                                                                      jwt-string)))
+      (catch InvalidJwtException _
+        (error "ID token JWT validation failed")
+        nil))))
+
+(defn user-authorized?
+  "Checks if the user is authorised."
+  [request]
+  (when-let [token (:value (get (:cookies request)
+                                "X-Authorization-Token"))]
+    (validate-access-token token)))
+
+(defn user-authenticated?
+  "Checks if the user is authenticated."
+  [request]
+  (when-let [token (:value (get (:cookies request)
+                                "Bearer"))]
+    (validate-id-token token)))
+
+(defn access-ok?
+  "Checks the the user is both authenticated and authorised."
+  [request]
+  (if-let [bearer-token (get (:headers request) "bearer")]
+    (validate-access-token bearer-token)
+    (and (user-authenticated? request) (user-authorized? request))))

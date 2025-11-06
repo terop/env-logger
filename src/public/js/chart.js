@@ -1,4 +1,4 @@
-/* global axios,luxon,Plotly */
+/* global axios,luxon,Plotly,refreshTokensIfNeeded */
 
 const DateTime = luxon.DateTime;
 
@@ -1683,3 +1683,7 @@ axios.get('data/display')
   .catch(error => {
     console.log(`Initial display data fetch error: ${error}`);
   });
+
+setInterval(() => {
+  refreshTokensIfNeeded();
+}, 30000);

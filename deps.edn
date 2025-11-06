@@ -23,6 +23,7 @@
         buddy/buddy-sign {:mvn/version "3.6.1-359"}
         com.taoensso/timbre {:mvn/version "6.8.0"}
         com.fzakaria/slf4j-timbre {:mvn/version "0.4.1"}
+        org.bitbucket.b_c/jose4j {:mvn/version "0.9.6"}
         terop/cljwebauthn
         {:git/url "https://github.com/terop/cljwebauthn.git"
          :sha "98a4fe15469c3f18a77ed3865ba8226a51ddadd5"}}

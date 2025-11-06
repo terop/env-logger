@@ -1,10 +1,10 @@
 (ns env-logger.electricity-test
   (:require [clojure.test :refer [deftest is testing]]
             [tupelo.core :refer [rel=]]
-            [buddy.auth :refer [authenticated?]]
             [config.core :refer [env]]
             [java-time.api :as jt]
             [jsonista.core :as j]
+            [env-logger.authentication :refer [access-ok?]]
             [env-logger.db :as db]
             [env-logger.db-test :refer [test-ds]]
             [env-logger.electricity :as e])
@@ -13,13 +13,13 @@
 (deftest electricity-data-test
   (testing "Electricity data fetch function"
     (with-redefs [db/postgres-ds test-ds]
-      (with-redefs [authenticated? (fn [_] false)]
+      (with-redefs [access-ok? (fn [_] false)]
         (is (= 401 (:status (e/electricity-data {})))))
       (with-redefs [env {:show-elec-price false}
-                    authenticated? (fn [_] true)]
+                    access-ok? (fn [_] true)]
         (is (= {"error" "not-enabled"}
                (j/read-value (:body (e/electricity-data {}))))))
-      (with-redefs [authenticated? (fn [_] true)
+      (with-redefs [access-ok? (fn [_] true)
                     jt/format (fn [_ _] "2023-02-22")
                     db/get-elec-data-hour (fn [_ _ _ _]
                                             [{:start-time 123
@@ -60,17 +60,17 @@
 (deftest electricity-price-minute-test
   (testing "Electricity minute price fetching"
     (with-redefs [db/postgres-ds test-ds]
-      (with-redefs [authenticated? (fn [_] false)]
+      (with-redefs [access-ok? (fn [_] false)]
         (is (= 401 (:status (e/electricity-price-minute {})))))
       (with-redefs [env {:show-elec-price false}
-                    authenticated? (fn [_] true)]
+                    access-ok? (fn [_] true)]
         (is (= {"error" "not-enabled"}
                (j/read-value (:body (e/electricity-price-minute {}))))))
-      (with-redefs [authenticated? (fn [_] true)]
+      (with-redefs [access-ok? (fn [_] true)]
         (let [resp (e/electricity-price-minute {})]
           (is (= 400 (:status resp)))
           (is (= "Missing parameter" (:body resp)))))
-      (with-redefs [authenticated? (fn [_] true)
+      (with-redefs [access-ok? (fn [_] true)
                     db/get-elec-price-minute (fn [_ _ _ _] [{:start-time 123
                                                              :price 10.0}])
                     db/get-elec-price-minute-interval-start (fn [_]

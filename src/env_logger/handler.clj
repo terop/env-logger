@@ -52,8 +52,7 @@
 (defn get-latest-obs-data
   "Get data for the latest observation."
   [request]
-  (if-not (authenticated? (if (:identity request)
-                            request (:session request)))
+  (if-not (auth/access-ok? request)
     auth/response-unauthorized
     (with-open [con (jdbc/get-connection db/postgres-ds)]
       (let [data (first (reverse (db/get-obs-days con 1)))
@@ -123,7 +122,7 @@
 (defn get-display-data
   "Returns the data to be displayed in the front-end."
   [request]
-  (if-not (authenticated? (:session request))
+  (if-not (auth/access-ok? request)
     auth/response-unauthorized
     (serve-json
      (merge {:weather-data (get-weather-data)
@@ -151,7 +150,7 @@
   ;; Sleep a bit before continuing so that the possible weather data update
   ;; has the possibility to complete
   (Thread/sleep 1500)
-  (if-not (auth/check-auth-code (get (:params request) "code"))
+  (if-not (auth/access-ok? request)
     auth/response-unauthorized
     (if-not (db/test-db-connection db/postgres-ds)
       auth/response-server-error
@@ -166,7 +165,7 @@
 (defn rt-observation-insert
   "Function called when an RuuviTag observation is posted."
   [request]
-  (if-not (auth/check-auth-code (get (:params request) "code"))
+  (if-not (auth/access-ok? request)
     auth/response-unauthorized
     (with-open [con (jdbc/get-connection db/postgres-ds)]
       (if-not (db/test-db-connection con)
@@ -201,7 +200,7 @@
 (defn tb-image-insert
   "Function called when an RuuviTag observation is posted."
   [request]
-  (if-not (auth/check-auth-code (get (:params request) "code"))
+  (if-not (auth/access-ok? request)
     auth/response-unauthorized
     (with-open [con (jdbc/get-connection db/postgres-ds)]
       (if-not (db/test-db-connection con)
@@ -279,17 +278,26 @@
     ;; Index
     [["/" {:get #(if-not (db/test-db-connection db/postgres-ds)
                    (serve-template "templates/error.html" {})
-                   (if-not (authenticated? (:session %))
-                     (serve-template "templates/login.html" {})
-                     (serve-template "templates/chart.html" {})))}]
+                   (if-not (auth/access-ok? %)
+                     (serve-template "templates/login.html"
+                                     {:oid-base-url (:base-url (:oid-auth env))
+                                      :application-url (:app-url env)
+                                      :client-id (:client-id (:oid-auth env))})
+                     (serve-template "templates/chart.html"
+                                     {:oid-base-url (:base-url (:oid-auth env))
+                                      :client-id (:client-id (:oid-auth env))})))}]
      ;; Login and logout
-     ["/login" {:get #(if-not (authenticated? (:session %))
-                        (serve-template "templates/login.html" {})
-                        (found (:app-url env)))
-                :post auth/login-authenticate}]
+     ["/login" {:get (fn [_] (serve-template "templates/login.html"
+                                             {:oid-base-url (:base-url
+                                                             (:oid-auth env))
+                                              :application-url (:app-url env)
+                                              :client-id (:client-id
+                                                          (:oid-auth env))}))}]
      ["/logout" {:get (fn [_]
-                        (assoc (found (:app-url env))
-                               :session {}))}]
+                        (found (str (:base-url (:oid-auth env))
+                                    "/protocol/openid-connect/logout?post_logout_"
+                                    "redirect_uri=" (:app-url env) "login?logout=1&"
+                                    "client_id=" (:client-id (:oid-auth env)))))}]
      ["/token-login" {:post auth/token-login}]
      ;; WebAuthn
      ["/register" {:get #(if-not (authenticated? (:session %))
@@ -308,8 +316,7 @@
      ["/data"
       ["/display" {:get get-display-data}]
       ["/latest-obs" {:get get-latest-obs-data}]
-      ["/weather" {:get #(if-not (authenticated? (if (:identity %)
-                                                   % (:session %)))
+      ["/weather" {:get #(if-not (auth/access-ok? %)
                            auth/response-unauthorized
                            (serve-json (get-weather-data)))}]
       ["/elec-data" {:get electricity-data}]
@@ -327,7 +334,7 @@
       ;; Time data (timestamp and UTC offset)
       ["/time" {:get time-data}]
       ;; Electricity consumption data upload
-      ["/elec-consumption" {:get #(if (authenticated? (:session %))
+      ["/elec-consumption" {:get #(if (auth/access-ok? %)
                                     (let [latest-dt
                                           (with-open [con
                                                       (jdbc/get-connection
@@ -339,7 +346,7 @@
                                        {:app-url (:app-url env)
                                         :latest-dt latest-dt}))
                                     (found (:app-url env)))
-                            :post #(if (authenticated? (:session %))
+                            :post #(if (auth/access-ok? %)
                                      (serve-json (elec-consumption-data-upload %))
                                      auth/response-unauthorized)}]]]
     {:data {:muuntaja m/instance

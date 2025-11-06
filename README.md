@@ -26,13 +26,10 @@ as `hashers`.
 
 ## Authentication
 
-This application supports both password and WebAuthn based authentication.
-Both methods work independently of each other and currently cannot be combined
-into a two factor authentication mechanism.
-
-To register a WebAuthn authenticator go the `<app url>/register` page when
-logged in. There you can register as many authenticators as needed. When an
-authenticator has been registered it can be used on the login page.
+This application uses OpenID Connect based authentication. Keycloak has been used
+for development but other OpenID Connect implementations should work as well.
+See the `oid-auth` section in the configuration file for the settings to be
+configured.
 
 ## Configuration
 
@@ -64,7 +61,7 @@ command to create the required Java .class file.
 
 ### Docker / podman
 
-This application can be also be run in a Docker or podman container. To build the
+This application can be also be run in a Docker or Podman container. To build the
 container call `make build` from root directory of the application.
 The container will be called `env-logger`. The .jar file to run in in the
 container can be executed with the `java -jar <name>.jar` command.

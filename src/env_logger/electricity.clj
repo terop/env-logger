@@ -4,7 +4,6 @@
             [clojure.java.io :as io]
             [clojure.instant :refer [read-instant-timestamp]]
             [clojure.string :as str]
-            [buddy.auth :refer [authenticated?]]
             [config.core :refer [env]]
             [java-time.api :as jt]
             [next.jdbc :as jdbc]
@@ -31,8 +30,7 @@
 (defn electricity-data
   "Returns data for the electricity data endpoint."
   [request]
-  (if-not (authenticated? (if (:identity request)
-                            request (:session request)))
+  (if-not (auth/access-ok? request)
     auth/response-unauthorized
     (if-not (:show-elec-price env)
       (serve-json {:error "not-enabled"})
@@ -101,8 +99,7 @@
 (defn electricity-price-minute
   "Returns data for the electricity price with 15 minute resolution endpoint."
   [request]
-  (if-not (authenticated? (if (:identity request)
-                            request (:session request)))
+  (if-not (auth/access-ok? request)
     auth/response-unauthorized
     (if-not (:show-elec-price env)
       (serve-json {:error "not-enabled"})
