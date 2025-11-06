@@ -2,7 +2,7 @@
 
 import time
 from collections import OrderedDict
-from secrets import secrets
+from os import getenv
 
 import adafruit_requests
 import board
@@ -21,7 +21,7 @@ HTTP_STATUS_CODE_OK = 200
 HTTP_STATUS_CODE_UNAUTHORIZED = 401
 
 # URL for the backend
-BACKEND_URL = secrets['backend-url']
+BACKEND_URL = getenv('BACKEND_URL')
 # Path to the bitmap font to use, must include the degree symbol (U+00B0)
 FONT = bitmap_font.load_font("fonts/DejaVuSansMono-16.pcf")
 # Sleep time (in seconds) between data refreshes
@@ -63,7 +63,7 @@ def connect_to_wlan():
     esp = adafruit_esp32spi.ESP_SPIcontrol(spi, esp32_cs, esp32_ready, esp32_reset)
     status_pixel = neopixel.NeoPixel(board.NEOPIXEL, 1, brightness=0.2)
     global wifi  # noqa: PLW0603
-    wifi = WiFiManager(esp, secrets['ssid'], secrets['password'],
+    wifi = WiFiManager(esp, getenv('WIFI_SSID'), getenv('WIFI_PASSWORD'),
                        status_pixel=status_pixel)
 
     print('Connecting to AP')
@@ -78,10 +78,8 @@ def fetch_token():
     while True:
         try:
             resp = wifi.post(f'{BACKEND_URL}/token-login',
-                             data={'username':
-                                   secrets['data-read-user']['username'],
-                                   'password':
-                                   secrets['data-read-user']['password']})
+                             data={'username': getenv('DATA_READ_USERNAME'),
+                                   'password': getenv('DATA_READ_PASSWORD')})
             if resp.status_code != HTTP_STATUS_CODE_OK:
                 backend_failure_count += 1
                 print('Error: token acquisition failed, backend failure '
@@ -364,8 +362,8 @@ def update_screen(display, observation, weather_data, elec_data, utc_offset_hour
         for tag in rt_data:
             name = tag['name']
 
-            if (name in seen_names) or \
-               (name in secrets['hidden_ruuvitag_names']):
+            hidden_ruuvitags = getenv('HIDDEN_RUUVITAG_NAMES').split(',')
+            if (name in seen_names) or (name in hidden_ruuvitags):
                 continue
 
             display[row].text = f'RuuviTag \"{name}\": temperature ' + \
@@ -382,7 +380,7 @@ def main():
     connect_to_wlan()
 
     print('Getting current time from backend')
-    utc_offset_hour = set_time(secrets['timezone'])
+    utc_offset_hour = set_time(getenv('TIMEZONE'))
     print('Current time set')
 
     display = SimpleTextDisplay(colors=[SimpleTextDisplay.WHITE], font=FONT)
@@ -435,7 +433,7 @@ def main():
                           utc_offset_hour, not update_data)
 
             if time_set_seconds_slept >= TIME_SET_SLEEP_TIME:
-                set_time(secrets['timezone'])
+                set_time(getenv('TIMEZONE'))
                 time_set_seconds_slept = 0
 
             time_set_seconds_slept += 1

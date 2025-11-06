@@ -1,0 +1,12 @@
+# WiFi settings
+WIFI_SSID = "mynetwork"
+WIFI_PASSWORD = "mypassword"
+
+# Application settings
+TIMEZONE = "UTC"
+BACKEND_URL = "https://example.com/env-logger"
+DATA_READ_USERNAME = "myuser"
+DATA_READ_PASSWORD = "mypassword"
+# Hide RuuviTags with given name(s), an empty array means that all
+# tags are shown. Multiple values separated by commas are supported.
+HIDDEN_RUUVITAG_NAMES = ""
