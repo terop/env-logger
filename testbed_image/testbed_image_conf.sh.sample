@@ -7,4 +7,6 @@ target_directory=/home/myuser/images
 # These values are only needed if env-logger integration is in use
 env_logger_integration=0
 env_logger_url=https://example.com/env-logger
-auth_code=badcode
+oid_token_endpoint=https://example.com/keycloak/realms/myrealm/protocol/openid-connect/token
+oid_client_id=myclientid
+oid_client_secret=mysecretid
