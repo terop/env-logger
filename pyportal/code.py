@@ -45,6 +45,7 @@ BACKLIGHT_DIMMING_VALUE = 0.5
 NW_FAILURE_THRESHOLD = 3
 
 wifi = None
+access_token_expiry_time = None
 
 
 def connect_to_wlan():
@@ -71,22 +72,23 @@ def connect_to_wlan():
 
 
 def fetch_token():
-    """Fetch token for getting data from env-logger backend."""
+    """Fetch JWT token for getting data from env-logger backend."""
     failure_count = 0
     backend_failure_count = 0
 
     while True:
         try:
-            resp = wifi.post(f'{BACKEND_URL}/token-login',
-                             data={'username': getenv('DATA_READ_USERNAME'),
-                                   'password': getenv('DATA_READ_PASSWORD')})
+            resp = wifi.post(getenv('OID_TOKEN_ENDPOINT'),
+                             data={'grant_type': 'client_credentials',
+                                   'client_id': getenv('OID_CLIENT_ID'),
+                                   'client_secret': getenv('OID_CLIENT_SECRET')})
             if resp.status_code != HTTP_STATUS_CODE_OK:
                 backend_failure_count += 1
-                print('Error: token acquisition failed, backend failure '
-                      f'count {backend_failure_count}')
+                print('Error: token acquisition failed, failure count '
+                      f'{backend_failure_count}')
 
                 if backend_failure_count >= NW_FAILURE_THRESHOLD:
-                    print('Error: token fetch failed: backend problem, '
+                    print('Error: token fetch failed: authentication service problem, '
                           f'failure count {backend_failure_count}')
                     return None
 
@@ -105,7 +107,13 @@ def fetch_token():
                 time.sleep(5)
                 supervisor.reload()
 
-    return resp.text
+    token_resp = resp.json()
+
+    global access_token_expiry_time  # noqa: PLW0603
+    access_token_expiry_time = datetime.now() + timedelta(
+        seconds=token_resp['expires_in'])
+
+    return token_resp['access_token']
 
 
 def clear_display(display):
@@ -130,13 +138,13 @@ def get_backend_endpoint_content(endpoint, token, params=None):
                 if params:
                     resp = wifi.get(f'{BACKEND_URL}/{endpoint}',
                                     data=params,
-                                    headers={'Authorization': f'Token {token}'})
+                                    headers={'Bearer': token})
                 else:
                     resp = wifi.get(f'{BACKEND_URL}/{endpoint}',
-                                    headers={'Authorization': f'Token {token}'})
+                                    headers={'Bearer': token})
                 if resp.status_code != HTTP_STATUS_CODE_OK:
                     if resp.status_code == HTTP_STATUS_CODE_UNAUTHORIZED:
-                        print('Error: request was unauthorized, getting new token')
+                        print('Error: request was unauthorised, getting new token')
                         token = fetch_token()
                     else:
                         print(f'Error: failed to fetch content from "{endpoint}"')
@@ -397,7 +405,7 @@ def main():
 
     while True:
         try:
-            if not token:
+            if not token or datetime.now() >= access_token_expiry_time:
                 token = fetch_token()
                 if not token:
                     continue
