@@ -189,7 +189,7 @@ async def scan_ruuvitags(rt_config, bt_device):  # noqa: C901
     return [tag for tag in found_tags.values()]
 
 
-def store_ruuvitags(config, timestamp, tags):
+def store_ruuvitags(config, access_token, timestamp, tags):
     """Send provided RuuviTag data to the backend."""
     json_data = json.dumps(tags)
     max_attempts = 2
@@ -198,9 +198,9 @@ def store_ruuvitags(config, timestamp, tags):
     while attempt_count < max_attempts:
         try:
             resp = requests.post(config['ruuvitag']['url'],
+                                 headers={'Bearer': access_token},
                                  params={'observation': json_data,
-                                         'timestamp': timestamp,
-                                         'code': config['authentication_code']},
+                                         'timestamp': timestamp},
                                  timeout=15)
         except (ConnectTimeoutError, MaxRetryError, OSError, ReadTimeoutError) as err:
             logger.error('RuuviTag data store failed: %s', err)
@@ -273,7 +273,7 @@ async def do_scan(config, bt_device):
     return results
 
 
-def store_observation(config, timestamp, data):
+def store_observation(config, access_token, timestamp, data):
     """Store the observation data to the backend database."""
     if data == {}:
         logger.error('Received no data, stopping')
@@ -287,8 +287,8 @@ def store_observation(config, timestamp, data):
     while attempt_count < max_attempts:
         try:
             resp = requests.post(config['environment']['upload_url'],
-                                 params={'observation': json.dumps(data),
-                                         'code': config['authentication_code']},
+                                 headers={'Bearer': access_token},
+                                 params={'observation': json.dumps(data)},
                                  timeout=15)
         except (ConnectTimeoutError, MaxRetryError, OSError, ReadTimeoutError,
                 TimeoutError) as err:
@@ -300,6 +300,20 @@ def store_observation(config, timestamp, data):
         logger.info("Observation data: '%s', response: code %s, text '%s'",
                     json.dumps(data), resp.status_code, resp.text)
         break
+
+
+def get_access_token(config):
+    """Fetch JWT access token used for observation storage."""
+    resp = requests.post(config['auth']['token_endpoint'],
+                         data={'grant_type': 'client_credentials',
+                               'client_id': config['auth']['client_id'],
+                               'client_secret': config['auth']['client_secret']},
+                         timeout=10)
+    if not resp.ok:
+        logger.error('JWT token fetch failed')
+        return None
+
+    return resp.json()['access_token']
 
 
 def main():
@@ -333,6 +347,9 @@ def main():
             sys.exit(1)
 
     env_config = config['environment']
+    access_token = get_access_token(config)
+    if not access_token:
+        sys.exit(1)
 
     logger.info('Logger run started')
 
@@ -360,9 +377,9 @@ def main():
     env_data['beacon'] = scan_result['ble_beacon']
     if env_data['insideLight'] is not None:
         # Only send environment data when required values are available
-        store_observation(config, timestamp, env_data)
+        store_observation(config, access_token, timestamp, env_data)
 
-    store_ruuvitags(config, timestamp, scan_result['ruuvitag'])
+    store_ruuvitags(config, access_token, timestamp, scan_result['ruuvitag'])
 
 
 if __name__ == '__main__':
