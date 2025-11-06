@@ -14,16 +14,6 @@ is needed. Database definitions can be found in `db-def.sql` and
 a database with the required tables must exist before the application
 can be started.
 
-Users are added to the `users` tables respectively before running the application.
-This can be done with the `scripts/add_user.py` script. In order the install the
-necessary dependencies you need [pipenv](https://github.com/pypa/pipenv).
-Install dependencies themselves with `pipenv install` command in the `scripts`
-directory and run the script with `pipenv run python3 add_user.py <arguments>`.
-
-A user's password can be hashed with the `(hashers/derive "<password>")` command
-in a Clojure REPL where the `buddy-hashers` library is installed and imported
-as `hashers`.
-
 ## Authentication
 
 This application uses OpenID Connect based authentication. Keycloak has been used

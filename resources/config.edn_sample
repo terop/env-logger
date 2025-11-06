@@ -49,11 +49,6 @@
             :client-id "myclient"
             ;; JWT subject UUIDs of authorised users
             :authorised-subject-uuids ["my-uuid"]}
- ;; WebAuthn site property settings
- :webauthn {;; Hostname
-            :hostname "localhost"
-            ;; Use HTTPS?
-            :use-https true}
  ;; Enable enforcing of HSTS, only use if HTTPS is not terminated by a reverse
  ;; proxy or load balancer
  :force-hsts false
@@ -67,11 +62,4 @@
  ;; Authentication code for observation and image storage
  :auth-code "somebadvalue"
  ;; Maximum time difference for FMI Testbed images in minutes
- :image-max-time-diff 15
- ;; JWT token timeout in seconds
- :jwt-token-timeout 7200
- ;; Data read user data
- ;; Password hash is created with the following command from buddy-hashers:
- ;; (derive "<password>" {:alg :bcrypt+blake2b-512})
- :data-user-auth-data {:username "data-reader"
-                       :password ""}}
+ :image-max-time-diff 15}

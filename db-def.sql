@@ -53,24 +53,6 @@ CREATE TABLE ruuvitag_observations (
 
 CREATE INDEX ruuvitag_observations_recorded_brin ON ruuvitag_observations USING BRIN (recorded);
 
--- User table
-CREATE TABLE users (
-       user_id SERIAL PRIMARY KEY,
-       username VARCHAR(100) NOT NULL UNIQUE,
-       pw_hash VARCHAR(250),
-       saved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
-);
-
--- WebAuthn authenticator table
-CREATE TABLE webauthn_authenticators (
-       authn_id SERIAL PRIMARY KEY,
-       user_id INTEGER REFERENCES users (user_id) ON DELETE CASCADE,
-       name VARCHAR(40),
-       counter INTEGER NOT NULL,
-       attested_credential VARCHAR(500) NOT NULL,
-       attestation_statement VARCHAR(2000) NOT NULL
-);
-
 -- Electricity price table
 CREATE TABLE electricity_price (
        id SERIAL PRIMARY KEY,

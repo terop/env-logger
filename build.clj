@@ -12,14 +12,7 @@
 (defn clean [_]
   (b/delete {:path "target"}))
 
-(defn compile-java [_]
-  (b/javac {:src-dirs ["src/java"]
-            :class-dir class-dir
-            :basis basis
-            :javac-opts ["--release" "25" "-proc:none"]}))
-
 (defn build [_]
-  (compile-java nil)
   (b/copy-dir {:src-dirs ["src" "resources"]
                :target-dir class-dir})
   (b/compile-clj {:basis basis

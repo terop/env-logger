@@ -2,9 +2,6 @@
   "The main namespace of the application"
   (:require [clojure.string :refer [ends-with?]]
             [config.core :refer [env]]
-            [buddy.auth :refer [authenticated?]]
-            [buddy.auth.middleware :refer [wrap-authentication
-                                           wrap-authorization]]
             [java-time.api :as jt]
             [jsonista.core :as j]
             [muuntaja.core :as m]
@@ -258,9 +255,7 @@
                             (assoc-in [:params :nested] false)
                             (assoc-in [:params :urlencoded] false)
                             (assoc :static false))]
-    [[wrap-authorization auth/auth-backend]
-     [wrap-authentication auth/jwe-auth-backend auth/auth-backend]
-     parameters/parameters-middleware
+    [parameters/parameters-middleware
      add-cache-control
      [wrap-defaults (if dev-mode
                       defaults-config
@@ -298,20 +293,6 @@
                                     "/protocol/openid-connect/logout?post_logout_"
                                     "redirect_uri=" (:app-url env) "login?logout=1&"
                                     "client_id=" (:client-id (:oid-auth env)))))}]
-     ["/token-login" {:post auth/token-login}]
-     ;; WebAuthn
-     ["/register" {:get #(if-not (authenticated? (:session %))
-                           auth/response-unauthorized
-                           (serve-template "templates/register.html"
-                                           {:username
-                                            (name (get-in %
-                                                          [:session
-                                                           :identity]))}))}]
-     ["/webauthn"
-      ["/register" {:get auth/wa-prepare-register
-                    :post auth/wa-register}]
-      ["/login" {:get auth/wa-prepare-login
-                 :post auth/wa-login}]]
      ;; Data queries
      ["/data"
       ["/display" {:get get-display-data}]
