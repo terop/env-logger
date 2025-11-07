@@ -30,7 +30,7 @@
 (defn electricity-data
   "Returns data for the electricity data endpoint."
   [request]
-  (if-not (auth/access-ok? request)
+  (if-not (auth/access-ok? (:oid-auth env) request)
     auth/response-unauthorized
     (if-not (:show-elec-price env)
       (serve-json {:error "not-enabled"})
@@ -99,7 +99,7 @@
 (defn electricity-price-minute
   "Returns data for the electricity price with 15 minute resolution endpoint."
   [request]
-  (if-not (auth/access-ok? request)
+  (if-not (auth/access-ok? (:oid-auth env) request)
     auth/response-unauthorized
     (if-not (:show-elec-price env)
       (serve-json {:error "not-enabled"})

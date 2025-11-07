@@ -1,8 +1,6 @@
 (ns env-logger.authentication
   "A namespace for authentication related functions"
-  (:require [config.core :refer [env]]
-            [taoensso.timbre :refer [error]]
-            [env-logger.render :refer [serve-text]])
+  (:require [taoensso.timbre :refer [error]])
   (:import org.jose4j.jwk.HttpsJwks
            org.jose4j.keys.resolvers.HttpsJwksVerificationKeyResolver
            org.jose4j.jwt.JwtClaims
@@ -23,8 +21,8 @@
 
 (defn- validate-access-token
   "Validate provided access token in JWT format."
-  [jwt-string]
-  (let [http-jwks (HttpsJwks. (str (:base-url (:oid-auth env))
+  [auth-config jwt-string]
+  (let [http-jwks (HttpsJwks. (str (:base-url auth-config)
                                    "/protocol/openid-connect/certs"))
         http-key-resolver (HttpsJwksVerificationKeyResolver. http-jwks)
         jwt-consumer (-> (JwtConsumerBuilder.)
@@ -35,12 +33,12 @@
                          (JwtConsumerBuilder/.setExpectedAudience
                           (into-array ["account"]))
                          (JwtConsumerBuilder/.setExpectedIssuer
-                          (:base-url (:oid-auth env)))
+                          (:base-url auth-config))
                          (JwtConsumerBuilder/.setVerificationKeyResolver
                           http-key-resolver)
                          .build)]
     (try
-      (contains? (set (:authorised-subject-uuids (:oid-auth env)))
+      (contains? (set (:authorised-subject-uuids auth-config))
                  (JwtClaims/.getSubject (JwtConsumer/.processToClaims jwt-consumer
                                                                       jwt-string)))
       (catch InvalidJwtException _
@@ -49,15 +47,15 @@
 
 (defn- validate-id-token
   "Validate provided ID token."
-  [jwt-string]
-  (let [http-jwks (HttpsJwks. (str (:base-url (:oid-auth env))
+  [auth-config jwt-string]
+  (let [http-jwks (HttpsJwks. (str (:base-url auth-config)
                                    "/protocol/openid-connect/certs"))
         http-key-resolver (HttpsJwksVerificationKeyResolver. http-jwks)
         jwt-consumer (-> (JwtConsumerBuilder.)
                          (JwtConsumerBuilder/.setExpectedAudience
-                          (into-array [(:client-id (:oid-auth env))]))
+                          (into-array [(:client-id auth-config)]))
                          (JwtConsumerBuilder/.setExpectedIssuer
-                          (:base-url (:oid-auth env)))
+                          (:base-url auth-config))
                          (JwtConsumerBuilder/.setVerificationKeyResolver
                           http-key-resolver)
                          ;; Allow big skew because ID tokens have the same value
@@ -67,7 +65,7 @@
                          JwtConsumerBuilder/.setRequireSubject
                          .build)]
     (try
-      (contains? (set (:authorised-subject-uuids (:oid-auth env)))
+      (contains? (set (:authorised-subject-uuids auth-config))
                  (JwtClaims/.getSubject (JwtConsumer/.processToClaims jwt-consumer
                                                                       jwt-string)))
       (catch InvalidJwtException _
@@ -76,24 +74,22 @@
 
 (defn receive-and-check-id-token
   "Receives and validates the ID token and stores the information about this."
-  [request]
+  [auth-config request]
   (reset! id-token-valid false)
-  (if (validate-id-token (get (:query-params request) "id-token"))
-    (do
-      (reset! id-token-valid true)
-      (serve-text "OK"))
-    (serve-text "Not valid")))
+  (when (validate-id-token auth-config (get (:query-params request) "id-token"))
+    (reset! id-token-valid true)
+    true))
 
 (defn user-authorized?
   "Checks if the user is authorised."
-  [request]
+  [auth-config request]
   (when-let [token (:value (get (:cookies request)
                                 "X-Authorization-Token"))]
-    (validate-access-token token)))
+    (validate-access-token auth-config token)))
 
 (defn access-ok?
   "Checks the the user is both authenticated and authorised."
-  [request]
+  [auth-config request]
   (if-let [bearer-token (get (:headers request) "bearer")]
-    (validate-access-token bearer-token)
-    (and @id-token-valid (user-authorized? request))))
+    (validate-access-token auth-config bearer-token)
+    (and @id-token-valid (user-authorized? auth-config request))))

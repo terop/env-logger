@@ -19,7 +19,7 @@
     (with-redefs [db/postgres-ds test-ds]
       (with-redefs [w/fetch-all-weather-data (fn [] {})]
         (is (= 401 (:status (h/observation-insert {}))))
-        (with-redefs [auth/access-ok? (fn [_] true)]
+        (with-redefs [auth/access-ok? (fn [_ _] true)]
           (is (= 400 (:status (h/observation-insert {}))))
           (with-redefs [db/test-db-connection (fn [_] false)]
             (is (= 500 (:status (h/observation-insert {})))))
@@ -39,7 +39,7 @@
 (deftest rt-observation-insert-test
   (testing "RuuviTag observation insert function"
     (is (= 401 (:status (h/rt-observation-insert {}))))
-    (with-redefs [auth/access-ok? (fn [_] true)
+    (with-redefs [auth/access-ok? (fn [_ _] true)
                   db/postgres-ds test-ds]
       (with-redefs [db/test-db-connection (fn [_] false)]
         (is (= 500 (:status (h/rt-observation-insert {})))))
@@ -51,7 +51,7 @@
 (deftest tb-image-insert-test
   (testing "FMI Testbed image insert function"
     (is (= 401 (:status (h/tb-image-insert {}))))
-    (with-redefs [auth/access-ok? (fn [_] true)
+    (with-redefs [auth/access-ok? (fn [_ _] true)
                   db/postgres-ds test-ds]
       (with-redefs [db/test-db-connection (fn [_] false)]
         (is (= 500 (:status (h/tb-image-insert {})))))

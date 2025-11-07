@@ -13,13 +13,13 @@
 (deftest electricity-data-test
   (testing "Electricity data fetch function"
     (with-redefs [db/postgres-ds test-ds]
-      (with-redefs [access-ok? (fn [_] false)]
+      (with-redefs [access-ok? (fn [_ _] false)]
         (is (= 401 (:status (e/electricity-data {})))))
       (with-redefs [env {:show-elec-price false}
-                    access-ok? (fn [_] true)]
+                    access-ok? (fn [_ _] true)]
         (is (= {"error" "not-enabled"}
                (j/read-value (:body (e/electricity-data {}))))))
-      (with-redefs [access-ok? (fn [_] true)
+      (with-redefs [access-ok? (fn [_ _] true)
                     jt/format (fn [_ _] "2023-02-22")
                     db/get-elec-data-hour (fn [_ _ _ _]
                                             [{:start-time 123
@@ -60,17 +60,17 @@
 (deftest electricity-price-minute-test
   (testing "Electricity minute price fetching"
     (with-redefs [db/postgres-ds test-ds]
-      (with-redefs [access-ok? (fn [_] false)]
+      (with-redefs [access-ok? (fn [_ _] false)]
         (is (= 401 (:status (e/electricity-price-minute {})))))
       (with-redefs [env {:show-elec-price false}
-                    access-ok? (fn [_] true)]
+                    access-ok? (fn [_ _] true)]
         (is (= {"error" "not-enabled"}
                (j/read-value (:body (e/electricity-price-minute {}))))))
-      (with-redefs [access-ok? (fn [_] true)]
+      (with-redefs [access-ok? (fn [_ _] true)]
         (let [resp (e/electricity-price-minute {})]
           (is (= 400 (:status resp)))
           (is (= "Missing parameter" (:body resp)))))
-      (with-redefs [access-ok? (fn [_] true)
+      (with-redefs [access-ok? (fn [_ _] true)
                     db/get-elec-price-minute (fn [_ _ _ _] [{:start-time 123
                                                              :price 10.0}])
                     db/get-elec-price-minute-interval-start (fn [_]
