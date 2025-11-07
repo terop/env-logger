@@ -1,13 +1,14 @@
 (ns env-logger.authentication
   "A namespace for authentication related functions"
   (:require [config.core :refer [env]]
-            [taoensso.timbre :refer [error]])
+            [taoensso.timbre :refer [error]]
+            [env-logger.render :refer [serve-text]])
   (:import org.jose4j.jwk.HttpsJwks
            org.jose4j.keys.resolvers.HttpsJwksVerificationKeyResolver
            org.jose4j.jwt.JwtClaims
            (org.jose4j.jwt.consumer InvalidJwtException JwtConsumer JwtConsumerBuilder)))
 
-;; Other functions
+;; Helpers
 
 (def response-unauthorized {:status 401
                             :headers {"Content-Type" "text/plain"}
@@ -17,6 +18,8 @@
                             :body "Internal Server Error"})
 
 ;; OpenID Connect
+
+(def id-token-valid (atom false))
 
 (defn- validate-access-token
   "Validate provided access token in JWT format."
@@ -71,6 +74,16 @@
         (error "ID token JWT validation failed")
         nil))))
 
+(defn receive-and-check-id-token
+  "Receives and validates the ID token and stores the information about this."
+  [request]
+  (reset! id-token-valid false)
+  (if (validate-id-token (get (:query-params request) "id-token"))
+    (do
+      (reset! id-token-valid true)
+      (serve-text "OK"))
+    (serve-text "Not valid")))
+
 (defn user-authorized?
   "Checks if the user is authorised."
   [request]
@@ -78,16 +91,9 @@
                                 "X-Authorization-Token"))]
     (validate-access-token token)))
 
-(defn user-authenticated?
-  "Checks if the user is authenticated."
-  [request]
-  (when-let [token (:value (get (:cookies request)
-                                "Bearer"))]
-    (validate-id-token token)))
-
 (defn access-ok?
   "Checks the the user is both authenticated and authorised."
   [request]
   (if-let [bearer-token (get (:headers request) "bearer")]
     (validate-access-token bearer-token)
-    (and (user-authenticated? request) (user-authorized? request))))
+    (and @id-token-valid (user-authorized? request))))

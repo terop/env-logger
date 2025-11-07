@@ -57,6 +57,8 @@
  :development-mode false
  ;; Full URL through which the application is accessed, MUST end with a slash
  :app-url "http://example.com/env-logger/"
+ ;; Location for static assets
+ :static-asset-path "https://assets.example.com"
  ;; Base path to Testbed images
  :tb-image-basepath "https://example.com/tb-images/"
  ;; Authentication code for observation and image storage

@@ -45,9 +45,7 @@ the database password on one line.
 ## Running
 ### Locally
 
-To start the application locally run `clojure -M:run`. If the `target/classes`
-directory does not exist then you need to run the `clojure -T:build build-java`
-command to create the required Java .class file.
+To start the application locally run `clojure -M:run`.
 
 ### Docker / podman
 

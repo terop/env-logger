@@ -33,12 +33,17 @@
     <script src="https://cdn.jsdelivr.net/npm/luxon@3.7.2/build/global/luxon.min.js"
             integrity="sha256-UWxf6lyCvfH7XEcrmq/cqc2m3IBrLBLOnWLC4Pw0gQQ=" crossorigin="anonymous"></script>
     <script>
-        const authSettings = {
-            oidBaseUrl: '{{ oid-base-url }}',
-            applicationUrl: '{{ application-url }}',
-            clientId: '{{ client-id }}'
-        };
+        const applicationUrl = '{{ application-url }}';
+        const staticAssetPath = '{{ static-asset-path }}';
     </script>
-    <script src="js/auth.js"></script>
+    <script src="{{ static-asset-path }}/js/auth-load.js"></script>
+    <script>
+        document.getElementById('oidLogin').addEventListener(
+            'click',
+            () => {
+                doLogin();
+            },
+            false);
+    </script>
 </body>
 </html>

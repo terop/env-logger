@@ -129,6 +129,12 @@
              :rt-default-values (:ruuvitag-default-values env)}
             (get-plot-page-data request)))))
 
+(defn get-auth-params
+  "Returns the parameters needed for authentication."
+  [_]
+  (serve-json {:oid-base-url (:base-url (:oid-auth env))
+               :client-id (:client-id (:oid-auth env))}))
+
 (defn handle-observation-insert
   "Handles the insertion of an observation to the database."
   [observation]
@@ -275,26 +281,25 @@
                    (serve-template "templates/error.html" {})
                    (if-not (auth/access-ok? %)
                      (serve-template "templates/login.html"
-                                     {:oid-base-url (:base-url (:oid-auth env))
-                                      :application-url (:app-url env)
-                                      :client-id (:client-id (:oid-auth env))})
+                                     {:application-url (:app-url env)
+                                      :static-asset-path (:static-asset-path env)})
                      (serve-template "templates/chart.html"
-                                     {:oid-base-url (:base-url (:oid-auth env))
-                                      :client-id (:client-id (:oid-auth env))})))}]
+                                     {:application-url (:app-url env)
+                                      :static-asset-path (:static-asset-path env)})))}]
      ;; Login and logout
      ["/login" {:get (fn [_] (serve-template "templates/login.html"
-                                             {:oid-base-url (:base-url
-                                                             (:oid-auth env))
-                                              :application-url (:app-url env)
-                                              :client-id (:client-id
-                                                          (:oid-auth env))}))}]
+                                             {:application-url (:app-url env)
+                                              :static-asset-path (:static-asset-path
+                                                                  env)}))}]
      ["/logout" {:get (fn [_]
                         (found (str (:base-url (:oid-auth env))
                                     "/protocol/openid-connect/logout?post_logout_"
                                     "redirect_uri=" (:app-url env) "login?logout=1&"
                                     "client_id=" (:client-id (:oid-auth env)))))}]
+     ["/store-id-token" {:get auth/receive-and-check-id-token}]
      ;; Data queries
      ["/data"
+      ["/auth" {:get get-auth-params}]
       ["/display" {:get get-display-data}]
       ["/latest-obs" {:get get-latest-obs-data}]
       ["/weather" {:get #(if-not (auth/access-ok? %)

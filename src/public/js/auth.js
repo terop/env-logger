@@ -1,8 +1,7 @@
-/* global luxon,authSettings */
+/* global luxon */
 
 const doLogout = () => {
   document.cookie = 'X-Authorization-Token=; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
-  document.cookie = 'Bearer=; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
 
   if (sessionStorage.getItem('refreshToken')) {
     sessionStorage.removeItem('refreshToken');
@@ -10,7 +9,7 @@ const doLogout = () => {
 };
 
 const updateTokens = async () => {
-  await fetch(`${authSettings['oidBaseUrl']}/protocol/openid-connect/token`,
+  await fetch(`${globalThis.authSettings['oidBaseUrl']}/protocol/openid-connect/token`,
               {
                 method: 'POST',
                 headers: {
@@ -18,7 +17,7 @@ const updateTokens = async () => {
                 },
                 body: new URLSearchParams({
                   grant_type: 'refresh_token',
-                  client_id: authSettings['clientId'],
+                  client_id: globalThis.authSettings['clientId'],
                   refresh_token: sessionStorage.getItem('refreshToken')
                 })
               }
@@ -31,6 +30,11 @@ const updateTokens = async () => {
     })
     .then((tokens) => {
       storeTokens(tokens);
+
+      return tokens;
+    })
+    .then((tokens) => {
+      storeIdToken(tokens, true);
     })
     .catch((error) => {
       console.error(`Error storing new tokens: ${error}`);
@@ -45,8 +49,9 @@ const refreshTokensIfNeeded = () => {
   }
 };
 
+/* exported doLogin */
 const doLogin = () => {
-  fetch(`${authSettings['oidBaseUrl']}/.well-known/openid-configuration`)
+  fetch(`${globalThis.authSettings['oidBaseUrl']}/.well-known/openid-configuration`)
     .then((response) => {
       if (!response.ok) {
         throw new Error('Network response was not ok');
@@ -54,8 +59,8 @@ const doLogin = () => {
       return response.json();
     })
     .then((config) => {
-      const loginUrl = `${config.authorization_endpoint}?client_id=${authSettings['clientId']}&` +
-            `redirect_uri=${authSettings['applicationUrl']}login&response_type=code&scope=openid`;
+      const loginUrl = `${config.authorization_endpoint}?client_id=${globalThis.authSettings['clientId']}&` +
+            `redirect_uri=${globalThis.authSettings['applicationUrl']}login&response_type=code&scope=openid`;
 
       window.location.href = loginUrl;
     })
@@ -72,14 +77,35 @@ const storeTokens = (tokens) => {
                          luxon.DateTime.now().plus({ seconds: tokens.expires_in }).toISO());
 
   document.cookie = `X-Authorization-Token=${tokens.access_token};`;
-  document.cookie = `Bearer=${tokens.id_token};`;
 };
 
-const getTokens = () => {
+const storeIdToken = async (tokens, skipReload = false) => {
+  try {
+    const response = await fetch(`${globalThis.authSettings['applicationUrl']}store-id-token` +
+                                 `?id-token=${tokens.id_token}`);
+    if (!response.ok) {
+      throw new Error('Failed to store ID token');
+    }
+
+    const storeResp = await response.text();
+    if (storeResp !== 'OK') {
+      console.error('ID token validation failed');
+
+      doLogout();
+    }
+    if (!skipReload) {
+      window.location.href = `${globalThis.authSettings['applicationUrl']}`;
+    }
+  } catch (error) {
+    console.error(`ID token store failed: ${error}`);
+  }
+};
+
+const getTokens = async () => {
   const urlParams = new URLSearchParams(window.location.search);
 
   if (urlParams.has('code')) {
-    fetch(`${authSettings['oidBaseUrl']}/protocol/openid-connect/token`,
+    fetch(`${globalThis.authSettings['oidBaseUrl']}/protocol/openid-connect/token`,
           {
             method: 'POST',
             headers: {
@@ -87,8 +113,8 @@ const getTokens = () => {
             },
             body: new URLSearchParams({
               grant_type: 'authorization_code',
-              client_id: authSettings['clientId'],
-              redirect_uri: `${authSettings['applicationUrl']}login`,
+              client_id: globalThis.authSettings['clientId'],
+              redirect_uri: `${globalThis.authSettings['applicationUrl']}login`,
               code: urlParams.get('code'),
             }),
           }
@@ -102,7 +128,10 @@ const getTokens = () => {
       .then((tokens) => {
         storeTokens(tokens);
 
-        window.location.href = `${authSettings['applicationUrl']}`;
+        return tokens;
+      })
+      .then((tokens) => {
+        storeIdToken(tokens);
       })
       .catch((error) => {
         console.error(`Error exchanging code for tokens: ${error}`);
@@ -114,13 +143,4 @@ if (document.location.search && document.location.search.includes('logout')) {
   doLogout();
 } else {
   getTokens();
-}
-
-if (document.getElementById('oidLogin')) {
-  document.getElementById('oidLogin').addEventListener(
-    'click',
-    () => {
-      doLogin();
-    },
-    false);
 }
