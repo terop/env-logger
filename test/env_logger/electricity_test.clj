@@ -4,7 +4,7 @@
             [config.core :refer [env]]
             [java-time.api :as jt]
             [jsonista.core :as j]
-            [env-logger.authentication :refer [access-ok?]]
+            [terop.openid-connect-auth :refer [access-ok?]]
             [env-logger.db :as db]
             [env-logger.db-test :refer [test-ds]]
             [env-logger.electricity :as e])

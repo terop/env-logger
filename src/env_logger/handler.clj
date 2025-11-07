@@ -17,6 +17,9 @@
             [ring.util.http-response :refer [bad-request content-type found]]
             [ring.util.response :refer [header]]
             [taoensso.timbre :refer [error set-min-level!]]
+            [terop.openid-connect-auth :refer [access-ok?
+                                               make-logout-url
+                                               receive-and-check-id-token]]
             [env-logger.authentication :as auth]
             [env-logger.db :as db]
             [env-logger.electricity :refer [electricity-data
@@ -49,7 +52,7 @@
 (defn get-latest-obs-data
   "Get data for the latest observation."
   [request]
-  (if-not (auth/access-ok? (:oid-auth env) request)
+  (if-not (access-ok? (:oid-auth env) request)
     auth/response-unauthorized
     (with-open [con (jdbc/get-connection db/postgres-ds)]
       (let [data (first (reverse (db/get-obs-days con 1)))
@@ -119,7 +122,7 @@
 (defn get-display-data
   "Returns the data to be displayed in the front-end."
   [request]
-  (if-not (auth/access-ok? (:oid-auth env) request)
+  (if-not (access-ok? (:oid-auth env) request)
     auth/response-unauthorized
     (serve-json
      (merge {:weather-data (get-weather-data)
@@ -153,7 +156,7 @@
   ;; Sleep a bit before continuing so that the possible weather data update
   ;; has the possibility to complete
   (Thread/sleep 1500)
-  (if-not (auth/access-ok? (:oid-auth env) request)
+  (if-not (access-ok? (:oid-auth env) request)
     auth/response-unauthorized
     (if-not (db/test-db-connection db/postgres-ds)
       auth/response-server-error
@@ -168,7 +171,7 @@
 (defn rt-observation-insert
   "Function called when an RuuviTag observation is posted."
   [request]
-  (if-not (auth/access-ok? (:oid-auth env) request)
+  (if-not (access-ok? (:oid-auth env) request)
     auth/response-unauthorized
     (with-open [con (jdbc/get-connection db/postgres-ds)]
       (if-not (db/test-db-connection con)
@@ -203,7 +206,7 @@
 (defn tb-image-insert
   "Function called when an RuuviTag observation is posted."
   [request]
-  (if-not (auth/access-ok? (:oid-auth env) request)
+  (if-not (access-ok? (:oid-auth env) request)
     auth/response-unauthorized
     (with-open [con (jdbc/get-connection db/postgres-ds)]
       (if-not (db/test-db-connection con)
@@ -279,7 +282,7 @@
     ;; Index
     [["/" {:get #(if-not (db/test-db-connection db/postgres-ds)
                    (serve-template "templates/error.html" {})
-                   (if-not (auth/access-ok? (:oid-auth env) %)
+                   (if-not (access-ok? (:oid-auth env) %)
                      (serve-template "templates/login.html"
                                      {:application-url (:app-url env)
                                       :static-asset-path (:static-asset-path env)})
@@ -291,12 +294,10 @@
                                              {:application-url (:app-url env)
                                               :static-asset-path (:static-asset-path
                                                                   env)}))}]
-     ["/logout" {:get (fn [_]
-                        (found (str (:base-url (:oid-auth env))
-                                    "/protocol/openid-connect/logout?post_logout_"
-                                    "redirect_uri=" (:app-url env) "login?logout=1&"
-                                    "client_id=" (:client-id (:oid-auth env)))))}]
-     ["/store-id-token" {:get #(serve-text (if (auth/receive-and-check-id-token
+     ["/logout" {:get (fn [_] (found (make-logout-url (str (:app-url env)
+                                                           "login?logout=1")
+                                                      (:oid-auth env))))}]
+     ["/store-id-token" {:get #(serve-text (if (receive-and-check-id-token
                                                 (:oid-auth env) %)
                                              "OK" "Not valid"))}]
      ;; Data queries
@@ -304,7 +305,7 @@
       ["/auth" {:get get-auth-params}]
       ["/display" {:get get-display-data}]
       ["/latest-obs" {:get get-latest-obs-data}]
-      ["/weather" {:get #(if-not (auth/access-ok? (:oid-auth env) %)
+      ["/weather" {:get #(if-not (access-ok? (:oid-auth env) %)
                            auth/response-unauthorized
                            (serve-json (get-weather-data)))}]
       ["/elec-data" {:get electricity-data}]
@@ -322,7 +323,7 @@
       ;; Time data (timestamp and UTC offset)
       ["/time" {:get time-data}]
       ;; Electricity consumption data upload
-      ["/elec-consumption" {:get #(if (auth/access-ok? (:oid-auth env) %)
+      ["/elec-consumption" {:get #(if (access-ok? (:oid-auth env) %)
                                     (let [latest-dt
                                           (with-open [con
                                                       (jdbc/get-connection
@@ -334,7 +335,7 @@
                                        {:app-url (:app-url env)
                                         :latest-dt latest-dt}))
                                     (found (:app-url env)))
-                            :post #(if (auth/access-ok? (:oid-auth env) %)
+                            :post #(if (access-ok? (:oid-auth env) %)
                                      (serve-json (elec-consumption-data-upload %))
                                      auth/response-unauthorized)}]]]
     {:data {:muuntaja m/instance

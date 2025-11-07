@@ -20,7 +20,9 @@
         com.github.seancorfield/next.jdbc {:mvn/version "1.3.1070"}
         com.taoensso/timbre {:mvn/version "6.8.0"}
         com.fzakaria/slf4j-timbre {:mvn/version "0.4.1"}
-        org.bitbucket.b_c/jose4j {:mvn/version "0.9.6"}}
+        ht.sr.terop/openid-connect-auth
+        {:git/url "https://git.sr.ht/~terop/openid-connect-auth"
+         :git/sha "243eac65b0158dee82ecf29fb49422ad673fcb0b"}}
  :aliases
  {:run {:main-opts ["-m" "env-logger.handler"]
         :jvm-opts ["-Dconfig=resources/dev/config.edn"]}

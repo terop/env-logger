@@ -8,6 +8,7 @@
             [java-time.api :as jt]
             [next.jdbc :as jdbc]
             [ring.util.http-response :refer [bad-request]]
+            [terop.openid-connect-auth :refer [access-ok?]]
             [env-logger.authentication :as auth]
             [env-logger.db :as db]
             [env-logger.render :refer [serve-json]]))
@@ -30,7 +31,7 @@
 (defn electricity-data
   "Returns data for the electricity data endpoint."
   [request]
-  (if-not (auth/access-ok? (:oid-auth env) request)
+  (if-not (access-ok? (:oid-auth env) request)
     auth/response-unauthorized
     (if-not (:show-elec-price env)
       (serve-json {:error "not-enabled"})
@@ -99,7 +100,7 @@
 (defn electricity-price-minute
   "Returns data for the electricity price with 15 minute resolution endpoint."
   [request]
-  (if-not (auth/access-ok? (:oid-auth env) request)
+  (if-not (access-ok? (:oid-auth env) request)
     auth/response-unauthorized
     (if-not (:show-elec-price env)
       (serve-json {:error "not-enabled"})
