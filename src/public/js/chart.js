@@ -1,4 +1,4 @@
-/* global axios,luxon,Plotly,refreshTokensIfNeeded */
+/* global applicationUrl,axios,luxon,Plotly,refreshTokensIfNeeded */
 
 const DateTime = luxon.DateTime;
 
@@ -35,6 +35,10 @@ let bleBeaconNames = [];
 let testbedImageBasepath = '';
 let testbedImageNames = [];
 let rtNames = [];
+
+const redirectToLogin = () => {
+  window.location.href = `${applicationUrl}login`;
+};
 
 const loadPage = () => {
   // Parse RuuviTag observations
@@ -850,7 +854,11 @@ const loadPage = () => {
             }
           }
         }).catch(error => {
-          console.log(`Electricity data fetch error: ${error}`);
+          if (error.status === 401) {
+            redirectToLogin();
+          } else {
+            console.log(`Electricity data fetch error: ${error}`);
+          }
         });
 
       const currentDate = DateTime.now().toISODate();
@@ -882,7 +890,11 @@ const loadPage = () => {
           }, 120000);
         })
         .catch(error => {
-          console.log(`Electricity price fetch error: ${error}`);
+          if (error.status === 401) {
+            redirectToLogin();
+          } else {
+            console.log(`Electricity price fetch error: ${error}`);
+          }
         });
     };
 
@@ -1355,7 +1367,11 @@ const loadPage = () => {
         plotUpdateAfterReset('ruuvitag');
       })
       .catch(error => {
-        console.log(`Display data fetch error: ${error}`);
+        if (error.status === 401) {
+          redirectToLogin();
+        } else {
+          console.log(`Display data fetch error: ${error}`);
+        }
       })
       .then(() => {
         if (isSpinnerShown) {
@@ -1415,7 +1431,11 @@ const loadPage = () => {
         }
       })
       .catch(error => {
-        console.log(`Electricity data fetch error: ${error}`);
+        if (error.status === 401) {
+          redirectToLogin();
+        } else {
+          console.log(`Electricity data fetch error: ${error}`);
+        }
       });
   };
 
@@ -1447,7 +1467,11 @@ const loadPage = () => {
         plotElectricityPriceMinute(elecData.prices);
       })
       .catch(error => {
-        console.log(`Electricity price fetch error: ${error}`);
+        if (error.status === 401) {
+          redirectToLogin();
+        } else {
+          console.log(`Electricity price fetch error: ${error}`);
+        }
       });
   };
 
@@ -1526,7 +1550,11 @@ const loadPage = () => {
           plotElectricityPriceMinute(elecData.prices);
         })
         .catch(error => {
-          console.log(`Electricity price fetch error: ${error}`);
+          if (error.status === 401) {
+            redirectToLogin();
+          } else {
+            console.log(`Electricity price fetch error: ${error}`);
+          }
         });
     };
 
@@ -1681,7 +1709,11 @@ axios.get('data/display')
     loadPage();
   })
   .catch(error => {
-    console.log(`Initial display data fetch error: ${error}`);
+    if (error.status === 401) {
+      redirectToLogin();
+    } else {
+      console.log(`Initial display data fetch error: ${error}`);
+    }
   });
 
 setInterval(() => {
