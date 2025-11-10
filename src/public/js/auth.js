@@ -6,6 +6,8 @@ const doLogout = () => {
   if (sessionStorage.getItem('refreshToken')) {
     sessionStorage.removeItem('refreshToken');
   }
+
+  window.location.href = `${globalThis.authSettings['applicationUrl']}`;
 };
 
 const updateTokens = async () => {
@@ -139,7 +141,7 @@ const getTokens = async () => {
   }
 };
 
-if (document.location.search && document.location.search.includes('logout')) {
+if (window.location.pathname.includes('logout')) {
   doLogout();
 } else {
   getTokens();

@@ -276,6 +276,9 @@
                             (assoc-in [:security :hsts]
                                       false))))]]))
 
+(def js-load-params {:application-url (:app-url env)
+                     :static-asset-path (:static-asset-path env)})
+
 (def app
   (ring/ring-handler
    (ring/router
@@ -284,19 +287,17 @@
                    (serve-template "templates/error.html" {})
                    (if-not (access-ok? (:oid-auth env) %)
                      (serve-template "templates/login.html"
-                                     {:application-url (:app-url env)
-                                      :static-asset-path (:static-asset-path env)})
+                                     js-load-params)
                      (serve-template "templates/chart.html"
-                                     {:application-url (:app-url env)
-                                      :static-asset-path (:static-asset-path env)})))}]
+                                     js-load-params)))}]
      ;; Login and logout
      ["/login" {:get (fn [_] (serve-template "templates/login.html"
-                                             {:application-url (:app-url env)
-                                              :static-asset-path (:static-asset-path
-                                                                  env)}))}]
+                                             js-load-params))}]
      ["/logout" {:get (fn [_] (found (make-logout-url (str (:app-url env)
-                                                           "login?logout=1")
+                                                           "do-logout")
                                                       (:oid-auth env))))}]
+     ["/do-logout" {:get (fn [_] (serve-template "templates/logout.html"
+                                                 js-load-params))}]
      ["/store-id-token" {:get #(serve-text (if (receive-and-check-id-token
                                                 (:oid-auth env) %)
                                              "OK" "Not valid"))}]
