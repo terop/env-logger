@@ -207,20 +207,31 @@
                     :wind_speed (:wind-speed weather-data)}
                    rs-opts)))
 
-(defn insert-ruuvitag-observations
-  "Insert one or more RuuviTag observations into the database."
+(defn insert-ruuvi-device-observations
+  "Insert one or more Ruuvi device observations into the database."
   [db-con timestamp observations]
   (try
     (let [insert-fn
           (fn [observation]
-            (let [values {:name (:name observation)
-                          :temperature (:temperature observation)
-                          :pressure (:pressure observation)
-                          :humidity (:humidity observation)
-                          :battery_voltage (:battery_voltage observation)
-                          :rssi (:rssi observation)}]
-              (:id (js/insert! db-con
+            (let [type (:type observation)
+                  values (if (= type "tag")
+                           {:name (:name observation)
+                            :temperature (:temperature observation)
+                            :pressure (:pressure observation)
+                            :humidity (:humidity observation)
+                            :battery_voltage (:battery_voltage observation)
+                            :rssi (:rssi observation)}
+                           {:name (:name observation)
+                            :co2 (:co2 observation)
+                            :nox (:nox observation)
+                            :voc (:voc observation)
+                            :pm_2_5 (:pm_2_5 observation)
+                            :iaqs (:iaqs observation)})
+                  table-name (if (= type "tag")
                                :ruuvitag_observations
+                               :ruuvi_air_observations)]
+              (:id (js/insert! db-con
+                               table-name
                                (if timestamp
                                  (assoc values
                                         :recorded

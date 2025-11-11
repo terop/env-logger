@@ -38,13 +38,13 @@ CREATE TABLE weather_data (
 
 CREATE INDEX weather_data_time_brin ON weather_data USING BRIN (time);
 
--- RuuviTag beacon observation data
+-- Ruuvi Tag beacon observation data
 CREATE TABLE ruuvitag_observations (
        id SERIAL PRIMARY KEY,
        recorded TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
        name VARCHAR(15) NOT NULL,
        temperature REAL NOT NULL,
-       -- allow NULL values as not all RuuviTags have a pressure sensor
+       -- allow NULL values as not all Ruuvi Tags have a pressure sensor
        pressure REAL,
        humidity REAL NOT NULL,
        battery_voltage REAL NOT NULL,
@@ -52,6 +52,20 @@ CREATE TABLE ruuvitag_observations (
 );
 
 CREATE INDEX ruuvitag_observations_recorded_brin ON ruuvitag_observations USING BRIN (recorded);
+
+-- Ruuvi Air observation data
+CREATE TABLE ruuvi_air_observations (
+       id SERIAL PRIMARY KEY,
+       recorded TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+       name VARCHAR(15) NOT NULL,
+       co2 INTEGER NOT NULL,
+       nox INTEGER NOT NULL,
+       voc INTEGER NOT NULL,
+       pm_2_5 REAL NOT NULL,
+       iaqs INTEGER NOT NULL
+);
+
+CREATE INDEX ruuvi_air_observations_recorded_brin ON ruuvi_air_observations USING BRIN (recorded);
 
 -- Electricity price table
 CREATE TABLE electricity_price (

@@ -38,15 +38,15 @@
 
 (deftest rt-observation-insert-test
   (testing "RuuviTag observation insert function"
-    (is (= 401 (:status (h/rt-observation-insert {}))))
+    (is (= 401 (:status (h/rd-observation-insert {}))))
     (with-redefs [access-ok? (fn [_ _] true)
                   db/postgres-ds test-ds]
       (with-redefs [db/test-db-connection (fn [_] false)]
-        (is (= 500 (:status (h/rt-observation-insert {})))))
-      (with-redefs [db/insert-ruuvitag-observations (fn [_ _ _] true)]
-        (is (= "OK" (:body (h/rt-observation-insert {})))))
-      (with-redefs [db/insert-ruuvitag-observations (fn [_ _ _] false)]
-        (is (= 500 (:status (h/rt-observation-insert {}))))))))
+        (is (= 500 (:status (h/rd-observation-insert {})))))
+      (with-redefs [db/insert-ruuvi-device-observations (fn [_ _ _] true)]
+        (is (= "OK" (:body (h/rd-observation-insert {})))))
+      (with-redefs [db/insert-ruuvi-device-observations (fn [_ _ _] false)]
+        (is (= 500 (:status (h/rd-observation-insert {}))))))))
 
 (deftest tb-image-insert-test
   (testing "FMI Testbed image insert function"

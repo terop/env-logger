@@ -168,15 +168,15 @@
             (serve-text "OK") auth/response-server-error)
           (bad-request "Bad request"))))))
 
-(defn rt-observation-insert
-  "Function called when an RuuviTag observation is posted."
+(defn rd-observation-insert
+  "Function called when a Ruuvi device observation is posted."
   [request]
   (if-not (access-ok? (:oid-auth env) request)
     auth/response-unauthorized
     (with-open [con (jdbc/get-connection db/postgres-ds)]
       (if-not (db/test-db-connection con)
         auth/response-server-error
-        (if (db/insert-ruuvitag-observations
+        (if (db/insert-ruuvi-device-observations
              con
              (get (:params request) "timestamp")
              (j/read-value (get (:params request) "observation")
@@ -315,8 +315,8 @@
      ["/obs"
       ;; Standard observation
       ["/observation" {:post observation-insert}]
-      ;; RuuviTag observation storage
-      ["/rt-observation" {:post rt-observation-insert}]
+      ;; Ruuvi device observation storage
+      ["/rd-observation" {:post rd-observation-insert}]
       ;; Testbed image name storage
       ["/tb-image" {:post tb-image-insert}]]
      ;; Miscellaneous endpoints
