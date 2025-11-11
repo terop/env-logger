@@ -14,12 +14,18 @@
     "ble_beacon_rescan_battery": false
   },
   "ruuvitag": {
-    "url": "https://example.com/env-logger/obs/rt-observation",
+    "url": "https://example.com/env-logger/obs/rd-observation",
     "scan_timeout": 20,
     "tags": [
       {
         "mac": "F3:19:DD:06:E0:7A",
-        "name": "indoor"
+        "name": "indoor",
+        "type": "tag"
+      },
+      {
+        "mac": "F3:19:DE:07:EB:7C",
+        "name": "air",
+        "type": "air"
       }
     ]
   }
