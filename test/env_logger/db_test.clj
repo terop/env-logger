@@ -10,7 +10,7 @@
              :refer
              [db-conf
               convert->epoch-ms
-              -convert-time->iso8601-str
+              convert-time->iso8601-str
               get-db-password
               get-elec-data-day
               get-elec-data-hour
@@ -169,72 +169,69 @@
 
 (deftest n-days-observations
   (testing "Selecting observations from N days"
-    (is (= {:inside-light 0
-            :inside-temperature 21.0
-            :co2 600
-            :cloudiness 2
-            :wind-speed 5.0
-            :fmi-temperature 20.0
-            :outside-temperature 5.0
-            :beacon-name "7C:EC:79:3F:BE:97"
-            :beacon-rssi -68
-            :beacon-battery nil
-            :tb-image-name nil}
-           (-> (nth (get-obs-days test-ds 3) 2)
-               (dissoc :recorded)
-               (dissoc :weather-recorded))))))
+    (let [obs (get-obs-days test-ds 3)
+          obs-idx 2]
+      (is (= 4 (count (:recorded obs))))
+      (is (zero? (nth (:inside-light obs) obs-idx)))
+      (is (rel= 21.0 (nth (:inside-temperature obs) obs-idx) :tol 0.01))
+      (is (= 600 (nth (:co2 obs) obs-idx)))
+      (is (rel= 5.0 (nth (:outside-temperature obs) obs-idx) :tol 0.01))
+      (is (= "7C:EC:79:3F:BE:97" (nth (:beacon-name obs) obs-idx)))
+      (is (= -68 (nth (:beacon-rssi obs) obs-idx)))
+      (is (nil? (nth (:beacon-battery obs) obs-idx)))
+      (is (nil? (nth (:tb-image-name obs) obs-idx))))))
 
 (deftest obs-interval-select
   (testing "Select observations between one or two dates"
-    (is (= 6 (count (get-obs-interval
-                     test-ds
-                     {:start nil
-                      :end nil}))))
-    (is (= 4 (count (get-obs-interval
-                     test-ds
-                     {:start (jt/format date-fmt
-                                        (jt/minus (jt/local-date)
-                                                  (jt/days 2)))
-                      :end nil}))))
-    (is (= 2 (count (get-obs-interval
-                     test-ds
-                     {:start nil
-                      :end (jt/format date-fmt
-                                      (jt/minus (jt/local-date)
-                                                (jt/days 2)))}))))
-    (is (= 6 (count (get-obs-interval
-                     test-ds
-                     {:start (jt/format date-fmt
-                                        (jt/minus (jt/local-date)
-                                                  (jt/days 6)))
-                      :end (jt/format date-fmt (jt/local-date-time))}))))
-    (is (zero? (count (get-obs-interval
-                       test-ds
-                       {:start (jt/format date-fmt
-                                          (jt/minus (jt/local-date)
-                                                    (jt/days 11)))
-                        :end (jt/format date-fmt
-                                        (jt/minus (jt/local-date)
-                                                  (jt/days 10)))}))))
-    (is (zero? (count (get-obs-interval
-                       test-ds
-                       {:start "foobar"
-                        :end nil}))))
-    (is (zero? (count (get-obs-interval
-                       test-ds
-                       {:start nil
-                        :end "foobar"}))))
-    (is (zero? (count (get-obs-interval
-                       test-ds
-                       {:start "bar"
-                        :end "foo"}))))))
+    (is (= 5 (count (:recorded (get-obs-interval
+                                test-ds
+                                {:start nil
+                                 :end nil})))))
+    (is (= 4 (count (:recorded (get-obs-interval
+                                test-ds
+                                {:start (jt/format date-fmt
+                                                   (jt/minus (jt/local-date)
+                                                             (jt/days 2)))
+                                 :end nil})))))
+    (is (= 1 (count (:recorded (get-obs-interval
+                                test-ds
+                                {:start nil
+                                 :end (jt/format date-fmt
+                                                 (jt/minus (jt/local-date)
+                                                           (jt/days 2)))})))))
+    (is (= 5 (count (:recorded (get-obs-interval
+                                test-ds
+                                {:start (jt/format date-fmt
+                                                   (jt/minus (jt/local-date)
+                                                             (jt/days 6)))
+                                 :end (jt/format date-fmt (jt/local-date-time))})))))
+    (is (zero? (count (:recorded (get-obs-interval
+                                  test-ds
+                                  {:start (jt/format date-fmt
+                                                     (jt/minus (jt/local-date)
+                                                               (jt/days 11)))
+                                   :end (jt/format date-fmt
+                                                   (jt/minus (jt/local-date)
+                                                             (jt/days 10)))})))))
+    (is (zero? (count (:recorded (get-obs-interval
+                                  test-ds
+                                  {:start "foobar"
+                                   :end nil})))))
+    (is (zero? (count (:recorded (get-obs-interval
+                                  test-ds
+                                  {:start nil
+                                   :end "foobar"})))))
+    (is (zero? (count (:recorded (get-obs-interval
+                                  test-ds
+                                  {:start "bar"
+                                   :end "foo"})))))))
 
 (deftest get-observations-tests
   (testing "Observation querying with arbitrary WHERE clause and LIMIT"
-    (is (= 1 (count (get-observations test-ds
-                                      :limit 1))))
-    (is (zero? (count (get-observations test-ds
-                                        :limit 0))))))
+    (is (= 1 (count (:recorded (get-observations test-ds
+                                                 :limit 1)))))
+    (is (zero? (count (:recorded (get-observations test-ds
+                                                   :limit 0)))))))
 
 (deftest start-and-end-date-query
   (testing "Selecting start and end dates of all observations"
@@ -467,20 +464,19 @@
                  :humidity 30.0
                  :battery_voltage 2.805
                  :rssi -75})
-    (is (= '{:name "balcony"
-             :temperature 15.0
-             :humidity 30.0}
-           (dissoc (first (get-ruuvitag-obs test-ds
-                                            (jt/minus (jt/local-date-time)
-                                                      (jt/minutes 5))
-                                            (jt/local-date-time)
-                                            ["balcony"]))
-                   :recorded)))
-    (is (= 2 (count (get-ruuvitag-obs test-ds
-                                      (jt/minus (jt/local-date-time)
-                                                (jt/minutes 5))
-                                      (jt/local-date-time)
-                                      ["indoor"]))))))
+    (let [rt-obs (get-ruuvitag-obs test-ds
+                                   (jt/minus (jt/local-date-time)
+                                             (jt/minutes 5))
+                                   (jt/local-date-time)
+                                   ["balcony"])]
+      (is (= "balcony" (first (:name rt-obs))))
+      (is (rel= 15.0 (first (:temperature rt-obs)) :tol 0.01))
+      (is (rel= 30.0 (first (:humidity rt-obs)) :tol 0.01)))
+    (is (= 2 (count (:name (get-ruuvitag-obs test-ds
+                                             (jt/minus (jt/local-date-time)
+                                                       (jt/minutes 5))
+                                             (jt/local-date-time)
+                                             ["indoor"])))))))
 
 (deftest get-elec-data-test
   (testing "Electricity data fetching"
@@ -613,7 +609,7 @@
   (testing "ZonedDateTime to ISO 8601 string conversion"
     (let [now (ZonedDateTime/now (jt/zone-id "UTC"))]
       (is (= (str (first (str/split (str now) #"\.")) "Z")
-             (-convert-time->iso8601-str now))))))
+             (convert-time->iso8601-str now))))))
 
 (deftest test-elec-consumption-data-insert
   (testing "Insert of electricity consumption data"

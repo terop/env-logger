@@ -11,7 +11,7 @@
             [clj-http.client :as client]
             [next.jdbc :as jdbc]
             [java-time.api :as jt]
-            [env-logger.db :refer [rs-opts -convert-time->iso8601-str]])
+            [env-logger.db :refer [rs-opts convert-time->iso8601-str]])
   (:import (java.time LocalDateTime ZonedDateTime)
            java.time.temporal.ChronoUnit
            org.postgresql.util.PSQLException))
@@ -44,9 +44,9 @@
   "Formats and returns a datetime as an ISO 8601 formatted start time string
   having the :weather-zone value timezone before ISO 8601 conversion."
   [datetime]
-  (-convert-time->iso8601-str (jt/with-zone
-                                datetime
-                                (:weather-timezone env))))
+  (convert-time->iso8601-str (jt/with-zone
+                               datetime
+                               (:weather-timezone env))))
 
 (defn store-weather-data?
   "Tells whether to store FMI weather data.
@@ -222,7 +222,7 @@
                                  nil)}]
             (when-not (nil? (:temperature wd))
               (swap! fmi-current conj
-                     {(-convert-time->iso8601-str (:time wd)) wd}))))))
+                     {(convert-time->iso8601-str (:time wd)) wd}))))))
     (catch Exception ex
       (error ex "FMI weather data (JSON) fetch failed")
       nil)))
@@ -272,7 +272,7 @@
             (when wd
               (swap! fmi-current
                      conj
-                     {(-convert-time->iso8601-str (:time wd)) wd}))))))
+                     {(convert-time->iso8601-str (:time wd)) wd}))))))
     (catch Exception ex
       (error ex "FMI weather data (time series) fetch failed")
       nil)))

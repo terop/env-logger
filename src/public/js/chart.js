@@ -4,7 +4,7 @@ const DateTime = luxon.DateTime;
 
 // Data field names
 const fieldNames = {
-  weather: ['fmi-temperature', 'cloudiness', 'wind-speed'],
+  weather: ['temperature', 'cloudiness', 'wind-speed'],
   other: ['inside-light', 'inside-temperature', 'co2', 'outside-temperature', 'beacon-rssi', 'beacon-battery']
 };
 
@@ -19,22 +19,26 @@ let dataSets = {
   rt: {}
 };
 const data = {
-  obs: [],
-  rt: [],
-  weather: []
+  other: null,
+  rt: null,
+  weather: null,
+  weatherObs: null
 };
-let dataLabels = {
+const dataLabels = {
+  weather: [],
+  other: [],
+  rt: []
+};
+const annotationIndices = {
   weather: [],
   other: []
 };
-let annotationIndexes = {
-  weather: [],
-  other: []
+const names = {
+  bleBeacon: null,
+  testbedImage: null,
+  ruuvitag: null
 };
-let bleBeaconNames = [];
 let testbedImageBasepath = '';
-let testbedImageNames = [];
-let rtNames = [];
 
 const redirectToLogin = () => {
   window.location.href = `${applicationUrl}login`;
@@ -45,11 +49,6 @@ const loadPage = () => {
   // rtObservations - observations as JSON
   // rtLabels - RuuviTag labels
   const parseRTData = (rtObservations, rtLabels) => {
-    const timeDiffThreshold = 10;
-    let name = null;
-    let dateRef = null;
-    const obsByDate = {};
-
     for (const label of rtLabels) {
       dataSets.rt[label] = {
         temperature: [],
@@ -57,136 +56,86 @@ const loadPage = () => {
       };
     }
 
-    for (let i = 0; i < rtObservations.length; i++) {
-      const obs = rtObservations[i];
+    const observationCount = rtObservations.name.length;
+    const tagNames = new Set(rtLabels);
+    let missingTags = structuredClone(tagNames);
+    let currentTag = null;
+    let currentTs = null;
+    let nextTs = null;
 
-      if (!dateRef) {
-        dateRef = obs.recorded;
-      }
+    for (let i = 0; i < observationCount; i++) {
+      currentTs = rtObservations.recorded[i];
+      nextTs = rtObservations.recorded[i + 1];
 
-      name = obs.name;
+      currentTag = rtObservations.name[i];
+      missingTags.delete(currentTag);
 
-      const diff = DateTime.fromMillis(dateRef).diff(
-        DateTime.fromMillis(obs.recorded), 'seconds');
+      dataSets.rt[currentTag].temperature.push(rtObservations.temperature[i]);
+      dataSets.rt[currentTag].humidity.push(rtObservations.humidity[i]);
 
-      if (Math.abs(diff.toObject().seconds) > timeDiffThreshold) {
-        dateRef = obs.recorded;
-      }
+      if (currentTs < nextTs || (i + 1) >= observationCount) {
+        dataLabels.rt.push(new Date(currentTs));
 
-      if (obsByDate[dateRef] === undefined) {
-        obsByDate[dateRef] = {};
-      }
+        missingTags.forEach((tagName) => {
+          dataSets.rt[tagName].temperature.push(null);
+          dataSets.rt[tagName].humidity.push(null);
+        });
 
-      if (obsByDate[dateRef] !== undefined) {
-        if (obsByDate[dateRef][name] === undefined) {
-          obsByDate[dateRef][name] = {};
-        }
-
-        obsByDate[dateRef][name].temperature = obs.temperature;
-        obsByDate[dateRef][name].humidity = obs.humidity;
-      }
-    }
-
-    for (const key of Object.keys(obsByDate)) {
-      for (const label of rtLabels) {
-        if (obsByDate[key][label] !== undefined) {
-          dataSets.rt[label].temperature.push(obsByDate[key][label].temperature);
-          dataSets.rt[label].humidity.push(obsByDate[key][label].humidity);
-        } else {
-          dataSets.rt[label].temperature.push(null);
-          dataSets.rt[label].humidity.push(null);
-        }
-      }
-    }
-
-    // "null pad" RuuviTag observations to align latest observations with non-RuuviTag observations
-    for (const key of Object.keys(dataSets.rt)) {
-      const lenDiff = dataSets.other['inside-light'].length - dataSets.rt[key].temperature.length;
-      for (let j = 0; j < lenDiff; j++) {
-        dataSets.rt[key].temperature.unshift(null);
-        dataSets.rt[key].humidity.unshift(null);
+        missingTags = structuredClone(tagNames);
       }
     }
   };
 
-  /* dataMode - string, which mode to process data in, values: weather, other
-   * observation - object, observation to process
-   * selectKeys - array, which data keys to select */
-  const processFields = (dataMode, observation, selectKeys) => {
-    for (const key in observation) {
-      if (selectKeys.includes(key)) {
-        if (dataSets[dataMode][key] !== undefined) {
-          dataSets[dataMode][key].push(observation[key]);
-        } else {
-          dataSets[dataMode][key] = [observation[key]];
-        }
-      }
-    }
-  };
-
-  const recordAnnotationIndexes = (dataMode, observationTime) => {
+  const recordAnnotationIndices = (dataMode, observationTime) => {
     const recorded = DateTime.fromMillis(observationTime);
     if (recorded.hour === 0 && recorded.minute === 0) {
-      annotationIndexes[dataMode].push(recorded.toJSDate());
+      annotationIndices[dataMode].push(recorded.toJSDate());
     }
   };
 
-  /* Parse an observation.
-   *
-   * Arguments:
-   * observation - an observation as JSON
-   */
-  const parseData = (observation) => {
-    dataLabels.other.push(new Date(observation.recorded));
+  const parseWeatherData = (weatherData) => {
+    weatherData.time.forEach((value) => {
+      dataLabels.weather.push(new Date(value));
 
-    recordAnnotationIndexes('other', observation.recorded);
+      recordAnnotationIndices('weather', value);
+    });
 
-    if (observation['weather-recorded']) {
-      dataLabels.weather.push(new Date(observation['weather-recorded']));
+    fieldNames.weather.forEach((value) => {
+      dataSets.weather[value] = weatherData[value];
+    });
+  };
 
-      recordAnnotationIndexes('weather', observation['weather-recorded']);
-    }
+  const parseOtherData = (otherData) => {
+    otherData.recorded.forEach((value) => {
+      dataLabels.other.push(new Date(value));
 
-    // Weather
-    if (observation['weather-recorded']) {
-      processFields('weather', observation, fieldNames.weather);
-    }
+      recordAnnotationIndices('other', value);
+    });
 
-    // Other
-    processFields('other', observation, fieldNames.other);
+    names.bleBeacon = otherData['beacon-name'];
+    names.testbedImage = otherData['tb-image-name'];
 
-    bleBeaconNames.push(observation['beacon-name']);
-    testbedImageNames.push(observation['tb-image-name']);
+    fieldNames.other.forEach((value) => {
+      dataSets.other[value] = otherData[value];
+    });
   };
 
   // Transform data to Plotly compatible format. Returns the data series labels.
   const transformData = () => {
-    dataSets = {
-      weather: {},
-      other: {},
-      rt: {}
-    };
-    dataLabels = {
-      weather: [],
-      other: []
-    };
-    annotationIndexes = {
-      weather: [],
-      other: []
-    };
-    testbedImageNames = [];
-    bleBeaconNames = [];
+    annotationIndices.weather = [];
+    annotationIndices.other = [];
 
-    data.obs.forEach((element) => {
-      parseData(element);
-    });
+    dataLabels.weather = [];
+    dataLabels.other = [];
+    dataLabels.rt = [];
 
-    // Data labels
-    parseRTData(data.rt, rtNames);
+    parseRTData(data.rt, names.ruuvitag);
+    parseWeatherData(data.weatherObs);
+    parseOtherData(data.other);
 
     let beaconName = null;
-    for (const item of bleBeaconNames) {
-      if (item !== null) {
+    for (const item of names.bleBeacon) {
+      if (item) {
         beaconName = item;
         break;
       }
@@ -204,14 +153,14 @@ const loadPage = () => {
         ? `Beacon "${beaconName}" battery level`
         : 'Beacon battery level'
     };
-    for (const name of rtNames) {
+    for (const name of names.ruuvitag) {
       labelValues.rt[name] = {
         temperature: `"${name}" temperature`,
         humidity: `"${name}" humidity`
       };
     }
     labelValues.weather = {
-      'fmi-temperature': 'Temperature',
+      'temperature': 'Temperature',
       'cloudiness': 'Cloudiness',
       'wind-speed': 'Wind speed',
       'humidity': 'Humidity',
@@ -225,7 +174,7 @@ const loadPage = () => {
     document.getElementById(elementId).style.display = 'none';
   };
 
-  if (data.obs.length === 0) {
+  if (!data.other) {
     document.getElementById('noDataError').style.display = 'block';
     hideElement('imageButtonDiv');
     hideElement('latestCheckboxDiv');
@@ -263,7 +212,7 @@ const loadPage = () => {
     // Show last observation and some other data for quick viewing
     const showLastObservation = () => {
       let observationText = '';
-      const weatherKeys = ['fmi-temperature', 'feels-like', 'cloudiness', 'wind-speed', 'humidity'];
+      const weatherKeys = ['temperature', 'feels-like', 'cloudiness', 'wind-speed', 'humidity'];
 
       if (!data.weather) {
         console.log('Error: no weather data');
@@ -322,8 +271,8 @@ const loadPage = () => {
           `${addUnitSuffix('temperature')}, `;
       }
 
-      observationText += `beacon "${bleBeaconNames[obsIndex]}": RSSI`;
       if (dataSets.other['beacon-rssi'][obsIndex] !== null) {
+        observationText += `beacon "${names.bleBeacon[obsIndex]}": RSSI`;
         observationText += ` ${dataSets.other['beacon-rssi'][obsIndex]}${addUnitSuffix('beacon-rssi')}`;
 
         const battery = dataSets.other['beacon-battery'][obsIndex];
@@ -901,13 +850,13 @@ const loadPage = () => {
 
     const showTestbedImage = (pointDt) => {
       const pattern = /testbed-(.+).png/;
-      const imageCountIdx = testbedImageNames.length - 1;
+      const imageCountIdx = names.testbedImage.length - 1;
       const refDt = DateTime.fromISO(pointDt.replace(' ', 'T'));
       let smallest = 100000;
       let smallestIdx = imageCountIdx;
 
       for (let i = imageCountIdx; i >= 0; i--) {
-        const match = pattern.exec(testbedImageNames[i]);
+        const match = pattern.exec(names.testbedImage[i]);
         if (match) {
           const diff = Math.abs(refDt.diff(DateTime.fromISO(match[1]), 'minutes').minutes);
           if (diff <= smallest) {
@@ -919,7 +868,7 @@ const loadPage = () => {
         }
       }
 
-      const imageName = testbedImageNames[smallestIdx];
+      const imageName = names.testbedImage[smallestIdx];
       const datePattern = /testbed-([\d-]+)T.+/;
       const result = datePattern.exec(imageName);
       if (result) {
@@ -1020,10 +969,10 @@ const loadPage = () => {
       } else {
         const rtMeasurables = ['temperature', 'humidity'];
 
-        for (const name of rtNames) {
+        for (const name of names.ruuvitag) {
           for (const meas of rtMeasurables) {
             changingOpts = {
-              x: xValues,
+              x: dataLabels.rt,
               y: dataSets.rt[name][meas],
               name: labelValues.rt[name][meas],
               visible: getTraceVisibility(true),
@@ -1039,7 +988,7 @@ const loadPage = () => {
 
 
     const generateAnnotationConfig = (plotType, traceData) => {
-      if (annotationIndexes[plotType].length) {
+      if (annotationIndices[plotType].length) {
         const shapes = [];
         let yValues = [];
         let oneDay = false;
@@ -1060,8 +1009,8 @@ const loadPage = () => {
           oneDay = true;
         }
 
-        for (let i = 0; i < annotationIndexes[plotType].length; i++) {
-          index = annotationIndexes[plotType][i];
+        for (let i = 0; i < annotationIndices[plotType].length; i++) {
+          index = annotationIndices[plotType][i];
           shape = {
               type: 'line',
               x0: index,
@@ -1353,7 +1302,8 @@ const loadPage = () => {
         const rData = resp.data;
 
         data.weather = rData['weather-data'];
-        data.obs = rData['obs-data'];
+        data.weatherObs = rData['weather-obs-data'];
+        data.other = rData['obs-data'];
         data.rt = rData['rt-data'];
 
         document.getElementById('startDate').value = rData['obs-dates'].current.start;
@@ -1362,7 +1312,6 @@ const loadPage = () => {
         transformData();
 
         plotUpdateAfterReset('weather');
-
         plotUpdateAfterReset('other');
         plotUpdateAfterReset('ruuvitag');
       })
@@ -1621,7 +1570,7 @@ const loadPage = () => {
     },
     false);
 
-  if (data.obs.length) {
+  if (data.other) {
     showElectricityData();
 
     document.getElementById('showInfoText').addEventListener('click',
@@ -1687,9 +1636,10 @@ axios.get('data/display')
 
     testbedImageBasepath = rData['tb-image-basepath'];
     data.weather = rData['weather-data'];
-    data.obs = rData['obs-data'];
-    rtNames = rData['rt-names'];
+    data.weatherObs = rData['weather-obs-data'];
+    data.other = rData['obs-data'];
     data.rt = rData['rt-data'];
+    names.ruuvitag = rData['rt-names'];
 
     if (rData['obs-dates']['min-max']) {
       const intMinMax = rData['obs-dates']['min-max'];

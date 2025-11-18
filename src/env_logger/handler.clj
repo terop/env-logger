@@ -55,15 +55,32 @@
   (if-not (access-ok? (:oid-auth env) request)
     auth/response-unauthorized
     (with-open [con (jdbc/get-connection db/postgres-ds)]
-      (let [data (first (reverse (db/get-obs-days con 1)))
+      (let [get-last-from-map (fn [data]
+                                (into {}
+                                      (for [item (keys data)]
+                                        {item (first (reverse (item data)))})))
+            take-n-last (fn [data n]
+                          (into {}
+                                (for [item (keys data)]
+                                  {item (take n (reverse (item data)))})))
+            data (merge (get-last-from-map (db/get-obs-days con 1))
+                        (get-last-from-map (db/get-ruuvi-air-obs con
+                                                                 (db/get-midnight-dt 1)
+                                                                 (jt/local-date-time))))
+            rt-number (count (:ruuvitag-names env))
+            rt-data-raw (take-n-last (db/get-ruuvitag-obs con
+                                                          (jt/minus (jt/local-date-time)
+                                                                    (jt/minutes 45))
+                                                          (jt/local-date-time)
+                                                          (:ruuvitag-names env))
+                                     rt-number)
             rt-data (sort-by :name
-                             (take (count (:ruuvitag-names env))
-                                   (reverse (db/get-ruuvitag-obs
-                                             con
-                                             (jt/minus (jt/local-date-time)
-                                                       (jt/minutes 45))
-                                             (jt/local-date-time)
-                                             (:ruuvitag-names env)))))]
+                             (for [idx (range rt-number)]
+                               {:recorded (convert-epoch-ms->string
+                                           (nth (:recorded rt-data-raw) idx))
+                                :name (nth (:name rt-data-raw) idx)
+                                :temperature (nth (:temperature rt-data-raw) idx)
+                                :humidity (nth (:humidity rt-data-raw) idx)}))]
         (if-not data
           (serve-json {:data []
                        :rt-data []
@@ -72,10 +89,7 @@
           (serve-json {:data (assoc data :recorded
                                     (convert-epoch-ms->string
                                      (:recorded data)))
-                       :rt-data (for [item rt-data]
-                                  (assoc item :recorded
-                                         (convert-epoch-ms->string
-                                          (:recorded item))))
+                       :rt-data rt-data
                        :weather-data (get-fmi-weather-data)}))))))
 
 (defn get-plot-page-data
@@ -93,20 +107,22 @@
         {:obs-data (db/get-obs-interval con
                                         {:start start-date
                                          :end end-date})
+         :obs-dates {:current {:start start-date
+                               :end end-date}}
+         :ra-data (db/get-ruuvi-air-obs
+                   con
+                   (db/make-local-dt start-date "start")
+                   (db/make-local-dt end-date "end"))
          :rt-data (db/get-ruuvitag-obs
                    con
                    (db/make-local-dt start-date "start")
                    (db/make-local-dt end-date "end")
                    ruuvitag-names)
-         :obs-dates {:current {:start start-date
-                               :end end-date}}}
+         :weather-obs-data (db/get-weather-interval con
+                                                    {:start start-date
+                                                     :end end-date})}
         {:obs-data (db/get-obs-days con
                                     initial-days)
-         :rt-data (db/get-ruuvitag-obs
-                   con
-                   (db/get-midnight-dt initial-days)
-                   (jt/local-date-time)
-                   ruuvitag-names)
          :obs-dates {:current {:start
                                (when (:end obs-dates)
                                  (jt/format :iso-local-date
@@ -117,7 +133,18 @@
                                                       (jt/days initial-days))))
                                :end (:end obs-dates)}
                      :min-max {:start (:start obs-dates)
-                               :end (:end obs-dates)}}}))))
+                               :end (:end obs-dates)}}
+         :ra-data (db/get-ruuvi-air-obs
+                   con
+                   (db/get-midnight-dt initial-days)
+                   (jt/local-date-time))
+         :rt-data (db/get-ruuvitag-obs
+                   con
+                   (db/get-midnight-dt initial-days)
+                   (jt/local-date-time)
+                   ruuvitag-names)
+         :weather-obs-data (db/get-weather-days con
+                                                initial-days)}))))
 
 (defn get-display-data
   "Returns the data to be displayed in the front-end."

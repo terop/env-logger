@@ -38,13 +38,13 @@ CREATE TABLE weather_data (
 
 CREATE INDEX weather_data_time_brin ON weather_data USING BRIN (time);
 
--- Ruuvi Tag beacon observation data
+-- RuuviTag beacon observation data
 CREATE TABLE ruuvitag_observations (
        id SERIAL PRIMARY KEY,
        recorded TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
        name VARCHAR(15) NOT NULL,
        temperature REAL NOT NULL,
-       -- allow NULL values as not all Ruuvi Tags have a pressure sensor
+       -- allow NULL values as not all RuuviTags have a pressure sensor
        pressure REAL,
        humidity REAL NOT NULL,
        battery_voltage REAL NOT NULL,

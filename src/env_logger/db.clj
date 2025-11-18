@@ -137,7 +137,7 @@
     (* (LocalDateTime/.toEpochSecond subs-dt ZoneOffset/UTC)
        1000)))
 
-(defn -convert-time->iso8601-str
+(defn convert-time->iso8601-str
   "Converts a ZonedDateTime or a java.sql.Timestamp object to a ISO 8601
   formatted datetime string."
   [datetime]
@@ -151,6 +151,13 @@
   "Rounds the given number up to two decimals."
   [number]
   (Float/parseFloat (DecimalFormat/.format df-inst number)))
+
+(defn- transform-row->column
+  "Do a row to column transform of the given iterable containing maps
+  as its content."
+  [rows]
+  (let [keys (keys (first rows))]
+    (into {} (map (fn [k] [k (mapv k rows)]) keys))))
 
 (defn insert-plain-observation
   "Insert a row into observations table."
@@ -245,7 +252,7 @@
                                rs-opts))))]
       (every? pos? (map insert-fn observations)))
     (catch PSQLException pe
-      (error pe "RuuviTag observation insert failed")
+      (error pe "Ruuvi device observation insert failed")
       false)))
 
 (defn insert-observation
@@ -344,19 +351,13 @@
                              :o.inside_light
                              :o.inside_temperature
                              :o.co2
-                             [:w.time "weather_recorded"]
-                             [:w.temperature "fmi_temperature"]
-                             :w.cloudiness
-                             :w.wind_speed
                              :o.outside_temperature
                              :b.mac_address
                              [:b.rssi "beacon_rssi"]
                              [:b.battery_level "beacon_battery"]
                              :o.tb_image_name]
                     :from [[:observations :o]]
-                    :left-join [[:weather-data :w]
-                                [:= :o.id :w.obs_id]
-                                [:beacons :b]
+                    :left-join [[:beacons :b]
                                 [:= :o.id :b.obs_id]]}
         where-query (if where
                       (assoc base-query :where where)
@@ -366,22 +367,17 @@
                                           :order-by [[:o.id :desc]]})
                       (assoc where-query :order-by [[:o.id :asc]]))
         beacon-name (:beacon-name env)
-        tz-offset (get-tz-offset (:display-timezone env))]
-    (for [row (jdbc/execute! db-con
-                             (sql/format limit-query)
-                             rs-opts)]
-      (dissoc (merge row
-                     {:recorded (convert->epoch-ms tz-offset
-                                                   (:recorded row))
-                      :weather-recorded (when (:weather-recorded row)
-                                          (convert->epoch-ms
-                                           tz-offset
-                                           (:weather-recorded row)))
-                      :beacon-name (get beacon-name
-                                        (:mac-address row)
-                                        (:mac-address row))
-                      :co2 (:co-2 row)})
-              :mac-address :co-2))))
+        tz-offset (get-tz-offset (:display-timezone env))
+        results (transform-row->column (jdbc/execute! db-con
+                                                      (sql/format limit-query)
+                                                      rs-opts))
+        updated-recorded (map #(convert->epoch-ms tz-offset %) (:recorded results))
+        updated-beacon (map #(get beacon-name % %) (:mac-address results))]
+    (as-> results res
+      (assoc res :recorded updated-recorded)
+      (assoc res :beacon-name updated-beacon)
+      (assoc res :co2 (:co-2 res))
+      (dissoc res :co-2 :mac-address))))
 
 (defn get-obs-days
   "Fetches the observations from the last N days."
@@ -416,6 +412,46 @@
       (error pe "Observation date interval fetch failed")
       {:error :db-error})))
 
+(defn get-weather-observations
+  "Fetches FMI weather observations optionally filtered by a provided SQL WHERE clause.
+  Limiting rows is possible by providing row count with the :limit argument."
+  [db-con & {:keys [where limit]
+             :or {where nil
+                  limit nil}}]
+  (let [base-query {:select [:time
+                             :temperature
+                             :cloudiness
+                             :wind_speed]
+                    :from [:weather_data]}
+        where-query (if where
+                      (assoc base-query :where where)
+                      base-query)
+        limit-query (if limit
+                      (merge where-query {:limit limit
+                                          :order-by [[:time :desc]]})
+                      (assoc where-query :order-by [[:time :asc]]))
+        tz-offset (get-tz-offset (:display-timezone env))
+        results (transform-row->column (jdbc/execute! db-con
+                                                      (sql/format limit-query)
+                                                      rs-opts))
+        updated-time (map #(convert->epoch-ms tz-offset %) (:time results))]
+    (assoc results :time updated-time)))
+
+(defn get-weather-days
+  "Fetches the weather observations from the last N days."
+  [db-con n]
+  (get-weather-observations db-con
+                            :where [:>= :time
+                                    (get-midnight-dt n)]))
+
+(defn get-weather-interval
+  "Fetches weather observations in an interval between the provided dates."
+  [db-con dates]
+  (get-by-interval get-weather-observations
+                   db-con
+                   dates
+                   :time))
+
 (defn get-ruuvitag-obs
   "Returns RuuviTag observations being between the provided timestamps
   and having the given name(s)."
@@ -431,15 +467,36 @@
                                      [:>= :recorded start]
                                      [:<= :recorded end]]
                              :order-by [[:id :asc]]})
-          tz-offset (get-tz-offset (:display-timezone env))]
-      (for [row (jdbc/execute! db-con query rs-opts)]
-        (merge row
-               {:recorded (convert->epoch-ms tz-offset
-                                             (:recorded row))
-                :temperature (round-number (:temperature row))
-                :humidity (round-number (:humidity row))})))
+          tz-offset (get-tz-offset (:display-timezone env))
+          results (transform-row->column (jdbc/execute! db-con query rs-opts))
+          updated-recorded (map #(convert->epoch-ms tz-offset %) (:recorded results))]
+      (assoc results :recorded updated-recorded))
     (catch PSQLException pe
       (error pe "RuuviTag observation fetch failed")
+      {})))
+
+(defn get-ruuvi-air-obs
+  "Returns Ruuvi Air observations being between the provided timestamps."
+  [db-con start end]
+  (try
+    (let [query (sql/format {:select [:recorded
+                                      [:co2 "ruuvi_co2"]
+                                      [:pm_2_5 "pm_25"]
+                                      :iaqs]
+                             :from :ruuvi_air_observations
+                             :where [:and
+                                     [:>= :recorded start]
+                                     [:<= :recorded end]]
+                             :order-by [[:id :asc]]})
+          tz-offset (get-tz-offset (:display-timezone env))
+          results (transform-row->column (jdbc/execute! db-con query rs-opts))
+          updated-recorded (map #(convert->epoch-ms tz-offset %) (:recorded results))]
+      (as-> results res
+        (assoc res :recorded updated-recorded)
+        (assoc res :ruuvi-co2 (:ruuvi-co-2 res))
+        (dissoc res :ruuvi-co-2)))
+    (catch PSQLException pe
+      (error pe "Ruuvi Air observation fetch failed")
       {})))
 
 (defn get-elec-fees
@@ -520,7 +577,7 @@
             (merge row
                    {:price (round-number (if add-fees (+ (:price row) fees)
                                              (:price row)))
-                    :start-time (-convert-time->iso8601-str (:start-time row))})))))
+                    :start-time (convert-time->iso8601-str (:start-time row))})))))
     (catch PSQLException pe
       (error pe "Hourly electricity data fetch failed")
       nil)))
@@ -544,7 +601,7 @@
             (merge row
                    {:price (round-number (if add-fees (+ (:price row) fees)
                                              (:price row)))
-                    :start-time (-convert-time->iso8601-str (:start-time row))})))))
+                    :start-time (convert-time->iso8601-str (:start-time row))})))))
     (catch PSQLException pe
       (error pe "Minute resolution electricity price fetch failed")
       nil)))
