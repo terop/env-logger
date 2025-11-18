@@ -479,8 +479,7 @@
   "Returns Ruuvi Air observations being between the provided timestamps."
   [db-con start end]
   (try
-    (let [query (sql/format {:select [:recorded
-                                      [:co2 "ruuvi_co2"]
+    (let [query (sql/format {:select [[:co2 "ruuvi_co2"]
                                       [:pm_2_5 "pm_25"]
                                       :iaqs]
                              :from :ruuvi_air_observations
@@ -488,11 +487,8 @@
                                      [:>= :recorded start]
                                      [:<= :recorded end]]
                              :order-by [[:id :asc]]})
-          tz-offset (get-tz-offset (:display-timezone env))
-          results (transform-row->column (jdbc/execute! db-con query rs-opts))
-          updated-recorded (map #(convert->epoch-ms tz-offset %) (:recorded results))]
+          results (transform-row->column (jdbc/execute! db-con query rs-opts))]
       (as-> results res
-        (assoc res :recorded updated-recorded)
         (assoc res :ruuvi-co2 (:ruuvi-co-2 res))
         (dissoc res :ruuvi-co-2)))
     (catch PSQLException pe

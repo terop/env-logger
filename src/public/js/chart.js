@@ -5,7 +5,8 @@ const DateTime = luxon.DateTime;
 // Data field names
 const fieldNames = {
   weather: ['temperature', 'cloudiness', 'wind-speed'],
-  other: ['inside-light', 'inside-temperature', 'co2', 'outside-temperature', 'beacon-rssi', 'beacon-battery']
+  other: ['inside-light', 'inside-temperature', 'co2', 'ruuvi-co2', 'pm-25',
+          'iaqs', 'beacon-rssi', 'beacon-battery',  'outside-temperature']
 };
 
 let labelValues = {
@@ -93,6 +94,15 @@ const loadPage = () => {
     }
   };
 
+  const padArrayFromStart = (arr, targetLength, value) => {
+    const paddingLength = targetLength - arr.length;
+    if (paddingLength > 0) {
+      const padding = new Array(paddingLength).fill(value);
+      return padding.concat(arr);
+    }
+    return arr;
+  };
+
   const parseWeatherData = (weatherData) => {
     weatherData.time.forEach((value) => {
       dataLabels.weather.push(new Date(value));
@@ -117,6 +127,10 @@ const loadPage = () => {
 
     fieldNames.other.forEach((value) => {
       dataSets.other[value] = otherData[value];
+
+      // Pad the array if there is missing values in the beginning
+      dataSets.other[value] = padArrayFromStart(dataSets.other[value],
+                                                dataLabels.other.length, null);
     });
   };
 
@@ -145,6 +159,9 @@ const loadPage = () => {
       'inside-light': 'Inside light',
       'inside-temperature': 'Inside temperature',
       'co2': 'Inside CO\u2082',
+      'ruuvi-co2': 'Ruuvi Air CO\u2082',
+      'pm-25': 'PM 2.5',
+      'iaqs': 'IAQS',
       'outside-temperature': 'Outside temperature',
       'beacon-rssi': beaconName
         ? `Beacon "${beaconName}" RSSI`
@@ -193,7 +210,8 @@ const loadPage = () => {
         `${keyName.includes('battery') ? ' %' : ''}` +
         `${keyName.includes('precipitation') ? ' mm' : ''}` +
         `${keyName.includes('light') ? ' lux' : ''}` +
-        `${keyName.includes('co2') || keyName.includes('co\u2082') ? ' ppm' : ''}`;
+        `${keyName.includes('co2') || keyName.includes('co\u2082') ? ' ppm' : ''}` +
+        `${keyName.includes('pm 2') || keyName.includes('pm-2') ? ' \u00b5g/m\u00b3' : ''}`;
     };
 
     // Change the first letter to lowercase
@@ -265,10 +283,20 @@ const loadPage = () => {
         observationText += ` ${dataSets.other['co2'][obsIndex]}` +
           `${addUnitSuffix('co2')}, `;
       }
-      observationText += `${lowerFL(labelValues.other['outside-temperature'])}:`;
-      if (dataSets.other['outside-temperature'][obsIndex] !== null) {
-        observationText += ` ${dataSets.other['outside-temperature'][obsIndex]}` +
-          `${addUnitSuffix('temperature')}, `;
+      observationText += `${labelValues.other['ruuvi-co2']}:`;
+      if (dataSets.other['ruuvi-co2'][obsIndex] !== null) {
+        observationText += ` ${dataSets.other['ruuvi-co2'][obsIndex]}` +
+          `${addUnitSuffix('ruuvi-co2')}, `;
+      }
+      observationText += `${labelValues.other['pm-25']}:`;
+      if (dataSets.other['pm-25'][obsIndex] !== null) {
+        observationText += ` ${dataSets.other['pm-25'][obsIndex]}` +
+          `${addUnitSuffix('pm-25')},`;
+      }
+      observationText += `<br>${labelValues.other['iaqs']}:`;
+      if (dataSets.other['iaqs'][obsIndex] !== null) {
+        observationText += ` ${dataSets.other['iaqs'][obsIndex]}` +
+          `${addUnitSuffix('iaqs')}, `;
       }
 
       if (dataSets.other['beacon-rssi'][obsIndex] !== null) {
@@ -277,7 +305,12 @@ const loadPage = () => {
 
         const battery = dataSets.other['beacon-battery'][obsIndex];
         const batteryText = battery ? `${battery} ${addUnitSuffix('beacon-battery')}` : 'NA';
-        observationText += `, battery level ${batteryText}`;
+        observationText += `; battery level ${batteryText}, `;
+      }
+      observationText += `${lowerFL(labelValues.other['outside-temperature'])}:`;
+      if (dataSets.other['outside-temperature'][obsIndex] !== null) {
+        observationText += ` ${dataSets.other['outside-temperature'][obsIndex]}` +
+          `${addUnitSuffix('temperature')}`;
       }
 
       observationText += '<br>RuuviTags: ';

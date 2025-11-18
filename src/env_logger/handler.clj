@@ -104,15 +104,14 @@
           initial-days (:initial-show-days env)
           ruuvitag-names (:ruuvitag-names env)]
       (if (or start-date end-date)
-        {:obs-data (db/get-obs-interval con
-                                        {:start start-date
-                                         :end end-date})
+        {:obs-data (merge (db/get-obs-interval con
+                                               {:start start-date
+                                                :end end-date})
+                          (db/get-ruuvi-air-obs con
+                                                (db/make-local-dt start-date "start")
+                                                (db/make-local-dt end-date "end")))
          :obs-dates {:current {:start start-date
                                :end end-date}}
-         :ra-data (db/get-ruuvi-air-obs
-                   con
-                   (db/make-local-dt start-date "start")
-                   (db/make-local-dt end-date "end"))
          :rt-data (db/get-ruuvitag-obs
                    con
                    (db/make-local-dt start-date "start")
@@ -121,8 +120,11 @@
          :weather-obs-data (db/get-weather-interval con
                                                     {:start start-date
                                                      :end end-date})}
-        {:obs-data (db/get-obs-days con
-                                    initial-days)
+        {:obs-data (merge (db/get-obs-days con
+                                           initial-days)
+                          (db/get-ruuvi-air-obs con
+                                                (db/get-midnight-dt initial-days)
+                                                (jt/local-date-time)))
          :obs-dates {:current {:start
                                (when (:end obs-dates)
                                  (jt/format :iso-local-date
@@ -134,10 +136,6 @@
                                :end (:end obs-dates)}
                      :min-max {:start (:start obs-dates)
                                :end (:end obs-dates)}}
-         :ra-data (db/get-ruuvi-air-obs
-                   con
-                   (db/get-midnight-dt initial-days)
-                   (jt/local-date-time))
          :rt-data (db/get-ruuvitag-obs
                    con
                    (db/get-midnight-dt initial-days)
