@@ -350,17 +350,16 @@ def update_screen(display, observation, weather_data, elec_data, utc_offset_hour
 
     display[row].text = rt_recorded
     row += 1
-    display[row].text = f'Inside light {observation["data"]["inside-light"]}, '
-    display[row].text += 'outside temp'
-    if observation['data']['outside-temperature'] is not None:
-        display[row].text += f' {observation["data"]["outside-temperature"]} \u00b0C'
-    if observation['data']['beacon-rssi']:
-        display[row].text += ','
+    o_data = observation['data']
+    if o_data['outside-temperature'] is not None:
+        display[row].text = f'Outside temp {o_data["outside-temperature"]} \u00b0C'
+    if o_data['beacon-rssi'] is not None:
+        display[row].text += f', beacon RSSI {o_data["beacon-rssi"]} dBm,'
+
+    if o_data['iaqs'] is not None:
         row += 1
-        display[row].text = f'beacon "{observation["data"]["beacon-name"]}": RSSI ' + \
-            f'{observation["data"]["beacon-rssi"]} dBm, battery '
-        battery_text = observation['data']['beacon-battery']
-        display[row].text += f'{battery_text} %' if battery_text else 'NA'
+        display[row].text = f'air: IAQS {o_data["iaqs"]}, CO\u2082 ' \
+            f'{o_data["ruuvi-co2"]} ppm, PM 2.5 {o_data["pm-25"]} \u00b5g/m\u00b3'
     row += 1
 
     if observation['rt-data']:
