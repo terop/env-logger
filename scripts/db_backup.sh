@@ -27,18 +27,19 @@ exist in the same directory as this file.
 For Kubernetes the following environment variables must be specified:
 POD_NAME:   name of the pod running PostgreSQL, the pod must have the pg_dump command
 
-Usage: $0 [-h] [-k] [-l] [-n] <database name>
+Usage: $0 [-h] [-k] [-l] [-n] [-o] <database name>
 Flags:
 -h    Print this message and exit
 -k    Backup from PostgreSQL running in a Kubernetes pod
 -l    Backup from PostgreSQL running on the host
 -n    Do a local backup (do not upload backup file)
+-o    Do not compress backup file
 EOF
 }
 
 local_backup=0
 
-while getopts 'hkln' OPTION; do
+while getopts 'hklno' OPTION; do
     case "${OPTION}" in
         h)
             usage
@@ -52,6 +53,9 @@ while getopts 'hkln' OPTION; do
             ;;
         n)
             local_backup=1
+            ;;
+        o)
+            no_compress=1
             ;;
         *)
             echo "Invalid option: ${OPTION}"
@@ -93,28 +97,38 @@ fi
 echo "Dumping database ${db_name} to file ${backup_file_name}"
 
 if [ "${local_db}" ]; then
-    backup_file_name="${db_name}_$(date -Iseconds).dump.xz"
+    backup_file_name="${db_name}_$(date -Iseconds).dump"
 
-    if ! pg_dump -Fc -d "${db_name}" | xz -1 -z > "${backup_file_name}"; then
+    if ! pg_dump -Fc -d "${db_name}"; then
         echo "Error: pg_dump failed, deleting file" >&2
         rm "${backup_file_name}"
         return 1
     fi
+    if [ -z "${no_compress}" ]; then
+        if ! xz -1 -z > "${backup_file_name}"; then
+            echo "Error: pg_dump file compression failed, deleting file" >&2
+            rm "${backup_file_name}"
+            return 1
+        fi
+        backup_file_name="${backup_file_name}.xz"
+    fi
 else
-    backup_file_name_no_comp="${db_name}_$(date -Iseconds).dump"
+    backup_file_name="${db_name}_$(date -Iseconds).dump"
 
     if ! kubectl exec "${POD_NAME}" -c postgres -- pg_dump -Fc -d "${db_name}" \
-         > "${backup_file_name_no_comp}"; then
+         > "${backup_file_name}"; then
         echo "Error: Kubernetes pg_dump failed, deleting file" >&2
         rm "${backup_file_name}"
         return 1
     fi
-    if ! xz -1 -z "${backup_file_name_no_comp}"; then
-        echo "Error: Kubernetes pg_dump compression failed, deleting file" >&2
-        rm "${backup_file_name_no_comp}"
-        return 1
+    if [ -z "${no_compress}" ]; then
+        if ! xz -1 -z "${backup_file_name}"; then
+            echo "Error: Kubernetes pg_dump compression failed, deleting file" >&2
+            rm "${backup_file_name}"
+            return 1
+        fi
+        backup_file_name="${backup_file_name}.xz"
     fi
-    backup_file_name="${backup_file_name_no_comp}.xz"
 fi
 
 if [ $local_backup -eq 1 ]; then
