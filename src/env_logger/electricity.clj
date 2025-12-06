@@ -45,7 +45,8 @@
               resp-data {:month-price-avg (db/get-month-avg-elec-price con
                                                                        add-fees)
                          :month-consumption (db/get-month-elec-consumption con)
-                         :month-cost (calculate-month-cost)}]
+                         :month-cost (calculate-month-cost)
+                         :price-thresholds (:elec-price-thresholds env)}]
           (if (or start-date end-date)
             (if-not start-date
               (bad-request "Missing parameter")

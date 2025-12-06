@@ -32,7 +32,10 @@
  :beacon-name {"7C:EC:79:3F:BE:98" "Beacon 1"}
  ;; Enable / disable electricity price showing
  :show-elec-price false
-  ;; Electricity contract base fee (in Euros)
+ ;; Electricity price threshold values
+ :elec-price-thresholds {:cheap 10
+                         :reasonable 20}
+ ;; Electricity contract base fee (in Euros)
  :elec-contract-base-fee 3.04
  ;; Electricity contract spot price margin (in Euros)
  :elec-contract-margin 0.0040

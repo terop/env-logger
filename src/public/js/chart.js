@@ -39,6 +39,7 @@ const names = {
   testbedImage: null,
   ruuvitag: null
 };
+let elecPriceThresholds = {};
 let testbedImageBasepath = '';
 
 const redirectToLogin = () => {
@@ -597,23 +598,40 @@ const loadPage = () => {
 
     // Highlight the current hour's values in the 15 minute electricity
     // price data chart
-    const generateElecMinuteChartBarColourValues = (xValues) => {
-      const defaultColour = '#1565a3';
+    const generateElecMinuteChartBarColourValues = (xValues, prices) => {
+      const cheapColour = '#00cd01';
+      const reasonableColour = '#f3e600';
+      const expensiveColour = '#f44336';
       const currentHourColour = '#60a5fa';
+      let colours = [];
 
-      if (DateTime.now().day !== DateTime.fromJSDate(xValues[0]).day) {
-        return Array(xValues.length).fill(defaultColour);
-      } else {
-        const currentHour = DateTime.now().hour;
-        let colours = [];
+      const now = DateTime.now();
+      const parts = luxon.Interval.after(DateTime.local(now.year, now.month, now.day, now.hour, 0, 0),
+                                         luxon.Duration.fromObject({'hours': 1})).divideEqually(4);
+      let currentHourQuarter;
 
-        for (const item of xValues) {
-          colours.push(DateTime.fromJSDate(item).hour === currentHour ?
-                       currentHourColour : defaultColour);
+      for (const part of parts) {
+        if (part.contains(now)) {
+          currentHourQuarter = part.start;
+          break;
         }
-
-        return colours;
       }
+
+      for (let i = 0; i < xValues.length; i++) {
+        if (currentHourQuarter.toMillis() === DateTime.fromJSDate(xValues[i]).toMillis()) {
+          colours.push(currentHourColour);
+        } else {
+          if (prices[i] < elecPriceThresholds.cheap) {
+            colours.push(cheapColour);
+          } else if (prices[i] < elecPriceThresholds.reasonable) {
+            colours.push(reasonableColour);
+          } else {
+            colours.push(expensiveColour);
+          }
+        }
+      }
+
+      return colours;
     };
 
     // Show the 15 minute electricity price data in a chart
@@ -639,7 +657,7 @@ const loadPage = () => {
           text: Array(xValues.length).fill(' c / kWh'),
           textposition: 'none',
           marker: {
-            color: generateElecMinuteChartBarColourValues(xValues)
+            color: generateElecMinuteChartBarColourValues(xValues, data.price)
           }
         }];
       };
@@ -786,6 +804,10 @@ const loadPage = () => {
               document.getElementById('elecStartDate').value = elecData.dates.current.start;
             }
 
+            if (elecData['price-thresholds']) {
+              elecPriceThresholds = elecData['price-thresholds'];
+            }
+
             showLatestPrice(elecData['data-hour']);
             plotElectricityDataHour(elecData['data-hour'], true, true);
 
@@ -862,12 +884,16 @@ const loadPage = () => {
             return;
           }
 
-          plotElectricityPriceMinute(elecData.prices);
+          // Delay plot to allow electricity price thresholds to complete loading
+          setTimeout(() => {
+            plotElectricityPriceMinute(elecData.prices);
+          }, 700);
           dateField.min = elecData['date-min'];
 
           setInterval(() => {
             const plot = document.getElementById('minuteElecDataPlot');
-            const update = {'marker.color': [generateElecMinuteChartBarColourValues(plot.data[0].x)]};
+            const update = {'marker.color': [generateElecMinuteChartBarColourValues(plot.data[0].x,
+                                                                                    plot.data[0].y)]};
             Plotly.restyle(plot, update, [0]);
           }, 120000);
         })

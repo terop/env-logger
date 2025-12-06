@@ -43,7 +43,8 @@
                 "data-hour" [{"consumption" 0.5, "start-time" 123, "price" 10.0}]
                 "data-day" [{"consumption" 1.8, "date" "2023-09-04", "price" 7.0}]
                 "month-price-avg" "10.0" "month-consumption" "70.1"
-                "month-cost" 0.32 "interval-cost" 0.31}
+                "month-cost" 0.32 "interval-cost" 0.31
+                "price-thresholds" {"cheap" 10 "reasonable" 20}}
                (j/read-value (:body (e/electricity-data
                                      {:params {"startDate" "2022-10-08"
                                                "endDate" "2022-10-08"}})))))
@@ -53,7 +54,8 @@
                 "data-hour" [{"consumption" 0.5, "start-time" 123, "price" 10.0}]
                 "data-day" [{"consumption" 1.8, "date" "2023-09-04", "price" 7.0}]
                 "month-price-avg" "10.0" "month-consumption" "70.1"
-                "month-cost" 0.32 "interval-cost" 0.31}
+                "month-cost" 0.32 "interval-cost" 0.31
+                "price-thresholds" {"cheap" 10 "reasonable" 20}}
                (j/read-value (:body (e/electricity-data
                                      {:params {}})))))))))
 
