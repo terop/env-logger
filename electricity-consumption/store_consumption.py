@@ -31,8 +31,8 @@ def check_day_data(db_config, check_date):
     try:
         with psycopg.connect(create_db_conn_string(db_config)) as conn, \
              conn.cursor() as cursor:
-            cursor.execute('SELECT COUNT(id) FROM electricity_consumption WHERE time '
-                           '>= %s AND time < %s', (start_dt, end_dt))
+            cursor.execute(t'SELECT COUNT(id) FROM electricity_consumption WHERE \
+            time >= {start_dt} AND time < {end_dt}')
             return cursor.fetchone()[0] > min_value_threshold
     except psycopg.Error:
         logger.exception('Previous day data check failed')
