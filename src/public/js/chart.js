@@ -45,6 +45,7 @@ const elecPriceBarColours = {
   expensive: '#f44336',
   currentHour: '#60a5fa'
 };
+let elecMinutePriceData = {};
 let elecPriceThresholds = {};
 let testbedImageBasepath = '';
 
@@ -198,6 +199,13 @@ const loadPage = () => {
     document.getElementById(elementId).style.display = 'none';
   };
 
+  const getElecMinutePriceData = (date) => {
+    return (elecMinutePriceData[date] !== undefined &&
+            elecMinutePriceData[date].addFees ===
+            document.getElementById('elecPriceShowFees').checked) ?
+      elecMinutePriceData[date].prices : null;
+  };
+
   if (!data.other) {
     document.getElementById('noDataError').style.display = 'block';
     hideElement('imageButtonDiv');
@@ -232,7 +240,6 @@ const loadPage = () => {
         window.scroll(0, document.body.scrollHeight);
       }, timeout);
     };
-
 
     // Show last observation and some other data for quick viewing
     const showLastObservation = () => {
@@ -904,6 +911,9 @@ const loadPage = () => {
             return;
           }
 
+          elecMinutePriceData[currentDate] = {prices: elecData.prices,
+                                              addFees: document.getElementById('elecPriceShowFees').checked};
+
           // Delay plot to allow electricity price thresholds to complete loading
           setTimeout(() => {
             plotElectricityPriceMinute(elecData.prices);
@@ -1477,30 +1487,37 @@ const loadPage = () => {
       return;
     }
 
-    axios.get('data/elec-price-minute',
-              {
-                params: {
-                  date: minuteDate,
-                  addFees: document.getElementById('elecPriceShowFees').checked
-                }
-              })
-      .then(resp => {
-        const elecData = resp.data;
+    const priceData = getElecMinutePriceData(minuteDate);
+    if (priceData) {
+      plotElectricityPriceMinute(elecMinutePriceData[minuteDate].prices);
+    } else {
+      axios.get('data/elec-price-minute',
+                {
+                  params: {
+                    date: minuteDate,
+                    addFees: document.getElementById('elecPriceShowFees').checked
+                  }
+                })
+        .then(resp => {
+          const elecData = resp.data;
 
-        if (elecData.error) {
-          console.log(`Electricity data fetch error: ${elecData.error}`);
-          return;
-        }
+          if (elecData.error) {
+            console.log(`Electricity data fetch error: ${elecData.error}`);
+            return;
+          }
 
-        plotElectricityPriceMinute(elecData.prices);
-      })
-      .catch(error => {
-        if (error.status === 401) {
-          redirectToLogin();
-        } else {
-          console.log(`Electricity price fetch error: ${error}`);
-        }
-      });
+          plotElectricityPriceMinute(elecData.prices);
+          elecMinutePriceData[minuteDate] = {prices: elecData.prices,
+                                             addFees: document.getElementById('elecPriceShowFees').checked};
+        })
+        .catch(error => {
+          if (error.status === 401) {
+            redirectToLogin();
+          } else {
+            console.log(`Electricity price fetch error: ${error}`);
+          }
+        });
+    }
   };
 
   // Set visibility (shown / hidden) for all traces
@@ -1559,38 +1576,47 @@ const loadPage = () => {
     let dateField = document.getElementById('elecMinuteDate');
 
     const fetchPrice = (newDate) => {
-      axios.get('data/elec-price-minute',
-                {
-                  params: {
-                    date: newDate.toISODate(),
-                    addFees: document.getElementById('elecPriceShowFees').checked
-                  }
-                })
-        .then(resp => {
-          const elecData = resp.data;
+      const elecPrice = getElecMinutePriceData(newDate);
+      if (elecPrice) {
+        dateField.value = newDate;
+        plotElectricityPriceMinute(elecPrice);
+      } else {
+        axios.get('data/elec-price-minute',
+                  {
+                    params: {
+                      date: newDate,
+                      addFees: document.getElementById('elecPriceShowFees').checked
+                    }
+                  })
+          .then(resp => {
+            const elecData = resp.data;
 
-          if (elecData.error) {
-            console.log(`Electricity data fetch error: ${elecData.error}`);
-            return;
-          }
+            if (elecData.error) {
+              console.log(`Electricity data fetch error: ${elecData.error}`);
+              return;
+            }
 
-          dateField.value = newDate.toISODate();
-          plotElectricityPriceMinute(elecData.prices);
-        })
-        .catch(error => {
-          if (error.status === 401) {
-            redirectToLogin();
-          } else {
-            console.log(`Electricity price fetch error: ${error}`);
-          }
-        });
+            dateField.value = newDate;
+            plotElectricityPriceMinute(elecData.prices);
+
+            elecMinutePriceData[newDate] = {prices: elecData.prices,
+                                            addFees: document.getElementById('elecPriceShowFees').checked};
+          })
+          .catch(error => {
+            if (error.status === 401) {
+              redirectToLogin();
+            } else {
+              console.log(`Electricity price fetch error: ${error}`);
+            }
+          });
+      }
     };
 
     if (direction === 'forward') {
       const newDate = DateTime.fromISO(dateField.value).plus({days: 1});
 
       if (DateTime.fromISO(dateField.max) >= newDate) {
-        fetchPrice(newDate);
+        fetchPrice(newDate.toISODate());
       } else {
         alert('You are already at the newest date');
       }
@@ -1598,7 +1624,7 @@ const loadPage = () => {
       const newDate = DateTime.fromISO(dateField.value).minus({days: 1});
 
       if (DateTime.fromISO(dateField.min) <= newDate) {
-        fetchPrice(newDate);
+        fetchPrice(newDate.toISODate());
       } else {
         alert('You are already at the oldest date');
       }
