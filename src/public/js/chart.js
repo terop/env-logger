@@ -39,6 +39,12 @@ const names = {
   testbedImage: null,
   ruuvitag: null
 };
+const elecPriceBarColours = {
+  cheap: '#00cd01',
+  reasonable: '#f3e600',
+  expensive: '#f44336',
+  currentHour: '#60a5fa'
+};
 let elecPriceThresholds = {};
 let testbedImageBasepath = '';
 
@@ -396,6 +402,22 @@ const loadPage = () => {
         return shapes;
       };
 
+      const generateBarChartColours = (prices) => {
+        let colours = [];
+
+        for (const price of prices) {
+          if (price < elecPriceThresholds.cheap) {
+            colours.push(elecPriceBarColours.cheap);
+          } else if (price < elecPriceThresholds.reasonable) {
+            colours.push(elecPriceBarColours.reasonable);
+          } else {
+            colours.push(elecPriceBarColours.expensive);
+          }
+        }
+
+        return colours;
+      };
+
       const arraySum = (array) => {
         return array.reduce((acc, curr) => acc + curr, 0);
       };
@@ -433,25 +455,28 @@ const loadPage = () => {
           x: xValues,
           y: data.price,
           name: 'Price',
-          type: 'scattergl',
-          mode: 'lines+markers',
-          marker: {
-            size: 5
-          },
+          type: 'bar',
           xhoverformat: '<b>%d.%m. %H:%M</b>',
           hovertemplate: '%{y}%{text}',
-          text: Array(xValues.length).fill(' c / kWh')
+          text: Array(xValues.length).fill(' c / kWh'),
+          textposition: 'none',
+          marker: {
+            color: generateBarChartColours(data.price)
+          }
         },
         {
           x: xValues,
           y: data.consumption,
           name: 'Consumption',
-          type: 'bar',
+          type: 'lines',
+          line: {
+            color: 'rgb(0, 0, 0)',
+            width: 2,
+          },
           yaxis: 'y2',
           xhoverformat: '<b>%d.%m. %H:%M</b>',
           hovertemplate: '%{text}',
-          text: data.consumption.map((value) => `${value} kWh`),
-          textposition: 'none'
+          text: data.consumption.map((value) => `${value} kWh`)
         }];
       };
 
@@ -479,7 +504,7 @@ const loadPage = () => {
               text: 'Price (c / kWh)'
             },
             range: [extValuesPrice[0] - 0.5,
-              extValuesPrice[extValuesPrice.length - 1] + 0.5]
+                    extValuesPrice[extValuesPrice.length - 1] + 0.5]
           },
           yaxis2: {
             title: {
@@ -530,10 +555,9 @@ const loadPage = () => {
           x: labels,
           y: data.price,
           name: 'Average price',
-          type: 'scattergl',
-          mode: 'lines+markers',
-          marker: {
-            size: 5
+          mode: 'lines',
+          line: {
+            width: 2
           },
           xhoverformat: '<b>%d.%m.%Y</b>',
           hovertemplate: '%{y}%{text}',
@@ -569,13 +593,13 @@ const loadPage = () => {
           yaxis: {
             title: {
               text: 'Average price (c / kWh)'
-            }
+            },
+            overlaying: 'y2',
           },
           yaxis2: {
             title: {
               text: 'Consumption (kWh)'
             },
-            overlaying: 'y',
             side: 'right'
           },
           legend: {
@@ -598,11 +622,7 @@ const loadPage = () => {
 
     // Highlight the current hour's values in the 15 minute electricity
     // price data chart
-    const generateElecMinuteChartBarColourValues = (xValues, prices) => {
-      const cheapColour = '#00cd01';
-      const reasonableColour = '#f3e600';
-      const expensiveColour = '#f44336';
-      const currentHourColour = '#60a5fa';
+    const generateElecMinuteChartBarColours = (xValues, prices) => {
       let colours = [];
 
       const now = DateTime.now();
@@ -619,14 +639,14 @@ const loadPage = () => {
 
       for (let i = 0; i < xValues.length; i++) {
         if (currentHourQuarter.toMillis() === DateTime.fromJSDate(xValues[i]).toMillis()) {
-          colours.push(currentHourColour);
+          colours.push(elecPriceBarColours.currentHour);
         } else {
           if (prices[i] < elecPriceThresholds.cheap) {
-            colours.push(cheapColour);
+            colours.push(elecPriceBarColours.cheap);
           } else if (prices[i] < elecPriceThresholds.reasonable) {
-            colours.push(reasonableColour);
+            colours.push(elecPriceBarColours.reasonable);
           } else {
-            colours.push(expensiveColour);
+            colours.push(elecPriceBarColours.expensive);
           }
         }
       }
@@ -657,7 +677,7 @@ const loadPage = () => {
           text: Array(xValues.length).fill(' c / kWh'),
           textposition: 'none',
           marker: {
-            color: generateElecMinuteChartBarColourValues(xValues, data.price)
+            color: generateElecMinuteChartBarColours(xValues, data.price)
           }
         }];
       };
@@ -892,8 +912,8 @@ const loadPage = () => {
 
           setInterval(() => {
             const plot = document.getElementById('minuteElecDataPlot');
-            const update = {'marker.color': [generateElecMinuteChartBarColourValues(plot.data[0].x,
-                                                                                    plot.data[0].y)]};
+            const update = {'marker.color': [generateElecMinuteChartBarColours(plot.data[0].x,
+                                                                               plot.data[0].y)]};
             Plotly.restyle(plot, update, [0]);
           }, 120000);
         })
