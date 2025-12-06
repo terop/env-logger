@@ -229,8 +229,8 @@ class RuuvitagMonitor:
         with psycopg.connect(create_db_conn_string(self._config['db'])) as conn, \
              conn.cursor() as cursor:
             for name in self._config['ruuvitag']['Name'].split(','):
-                cursor.execute("""SELECT recorded FROM ruuvitag_observations WHERE
-                name = %s ORDER BY recorded DESC LIMIT 1""", (name,))
+                cursor.execute(t"""SELECT recorded FROM ruuvitag_observations WHERE
+                name = {name} ORDER BY recorded DESC LIMIT 1""")
 
                 result = cursor.fetchone()
                 results[name] = result[0] if result else datetime.now()
