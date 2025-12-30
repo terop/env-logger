@@ -370,7 +370,6 @@ const loadPage = () => {
                                    removeLast = false) => {
 
       const generateElecAnnotationConfig = (xValues, yValues) => {
-        const currentIdx = getClosestElecPriceDataIndex(xValues);
         const shapes = [];
         const extValues = getDataExtremeValues(yValues);
         const yMinMax = [extValues[0] - 0.4, extValues[1] + 0.4];
