@@ -206,7 +206,7 @@ const loadPage = () => {
       elecMinutePriceData[date].prices : null;
   };
 
-  if (!data.other) {
+  if (data.other.recorded.length === 0) {
     document.getElementById('noDataError').style.display = 'block';
     hideElement('imageButtonDiv');
     hideElement('latestCheckboxDiv');
@@ -1662,7 +1662,7 @@ const loadPage = () => {
     },
     false);
 
-  if (data.other) {
+  if (data.other.recorded.length > 0) {
     showElectricityData();
 
     document.getElementById('showInfoText').addEventListener('click',
