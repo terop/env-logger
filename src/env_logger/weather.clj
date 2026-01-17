@@ -91,7 +91,8 @@
   [temperature wind-speed humidity radiation]
   ;; Formula taken from https://github.com/saaste/fmi-weather-client/blob/
   ;; master/fmi_weather_client/parsers/forecast.py#L150
-  (if (< wind-speed 0.0)
+  (if (or (nil? wind-speed)
+          (< wind-speed 0.0))
     temperature
     (let [chill (+ 15 (* (- 1 (/ 15 37)) temperature)
                    (* (/ 15 37) (pow (inc wind-speed) 0.16) (- temperature 37)))
@@ -190,7 +191,7 @@
   (try
     ;; The first check is to prevent pointless fetch attempts when data
     ;; is not yet available
-    (when (and (>= (rem (jt/as (jt/local-date-time) :minute-of-hour) 10) 3)
+    (when (and (>= (rem (jt/as (jt/local-date-time) :minute-of-hour) 10) 1)
                (nil? (get @fmi-current (-convert-dt->tz-iso8601-str
                                         (calculate-start-time)))))
       (let [url (format (str "https://www.ilmatieteenlaitos.fi/api/weather/"
@@ -281,11 +282,17 @@
   "Fetches the latest FMI weather data from the cache.
   If there is no data for the current or the previous check times nil
   is returned."
-  []
-  (or (get @fmi-current
-           (-convert-dt->tz-iso8601-str (calculate-start-time)))
-      (get @fmi-current (-convert-dt->tz-iso8601-str
-                         (jt/minus (calculate-start-time) (jt/minutes 10))))))
+  ([]
+   (get-fmi-weather-data false))
+  ([only-latest]
+   (let [start-time (calculate-start-time)]
+     (if only-latest
+       (get @fmi-current
+            (-convert-dt->tz-iso8601-str start-time))
+       (or (get @fmi-current
+                (-convert-dt->tz-iso8601-str start-time))
+           (get @fmi-current (-convert-dt->tz-iso8601-str
+                              (jt/minus start-time (jt/minutes 10)))))))))
 
 (defn -update-fmi-weather-forecast
   "Updates the latest FMI forecaster edited weather forecast from the FMI WFS
@@ -375,12 +382,14 @@
             (and (seq @fmi-current)
                  (wd-has-empty-values? (last (last @fmi-current)))))
     (when (wd-has-empty-values? (last (last @fmi-current)))
-      (warn "Got nil values in FMI weather data observation (from TS):"
+      (warn "Got nil values in FMI weather data observation (from time series):"
             (last (last @fmi-current))))
     (-update-fmi-weather-data-json (:fmi-station-id env))
     (when (wd-has-empty-values? (last (last @fmi-current)))
       (warn "Got nil values in FMI weather data observation (from JSON):"
             (last (last @fmi-current)))))
+  ;; Give the weather data fetch some time to complete
+  (Thread/sleep 1500)
   (-update-fmi-weather-forecast (:weather-lat env)
                                 (:weather-lon env))
   (-fetch-astronomy-data (:ipgeol-api-key env)

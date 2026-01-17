@@ -167,7 +167,7 @@
   "Handles the insertion of an observation to the database."
   [observation]
   (with-open [con (jdbc/get-connection db/postgres-ds)]
-    (let [fmi-weather-data (get-fmi-weather-data)
+    (let [fmi-weather-data (get-fmi-weather-data true)
           weather-data (when (store-weather-data? con (:time fmi-weather-data))
                          fmi-weather-data)]
       (db/insert-observation con
@@ -178,9 +178,6 @@
   "Function called when an observation is posted."
   [request]
   (fetch-all-weather-data)
-  ;; Sleep a bit before continuing so that the possible weather data update
-  ;; has the possibility to complete
-  (Thread/sleep 1500)
   (if-not (access-ok? (:oid-auth env) request)
     auth/response-unauthorized
     (if-not (db/test-db-connection db/postgres-ds)
