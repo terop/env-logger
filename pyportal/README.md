@@ -18,9 +18,10 @@ not be needed.
 
     * `adafruit_bitmap_font/`
     * `adafruit_bus_device/`
+    * `adafruit_datetime.mpy`
     * `adafruit_io/`
     * `adafruit_simple_text_display.mpy`
-    * `adafruit_datetime.mpy`
+    * `adafruit_ticks.mpy`
     * `simpleio.mpy`
 
     See the PyPortal documentation on how to acquire and copy them to the device.
