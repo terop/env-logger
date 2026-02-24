@@ -32,7 +32,7 @@
 ;; Utilities
 
 (deftest test-iso8601-and-tz-str-formatting
-  (testing "Date and time to ISO 8601 with timezone string conversion"
+  (testing "Date and time to ISO 8601 with time zone string conversion"
     (let [now (ZonedDateTime/now (jt/zone-id "Europe/Helsinki"))]
       (is (= (str (first (str/split
                           (str (ZonedDateTime/.minusHours

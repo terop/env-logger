@@ -67,9 +67,9 @@
   (testing "Time data function"
     (is (= {"error" "Unspecified error"}
            (j/read-value (:body (h/time-data {:params {}})))))
-    (is (= {"error" "Timezone ID has an invalid format"}
+    (is (= {"error" "Time zone ID has an invalid format"}
            (j/read-value (:body (h/time-data {:params {"timezone" ""}})))))
-    (is (= {"error" "Cannot find timezone ID"}
+    (is (= {"error" "Cannot find time zone ID"}
            (j/read-value (:body (h/time-data {:params {"timezone" "Foo"}})))))
     (let [resp (j/read-value (:body (h/time-data
                                      {:params {"timezone" "UTC"}})))]

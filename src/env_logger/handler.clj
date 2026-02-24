@@ -243,7 +243,7 @@
             (bad-request "Bad request")))))))
 
 (defn time-data
-  "Returns the Unix timestamp and the UTC offset of the provided timezone."
+  "Returns the Unix timestamp and the UTC offset of the provided time zone."
   [request]
   (serve-json
    (try
@@ -254,11 +254,11 @@
           :offset-hour (db/get-tz-offset tz)}
          {:error "Unspecified error"}))
      (catch ZoneRulesException zre
-       (error zre "Cannot find timezone ID")
-       {:error "Cannot find timezone ID"})
+       (error zre "Cannot find time zone ID")
+       {:error "Cannot find time zone ID"})
      (catch DateTimeException dte
-       (error dte "Timezone ID has an invalid format")
-       {:error "Timezone ID has an invalid format"}))))
+       (error dte "Time zone ID has an invalid format")
+       {:error "Time zone ID has an invalid format"}))))
 
 (defn add-cache-control
   "Adds the Cache-Control HTTP header with the no-cache value."

@@ -107,7 +107,7 @@
       tb-image-name)))
 
 (defn get-tz-offset
-  "Returns the offset in hours to UTC for the given timezone."
+  "Returns the offset in hours to UTC for the given time zone."
   [tz]
   (/ (/ (/ (TimeZone/.getOffset (TimeZone/getTimeZone tz)
                                 (Date/.getTime (Date.))) 1000) 60) 60))
@@ -124,7 +124,7 @@
                         (jt/seconds (LocalDateTime/.getSecond ldt))
                         (jt/nanos (LocalDateTime/.getNano ldt)))
              ;; Correct generated datetime value when UTC is used as display
-             ;; timezone
+             ;; time zone
               (jt/hours (if (= (:display-timezone env) "UTC")
                           (get-tz-offset (:store-timezone env))
                           0)))))
@@ -307,14 +307,14 @@
                                           "00:00:00"
                                           "23:59:59")))
            ;; Correct generated datetime value when UTC is used as display
-           ;; timezone
+           ;; time zone
             (jt/hours (if (= (:display-timezone env) "UTC")
                         (get-tz-offset (:store-timezone env))
                         0))))
 
 (defn add-tz-offset-to-dt
-  "Add the TZ offset of the 'storing timezone' to the provided datetime if the
- system has different timezone than the 'storing timezone'."
+  "Add the TZ offset of the 'storing time zone' to the provided datetime if the
+ system has different time zone than the 'storing time zone'."
   [dt]
   (if-not (= (ZoneId/systemDefault)
              (jt/zone-id (:store-timezone env)))

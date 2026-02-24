@@ -42,7 +42,7 @@
 
 (defn -convert-dt->tz-iso8601-str
   "Formats and returns a datetime as an ISO 8601 formatted start time string
-  having the :weather-zone value timezone before ISO 8601 conversion."
+  having the :weather-zone value time zone before ISO 8601 conversion."
   [datetime]
   (convert-time->iso8601-str (jt/with-zone
                                datetime
@@ -191,7 +191,7 @@
   (try
     ;; The first check is to prevent pointless fetch attempts when data
     ;; is not yet available
-    (when (and (>= (rem (jt/as (jt/local-date-time) :minute-of-hour) 10) 1)
+    (when (and (>= (rem (jt/as (jt/local-date-time) :minute-of-hour) 10) 2)
                (nil? (get @fmi-current (-convert-dt->tz-iso8601-str
                                         (calculate-start-time)))))
       (let [url (format (str "https://www.ilmatieteenlaitos.fi/api/weather/"
@@ -200,16 +200,24 @@
             parsed-json (j/read-value (:body (client/get url))
                                       (j/object-mapper
                                        {:decode-key-fn true}))]
-        (when (and (:observations parsed-json)
-                   (seq (:observations parsed-json)))
+        (if (and (:observations parsed-json)
+                 (seq (:observations parsed-json)))
           (let [obs (last (:observations parsed-json))
                 time-str (subs (str/replace (:localtime obs) "T" "") 0 12)
                 local-dt (jt/local-date-time "yyyyMMddHHmm" time-str)
                 ;; Assume that the timestamp is always in local (i.e.
-                ;; Europe/Helsinki) timezone
-                wd {:time (jt/sql-timestamp
-                           (jt/zoned-date-time local-dt
-                                               "Europe/Helsinki"))
+                ;; Europe/Helsinki) time zone
+                tz-str "Europe/Helsinki"
+                offset (ChronoUnit/.between
+                        ChronoUnit/HOURS
+                        (LocalDateTime/.atZone local-dt (jt/zone-id tz-str))
+                        (LocalDateTime/.atZone local-dt
+                                               (jt/zone-id (:weather-timezone
+                                                            env))))
+                wd {:time (jt/sql-timestamp (jt/minus
+                                             (jt/zoned-date-time local-dt
+                                                                 tz-str)
+                                             (jt/hours offset)))
                     :temperature (:t2m obs)
                     :cloudiness (if-not (nil? (:TotalCloudCover obs))
                                   (:TotalCloudCover obs) 9)
@@ -223,7 +231,10 @@
                                  nil)}]
             (when-not (nil? (:temperature wd))
               (swap! fmi-current conj
-                     {(convert-time->iso8601-str (:time wd)) wd}))))))
+                     {(convert-time->iso8601-str (:time wd)) wd})))
+          (do
+            (error "No FMI weather data (JSON)")
+            nil))))
     (catch Exception ex
       (error ex "FMI weather data (JSON) fetch failed")
       nil)))
@@ -258,7 +269,7 @@
                     (jt/sql-timestamp
                      (jt/minus
                       (jt/zoned-date-time local-dt (:tz obs))
-                      (jt/hours offset))),
+                      (jt/hours offset)))
                     :temperature (:temperature obs)
                     :cloudiness (if-not (nil? (:cloudiness obs))
                                   (int (:cloudiness obs)) 9)
@@ -378,15 +389,15 @@
 (defn fetch-all-weather-data
   "Fetches all FMI weather as well as astronomy data."
   []
-  (when (or (nil? (-update-fmi-weather-data-ts (:fmi-station-id env)))
+  (when (or (nil? (-update-fmi-weather-data-json (:fmi-station-id env)))
             (and (seq @fmi-current)
                  (wd-has-empty-values? (last (last @fmi-current)))))
     (when (wd-has-empty-values? (last (last @fmi-current)))
-      (warn "Got nil values in FMI weather data observation (from time series):"
-            (last (last @fmi-current))))
-    (-update-fmi-weather-data-json (:fmi-station-id env))
-    (when (wd-has-empty-values? (last (last @fmi-current)))
       (warn "Got nil values in FMI weather data observation (from JSON):"
+            (last (last @fmi-current))))
+    (-update-fmi-weather-data-ts (:fmi-station-id env))
+    (when (wd-has-empty-values? (last (last @fmi-current)))
+      (warn "Got nil values in FMI weather data observation (from time series):"
             (last (last @fmi-current)))))
   ;; Give the weather data fetch some time to complete
   (Thread/sleep 1500)
