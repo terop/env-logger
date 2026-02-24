@@ -68,9 +68,9 @@ const loadPage = () => {
     const observationCount = rtObservations.name.length;
     const tagNames = new Set(rtLabels);
     let missingTags = structuredClone(tagNames);
-    let currentTag = null;
-    let currentTs = null;
-    let nextTs = null;
+    let currentTag;
+    let currentTs;
+    let nextTs;
 
     for (let i = 0; i < observationCount; i++) {
       currentTs = rtObservations.recorded[i];
@@ -601,7 +601,7 @@ const loadPage = () => {
     const generateElecHourBarChartColours = (xValues, prices) => {
       const now = DateTime.now();
       let colours = [];
-      let currentDt = null;
+      let currentDt;
 
       for (let i = 0; i < xValues.length; i++) {
         currentDt = DateTime.fromJSDate(xValues[i]);
@@ -1021,7 +1021,7 @@ const loadPage = () => {
         xhoverformat: '<b>%d.%m. %H:%M:%S</b>',
         hovertemplate: '%{y}%{text}'
       };
-      let changingOpts = {};
+      let changingOpts;
 
       const getTraceVisibility = (isRuuvitag) => {
         if (plotType === 'weather' || !isRuuvitag) {
@@ -1066,10 +1066,10 @@ const loadPage = () => {
     const generateAnnotationConfig = (plotType, traceData) => {
       if (annotationIndices[plotType].length) {
         const shapes = [];
-        let yValues = [];
+        let yValues;
         let oneDay = false;
-        let index = null;
-        let shape = {};
+        let index;
+        let shape;
 
         if (traceData.length) {
           yValues = getDataExtremeValues(traceData);
