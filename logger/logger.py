@@ -291,7 +291,7 @@ async def scan_ble_beacon(config, bt_device):
                 data['battery'].append(ad.service_data[battery_service_uuid][0])
 
     try:
-        scanner = BleakScanner(callback, adapter=bt_device)
+        scanner = BleakScanner(callback, bluez={'adapter': bt_device})
 
         await scanner.start()
         await asyncio.sleep(scan_time)
