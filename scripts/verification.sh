@@ -22,7 +22,7 @@ fi
 
 echo 'Running cljfmt'
 if [ "${CI}" ]; then
-    clojure -Ttools install io.github.weavejester/cljfmt '{:git/tag "0.13.4"}' :as cljfmt
+    clojure -Ttools install io.github.weavejester/cljfmt '{:git/tag "0.16.4"}' :as cljfmt
 fi
 clojure -Tcljfmt check
 
