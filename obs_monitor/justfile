@@ -1,0 +1,12 @@
+date := `date +%Y-%m-%d`
+IMAGE_NAME := f'env-logger-obs-monitor:{{date}}'
+
+default: image
+
+image: update
+    [ -n "${REGISTRY:-}" ] || { echo "REGISTRY is not set" >&2; exit 1; }
+    podman build -t {{IMAGE_NAME}} .
+    podman tag {{IMAGE_NAME}} ${REGISTRY}/$(whoami)/{{IMAGE_NAME}}
+
+update: # update base images
+    podman pull docker.io/python:3.14-slim ghcr.io/astral-sh/uv:python3.14-trixie-slim
