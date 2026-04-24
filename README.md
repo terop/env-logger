@@ -51,6 +51,7 @@ To start the application locally run `clojure -M:run`.
 
 This application can be also be run in a Docker or Podman container. To build the
 container call `just build` from root directory of the application.
+This requires the [just](https://github.com/casey/just) command to be installed.
 The container will be called `env-logger`. The .jar file to run in in the
 container can be executed with the `java -jar <name>.jar` command.
 

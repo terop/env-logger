@@ -1,25 +1,34 @@
-FROM docker.io/amazoncorretto:25-alpine as corretto-jdk
+FROM docker.io/eclipse-temurin:25-alpine as temurin-jdk
 LABEL org.opencontainers.image.authors="tero.paloheimo@iki.fi"
 
 # Required for strip-debug to work
 RUN apk add --no-cache binutils
 
-# Build small JRE image
-RUN $JAVA_HOME/bin/jlink \
-    --verbose \
-    --module-path ${JAVA_HOME}/jmods \
-    --add-modules ALL-MODULE-PATH \
-    --strip-debug \
-    --no-man-pages \
-    --no-header-files \
-    --output /customjre
+# Compute runtime modules from compiled classes and build small JRE
+COPY ./target/classes /tmp/classes
+RUN BASE_MODS="$($JAVA_HOME/bin/jdeps \
+    --multi-release 25 \
+    --ignore-missing-deps \
+    --print-module-deps \
+    /tmp/classes)" \
+    && EXTRA_MODS="jdk.crypto.ec,java.naming,java.management" \
+    && MODS="${BASE_MODS},${EXTRA_MODS}" \
+    && $JAVA_HOME/bin/jlink \
+        --verbose \
+        --module-path "$JAVA_HOME/jmods" \
+        --add-modules "$MODS" \
+        --strip-debug \
+        --no-man-pages \
+        --no-header-files \
+        --compress 2 \
+        --output /customjre
 
 # Main app image
 FROM docker.io/alpine:latest
-ENV JAVA_HOME=/jre
+ENV JAVA_HOME=/opt/java/openjdk
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
-COPY --from=corretto-jdk /customjre ${JAVA_HOME}
+COPY --from=temurin-jdk /customjre ${JAVA_HOME}
 
 RUN apk update && apk upgrade
 
@@ -40,4 +49,4 @@ COPY --chown=${APPLICATION_USER}:${APPLICATION_USER} \
 WORKDIR /app
 
 EXPOSE 8080
-ENTRYPOINT ["dumb-init", "/jre/bin/java", "-Dconfig=/etc/config.edn", "-jar", "/app/env-logger.jar"]
+ENTRYPOINT ["dumb-init", "java", "-Dconfig=/etc/config.edn", "-jar", "/app/env-logger.jar"]
