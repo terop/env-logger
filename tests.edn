@@ -1,0 +1,6 @@
+#kaocha/v1
+{:kaocha/plugins [:kaocha.plugin/randomize]
+ :kaocha/source-paths ["src" "resources" "target/classes"]
+ :kaocha/test-paths ["test"]
+ :kaocha/ns-patterns ["-test$"]
+ :kaocha.plugin.randomize/randomize? true}

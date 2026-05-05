@@ -1,15 +1,16 @@
 (ns env-logger.weather-test
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [tupelo.core :refer [rel=]]
             [clojure.string :as str]
             [clojure.xml :refer [parse]]
             [config.core :refer [env]]
             [clj-http.fake :refer [with-fake-routes]]
+            [clj-http.client :as client]
             [jsonista.core :as j]
             [java-time.api :as jt]
             [next.jdbc :as jdbc]
             [env-logger.db :refer [get-tz-offset]]
-            [env-logger.weather
+            [env-logger.weather :as w
              :refer
              [-convert-dt->tz-iso8601-str
               -calculate-feels-like-temp
@@ -29,6 +30,31 @@
            (org.postgresql.util PSQLException
                                 PSQLState)))
 
+(defn clear-weather-cache
+  [test-fn]
+  (reset! w/fmi-forecast nil)
+  (reset! w/ast-data {})
+  (test-fn)
+  (reset! w/fmi-forecast nil)
+  (reset! w/ast-data {}))
+
+(use-fixtures :each clear-weather-cache)
+
+(def expected-forecast
+  {:temperature 17.0
+   :wind-speed 4.0
+   :cloudiness 0
+   :wind-direction {:long "south east", :short "SE"}
+   :precipitation 1.0
+   :humidity 93.0
+   :time #inst "2022-06-07T16:00:00.000000000-00:00"
+   :feels-like 15.8})
+
+(defn seed-forecast-cache!
+  []
+  (reset! w/fmi-forecast (assoc expected-forecast
+                                :fetched (jt/local-date-time))))
+
 ;; Utilities
 
 (deftest test-iso8601-and-tz-str-formatting
@@ -47,16 +73,17 @@
 
 (deftest test-forecast-data-extraction
   (testing "Forecast data extraction function tests"
-    (is (= {:temperature 17.0
-            :wind-speed 4.0
-            :cloudiness 0
-            :wind-direction {:long "south east", :short "SE"}
-            :precipitation 1.0
-            :humidity 93.0
-            :radiation 85.0
-            :time #inst "2022-06-07T16:00:00.000000000-00:00"}
-           (extract-forecast-data
-            (load-file "test/env_logger/wfs_forecast_data.txt"))))))
+    (let [forecast (extract-forecast-data
+                    (load-file "test/env_logger/wfs_forecast_data.txt"))]
+      (is (= {:temperature 17.0
+              :wind-speed 4.0
+              :cloudiness 0
+              :wind-direction {:long "south east", :short "SE"}
+              :precipitation 1.0
+              :humidity 93.0
+              :radiation 85.0}
+             (dissoc forecast :time)))
+      (is (inst? (:time forecast))))))
 
 (deftest test-start-time-calculation
   (testing "Tests the start time calculation"
@@ -95,9 +122,11 @@
 
 (deftest test-weather-data-ts-update
   (testing "Tests FMI weather data (time series) updating"
-    (with-redefs [j/read-value (fn [_ _] [])]
+    (with-redefs [client/get (fn [_] {:body "{}"})
+                  j/read-value (fn [_ _] [])]
       (is (nil? (-update-fmi-weather-data-ts 87874))))
-    (with-redefs [j/read-value (fn [_ _]
+    (with-redefs [client/get (fn [_] {:body "{}"})
+                  j/read-value (fn [_ _]
                                  [{:cloudiness 8.0
                                    :tz "Europe/Helsinki"
                                    :time "20241110T102000"
@@ -117,31 +146,36 @@
 
 (deftest test-weather-data-json-update
   (testing "Tests FMI weather data (JSON) updating"
-    (with-redefs [j/read-value (fn [_ _]
+    (with-redefs [client/get (fn [_] {:body "{}"})
+                  j/read-value (fn [_ _]
                                  {:observations []})]
       (is (nil? (-update-fmi-weather-data-json 87874))))
-    (with-redefs [j/read-value (fn [_ _]
+    (with-redefs [client/get (fn [_] {:body "{}"})
+                  j/read-value (fn [_ _]
                                  {:observations nil})]
       (is (nil? (-update-fmi-weather-data-json 87874))))
-    (with-redefs [j/read-value (fn [_ _]
-                                 {:observations [{:localtime "20241110T102000"
-                                                  :t2m 1.4
-                                                  :TotalCloudCover 8
-                                                  :WindSpeedMS 1.1
-                                                  :WindDirection 254
-                                                  :Humidity 90}]})]
-      (let [wd-all (-update-fmi-weather-data-json 87874)
-            wd (get wd-all (first (keys wd-all)))]
-        (if (< (rem (jt/as (jt/local-date-time) :minute-of-hour) 10) 3)
-          (is (nil? wd))
-          (do
-            (is (rel= 1.4 (:temperature wd) :tol 0.01))
-            (is (rel= 1.1 (:wind-speed wd) :tol 0.01))
-            (is (= 8 (:cloudiness wd)))
-            (is (= {:short "W"
-                    :long "west"} (:wind-direction wd)))
-            (is (rel= 90.0 (:humidity wd) :tol 0.01))
-            (is (rel= -0.4 (:feels-like wd) :tol 0.01))))))))
+    (let [orig-as jt/as]
+      (with-redefs [client/get (fn [_] {:body "{}"})
+                    j/read-value (fn [_ _]
+                                   {:observations [{:localtime "20241110T102000"
+                                                    :t2m 1.4
+                                                    :TotalCloudCover 8
+                                                    :WindSpeedMS 1.1
+                                                    :WindDirection 254
+                                                    :Humidity 90}]})
+                    jt/as (fn [dt unit]
+                            (if (= unit :minute-of-hour)
+                              5
+                              (orig-as dt unit)))]
+        (let [wd-all (-update-fmi-weather-data-json 87874)
+              wd (get wd-all (first (keys wd-all)))]
+          (is (rel= 1.4 (:temperature wd) :tol 0.01))
+          (is (rel= 1.1 (:wind-speed wd) :tol 0.01))
+          (is (= 8 (:cloudiness wd)))
+          (is (= {:short "W"
+                  :long "west"} (:wind-direction wd)))
+          (is (rel= 90.0 (:humidity wd) :tol 0.01))
+          (is (rel= -0.4 (:feels-like wd) :tol 0.01)))))))
 
 (deftest fmi-weather-data-fetch
   (testing "Tests FMI weather data fetch"
@@ -262,17 +296,16 @@
 
 (deftest test-get-weather-data
   (testing "Tests FMI and astronomy data query"
+    (seed-forecast-cache!)
     (let [weather-data (get-weather-data)]
       (is (nil? (:ast weather-data)))
       (let [forecast (:forecast (:fmi weather-data))]
-        (is (= #inst "2022-06-07T16:00:00.000000000-00:00"
-               (:time forecast)))
-        (is (rel= 17.0 (:temperature forecast) :tol 0.01))
-        (is (rel= 4.0 (:wind-speed forecast) :tol 0.01))
-        (is (zero? (:cloudiness forecast)))
-        (is (= {:short "SE"
-                :long "south east"} (:wind-direction forecast)))
-        (is (rel= 1.0 (:precipitation forecast) :tol 0.01))
-        (is (rel= 93.0 (:humidity forecast) :tol 0.01))
-        (is (rel= 15.8 (:feels-like forecast) :tol 0.01)))
+        (is (= (:time expected-forecast) (:time forecast)))
+        (is (rel= (:temperature expected-forecast) (:temperature forecast) :tol 0.01))
+        (is (rel= (:wind-speed expected-forecast) (:wind-speed forecast) :tol 0.01))
+        (is (= (:cloudiness expected-forecast) (:cloudiness forecast)))
+        (is (= (:wind-direction expected-forecast) (:wind-direction forecast)))
+        (is (rel= (:precipitation expected-forecast) (:precipitation forecast) :tol 0.01))
+        (is (rel= (:humidity expected-forecast) (:humidity forecast) :tol 0.01))
+        (is (rel= (:feels-like expected-forecast) (:feels-like forecast) :tol 0.01)))
       (is (empty? (:not-found weather-data))))))

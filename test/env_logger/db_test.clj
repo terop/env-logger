@@ -5,8 +5,8 @@
             [config.core :refer [env]]
             [java-time.api :as jt]
             [next.jdbc :as jdbc]
-            [next.jdbc.result-set :as rs]
             [next.jdbc.sql :as js]
+            [env-logger.test-db :refer [reset-test-database! test-ds]]
             [env-logger.db :as db
              :refer
              [db-conf
@@ -55,51 +55,56 @@
 (refer-clojure :exclude '[filter for group-by into partition-by set update])
 (require '[honey.sql :as sql])
 
-(let [db-host (get (System/getenv)
-                   "POSTGRESQL_DB_HOST"
-                   (db-conf :host))
-      db-port (get (System/getenv)
-                   "POSTGRESQL_DB_PORT"
-                   (db-conf :port))
-      db-name "env_logger_test"
-      db-user (get (System/getenv)
-                   "POSTGRESQL_DB_USERNAME"
-                   (db-conf :username))
-      db-password (get-db-password)]
-  (def test-postgres {:dbtype "postgresql"
-                      :dbname db-name
-                      :host db-host
-                      :port db-port
-                      :user db-user
-                      :password db-password})
-  (def test-ds (jdbc/with-options (jdbc/get-datasource test-postgres)
-                 {:builder-fn rs/as-unqualified-lower-maps})))
-
 ;; Current datetime used in tests
-(def current-dt (jt/local-date-time))
+(def current-dt (jt/minus (jt/local-date-time) (jt/days 4)))
 (def date-fmt :iso-local-date)
 
 (defn clean-test-database
-  "Cleans the test database before and after running tests. Also inserts one
-  observation before running tests."
+  "Resets the test database to a known baseline for each test."
   [test-fn]
-  (jdbc/execute! test-ds (sql/format {:delete-from :observations}))
-  (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))
-  (jdbc/execute! test-ds (sql/format {:delete-from :electricity_consumption}))
-  (js/insert! test-ds
-              :observations
-              {:recorded (jt/minus current-dt (jt/days 4))
-               :inside_light 5})
+  (reset-test-database! current-dt)
   (test-fn)
-  (jdbc/execute! test-ds (sql/format {:delete-from :beacons}))
-  (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))
-  (jdbc/execute! test-ds (sql/format {:delete-from :electricity_consumption}))
-  (jdbc/execute! test-ds (sql/format {:delete-from :observations}))
-  (jdbc/execute! test-ds (sql/format {:delete-from :ruuvitag_observations}))
-  (jdbc/execute! test-ds (sql/format {:delete-from :weather_data})))
+  (reset-test-database! current-dt))
 
-;; Fixture run at the start and end of tests
-(use-fixtures :once clean-test-database)
+;; Fixture run before and after every test to avoid order coupling
+(use-fixtures :each clean-test-database)
+
+(defn sample-observation
+  []
+  {:timestamp (jt/zoned-date-time)
+   :co2 600
+   :insideLight 0
+   :outsideLight 150
+   :insideTemperature 21
+   :vocIndex 100
+   :noxIndex 1
+   :beacon {:mac "7C:EC:79:3F:BE:97"
+            :rssi -68
+            :battery_level nil}})
+
+(defn sample-weather-data
+  []
+  {:time (jt/sql-timestamp (jt/local-date-time))
+   :temperature 20
+   :cloudiness 2
+   :wind-speed 5.0})
+
+(defn seed-observations!
+  []
+  (let [observation (sample-observation)
+        weather-data (sample-weather-data)]
+    (insert-observation test-ds
+                        (merge observation
+                               {:timestamp (jt/minus (:timestamp observation)
+                                                     (jt/seconds 5))
+                                :outsideTemperature 5
+                                :weather-data weather-data}))
+    (insert-observation test-ds
+                        (merge observation
+                               {:timestamp (jt/minus (:timestamp observation)
+                                                     (jt/seconds 10))
+                                :outsideTemperature nil
+                                :weather-data nil}))))
 
 (defn get-image-name
   "Returns a valid Testbed image name using the current datetime
@@ -116,20 +121,8 @@
 
 (deftest insert-observations
   (testing "Full observation insert"
-    (let [observation {:timestamp (jt/zoned-date-time)
-                       :co2 600
-                       :insideLight 0
-                       :outsideLight 150
-                       :insideTemperature 21
-                       :vocIndex 100
-                       :noxIndex 1
-                       :beacon {:mac "7C:EC:79:3F:BE:97"
-                                :rssi -68
-                                :battery_level nil}}
-          weather-data {:time (jt/sql-timestamp current-dt)
-                        :temperature 20
-                        :cloudiness 2
-                        :wind-speed 5.0}]
+    (let [observation (sample-observation)
+          weather-data (sample-weather-data)]
       (is (true? (insert-observation test-ds
                                      (merge observation
                                             {:timestamp (jt/minus (:timestamp
@@ -172,9 +165,10 @@
 
 (deftest n-days-observations
   (testing "Selecting observations from N days"
+    (seed-observations!)
     (let [obs (get-obs-days test-ds 3)
-          obs-idx 2]
-      (is (= 4 (count (:recorded obs))))
+          obs-idx 0]
+      (is (= 2 (count (:recorded obs))))
       (is (zero? (nth (:inside-light obs) obs-idx)))
       (is (rel= 21.0 (nth (:inside-temperature obs) obs-idx) :tol 0.01))
       (is (= 600 (nth (:co2 obs) obs-idx)))
@@ -186,11 +180,12 @@
 
 (deftest obs-interval-select
   (testing "Select observations between one or two dates"
-    (is (= 5 (count (:recorded (get-obs-interval
+    (seed-observations!)
+    (is (= 3 (count (:recorded (get-obs-interval
                                 test-ds
                                 {:start nil
                                  :end nil})))))
-    (is (= 4 (count (:recorded (get-obs-interval
+    (is (= 2 (count (:recorded (get-obs-interval
                                 test-ds
                                 {:start (jt/format date-fmt
                                                    (jt/minus (jt/local-date)
@@ -202,7 +197,7 @@
                                  :end (jt/format date-fmt
                                                  (jt/minus (jt/local-date)
                                                            (jt/days 2)))})))))
-    (is (= 5 (count (:recorded (get-obs-interval
+    (is (= 3 (count (:recorded (get-obs-interval
                                 test-ds
                                 {:start (jt/format date-fmt
                                                    (jt/minus (jt/local-date)
@@ -238,9 +233,9 @@
 
 (deftest start-and-end-date-query
   (testing "Selecting start and end dates of all observations"
-    (is (= {:start (jt/format date-fmt (jt/minus current-dt
-                                                 (jt/days 4)))
-            :end (jt/format date-fmt current-dt)}
+    (seed-observations!)
+    (is (= {:start (jt/format date-fmt current-dt)
+            :end (jt/format date-fmt (jt/local-date-time))}
            (get-obs-date-interval test-ds)))
     (with-redefs [jdbc/execute-one! (fn [_ _] {:start nil
                                                :end nil})]
@@ -483,99 +478,101 @@
 
 (deftest get-elec-data-test
   (testing "Electricity data fetching"
-    (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))
+    (let [fees-oct-07 (get-elec-fees-for-date (jt/local-date 2022 10 7))
+          fees-oct-08 (get-elec-fees-for-date (jt/local-date 2022 10 8))]
+      (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))
     ;; Tests with no data for both day and hour
-    (is (nil? (get-elec-data-hour test-ds
-                                  (make-local-dt "2022-10-08" "start")
-                                  (make-local-dt "2022-10-08" "end")
-                                  true)))
-    (is (nil? (first (get-elec-data-day test-ds "2022-10-08" "2022-10-08" true))))
-    (is (nil? (first (get-elec-data-day test-ds
-                                        "2022-10-08"
-                                        nil
-                                        true))))
-    (js/insert! test-ds
-                :electricity_price
-                {:start_time (jt/sql-timestamp (jt/zoned-date-time 2022 10 8
-                                                                   18 0 0))
-                 :price 10.0})
-    (js/insert! test-ds
-                :electricity_price
-                {:start_time (jt/sql-timestamp (jt/zoned-date-time 2022 10 7
-                                                                   22 0 0))
-                 :price 4.0})
-    (js/insert! test-ds
-                :electricity_consumption
-                {:time (jt/sql-timestamp (jt/zoned-date-time 2022 10 7
-                                                             22 0 0))
-                 :consumption 1.0})
-    ;; Hour data tests
-    (let [res (get-elec-data-hour test-ds
-                                  (make-local-dt "2022-10-08" "start")
-                                  (make-local-dt "2022-10-08" "end")
-                                  true)
-          row (first res)]
-      (is (= 1 (count res)))
-      (is (rel= 15.89 (:price row) :tol 0.01))
-      (is (nil? (:consumption row))))
-    (let [res (get-elec-data-hour test-ds
-                                  (make-local-dt "2022-10-07" "start")
-                                  (make-local-dt "2022-10-08" "end")
-                                  true)
-          row (first res)]
-      (is (= 2 (count res)))
-      (is (rel= 9.89 (:price row) :tol 0.01))
-      (is (rel= 1.0 (:consumption row) :tol 0.01)))
-    (let [res (get-elec-data-hour test-ds
-                                  (make-local-dt "2022-10-07" "start")
-                                  (make-local-dt "2022-10-08" "end")
-                                  false)
-          row (first res)]
-      (is (rel= 4.0 (:price row) :tol 0.01)))
-    (is (= 2 (count (get-elec-data-hour test-ds
-                                        (make-local-dt "2022-10-07" "start")
-                                        nil
-                                        false))))
-    (is (nil? (get-elec-data-hour test-ds
-                                  (make-local-dt "2022-10-10" "start")
-                                  (make-local-dt "2022-10-10" "end")
-                                  true)))
-    (with-redefs [jdbc/execute! (fn [_ _ _]
-                                  (throw (PSQLException.
-                                          "Test exception"
-                                          PSQLState/COMMUNICATION_ERROR)))]
       (is (nil? (get-elec-data-hour test-ds
                                     (make-local-dt "2022-10-08" "start")
                                     (make-local-dt "2022-10-08" "end")
-                                    true))))
+                                    true)))
+      (is (nil? (first (get-elec-data-day test-ds "2022-10-08" "2022-10-08" true))))
+      (is (nil? (first (get-elec-data-day test-ds
+                                          "2022-10-08"
+                                          nil
+                                          true))))
+      (js/insert! test-ds
+                  :electricity_price
+                  {:start_time (jt/sql-timestamp (jt/zoned-date-time 2022 10 8
+                                                                     18 0 0))
+                   :price 10.0})
+      (js/insert! test-ds
+                  :electricity_price
+                  {:start_time (jt/sql-timestamp (jt/zoned-date-time 2022 10 7
+                                                                     22 0 0))
+                   :price 4.0})
+      (js/insert! test-ds
+                  :electricity_consumption
+                  {:time (jt/sql-timestamp (jt/zoned-date-time 2022 10 7
+                                                               22 0 0))
+                   :consumption 1.0})
+    ;; Hour data tests
+      (let [res (get-elec-data-hour test-ds
+                                    (make-local-dt "2022-10-08" "start")
+                                    (make-local-dt "2022-10-08" "end")
+                                    true)
+            row (first res)]
+        (is (= 1 (count res)))
+        (is (rel= (round-number (+ 10.0 fees-oct-08)) (:price row) :tol 0.01))
+        (is (nil? (:consumption row))))
+      (let [res (get-elec-data-hour test-ds
+                                    (make-local-dt "2022-10-07" "start")
+                                    (make-local-dt "2022-10-08" "end")
+                                    true)
+            row (first res)]
+        (is (= 2 (count res)))
+        (is (rel= (round-number (+ 4.0 fees-oct-07)) (:price row) :tol 0.01))
+        (is (rel= 1.0 (:consumption row) :tol 0.01)))
+      (let [res (get-elec-data-hour test-ds
+                                    (make-local-dt "2022-10-07" "start")
+                                    (make-local-dt "2022-10-08" "end")
+                                    false)
+            row (first res)]
+        (is (rel= 4.0 (:price row) :tol 0.01)))
+      (is (= 2 (count (get-elec-data-hour test-ds
+                                          (make-local-dt "2022-10-07" "start")
+                                          nil
+                                          false))))
+      (is (nil? (get-elec-data-hour test-ds
+                                    (make-local-dt "2022-10-10" "start")
+                                    (make-local-dt "2022-10-10" "end")
+                                    true)))
+      (with-redefs [jdbc/execute! (fn [_ _ _]
+                                    (throw (PSQLException.
+                                            "Test exception"
+                                            PSQLState/COMMUNICATION_ERROR)))]
+        (is (nil? (get-elec-data-hour test-ds
+                                      (make-local-dt "2022-10-08" "start")
+                                      (make-local-dt "2022-10-08" "end")
+                                      true))))
     ;; Day data tests
-    (let [result (get-elec-data-day test-ds "2022-10-07" "2022-10-08" true)
-          one (first result)
-          two (nth result 1)]
-      (is (= {:consumption 1.0 :date "2022-10-07"} (dissoc one :price)))
-      (is (rel= 9.89 (:price one) :tol 0.01))
-      (is (= {:consumption nil :date "2022-10-08"} (dissoc two :price)))
-      (is (rel= 15.89 (:price two) :tol 0.01)))
-    (let [result (get-elec-data-day test-ds "2022-10-07" nil true)
-          one (first result)
-          two (nth result 1)]
-      (is (= {:consumption 1.0 :date "2022-10-07"} (dissoc one :price)))
-      (is (rel= 9.89 (:price one) :tol 0.01))
-      (is (= {:consumption nil :date "2022-10-08"} (dissoc two :price)))
-      (is (rel= 15.89 (:price two) :tol 0.01)))
-    (let [result (get-elec-data-day test-ds "2022-10-07" "2022-10-08" false)
-          one (first result)
-          two (nth result 1)]
-      (is (rel= 4.0 (:price one) :tol 0.01))
-      (is (rel= 10.0 (:price two) :tol 0.01)))
-    (is (nil? (first (get-elec-data-day test-ds "2022-10-10" "2022-10-10" true))))
-    (with-redefs [jdbc/execute-one! (fn [_ _ _]
-                                      (throw (PSQLException.
-                                              "Test exception"
-                                              PSQLState/COMMUNICATION_ERROR)))]
-      (is (nil? (first (get-elec-data-day test-ds "2022-10-08" nil true)))))
-    (jdbc/execute! test-ds (sql/format {:delete-from :electricity_consumption}))
-    (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))))
+      (let [result (get-elec-data-day test-ds "2022-10-07" "2022-10-08" true)
+            one (first result)
+            two (nth result 1)]
+        (is (= {:consumption 1.0 :date "2022-10-07"} (dissoc one :price)))
+        (is (rel= (round-number (+ 4.0 fees-oct-07)) (:price one) :tol 0.01))
+        (is (= {:consumption nil :date "2022-10-08"} (dissoc two :price)))
+        (is (rel= (round-number (+ 10.0 fees-oct-08)) (:price two) :tol 0.01)))
+      (let [result (get-elec-data-day test-ds "2022-10-07" nil true)
+            one (first result)
+            two (nth result 1)]
+        (is (= {:consumption 1.0 :date "2022-10-07"} (dissoc one :price)))
+        (is (rel= (round-number (+ 4.0 fees-oct-07)) (:price one) :tol 0.01))
+        (is (= {:consumption nil :date "2022-10-08"} (dissoc two :price)))
+        (is (rel= (round-number (+ 10.0 fees-oct-08)) (:price two) :tol 0.01)))
+      (let [result (get-elec-data-day test-ds "2022-10-07" "2022-10-08" false)
+            one (first result)
+            two (nth result 1)]
+        (is (rel= 4.0 (:price one) :tol 0.01))
+        (is (rel= 10.0 (:price two) :tol 0.01)))
+      (is (nil? (first (get-elec-data-day test-ds "2022-10-10" "2022-10-10" true))))
+      (with-redefs [jdbc/execute-one! (fn [_ _ _]
+                                        (throw (PSQLException.
+                                                "Test exception"
+                                                PSQLState/COMMUNICATION_ERROR)))]
+        (is (nil? (first (get-elec-data-day test-ds "2022-10-08" nil true)))))
+      (jdbc/execute! test-ds (sql/format {:delete-from :electricity_consumption}))
+      (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price})))))
 
 (deftest get-elec-fees-test
   (testing "Electricity fee calculation"
@@ -783,7 +780,8 @@
 (deftest test-get-elec-price-minute
   (testing "Fetching of 15 minute resolution electricity prices"
     (let [start (make-local-dt "2025-10-25" "start")
-          end (make-local-dt "2025-10-25" "end")]
+          end (make-local-dt "2025-10-25" "end")
+          fees-oct-25 (get-elec-fees-for-date (jt/local-date 2025 10 25))]
       (with-redefs [jdbc/execute-one!
                     (fn [_ _]
                       (throw (PSQLException.
@@ -797,7 +795,7 @@
                   {:start_time (jt/sql-timestamp (jt/zoned-date-time 2025 10 25
                                                                      0 0 0))
                    :price 4.0})
-      (is (rel= 9.89
+      (is (rel= (round-number (+ 4.0 fees-oct-25))
                 (:price (first (get-elec-price-minute test-ds start end true)))
                 :tol 0.01))
       (is (nil? (get-elec-price-minute test-ds
