@@ -779,7 +779,7 @@
       (when (:start result)
         (jt/format :iso-local-date (jt/local-date-time (:start result)))))
     (catch PSQLException pe
-      (error pe "15 minue electricity price date interval start fetch failed")
+      (error pe "15 minute electricity price date interval start fetch failed")
       nil)))
 
 (defn get-month-elec-consumption
