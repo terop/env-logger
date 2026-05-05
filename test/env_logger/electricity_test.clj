@@ -6,20 +6,24 @@
             [jsonista.core :as j]
             [terop.openid-connect-auth :refer [access-ok?]]
             [env-logger.db :as db]
-            [env-logger.db-test :refer [test-ds]]
+            [env-logger.test-db :refer [test-ds]]
             [env-logger.electricity :as e])
   (:import java.time.LocalDate))
+
+(def enabled-elec-env (assoc env :show-elec-price true))
+(def disabled-elec-env (assoc env :show-elec-price false))
 
 (deftest electricity-data-test
   (testing "Electricity data fetch function"
     (with-redefs [db/postgres-ds test-ds]
       (with-redefs [access-ok? (fn [_ _] false)]
         (is (= 401 (:status (e/electricity-data {})))))
-      (with-redefs [env {:show-elec-price false}
+      (with-redefs [env disabled-elec-env
                     access-ok? (fn [_ _] true)]
         (is (= {"error" "not-enabled"}
                (j/read-value (:body (e/electricity-data {}))))))
-      (with-redefs [access-ok? (fn [_ _] true)
+      (with-redefs [env enabled-elec-env
+                    access-ok? (fn [_ _] true)
                     jt/format (fn [_ _] "2023-02-22")
                     db/get-elec-data-hour (fn [_ _ _ _]
                                             [{:start-time 123
@@ -44,9 +48,11 @@
                 "data-day" [{"consumption" 1.8, "date" "2023-09-04", "price" 7.0}]
                 "month-price-avg" "10.0" "month-consumption" "70.1"
                 "month-cost" 0.32 "interval-cost" 0.31
-                "price-thresholds" {"cheap" (get-in env [:elec-price-thresholds :cheap])
-                                    "reasonable" (get-in env [:elec-price-thresholds
-                                                              :reasonable])}}
+                "price-thresholds" {"cheap" (get-in enabled-elec-env
+                                                    [:elec-price-thresholds :cheap])
+                                    "reasonable" (get-in enabled-elec-env
+                                                         [:elec-price-thresholds
+                                                          :reasonable])}}
                (j/read-value (:body (e/electricity-data
                                      {:params {"startDate" "2022-10-08"
                                                "endDate" "2022-10-08"}})))))
@@ -57,9 +63,11 @@
                 "data-day" [{"consumption" 1.8, "date" "2023-09-04", "price" 7.0}]
                 "month-price-avg" "10.0" "month-consumption" "70.1"
                 "month-cost" 0.32 "interval-cost" 0.31
-                "price-thresholds" {"cheap" (get-in env [:elec-price-thresholds :cheap])
-                                    "reasonable" (get-in env [:elec-price-thresholds
-                                                              :reasonable])}}
+                "price-thresholds" {"cheap" (get-in enabled-elec-env
+                                                    [:elec-price-thresholds :cheap])
+                                    "reasonable" (get-in enabled-elec-env
+                                                         [:elec-price-thresholds
+                                                          :reasonable])}}
                (j/read-value (:body (e/electricity-data
                                      {:params {}})))))))))
 
@@ -68,15 +76,17 @@
     (with-redefs [db/postgres-ds test-ds]
       (with-redefs [access-ok? (fn [_ _] false)]
         (is (= 401 (:status (e/electricity-price-minute {})))))
-      (with-redefs [env {:show-elec-price false}
+      (with-redefs [env disabled-elec-env
                     access-ok? (fn [_ _] true)]
         (is (= {"error" "not-enabled"}
                (j/read-value (:body (e/electricity-price-minute {}))))))
-      (with-redefs [access-ok? (fn [_ _] true)]
+      (with-redefs [env enabled-elec-env
+                    access-ok? (fn [_ _] true)]
         (let [resp (e/electricity-price-minute {})]
           (is (= 400 (:status resp)))
           (is (= "Missing parameter" (:body resp)))))
-      (with-redefs [access-ok? (fn [_ _] true)
+      (with-redefs [env enabled-elec-env
+                    access-ok? (fn [_ _] true)
                     db/get-elec-price-minute (fn [_ _ _ _] [{:start-time 123
                                                              :price 10.0}])
                     db/get-elec-price-minute-interval-start (fn [_]

@@ -47,6 +47,28 @@ the database password on one line.
 
 To start the application locally run `clojure -M:run`.
 
+## Running tests
+
+Run tests with Kaocha:
+
+`clojure -M:test`
+
+The `:test` alias uses `resources/config.edn_sample`.
+Kaocha randomization is enabled by default (from `tests.edn`).
+To disable randomization for a run, use:
+
+`clojure -M:test --no-randomize`
+
+For local test runs, override database connection settings via environment
+variables as needed:
+
+* __POSTGRESQL_DB_HOST__ (for example `localhost`)
+* __POSTGRESQL_DB_PORT__
+* __POSTGRESQL_DB_USERNAME__ (for example your local PostgreSQL user)
+* __POSTGRESQL_DB_PASSWORD_FILE__ (optional, if password is read from file)
+
+The test database name is fixed to `env_logger_test`.
+
 ### Docker / podman
 
 This application can be also be run in a Docker or Podman container. To build the

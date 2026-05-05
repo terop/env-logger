@@ -3,7 +3,7 @@
             [jsonista.core :as j]
             [terop.openid-connect-auth :refer [access-ok?]]
             [env-logger.db :as db]
-            [env-logger.db-test :refer [test-ds]]
+            [env-logger.test-db :refer [test-ds]]
             [env-logger.electricity :as e]
             [env-logger.handler :as h]
             [env-logger.weather :as w]))
