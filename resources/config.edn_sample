@@ -43,8 +43,9 @@
  :elec-transfer-base-fee 6.53
  ;; Electricity transfer price per kWh (in Euros)
  :elec-transfer-fee 0.0266
- ;; Electricity tax per kWh (in Euros)
- :elec-tax 0.02827515
+ ;; Electricity tax (EUR / kWh) by date intervals. :start / :end inclusive
+ ;; ISO8601 dates, both default to nil (open-ended). First matching interval wins.
+ :elec-tax [{:per-kwh 0.02917875 nil :end nil}]
  ;; OpenID Connect authentication settings
  :oid-auth {;; Base URL for all endpoints
             :base-url "https://example.com/keycloak/realms/myrealm"

@@ -10,6 +10,7 @@
   (:import java.sql.Connection
            (java.text DecimalFormat)
            (java.time DateTimeException
+                      LocalDate
                       LocalDateTime
                       YearMonth
                       ZoneId
@@ -495,12 +496,70 @@
       (error pe "Ruuvi Air observation fetch failed")
       {})))
 
-(defn get-elec-fees
-  "Returns electricity fees (contract, transfer and tax) in cent per kWh."
+(defn- parse-tax-optional-date
+  "Coerces an optional :elec-tax interval boundary to a LocalDate or nil.
+  Accepts nil, a LocalDate, a non-blank ISO date string, or a blank string
+  (treated as nil). Throws if the value is not one of these types."
+  [x]
+  (cond
+    (nil? x) nil
+    (instance? LocalDate x) x
+    (and (string? x) (not (str/blank? x))) (jt/local-date x)
+    (string? x) nil
+    :else (throw (ex-info "Invalid :elec-tax interval date" {:value x}))))
+
+(defn- resolve-elec-tax-intervals
+  "Normalises :elec-tax from env into a vector of maps {:per-kwh :start :end}.
+  A legacy numeric value becomes a single open-ended interval. A vector of maps
+  supplies :per-kwh (required) and optional :start / :end (strings or nil).
+  Throws on invalid config."
   []
+  (let [v (:elec-tax env)]
+    (cond
+      (number? v)
+      [{:per-kwh (double v) :start nil :end nil}]
+      (sequential? v)
+      (mapv (fn [m]
+              (if-not (contains? m :per-kwh)
+                (throw (ex-info ":elec-tax interval requires :per-kwh" {:interval m}))
+                {:per-kwh (double (:per-kwh m))
+                 :start (parse-tax-optional-date (:start m))
+                 :end (parse-tax-optional-date (:end m))}))
+            v)
+      :else
+      (throw (ex-info "Invalid :elec-tax, expected number or vector of maps"
+                      {:value v})))))
+
+(defn elec-tax-per-kwh-for-date
+  "Returns electricity tax in EUR / kWh for calendar date `d`.
+  Uses the first normalised :elec-tax interval for which `d` lies in the inclusive
+  range between :start and :end, a nil bound is open on that side.
+  Throws if no interval matches."
+  [^LocalDate d]
+  (if-let [rate (some (fn [{:keys [per-kwh start end]}]
+                        (when (and (or (nil? start) (not (jt/before? d start)))
+                                   (or (nil? end) (not (jt/after? d end))))
+                          per-kwh))
+                      (resolve-elec-tax-intervals))]
+    rate
+    (throw (ex-info "No :elec-tax interval matches date" {:date (str d)}))))
+
+(defn get-elec-fees-for-date
+  "Returns contract margin, transfer fee and electricity tax in cent per kWh
+  for calendar date `d`. Tax follows `elec-tax-per-kwh-for-date` while margin
+  and transfer fee come from env and are not date-dependent."
+  [^LocalDate d]
   (* (+ (:elec-contract-margin env)
-        (:elec-tax env)
-        (:elec-transfer-fee env)) 100))
+        (elec-tax-per-kwh-for-date d)
+        (:elec-transfer-fee env))
+     100))
+
+(defn get-elec-fees
+  "Returns electricity fees (contract, transfer and tax) in cent per kWh using
+  the system default local date for the tax interval. Equivalent to
+  `(get-elec-fees-for-date (jt/local-date))` with no arguments."
+  []
+  (get-elec-fees-for-date (jt/local-date)))
 
 (defn get-elec-data-day
   "Returns the average electricity price and consumption values per day inside
@@ -540,7 +599,8 @@
                      {:date (jt/format :iso-local-date date)
                       :price (when (:price result)
                                (round-number (if add-fees
-                                               (+ (:price result) (get-elec-fees))
+                                               (+ (:price result)
+                                                  (get-elec-fees-for-date date))
                                                (:price result))))
                       :consumption (when (:consumption result)
                                      (round-number (:consumption result)))}))))))
@@ -568,8 +628,9 @@
                              :order-by [[:p.start_time :asc]]})
           rows (jdbc/execute! db-con query rs-opts)]
       (when (pos? (count rows))
-        (let [fees (get-elec-fees)]
-          (for [row rows]
+        (for [row rows]
+          (let [row-date (jt/local-date (jt/local-date-time (:start-time row)))
+                fees (get-elec-fees-for-date row-date)]
             (merge row
                    {:price (round-number (if add-fees (+ (:price row) fees)
                                              (:price row)))
@@ -592,8 +653,9 @@
                              :order-by [[:p.start_time :asc]]})
           rows (jdbc/execute! db-con query rs-opts)]
       (when (pos? (count rows))
-        (let [fees (get-elec-fees)]
-          (for [row rows]
+        (for [row rows]
+          (let [row-date (jt/local-date (jt/local-date-time (:start-time row)))
+                fees (get-elec-fees-for-date row-date)]
             (merge row
                    {:price (round-number (if add-fees (+ (:price row) fees)
                                              (:price row)))
@@ -614,7 +676,8 @@
                                       (make-local-dt (str month-start) "start")]]})
           result (:avg (jdbc/execute-one! db-con query rs-opts))]
       (when result
-        (round-number (if add-fees (+ result (get-elec-fees)) result))))
+        (round-number (if add-fees (+ result (get-elec-fees-for-date (jt/local-date)))
+                          result))))
     (catch PSQLException pe
       (error pe "Monthly average electricity price fetch failed")
       nil)))
@@ -764,6 +827,21 @@
                                                                     [:<= :time
                                                                      interval-end]]})
                                                rs-opts))
+          cons-rows (jdbc/execute! db-con
+                                   (sql/format {:select [:time :consumption]
+                                                :from [:electricity_consumption]
+                                                :where [:and
+                                                        [:>= :time interval-start]
+                                                        [:<= :time interval-end]]})
+                                   rs-opts)
+          tax-on-consumption (reduce (fn [acc row]
+                                       (+ acc
+                                          (* (double (or (:consumption row) 0.0))
+                                             (elec-tax-per-kwh-for-date
+                                              (jt/local-date
+                                               (jt/local-date-time (:time row)))))))
+                                     0.0
+                                     cons-rows)
           transfer-base-fee (:elec-transfer-base-fee env)
           contract-base-fee (:elec-contract-base-fee env)
           inter-month-interval? (not= (jt/as interval-start :month-of-year)
@@ -803,7 +881,7 @@
                                       (* month-two-day-fraction contract-base-fee))
                                    (* month-two-day-fraction contract-base-fee))
           transfer-price (+ transfer-base-fee-part
-                            (* (:elec-tax env) total-cons)
+                            tax-on-consumption
                             (* (:elec-transfer-fee env) total-cons))
           elec-price (+ contract-base-fee-part
                         (* (:elec-contract-margin env) total-cons)

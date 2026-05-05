@@ -2,20 +2,23 @@
   (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [tupelo.core :refer [rel=]]
             [clojure.string :as str]
+            [config.core :refer [env]]
             [java-time.api :as jt]
             [next.jdbc :as jdbc]
             [next.jdbc.result-set :as rs]
             [next.jdbc.sql :as js]
-            [env-logger.db
+            [env-logger.db :as db
              :refer
              [db-conf
               convert->epoch-ms
               convert-time->iso8601-str
+              elec-tax-per-kwh-for-date
               get-db-password
               get-elec-data-day
               get-elec-data-hour
               get-elec-consumption-interval-start
               get-elec-fees
+              get-elec-fees-for-date
               get-elec-price-interval-end
               get-elec-price-minute
               get-last-obs-id
@@ -576,7 +579,83 @@
 
 (deftest get-elec-fees-test
   (testing "Electricity fee calculation"
-    (is (rel= 5.89 (get-elec-fees) :tol 0.01))))
+    (let [expected (* 100 (+ (:elec-contract-margin env)
+                             (:elec-transfer-fee env)
+                             (elec-tax-per-kwh-for-date (jt/local-date))))]
+      (is (rel= expected (get-elec-fees) :tol 0.01))))
+  (testing "get-elec-fees-for-date for the current local date"
+    (is (= (get-elec-fees) (get-elec-fees-for-date (jt/local-date))))))
+
+(deftest parse-tax-optional-date-test
+  (testing "nil and blank strings"
+    (is (nil? (#'db/parse-tax-optional-date nil)))
+    (is (nil? (#'db/parse-tax-optional-date ""))))
+  (testing "Non-blank ISO date string"
+    (is (= (jt/local-date 2024 6 1) (#'db/parse-tax-optional-date "2024-06-01"))))
+  (testing "LocalDate passes through"
+    (let [d (jt/local-date 2020 1 2)]
+      (is (= d (#'db/parse-tax-optional-date d)))))
+  (testing "Invalid type throws"
+    (is (thrown? clojure.lang.ExceptionInfo (#'db/parse-tax-optional-date 123)))))
+
+(deftest resolve-elec-tax-intervals-test
+  (testing "Legacy numeric :elec-tax becomes one open-ended interval"
+    (with-redefs [env (assoc env :elec-tax 0.042)]
+      (is (= [{:per-kwh 0.042 :start nil :end nil}]
+             (#'db/resolve-elec-tax-intervals)))))
+  (testing "vector maps parse date strings into LocalDate"
+    (with-redefs [env (assoc env :elec-tax [{:per-kwh 0.01
+                                             :start "2020-01-01"
+                                             :end nil}])]
+      (is (= [{:per-kwh 0.01
+               :start (jt/local-date 2020 1 1)
+               :end nil}]
+             (#'db/resolve-elec-tax-intervals)))))
+  (testing "Interval without :per-kwh throws"
+    (with-redefs [env (assoc env :elec-tax [{}])]
+      (is (thrown? clojure.lang.ExceptionInfo (#'db/resolve-elec-tax-intervals)))))
+  (testing "Invalid top-level :elec-tax throws"
+    (with-redefs [env (assoc env :elec-tax "bad")]
+      (is (thrown? clojure.lang.ExceptionInfo (#'db/resolve-elec-tax-intervals))))))
+
+(deftest elec-tax-per-kwh-for-date-test
+  (testing "Single open-ended interval applies to any date"
+    (with-redefs [env (assoc env :elec-tax [{:per-kwh 0.05 :start nil :end nil}])]
+      (is (= 0.05 (elec-tax-per-kwh-for-date (jt/local-date 1999 1 1))))
+      (is (= 0.05 (elec-tax-per-kwh-for-date (jt/local-date 2030 12 31))))))
+  (testing "Two intervals with open start / open end"
+    (with-redefs [env (assoc env :elec-tax [{:per-kwh 0.01 :end "2020-12-31"}
+                                            {:per-kwh 0.02 :start "2021-01-01"}])]
+      (is (= 0.01 (elec-tax-per-kwh-for-date (jt/local-date 2020 12 31))))
+      (is (= 0.02 (elec-tax-per-kwh-for-date (jt/local-date 2021 1 1))))))
+  (testing "First matching interval wins when several match"
+    (with-redefs [env (assoc env :elec-tax [{:per-kwh 0.99
+                                             :start "2020-01-01"
+                                             :end "2025-12-31"}
+                                            {:per-kwh 0.01
+                                             :start "2020-01-01"
+                                             :end "2025-12-31"}])]
+      (is (= 0.99 (elec-tax-per-kwh-for-date (jt/local-date 2024 6 15))))))
+  (testing "No matching interval throws"
+    (with-redefs [env (assoc env :elec-tax [{:per-kwh 0.01
+                                             :start "2030-01-01"
+                                             :end nil}])]
+      (is (thrown? clojure.lang.ExceptionInfo
+                   (elec-tax-per-kwh-for-date (jt/local-date 2024 1 1)))))))
+
+(deftest get-elec-fees-for-date-test
+  (testing "Cent per kWh from margin, transfer and tax"
+    (with-redefs [env (merge env {:elec-contract-margin 0.01
+                                  :elec-transfer-fee 0.02
+                                  :elec-tax [{:per-kwh 0.03 :start nil :end nil}]})]
+      (is (rel= 6.0 (get-elec-fees-for-date (jt/local-date 2025 1 1)) :tol 0.0001))))
+  (testing "Tax rate follows date interval"
+    (with-redefs [env (merge env {:elec-contract-margin 0.0
+                                  :elec-transfer-fee 0.0
+                                  :elec-tax [{:per-kwh 0.01 :end "2020-12-31"}
+                                             {:per-kwh 0.04 :start "2021-01-01"}]})]
+      (is (rel= 1.0 (get-elec-fees-for-date (jt/local-date 2020 6 1)) :tol 0.0001))
+      (is (rel= 4.0 (get-elec-fees-for-date (jt/local-date 2021 6 1)) :tol 0.0001)))))
 
 (deftest get-tz-offset-test
   (testing "Timezone offset calculation"
@@ -746,7 +825,8 @@
                 {:start_time (jt/sql-timestamp (jt/minus (jt/zoned-date-time)
                                                          (jt/hours 1)))
                  :price 4.0})
-    (is (rel= 12.89 (get-month-avg-elec-price test-ds true)
+    (is (rel= (+ 7.0 (get-elec-fees))
+              (get-month-avg-elec-price test-ds true)
               :tol 0.01))
     ;; Check that prices before the current month are not used
     (js/insert! test-ds
@@ -754,7 +834,8 @@
                 {:start_time (jt/sql-timestamp (jt/minus (jt/zoned-date-time)
                                                          (jt/days 40)))
                  :price 12.0})
-    (is (rel= 12.89 (get-month-avg-elec-price test-ds true)
+    (is (rel= (+ 7.0 (get-elec-fees))
+              (get-month-avg-elec-price test-ds true)
               :tol 0.01))
     (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))))
 
