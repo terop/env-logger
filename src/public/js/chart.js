@@ -1405,21 +1405,24 @@ const loadPage = () => {
       });
   };
 
-  const elecUpdateButtonClickHandler = (event) => {
-    const startDate = document.getElementById('elecStartDate').value;
-    const endDate = document.getElementById('elecEndDate').value;
-
+  const validateElecDateInterval = (startDate, endDate) => {
     if ((startDate && DateTime.fromISO(startDate).invalid) ||
       (endDate && DateTime.fromISO(endDate).invalid)) {
       alert('Error: either the start or end date is invalid');
-      event.preventDefault();
-      return;
+      return false;
     }
 
     if (DateTime.fromISO(startDate) > DateTime.fromISO(endDate)) {
       alert('Error: start date must be smaller than the end date');
-      event.preventDefault();
-      return;
+      return false;
+    }
+
+    return true;
+  };
+
+  const refreshElecDataForDateRange = (startDate, endDate) => {
+    if (!validateElecDateInterval(startDate, endDate)) {
+      return false;
     }
 
     axios.get('data/elec-data',
@@ -1462,16 +1465,27 @@ const loadPage = () => {
           console.log(`Electricity data fetch error: ${error}`);
         }
       });
+
+    return true;
+  };
+
+  const elecUpdateButtonClickHandler = (event) => {
+    const startDate = document.getElementById('elecStartDate').value;
+    const endDate = document.getElementById('elecEndDate').value;
+
+    if (!refreshElecDataForDateRange(startDate, endDate)) {
+      event.preventDefault();
+      return false;
+    }
+
+    return true;
   };
 
 
-  const elecMinuteDateUpdateBtnClickHandler = (event) => {
-    const minuteDate = document.getElementById('elecMinuteDate').value;
-
+  const refreshElecMinutePriceForDate = (minuteDate) => {
     if ((minuteDate && DateTime.fromISO(minuteDate).invalid)) {
       alert('Error: electricity price date is invalid');
-      event.preventDefault();
-      return;
+      return false;
     }
 
     const priceData = getElecMinutePriceData(minuteDate);
@@ -1505,6 +1519,28 @@ const loadPage = () => {
           }
         });
     }
+
+    return true;
+  };
+
+  const elecMinuteDateUpdateBtnClickHandler = (event) => {
+    const minuteDate = document.getElementById('elecMinuteDate').value;
+
+    if (!refreshElecMinutePriceForDate(minuteDate)) {
+      event.preventDefault();
+      return false;
+    }
+
+    return true;
+  };
+
+  const elecPriceShowFeesChangeHandler = () => {
+    // Fees affect both hourly / daily and 15 minute electricity prices
+    refreshElecDataForDateRange(
+      document.getElementById('elecStartDate').value,
+      document.getElementById('elecEndDate').value
+    );
+    refreshElecMinutePriceForDate(document.getElementById('elecMinuteDate').value);
   };
 
   // Set visibility (shown / hidden) for all traces
@@ -1632,6 +1668,11 @@ const loadPage = () => {
   document.getElementById('elecMinuteDateUpdateBtn').addEventListener(
     'click',
     elecMinuteDateUpdateBtnClickHandler,
+    false);
+
+  document.getElementById('elecPriceShowFees').addEventListener(
+    'change',
+    elecPriceShowFeesChangeHandler,
     false);
 
   document.getElementById('elecMinuteDayBackward').addEventListener(
