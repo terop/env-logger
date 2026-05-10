@@ -298,7 +298,7 @@
                             (assoc-in [:security :hsts]
                                       false))))]]))
 
-(def js-load-params {:application-url (:app-url env)
+(def js-load-params {:app-url (:app-url env)
                      :static-asset-path (:static-asset-path env)})
 
 (def app
@@ -306,7 +306,8 @@
    (ring/router
     ;; Index
     [["/" {:get #(if-not (db/test-db-connection db/postgres-ds)
-                   (serve-template "templates/error.html" {})
+                   (serve-template "templates/error.html"
+                                   {:app-url (:app-url env)})
                    (if-not (access-ok? (:oid-auth env) %)
                      (serve-template "templates/login.html"
                                      js-load-params)

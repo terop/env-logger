@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <base href="{{ app-url }}">
     <link rel="shortcut icon" href="favicon.ico">
 
     <title>Environment logger - login</title>
@@ -33,7 +34,7 @@
     <script src="https://cdn.jsdelivr.net/npm/luxon@3.7.2/build/global/luxon.min.js"
             integrity="sha256-UWxf6lyCvfH7XEcrmq/cqc2m3IBrLBLOnWLC4Pw0gQQ=" crossorigin="anonymous"></script>
     <script>
-        const applicationUrl = '{{ application-url }}';
+        const applicationUrl = '{{ app-url }}';
         const staticAssetPath = '{{ static-asset-path }}';
     </script>
     <script src="{{ static-asset-path }}/js/auth-load.js"></script>
