@@ -28,11 +28,11 @@ wheels = [
 
 [[package]]
 name = "certifi"
-version = "2026.4.22"
+version = "2026.5.20"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/25/ee/6caf7a40c36a1220410afe15a1cc64993a1f864871f698c0f93acb72842a/certifi-2026.4.22.tar.gz", hash = "sha256:8d455352a37b71bf76a79caa83a3d6c25afee4a385d632127b6afb3963f1c580", size = 137077, upload-time = "2026-04-22T11:26:11.191Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f3/ce/ee2ecad540810a79593028e88299baeae54d346cc7a0d94b6199988b89b1/certifi-2026.5.20.tar.gz", hash = "sha256:69dea482ab64caa7b9f6aba1c6bf48bb6a5448d1c0f1b17ab42ad8c763a5344d", size = 135422, upload-time = "2026-05-20T11:46:50.073Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/22/30/7cd8fdcdfbc5b869528b079bfb76dcdf6056b1a2097a662e5e8c04f42965/certifi-2026.4.22-py3-none-any.whl", hash = "sha256:3cb2210c8f88ba2318d29b0388d1023c8492ff72ecdde4ebdaddbb13a31b1c4a", size = 135707, upload-time = "2026-04-22T11:26:09.372Z" },
+    { url = "https://files.pythonhosted.org/packages/59/8c/57e832b7af6d7c5abe66eb3fbe3a3a32f4d11ea23a1aa7131371035be991/certifi-2026.5.20-py3-none-any.whl", hash = "sha256:3c52e209ba0a4ad7aebe60436a4ab349c39e1e602e8c134221e546902ad25897", size = 134134, upload-time = "2026-05-20T11:46:48.578Z" },
 ]
 
 [[package]]
@@ -78,28 +78,32 @@ wheels = [
 
 [[package]]
 name = "dbus-fast"
-version = "4.0.4"
+version = "5.0.16"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/5f/cd/402b0e524bdf37d8b1d22b1d926c538bf1d2eedf115ea1d401c6c08a7d81/dbus_fast-4.0.4.tar.gz", hash = "sha256:43137f0b73a7adbf7d5c0e9eb9d8d34df9e6e0aeafade2166e641c52dfe0a853", size = 75260, upload-time = "2026-04-02T04:41:16.47Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c2/26/a75b4f79c56bd1f24e4cf85399b28a1a607d1052b9e66aceb961d79a6d3f/dbus_fast-5.0.16.tar.gz", hash = "sha256:24d0a86f32acb209a41806d20cf8a9207e4d46760e23c32479d1951d43739080", size = 82570, upload-time = "2026-05-27T19:19:33.316Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e0/ec/22c8904c1f3ecaee2012dfb1eb05d0481bedfaea80f27eab66d120f80b37/dbus_fast-4.0.4-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:0c3a8c07d672b1656a9c7cbdc9a85f493602f72fce8e7f9d97c5e972fa22a684", size = 804433, upload-time = "2026-04-02T04:50:20.747Z" },
-    { url = "https://files.pythonhosted.org/packages/1d/e9/4b3eabb25886f33218b96c7a0e2cd684a50932e00d951aae0181075d5217/dbus_fast-4.0.4-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:5512b9901ba600f1efdae2555ea18da2b67a46e5c24e397edb38ecbbde4aa43f", size = 846351, upload-time = "2026-04-02T04:50:22.9Z" },
-    { url = "https://files.pythonhosted.org/packages/4b/bc/a8330670389de2b69e7fb43b20ad08f0c3614f7d4a3a6cc9cbfcf72555fb/dbus_fast-4.0.4-cp314-cp314-manylinux_2_41_x86_64.whl", hash = "sha256:36f86ba826f05c4d238c9198ae962f90a9cd27ffacd3a4a988166b3d06c699ca", size = 844513, upload-time = "2026-04-02T04:41:15.087Z" },
-    { url = "https://files.pythonhosted.org/packages/ea/54/11a6f5cd13e67d30056651a6324b620f621a6980c1fc872fed3d1acdd1a0/dbus_fast-4.0.4-cp314-cp314-musllinux_1_2_aarch64.whl", hash = "sha256:df0f88a9c1c9f9365627fbfb3dcae3589a12fdc82594945832cb24d9a62674d1", size = 811253, upload-time = "2026-04-02T04:50:24.615Z" },
-    { url = "https://files.pythonhosted.org/packages/f2/bd/30c204bdd0a779cf46f3a4faad5cb62c9bd42a22ebcb89caffecf488493d/dbus_fast-4.0.4-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:4c6c8722e829b8e750fd6db2906b298d3bcfc32d8cdf766e50ba474ef48bf2af", size = 853231, upload-time = "2026-04-02T04:50:26.239Z" },
-    { url = "https://files.pythonhosted.org/packages/74/73/af9794109638e38d59ea1ecbf18c4dea25f802debffc285504a6ebc81b2c/dbus_fast-4.0.4-cp314-cp314t-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:ad5240c29ec631f9610e03a6bbf4f4c22274e04ea8791e8401542cd6cdbd7b28", size = 1534429, upload-time = "2026-04-02T04:50:29.998Z" },
-    { url = "https://files.pythonhosted.org/packages/82/3d/a033cc655a3a32ee145f575cd05066cf5bed71e24238947d77fb9597c905/dbus_fast-4.0.4-cp314-cp314t-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:5843c3e543ac1d48cafff67394ada9e568f20d122b44408e378ae43402b785ca", size = 1610602, upload-time = "2026-04-02T04:50:32.146Z" },
-    { url = "https://files.pythonhosted.org/packages/4a/46/2834b825da3f6ef206f5bc55363bc8751addcfc03fa34c639f72006f6a3e/dbus_fast-4.0.4-cp314-cp314t-musllinux_1_2_aarch64.whl", hash = "sha256:7ebb845f2e15ef19f4a99cb879dfbcb1c7028a97d5aaba93b36f65cfd938a022", size = 1550136, upload-time = "2026-04-02T04:50:34.311Z" },
-    { url = "https://files.pythonhosted.org/packages/9e/01/894b2f6954d12c5c527232906d67272b59f0f12f386cd2d394d5e5eac7fc/dbus_fast-4.0.4-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:698fe83128150dd49aaa7deb5493523309f0a9749c3c075730a6981851607455", size = 1627660, upload-time = "2026-04-02T04:50:36.5Z" },
+    { url = "https://files.pythonhosted.org/packages/88/6e/827fe09289b73f03fbaaa07493e7944dd16266429bf081ba1c62094af03e/dbus_fast-5.0.16-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:874bbd1fff34054c10b1062676334fcf170f32a0f0f9f21d2a9d1bf22ef70b35", size = 810903, upload-time = "2026-05-27T19:28:09.025Z" },
+    { url = "https://files.pythonhosted.org/packages/c3/1d/8a9caaf953c2212538b9f210edd2507ecd2dc90414ac688b030917f6d1ec/dbus_fast-5.0.16-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:07554554373441f562d1469bd73d024dd3144c9725375bbffbe8b3375bf464fe", size = 855741, upload-time = "2026-05-27T19:28:10.49Z" },
+    { url = "https://files.pythonhosted.org/packages/e8/3d/509e45e1739e96b08461c281eb257f564fd7533f9cabd067f0c4694b725d/dbus_fast-5.0.16-cp314-cp314-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:e6fc1831c702725eb4875d69c877700d95e7c3fa8542f4edaad318c6ba3e66f2", size = 833659, upload-time = "2026-05-27T19:28:12.062Z" },
+    { url = "https://files.pythonhosted.org/packages/30/8d/3237d8a6826a302095b258f183ddf236d345b4070af6e6bb65da3f5dfe25/dbus_fast-5.0.16-cp314-cp314-manylinux_2_41_x86_64.whl", hash = "sha256:8447d1ab3cd7dc9976805dda5903453d0fdb8aaab870536f3bcaf6b1f58800a3", size = 853989, upload-time = "2026-05-27T19:19:30.644Z" },
+    { url = "https://files.pythonhosted.org/packages/6a/2b/f9cc24ebb6f4175bc5760b46d13ad108cd634dfb41c474245bd1fd846091/dbus_fast-5.0.16-cp314-cp314-musllinux_1_2_aarch64.whl", hash = "sha256:d36ff2f0f6a5fd6dae96a09f48783ee7de51bf12d0da18a13edf19766bd0b99a", size = 818691, upload-time = "2026-05-27T19:28:14.271Z" },
+    { url = "https://files.pythonhosted.org/packages/95/58/a20c6e76b6bc037d5b565531f501d427dcd70fe5a903dcc7984dfe3ef287/dbus_fast-5.0.16-cp314-cp314-musllinux_1_2_riscv64.whl", hash = "sha256:fc43f5a7e7db86728e9925757a53a717eb3fec27de54e7bbc688cd65b8e9028c", size = 833842, upload-time = "2026-05-27T19:28:15.719Z" },
+    { url = "https://files.pythonhosted.org/packages/30/0c/2cb74502755be1957b81faf1cf2e57b9b12764afaf7ac30b99c5ebe6e615/dbus_fast-5.0.16-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:56e64ff9d1a1f503e07a940f861bf6dc80f24602425cb6f384d69bdc7fe7071f", size = 862625, upload-time = "2026-05-27T19:28:17.309Z" },
+    { url = "https://files.pythonhosted.org/packages/71/53/d0a0df847025e57a5aa58b0d711d74859a778ca3c28454d10f3b1a554bc3/dbus_fast-5.0.16-cp314-cp314t-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:2d8943d0b92ec9f49e37aed6224515ce161eb2b5df5e9fd3e1d692f35efbe48b", size = 1534575, upload-time = "2026-05-27T19:28:20.471Z" },
+    { url = "https://files.pythonhosted.org/packages/fc/82/1423c68091804af7711e940128cacd5494d8d3be645609ae0b23d9104562/dbus_fast-5.0.16-cp314-cp314t-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:e2f96e7da851b0dc9e0bc1e00d8b9cd6f227469b6e48e1b2ad474e44ff91841b", size = 1613383, upload-time = "2026-05-27T19:28:22.106Z" },
+    { url = "https://files.pythonhosted.org/packages/20/88/465a6e79cd77e8dc1451fdcfd8080ff72f6693f0a8b25b127df81283f241/dbus_fast-5.0.16-cp314-cp314t-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:2832c5eefcc5b4e0623a27e20751ca34006d7fe73b21d58ef859aa2cef0a8ec8", size = 821797, upload-time = "2026-05-27T19:28:23.698Z" },
+    { url = "https://files.pythonhosted.org/packages/cd/1f/11d8d709736644685dbaa191d65dd313869fec688ff75eaed542f0625895/dbus_fast-5.0.16-cp314-cp314t-musllinux_1_2_aarch64.whl", hash = "sha256:d2c9ae45a01d5f2e27a9508159d6e3c34e6714b485884000839daf5320d76da9", size = 1549870, upload-time = "2026-05-27T19:28:25.438Z" },
+    { url = "https://files.pythonhosted.org/packages/7c/db/1b01c80c81202ff81e96d1ce92a45296a818bd81c705ea5f032536d591b1/dbus_fast-5.0.16-cp314-cp314t-musllinux_1_2_riscv64.whl", hash = "sha256:e46276642f787a345f127389ff36a90ba9e4df6537b852d8afdc12e2b2f9bb91", size = 822814, upload-time = "2026-05-27T19:28:27.484Z" },
+    { url = "https://files.pythonhosted.org/packages/88/7c/25ce2a94711a7479d2786de321c7c5fbbf99ab8c67eba1bf5dd5bd80c830/dbus_fast-5.0.16-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:f41ca52046e41775c0784148c7b6b636539722bcc1412bae3139ac7295883265", size = 1629346, upload-time = "2026-05-27T19:28:29.121Z" },
 ]
 
 [[package]]
 name = "idna"
-version = "3.14"
+version = "3.17"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/05/b1/efac073e0c297ecf2fb33c346989a529d4e19164f1759102dee5953ee17e/idna-3.14.tar.gz", hash = "sha256:466d810d7a2cc1022bea9b037c39728d51ae7dad40d480fc9b7d7ecf98ba8ee3", size = 198272, upload-time = "2026-05-10T20:32:15.935Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b9/28/99c51f664567218d824af024c0251650fb27e4ca066df188dab0769c5b91/idna-3.17.tar.gz", hash = "sha256:5eb0cb53bc467c12eadcf6de83163ad8527cec9416f44b9b61b19caedad2b87f", size = 196048, upload-time = "2026-05-28T14:32:38.55Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6c/3c/3f62dee257eb3d6b2c1ef2a09d36d9793c7111156a73b5654d2c2305e5ce/idna-3.14-py3-none-any.whl", hash = "sha256:e677eaf072e290f7b725f9acf0b3a2bd55f9fd6f7c70abe5f0e34823d0accf69", size = 72184, upload-time = "2026-05-10T20:32:14.295Z" },
+    { url = "https://files.pythonhosted.org/packages/de/a7/f76514cc40ad6234098ecdebda08732d75964776c51a42845b7da10649e2/idna-3.17-py3-none-any.whl", hash = "sha256:466e48829084efe2548012b855df21540b96f2e20e51bd124c851536556a592c", size = 65316, upload-time = "2026-05-28T14:32:37.035Z" },
 ]
 
 [[package]]
@@ -132,53 +136,61 @@ wheels = [
 
 [[package]]
 name = "pyobjc-core"
-version = "12.1"
+version = "12.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/b8/b6/d5612eb40be4fd5ef88c259339e6313f46ba67577a95d86c3470b951fce0/pyobjc_core-12.1.tar.gz", hash = "sha256:2bb3903f5387f72422145e1466b3ac3f7f0ef2e9960afa9bcd8961c5cbf8bd21", size = 1000532, upload-time = "2025-11-14T10:08:28.292Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2a/e8/a6cc12669211e7c9b29e8f26bf2159e67c7a73555dc229018abf46d8167a/pyobjc_core-12.2.tar.gz", hash = "sha256:51d7de4cfa32f508c6a7aac31f131b12d5e196a8dcf588e6e8d7e6337224f66d", size = 1062064, upload-time = "2026-05-30T12:29:55.417Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/25/98/9f4ed07162de69603144ff480be35cd021808faa7f730d082b92f7ebf2b5/pyobjc_core-12.1-cp314-cp314-macosx_10_15_universal2.whl", hash = "sha256:844515f5d86395b979d02152576e7dee9cc679acc0b32dc626ef5bda315eaa43", size = 670164, upload-time = "2025-11-14T09:34:37.458Z" },
-    { url = "https://files.pythonhosted.org/packages/62/50/dc076965c96c7f0de25c0a32b7f8aa98133ed244deaeeacfc758783f1f30/pyobjc_core-12.1-cp314-cp314t-macosx_10_15_universal2.whl", hash = "sha256:453b191df1a4b80e756445b935491b974714456ae2cbae816840bd96f86db882", size = 712204, upload-time = "2025-11-14T09:35:24.148Z" },
+    { url = "https://files.pythonhosted.org/packages/2e/b2/ecfbd0c80e7688ed6f3db23414758443c69c3a9d318f2036e26530ede955/pyobjc_core-12.2-cp314-cp314-macosx_10_15_universal2.whl", hash = "sha256:a51352e478785cd7fce1604b9902125a286139caea0759cb340e59d75b594992", size = 6421372, upload-time = "2026-05-30T10:47:27.907Z" },
+    { url = "https://files.pythonhosted.org/packages/2b/89/ecd5cb62573fba9a95f8bdb838a9860a360907104a0724af6611d3b20512/pyobjc_core-12.2-cp314-cp314t-macosx_10_15_universal2.whl", hash = "sha256:3137b2d14f9f2154fb5b1c092c38d15e164f68ab190c18335d76e4e7e1583f79", size = 6676789, upload-time = "2026-05-30T10:59:33.811Z" },
+    { url = "https://files.pythonhosted.org/packages/74/24/5091d156b19df0f657127f42b08eada11c9b9cc5df49fedb91bb354d9821/pyobjc_core-12.2-cp315-cp315-macosx_10_15_universal2.whl", hash = "sha256:1e4216f2ec962dc13cf7f31b9bc3a7190337a0f401e7dc9de6b2d8c08b9dbb7a", size = 6476112, upload-time = "2026-05-30T11:21:46.914Z" },
+    { url = "https://files.pythonhosted.org/packages/77/e2/ee91ea8a0ad28e759f351ed8654027c34fc62ad5e207672522025a6a3fc2/pyobjc_core-12.2-cp315-cp315t-macosx_10_15_universal2.whl", hash = "sha256:ac952bac8057dd0b97ee7b311c39f97cad7430b7cfbd67ca0a30135a7d17d2ab", size = 6718365, upload-time = "2026-05-30T11:51:47.35Z" },
 ]
 
 [[package]]
 name = "pyobjc-framework-cocoa"
-version = "12.1"
+version = "12.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pyobjc-core" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/02/a3/16ca9a15e77c061a9250afbae2eae26f2e1579eb8ca9462ae2d2c71e1169/pyobjc_framework_cocoa-12.1.tar.gz", hash = "sha256:5556c87db95711b985d5efdaaf01c917ddd41d148b1e52a0c66b1a2e2c5c1640", size = 2772191, upload-time = "2025-11-14T10:13:02.069Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6d/cc/927169225e72bab9c9b44285656768fb75052a0bc85fdbca62740e1ca43c/pyobjc_framework_cocoa-12.2.tar.gz", hash = "sha256:20b392e2b7241caad0538dfde12143343e5dfe48f72e7df660a7548e635903dc", size = 3125555, upload-time = "2026-05-30T12:35:09.273Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/59/bb/f777cc9e775fc7dae77b569254570fe46eb842516b3e4fe383ab49eab598/pyobjc_framework_cocoa-12.1-cp314-cp314-macosx_10_15_universal2.whl", hash = "sha256:03342a60fc0015bcdf9b93ac0b4f457d3938e9ef761b28df9564c91a14f0129a", size = 384932, upload-time = "2025-11-14T09:42:29.771Z" },
-    { url = "https://files.pythonhosted.org/packages/58/27/b457b7b37089cad692c8aada90119162dfb4c4a16f513b79a8b2b022b33b/pyobjc_framework_cocoa-12.1-cp314-cp314t-macosx_10_15_universal2.whl", hash = "sha256:6ba1dc1bfa4da42d04e93d2363491275fb2e2be5c20790e561c8a9e09b8cf2cc", size = 388970, upload-time = "2025-11-14T09:42:53.964Z" },
+    { url = "https://files.pythonhosted.org/packages/56/4b/df8e359e5e422e8f1430bde038aa64364e8c1d4542d7f6fcc4f8a97ec0b7/pyobjc_framework_cocoa-12.2-cp314-cp314-macosx_10_15_universal2.whl", hash = "sha256:aecfd44908fa12a9291fb6ca2458ebbc611102de6784f2202a35fd5ed9f56c60", size = 388334, upload-time = "2026-05-30T11:59:25.861Z" },
+    { url = "https://files.pythonhosted.org/packages/43/a2/68c0702cc9d6dbc7077edbd13ccc9aa30ac589d514f51ad6f5c3840e3bf1/pyobjc_framework_cocoa-12.2-cp314-cp314t-macosx_10_15_universal2.whl", hash = "sha256:ef679740f541c52118149b558b757d1f11d9dcf30c2a23344b13a6af6a99a1ab", size = 392376, upload-time = "2026-05-30T11:59:50.031Z" },
+    { url = "https://files.pythonhosted.org/packages/83/c3/e170672302e75cc1aa833546fb0d5a3bd4a126ede4124566d5a2e4a50cd6/pyobjc_framework_cocoa-12.2-cp315-cp315-macosx_10_15_universal2.whl", hash = "sha256:290e544a8c2d0786a34a359d825eaad44ebaaa3b30cdd765b2755422ca39a0d2", size = 388566, upload-time = "2026-05-30T12:00:13.606Z" },
+    { url = "https://files.pythonhosted.org/packages/f7/6b/78e98e4de11646e56cf98066f9f84b43c86adc8b273a660d85a6ceba7a31/pyobjc_framework_cocoa-12.2-cp315-cp315t-macosx_10_15_universal2.whl", hash = "sha256:5a0bed77b0b56074cc2b4564aae3e6e9d5da5fdf93252f50b6dbced0f7fece3a", size = 392674, upload-time = "2026-05-30T12:00:37.572Z" },
 ]
 
 [[package]]
 name = "pyobjc-framework-corebluetooth"
-version = "12.1"
+version = "12.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4b/25/d21d6cb3fd249c2c2aa96ee54279f40876a0c93e7161b3304bf21cbd0bfe/pyobjc_framework_corebluetooth-12.1.tar.gz", hash = "sha256:8060c1466d90bbb9100741a1091bb79975d9ba43911c9841599879fc45c2bbe0", size = 33157, upload-time = "2025-11-14T10:13:28.064Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/52/df/bee7ba216f9fb513710aac1701b78c97b087b37fca8ec1806f8572e0bbb3/pyobjc_framework_corebluetooth-12.2.tar.gz", hash = "sha256:8b4e5ca99953c360c391a695b0782a5328fcecafd56fdf790ad709e932feb306", size = 37552, upload-time = "2026-05-30T12:35:33.863Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2f/41/90640a4db62f0bf0611cf8a161129c798242116e2a6a44995668b017b106/pyobjc_framework_corebluetooth-12.1-cp314-cp314-macosx_10_15_universal2.whl", hash = "sha256:15ba5207ca626dffe57ccb7c1beaf01f93930159564211cb97d744eaf0d812aa", size = 13222, upload-time = "2025-11-14T09:44:14.345Z" },
-    { url = "https://files.pythonhosted.org/packages/86/99/8ed2f0ca02b9abe204966142bd8c4501cf6da94234cc320c4c0562c467e8/pyobjc_framework_corebluetooth-12.1-cp314-cp314t-macosx_10_15_universal2.whl", hash = "sha256:e5385195bd365a49ce70e2fb29953681eefbe68a7b15ecc2493981d2fb4a02b1", size = 13408, upload-time = "2025-11-14T09:44:16.558Z" },
+    { url = "https://files.pythonhosted.org/packages/a7/ef/a75bd6c17e012f7d73a8a2d94e324528a82dc06451b6019d910b1a993864/pyobjc_framework_corebluetooth-12.2-cp314-cp314-macosx_10_15_universal2.whl", hash = "sha256:8a3b35a1253de626d5efe705dda36a4f1fb8753e48aafdc4dbf99dc9c9526d86", size = 13196, upload-time = "2026-05-30T12:02:07.462Z" },
+    { url = "https://files.pythonhosted.org/packages/6b/d7/11a8a90463e6a3928274e65bd17acaa3f0bfbd9c19a68b93c61cbc4fa379/pyobjc_framework_corebluetooth-12.2-cp314-cp314t-macosx_10_15_universal2.whl", hash = "sha256:bd0b9e7bc2fffcfa4843d7f103e1e927ce37817a70932d080378e1e29a073381", size = 13387, upload-time = "2026-05-30T12:02:09.431Z" },
+    { url = "https://files.pythonhosted.org/packages/10/d0/d5cc4ba6dbe21f6f4c90e8f0087254f1f742134580394b763025416ab7d2/pyobjc_framework_corebluetooth-12.2-cp315-cp315-macosx_10_15_universal2.whl", hash = "sha256:a2dd4bd8fde13b97a3339a42d6703c9c9b148663e2e23a184ffe2877c8e51470", size = 13192, upload-time = "2026-05-30T12:02:11.41Z" },
+    { url = "https://files.pythonhosted.org/packages/25/a0/964b18affc8f6b582ed891f3b59413452fd95acce4adbf070a389b5197e4/pyobjc_framework_corebluetooth-12.2-cp315-cp315t-macosx_10_15_universal2.whl", hash = "sha256:42db087cd3a328abc620c76c7f708d7c2b451f3dbc0779983812a0c84320fe60", size = 13394, upload-time = "2026-05-30T12:02:13.443Z" },
 ]
 
 [[package]]
 name = "pyobjc-framework-libdispatch"
-version = "12.1"
+version = "12.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/26/e8/75b6b9b3c88b37723c237e5a7600384ea2d84874548671139db02e76652b/pyobjc_framework_libdispatch-12.1.tar.gz", hash = "sha256:4035535b4fae1b5e976f3e0e38b6e3442ffea1b8aa178d0ca89faa9b8ecdea41", size = 38277, upload-time = "2025-11-14T10:16:46.235Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1b/fe/e23be301e46c30450955cdb096f16f6a86e7609787a4b8225ec24d6fdc9d/pyobjc_framework_libdispatch-12.2.tar.gz", hash = "sha256:4a41879ef7716b73d70f2e40ff39353d686cbc59d48c93217ed362d2b2baf1ba", size = 40345, upload-time = "2026-05-30T12:39:09.474Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/59/d8/7d60a70fc1a546c6cb482fe0595cb4bd1368d75c48d49e76d0bc6c0a2d0f/pyobjc_framework_libdispatch-12.1-cp314-cp314-macosx_10_15_universal2.whl", hash = "sha256:0ebfd9e4446ab6528126bff25cfb09e4213ddf992b3208978911cfd3152e45f5", size = 15693, upload-time = "2025-11-14T09:53:05.531Z" },
-    { url = "https://files.pythonhosted.org/packages/99/32/15e08a0c4bb536303e1568e2ba5cae1ce39a2e026a03aea46173af4c7a2d/pyobjc_framework_libdispatch-12.1-cp314-cp314t-macosx_10_15_universal2.whl", hash = "sha256:23fc9915cba328216b6a736c7a48438a16213f16dfb467f69506300b95938cc7", size = 15976, upload-time = "2025-11-14T09:53:07.936Z" },
+    { url = "https://files.pythonhosted.org/packages/4a/0e/caee3281628ba4913206167062274334a62ba5dedb8dada5fd884a53584f/pyobjc_framework_libdispatch-12.2-cp314-cp314-macosx_10_15_universal2.whl", hash = "sha256:fef3158dd4a068a9db8108a5cbf7da385788136e1d8af2e6fb7f82215016ecb2", size = 15679, upload-time = "2026-05-30T12:12:07.217Z" },
+    { url = "https://files.pythonhosted.org/packages/d7/e0/ecf5fb9f11d12271818c5244c57d36ee654abfa2d15799bd594d4f58d931/pyobjc_framework_libdispatch-12.2-cp314-cp314t-macosx_10_15_universal2.whl", hash = "sha256:02dc66f1c11e25eceecf3c1b2b397f1727659dcac3e0c7b97784d5af3cfab491", size = 15960, upload-time = "2026-05-30T12:12:09.199Z" },
+    { url = "https://files.pythonhosted.org/packages/b0/74/c1d1d1fc45434dcbab16887273d368d9ad89e65939babcffd502ed308ef9/pyobjc_framework_libdispatch-12.2-cp315-cp315-macosx_10_15_universal2.whl", hash = "sha256:a81d9329fdf5094c9bc09b916e1d2fb86ab27138161d3e7ddb76ec2e780a1aba", size = 15699, upload-time = "2026-05-30T12:12:11.103Z" },
+    { url = "https://files.pythonhosted.org/packages/ce/46/6ba13e10cbac853af00ee37444f37826a0688e32d1d22ce2fde4e2add9d3/pyobjc_framework_libdispatch-12.2-cp315-cp315t-macosx_10_15_universal2.whl", hash = "sha256:8daaf8844b5b328cf8adb6e8c085bf2aad22237956f7c5dc6fbb7a46c5015af0", size = 15990, upload-time = "2026-05-30T12:12:13.077Z" },
 ]
 
 [[package]]
@@ -204,7 +216,7 @@ wheels = [
 
 [[package]]
 name = "requests"
-version = "2.33.1"
+version = "2.34.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
@@ -212,9 +224,9 @@ dependencies = [
     { name = "idna" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5f/a4/98b9c7c6428a668bf7e42ebb7c79d576a1c3c1e3ae2d47e674b468388871/requests-2.33.1.tar.gz", hash = "sha256:18817f8c57c6263968bc123d237e3b8b08ac046f5456bd1e307ee8f4250d3517", size = 134120, upload-time = "2026-03-30T16:09:15.531Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ac/c3/e2a2b89f2d3e2179abd6d00ebd70bff6273f37fb3e0cc209f48b39d00cbf/requests-2.34.2.tar.gz", hash = "sha256:f288924cae4e29463698d6d60bc6a4da69c89185ad1e0bcc4104f584e960b9ed", size = 142856, upload-time = "2026-05-14T19:25:27.735Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d7/8e/7540e8a2036f79a125c1d2ebadf69ed7901608859186c856fa0388ef4197/requests-2.33.1-py3-none-any.whl", hash = "sha256:4e6d1ef462f3626a1f0a0a9c42dd93c63bad33f9f1c1937509b8c5c8718ab56a", size = 64947, upload-time = "2026-03-30T16:09:13.83Z" },
+    { url = "https://files.pythonhosted.org/packages/a0/f4/c67b0b3f1b9245e8d266f0f112c500d50e5b4e83cb6f3b71b6528104182a/requests-2.34.2-py3-none-any.whl", hash = "sha256:2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0", size = 73075, upload-time = "2026-05-14T19:25:26.443Z" },
 ]
 
 [[package]]
