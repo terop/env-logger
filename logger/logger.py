@@ -8,6 +8,7 @@ import argparse
 import asyncio
 import json
 import logging
+import tomllib
 import sys
 import time
 from collections import OrderedDict
@@ -381,26 +382,27 @@ def main():
 
     parser = argparse.ArgumentParser(
         description="""Scans environment data and sends it to the env-logger backend.
-        A configuration file named "logger_config.json" is used unless provided with
+        A configuration file named "logger_config.toml" is used unless provided with
         the --config flag.""")
-    parser.add_argument('--config', type=str, help='Configuration file to use')
+    parser.add_argument('--config', type=str,
+                        help='TOML configuration file to use')
     parser.add_argument('--dummy', action='store_true',
                         help='Send dummy data (meant for testing)')
     parser.add_argument('--bt-device', type=str,
                         help='Bluetooth device to use (default: hci0)')
 
     args = parser.parse_args()
-    config_file = args.config or 'logger_config.json'
+    config_file = args.config or 'logger_config.toml'
     bt_device = args.bt_device or 'hci0'
 
     if not Path(config_file).exists() or not Path(config_file).is_file():
         logger.error('Could not find configuration file: %s', config_file)
         sys.exit(1)
 
-    with Path(config_file).open('r', encoding='utf-8') as conf_file:
+    with Path(config_file).open('rb') as conf_file:
         try:
-            config = json.load(conf_file)
-        except json.JSONDecodeError:
+            config = tomllib.load(conf_file)
+        except tomllib.TOMLDecodeError:
             logger.exception('Could not parse configuration file')
             sys.exit(1)
 
