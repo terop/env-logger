@@ -1,5 +1,7 @@
 """Code for showing various data on a PyPortal Titano display."""
 
+# ruff: noqa: A005
+
 import time
 from collections import OrderedDict
 from os import getenv
@@ -203,7 +205,7 @@ def adjust_backlight(display):
         display.brightness = BACKLIGHT_DEFAULT_VALUE
 
 
-def prepare_elec_data(elec_data, utc_offset_hours):
+def prepare_elec_data(elec_data, utc_offset_hours):  # noqa: C901
     """Fetch and prepare electricity data for display."""
     if not elec_data:
         return None
@@ -255,12 +257,14 @@ def prepare_elec_data(elec_data, utc_offset_hours):
     return values
 
 
-def update_screen(display, observation, weather_data, elec_data, utc_offset_hour,  # noqa: PLR0912, PLR0913, PLR0915
+def update_screen(display, observation, weather_data, elec_data, utc_offset_hour,  # noqa: C901,PLR0912,PLR0913,PLR0915
                   time_update_only=False):
     """Update screen contents."""
     c_time = time.localtime()
-    time_str = f'{c_time.tm_mday}.{c_time.tm_mon}.{c_time.tm_year} ' + \
+    time_str = (
+        f'{c_time.tm_mday}.{c_time.tm_mon}.{c_time.tm_year} '
         f'{c_time.tm_hour:02}:{c_time.tm_min:02}:{c_time.tm_sec:02}'
+    )
 
     if time_update_only:
         if 'sr' in display[0].text:
@@ -279,18 +283,24 @@ def update_screen(display, observation, weather_data, elec_data, utc_offset_hour
     display[0].text = time_str
 
     if observation['weather-data']:
-        display[0].text += f'           sr {weather_data['ast']['sunrise']} ' + \
+        display[0].text += (
+            f'           sr {weather_data['ast']['sunrise']} '
             f'ss {weather_data['ast']['sunset']}'
+        )
 
         weather = observation['weather-data']
         dt_time = datetime.fromisoformat(weather['time'].replace('Z', ''))
         time_str = f'{dt_time.hour + utc_offset_hour:02}:{dt_time.minute:02}'
 
-        display[1].text = f'Weather ({time_str}): temp {weather["temperature"]} ' + \
-            f'\u00b0C, feel {weather["feels-like"]} \u00b0C,'
-        display[2].text = f'clouds {weather["cloudiness"]}, wind ' + \
-            f'{weather["wind-direction"]["short"]} {weather["wind-speed"]} m/s, ' + \
+        display[1].text = (
+            f'Weather ({time_str}): temp {weather["temperature"]} \u00b0C, '
+            f'feel {weather["feels-like"]} \u00b0C,'
+        )
+        display[2].text = (
+            f'clouds {weather["cloudiness"]}, wind '
+            f'{weather["wind-direction"]["short"]} {weather["wind-speed"]} m/s, '
             f'humidity {int(weather["humidity"])} %H'
+        )
 
     if weather_data['fmi']['forecast']:
         forecast = weather_data['fmi']['forecast']
@@ -300,14 +310,20 @@ def update_screen(display, observation, weather_data, elec_data, utc_offset_hour
             display[3].text = 'Forecast'
             if forecast_dt and forecast_dt.hour is not None \
                and forecast_dt.minute is not None:
-                display[3].text += f' ({forecast_dt.hour + utc_offset_hour:02}:' + \
+                display[3].text += (
+                    f' ({forecast_dt.hour + utc_offset_hour:02}:'
                     f'{forecast_dt.minute:02})'
-                display[3].text += f': temp {forecast["temperature"]} \u00b0C, ' + \
+                )
+                display[3].text += (
+                    f': temp {forecast["temperature"]} \u00b0C, '
                     f'feel {forecast["feels-like"]} \u00b0C, '
-                display[4].text = f'clouds {forecast["cloudiness"]} %, ' + \
-                    f'wind {forecast["wind-direction"]["short"]} ' + \
-                    f'{forecast["wind-speed"]} m/s, precip ' + \
+                )
+                display[4].text = (
+                    f'clouds {forecast["cloudiness"]} %, '
+                    f'wind {forecast["wind-direction"]["short"]} '
+                    f'{forecast["wind-speed"]} m/s, precip '
                     f'{forecast["precipitation"]} mm'
+                )
                 row = 5
     else:
         row = 1
@@ -315,12 +331,15 @@ def update_screen(display, observation, weather_data, elec_data, utc_offset_hour
     if elec_data:
         if 'current' in elec_data:
             current_val = elec_data['current']
-            display[row].text = 'Elec price: ' + \
-                f'{current_val[0].hour}:{current_val[0].minute:02}: {current_val[1]} c'
+            display[row].text = (
+                f'Elec price: {current_val[0].hour}:'
+                f'{current_val[0].minute:02}: {current_val[1]} c'
+            )
         if 'next' in elec_data:
             next_val = elec_data['next']
-            display[row].text += f', {next_val[0].hour}:{next_val[0].minute:02}: ' + \
-                f'{next_val[1]} c'
+            display[row].text += (
+                f', {next_val[0].hour}:{next_val[0].minute:02}: {next_val[1]} c'
+            )
         row += 1
         if 'average' in elec_data or 'month-consumption' in elec_data:
             display[row].text += 'Current month: '
@@ -358,8 +377,10 @@ def update_screen(display, observation, weather_data, elec_data, utc_offset_hour
 
     if o_data['iaqs'] is not None:
         row += 1
-        display[row].text = f'air: IAQS {o_data["iaqs"]}, CO\u2082 ' \
-            f'{o_data["ruuvi-co2"]} ppm, PM 2.5 {o_data["pm-25"]} \u00b5g/m\u00b3'
+        display[row].text = (
+            f'air: IAQS {o_data["iaqs"]}, CO\u2082 {o_data["ruuvi-co2"]} ppm, '
+            f'PM 2.5 {o_data["pm-25"]} \u00b5g/m\u00b3'
+        )
     row += 1
 
     if observation['rt-data']:
@@ -373,8 +394,9 @@ def update_screen(display, observation, weather_data, elec_data, utc_offset_hour
             if (name in seen_names) or (name in hidden_ruuvitags):
                 continue
 
-            display[row].text = f'RuuviTag \"{name}\": temperature ' + \
-                f'{tag["temperature"]} \u00b0C,'
+            display[row].text = (
+                f'RuuviTag \"{name}\": temperature {tag["temperature"]} \u00b0C,'
+            )
             display[row + 1].text = f'humidity {tag["humidity"]} %H'
             row += 2
             seen_names.append(name)
