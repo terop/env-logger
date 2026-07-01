@@ -8,16 +8,16 @@ import argparse
 import asyncio
 import json
 import logging
-import tomllib
 import sys
 import time
+import tomllib
 from collections import OrderedDict
 from datetime import datetime
 from math import hypot
 from pathlib import Path
 from statistics import mean, median
+from zoneinfo import ZoneInfo
 
-import pytz
 import requests
 from bleak import BleakScanner
 from bleak.exc import BleakDBusError, BleakError
@@ -38,7 +38,7 @@ CO2_SCALE = AQI_MAX / (CO2_MAX - CO2_MIN)
 
 def get_timestamp(timezone):
     """Return the current timestamp for the given timezone in ISO 8601 format."""
-    return datetime.now(pytz.timezone(timezone)).isoformat()
+    return datetime.now(ZoneInfo(timezone)).isoformat()
 
 
 def get_data_from_arduino(env_settings):
@@ -174,10 +174,10 @@ async def scan_ruuvi_devices(device_config, bt_device):  # noqa: C901,PLR0915
         devices[device['mac']] = device['type']
         device_names[device['mac']] = device['name']
 
-    async def _async_device_scan(devices, timeout, run_until_completion=False):
+    async def _async_device_scan(devices, scan_duration, run_until_completion=False):
         expected_device_count = len(devices)
         found_count = 0
-        start_time = datetime.now()
+        start_time = time.monotonic()
         timeout_advance = 2
 
         if run_until_completion:
@@ -190,8 +190,9 @@ async def scan_ruuvi_devices(device_config, bt_device):  # noqa: C901,PLR0915
         device_macs = list(devices.keys()) if not run_until_completion else []
 
         async for device_data in RuuviTagSensor.get_data_async(device_macs, bt_device):
-            elapsed_time = (datetime.now() - start_time).seconds
-            if not run_until_completion and elapsed_time + timeout_advance >= timeout:
+            elapsed_time = int(time.monotonic() - start_time)
+            if (not run_until_completion
+                    and elapsed_time + timeout_advance >= scan_duration):
                 logger.info('Stopping before timeout after running %s seconds',
                             elapsed_time)
                 break
@@ -244,7 +245,7 @@ async def scan_ruuvi_devices(device_config, bt_device):  # noqa: C901,PLR0915
             case _:
                 logger.error('Ruuvi device scan failed for some other reason: %s', err)
 
-    return [device for device in found_devices.values()]
+    return list(found_devices.values())
 
 
 def store_ruuvi_device_data(config, access_token, timestamp, device_data):
