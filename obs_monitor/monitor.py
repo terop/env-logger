@@ -39,7 +39,8 @@ class ObservationMonitor:
             cursor.execute('SELECT recorded FROM observations '
                            'ORDER BY id DESC LIMIT 1')
             result = cursor.fetchone()
-            return result[0] if result else datetime.now()
+            return result[0] if result else datetime.now(
+                tz=ZoneInfo(self._config['db']['DisplayTimezone']))
 
     def check_observation(self):
         """Check when the last observation has been received.
@@ -174,7 +175,8 @@ class BeaconMonitor:
             cursor.execute('SELECT recorded FROM observations WHERE id = '
                            '(SELECT obs_id FROM beacons ORDER BY id DESC LIMIT 1)')
             result = cursor.fetchone()
-            return result[0] if result else datetime.now()
+            return result[0] if result else datetime.now(
+                tz=ZoneInfo(self._config['db']['DisplayTimezone']))
 
     def check_beacon(self):
         """Check the latest BLE beacon scan time.
@@ -233,7 +235,8 @@ class RuuvitagMonitor:
                 name = {name} ORDER BY recorded DESC LIMIT 1""")
 
                 result = cursor.fetchone()
-                results[name] = result[0] if result else datetime.now()
+                results[name] = result[0] if result else datetime.now(
+                    tz=ZoneInfo(self._config['db']['DisplayTimezone']))
 
         return results
 
@@ -354,11 +357,13 @@ def create_db_conn_string(db_config):
             logger.error('No database server password provided, exiting')
             sys.exit(1)
 
-    return f'host={db_config["host"]} user={db_config["username"]} ' \
+    return (
+        f'host={db_config["host"]} user={db_config["username"]} '
         f'password={db_config["password"]} dbname={db_config["name"]}'
+    )
 
 
-def main():
+def main():  # noqa: C901
     """Run the module code."""
     logging.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s',
                         level=logging.INFO)
