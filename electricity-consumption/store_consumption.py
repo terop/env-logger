@@ -9,14 +9,16 @@ import argparse
 import json
 import logging
 import sys
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from os import environ
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import psycopg
 from pycaruna import Authenticator, CarunaPlus, TimeSpan
 
 logger = logging.getLogger(__name__)
+HELSINKI_TZ = ZoneInfo('Europe/Helsinki')
 
 
 def check_day_data(db_config, check_date):
@@ -25,7 +27,8 @@ def check_day_data(db_config, check_date):
     Returns True if data exists and False otherwise.
     """
     min_value_threshold = 20
-    start_dt = datetime(check_date.year, check_date.month, check_date.day, 0, 0, 0)
+    start_dt = datetime(check_date.year, check_date.month, check_date.day,
+                        0, 0, 0, tzinfo=HELSINKI_TZ)
     end_dt = start_dt + timedelta(days=1)
 
     try:
@@ -84,10 +87,11 @@ def fetch_consumption_data(login_data, manual_fetch_date=None):
     By default data for the previous day is fetched.
     """
     if not manual_fetch_date:
-        fetch_date = date.today() - timedelta(days=1)
+        fetch_date = datetime.now(tz=HELSINKI_TZ).date() - timedelta(days=1)
     else:
         try:
-            fetch_dt = datetime.strptime(manual_fetch_date, '%Y-%m-%d')
+            fetch_dt = datetime.strptime(manual_fetch_date, '%Y-%m-%d').replace(
+                tzinfo=HELSINKI_TZ)
         except ValueError:
             logger.exception('Invalid date provided')
             sys.exit(1)
@@ -115,8 +119,10 @@ def fetch_consumption_data(login_data, manual_fetch_date=None):
 
 def store_consumption(db_config, consumption_data):
     """Store consumption data to a database pointed by the DB config."""
-    insert_query = 'INSERT INTO electricity_consumption (time, consumption) ' \
+    insert_query = (
+        'INSERT INTO electricity_consumption (time, consumption) '
         'VALUES (%s, %s)'
+    )
 
     try:
         with psycopg.connect(create_db_conn_string(db_config)) as conn, \
@@ -147,8 +153,10 @@ def create_db_conn_string(db_config):
             logger.error('No database server password provided, exiting')
             sys.exit(1)
 
-    return f'host={db_config["host"]} user={db_config["username"]} ' \
+    return (
+        f'host={db_config["host"]} user={db_config["username"]} '
         f'password={db_config["password"]} dbname={db_config["name"]}'
+    )
 
 
 def handle_storage(args, db_config, consumption_data):
@@ -207,7 +215,7 @@ def main():
 
     if not args.date and not args.no_store and not args.force_store:
         day_diff = 2 if args.check_for_missing else 1
-        check_date = date.today() - timedelta(days=day_diff)
+        check_date = datetime.now(tz=HELSINKI_TZ).date() - timedelta(days=day_diff)
 
         if check_day_data(config['db'], check_date):
             logger.info('Not storing data again because existing data is found')
@@ -220,7 +228,7 @@ def main():
             handle_storage(args, config['db'],
                            fetch_consumption_data(login_data, fetch_date))
     elif args.check_for_missing:
-        fetch_date = date.today() - timedelta(days=2)
+        fetch_date = datetime.now(tz=HELSINKI_TZ).date() - timedelta(days=2)
 
         handle_storage(args, config['db'],
                        fetch_consumption_data(login_data, fetch_date.isoformat()))
