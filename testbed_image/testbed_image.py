@@ -8,8 +8,8 @@ is stored on success.
 import sys
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
-import pytz
 import requests
 from bs4 import BeautifulSoup
 
@@ -19,7 +19,7 @@ def download_image():
 
     Returns the image data on success and None otherwise.
     """
-    timestamp = datetime.now().isoformat()
+    timestamp = datetime.now(tz=ZoneInfo('Europe/Helsinki')).isoformat()
     try:
         resp = requests.get('https://testbed.fmi.fi/?imgtype=radar&t=5&n=1', timeout=10)
     except requests.ConnectionError as ce:
@@ -54,11 +54,11 @@ def main():  # noqa: RET503
     """Run the module code."""
     image = download_image()
     if not image:
-        print('')
+        print()
         return 1
 
-    helsinki_tz = pytz.timezone('Europe/Helsinki')
-    filename_dt = helsinki_tz.localize(datetime.now()).strftime('%Y-%m-%dT%H:%M%z')
+    helsinki_tz = ZoneInfo('Europe/Helsinki')
+    filename_dt = datetime.now(tz=helsinki_tz).strftime('%Y-%m-%dT%H:%M%z')
     filename = f'testbed-{filename_dt}.png'
 
     with Path(filename).open('wb') as tb_image:
