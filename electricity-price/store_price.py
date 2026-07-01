@@ -10,11 +10,13 @@ from datetime import datetime, timedelta
 from math import isinf
 from os import environ
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import psycopg
 from nordpool import elspot
 
 logger = logging.getLogger(__name__)
+HELSINKI_TZ = ZoneInfo('Europe/Helsinki')
 
 VAT_MULTIPLIER = 1.255
 
@@ -28,12 +30,13 @@ def fetch_prices(config, fetch_date, hourly=True):
     """
     area_code = config['area_code']
 
-    today = datetime.now().date()
-    start = datetime(today.year, today.month, today.day)
+    today = datetime.now(tz=HELSINKI_TZ).date()
+    start = datetime(today.year, today.month, today.day, tzinfo=HELSINKI_TZ)
 
     if fetch_date:
         try:
-            start = datetime.strptime(fetch_date, '%Y-%m-%d')
+            start = datetime.strptime(
+                fetch_date, '%Y-%m-%d').replace(tzinfo=HELSINKI_TZ)
         except ValueError:
             logger.exception('Invalid date provided')
             sys.exit(1)
@@ -71,8 +74,10 @@ def fetch_prices(config, fetch_date, hourly=True):
 
 def store_prices(db_config, price_data, hourly=True):
     """Store the prices to a database pointed by the DB config."""
-    insert_query = f'INSERT INTO electricity_price{"" if hourly else "_minute"} ' \
-        '(start_time, price) VALUES (%s, %s)'  # noqa: S608
+    insert_query = (
+        f'INSERT INTO electricity_price{"" if hourly else "_minute"} '  # noqa: S608
+        '(start_time, price) VALUES (%s, %s)'
+    )
 
     try:
         with psycopg.connect(create_db_conn_string(db_config)) as conn, \
@@ -103,8 +108,10 @@ def create_db_conn_string(db_config):
             logger.error('No database server password provided, exiting')
             sys.exit(1)
 
-    return f'host={db_config["host"]} user={db_config["username"]} ' \
+    return (
+        f'host={db_config["host"]} user={db_config["username"]} '
         f'password={db_config["password"]} dbname={db_config["name"]}'
+    )
 
 
 def fetch_and_store(config, fetch_date, hourly=True):
