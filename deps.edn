@@ -2,16 +2,14 @@
  :deps {org.clojure/clojure {:mvn/version "1.12.5"}
         org.clojure/data.zip {:mvn/version "1.1.1"}
         org.clojure/data.csv {:mvn/version "1.1.1"}
-        ;; Only needed for unit tests, test run fails without this
-        org.clojure/tools.namespace {:mvn/version "1.5.1"}
         yogthos/config {:mvn/version "1.2.1"}
-        ring/ring-devel {:mvn/version "1.15.5"}
         ring/ring-defaults {:mvn/version "0.7.1"}
         info.sunng/ring-jetty9-adapter {:mvn/version "0.40.1"}
         clj-http/clj-http {:mvn/version "3.13.1"}
         clojure.java-time/clojure.java-time {:mvn/version "1.4.3"}
         org.threeten/threeten-extra {:mvn/version "1.10.0"}
-        metosin/reitit {:mvn/version "0.10.1"}
+        metosin/reitit-ring {:mvn/version "0.10.1"}
+        metosin/reitit-middleware {:mvn/version "0.10.1"}
         metosin/ring-http-response {:mvn/version "0.9.5"}
         selmer/selmer {:mvn/version "1.13.4"}
         metosin/jsonista {:mvn/version "1.0.0"}
@@ -24,12 +22,14 @@
         {:git/url "https://git.sr.ht/~terop/openid-connect-auth"
          :git/sha "574fff490e6ef6f559e6ec962830d5ac5a78735c"}}
  :aliases
- {:run {:main-opts ["-m" "env-logger.handler"]
-        :jvm-opts ["-Dconfig=resources/dev/config.edn"]}
-  :build {:deps {io.github.clojure/tools.build {:mvn/version "0.10.14"}}
-          :ns-default build}
+  {:dev {:extra-deps {ring/ring-devel {:mvn/version "1.15.5"}}
+         :main-opts ["-m" "env-logger.handler"]
+         :jvm-opts ["-Dconfig=resources/dev/config.edn"]}
+   :build {:deps {io.github.clojure/tools.build {:mvn/version "0.10.14"}}
+           :ns-default build}
   :test {:extra-paths ["test"]
-         :extra-deps {clj-http-fake/clj-http-fake {:mvn/version "1.0.4"}
+         :extra-deps {org.clojure/tools.namespace {:mvn/version "1.5.1"}
+                      clj-http-fake/clj-http-fake {:mvn/version "1.0.4"}
                       tupelo/tupelo {:mvn/version "25.07.04"}
                       lambdaisland/kaocha {:mvn/version "1.91.1392"}}
          :main-opts ["-m" "kaocha.runner"]

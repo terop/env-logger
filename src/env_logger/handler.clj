@@ -13,7 +13,6 @@
             [ring.middleware.defaults :refer [wrap-defaults
                                               site-defaults
                                               secure-site-defaults]]
-            [ring.middleware.reload :refer [wrap-reload]]
             [ring.util.http-response :refer [bad-request content-type found]]
             [ring.util.response :refer [header]]
             [taoensso.timbre :refer [error set-min-level!]]
@@ -380,5 +379,6 @@
   (let [port (Integer/parseInt (get (System/getenv)
                                     "APP_PORT" "8080"))]
     (run-jetty (if (:development-mode env)
-                 (wrap-reload #'app) #'app)
+                 ((requiring-resolve 'ring.middleware.reload/wrap-reload) #'app)
+                 #'app)
                {:port port})))

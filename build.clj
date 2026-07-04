@@ -13,7 +13,7 @@
   (b/delete {:path "target"}))
 
 (defn build [_]
-  (b/copy-dir {:src-dirs ["src" "resources"]
+  (b/copy-dir {:src-dirs ["src" "resources/prod"]
                :target-dir class-dir})
   (b/compile-clj {:basis basis
                   :src-dirs ["src"]
