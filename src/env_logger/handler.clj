@@ -9,7 +9,7 @@
             [reitit.ring :as ring]
             [reitit.ring.middleware.muuntaja :as muuntaja]
             [reitit.ring.middleware.parameters :as parameters]
-            [ring.adapter.jetty9 :refer [run-jetty]]
+            [org.httpkit.server :refer [run-server]]
             [ring.middleware.defaults :refer [wrap-defaults
                                               site-defaults
                                               secure-site-defaults]]
@@ -378,7 +378,7 @@
   (set-min-level! :info)
   (let [port (Integer/parseInt (get (System/getenv)
                                     "APP_PORT" "8080"))]
-    (run-jetty (if (:development-mode env)
-                 ((requiring-resolve 'ring.middleware.reload/wrap-reload) #'app)
-                 #'app)
-               {:port port})))
+    (run-server (if (:development-mode env)
+                  ((requiring-resolve 'ring.middleware.reload/wrap-reload) #'app)
+                  #'app)
+                {:port port})))
