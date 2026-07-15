@@ -2,8 +2,6 @@
 
 """A program for fetching and sending environment data to the data logger backend."""
 
-# ruff: noqa: TRY400
-
 import argparse
 import asyncio
 import json

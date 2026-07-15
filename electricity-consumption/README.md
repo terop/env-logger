@@ -9,6 +9,5 @@ into a PostgreSQL database.
 already installed.
 Then run `uv sync --frozen` to install required dependencies. A sample configuration
 file is available at `config.json.sample`, copy it to `config.json` and modify
-accordingly. Finally run the script itself located in the `electricity_consumption`
-directory with `uv run python store_consumption.py`.
-The configuration file can also be provided by using the `--config` flag.
+accordingly. Finally run the script itself with the `uv run python store_consumption.py`
+command, add the `-h` flag to see the available flags.

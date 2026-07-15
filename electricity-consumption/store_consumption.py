@@ -9,7 +9,7 @@ import argparse
 import json
 import logging
 import sys
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from os import environ
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -19,6 +19,37 @@ from pycaruna import Authenticator, CarunaPlus, TimeSpan
 
 logger = logging.getLogger(__name__)
 HELSINKI_TZ = ZoneInfo('Europe/Helsinki')
+EXPECTED_DATE_RANGE_PARTS = 2
+
+
+def build_inclusive_date_range(date_start, date_end):
+    """Build an inclusive list of dates between two endpoints."""
+    day_count = (date_end - date_start).days + 1
+    return [date_start + timedelta(days=i) for i in range(day_count)]
+
+
+def parse_date_range(manual_date_range):
+    """Parse a date range in YYYY-MM-DD/YYYY-MM-DD format."""
+    date_parts = manual_date_range.split('/', maxsplit=1)
+    if len(date_parts) != EXPECTED_DATE_RANGE_PARTS:
+        logger.error('Invalid date range format "%s"', manual_date_range)
+        logger.error('Expected format is YYYY-MM-DD/YYYY-MM-DD')
+        sys.exit(1)
+
+    try:
+        range_start = date.fromisoformat(date_parts[0])
+        range_end = date.fromisoformat(date_parts[1])
+    except ValueError:
+        logger.error('Invalid date range provided "%s"', manual_date_range)
+        logger.error('Expected format is YYYY-MM-DD/YYYY-MM-DD')
+        sys.exit(1)
+
+    if range_start > range_end:
+        logger.error('Invalid date range "%s": start date must be <= end date',
+                     manual_date_range)
+        sys.exit(1)
+
+    return build_inclusive_date_range(range_start, range_end)
 
 
 def check_day_data(db_config, check_date):
@@ -193,6 +224,9 @@ def main():
     parser.add_argument('--date', type=str, help='date (in YYYY-MM-DD format) for '
                         'which to fetch data, multiple comma separated values are '
                         'supported')
+    parser.add_argument('--date-range', type=str, help='date range (in '
+                        'YYYY-MM-DD/YYYY-MM-DD format) for which to fetch data, '
+                        'including endpoints')
     parser.add_argument('--check-for-missing', action='store_true',
                         help='check for missing data from the day before yesterday')
     parser.add_argument('--force-store', action='store_true',
@@ -213,7 +247,10 @@ def main():
     with Path(config_file).open('r', encoding='utf-8') as cfg_file:
         config = json.load(cfg_file)
 
-    if not args.date and not args.no_store and not args.force_store:
+    parsed_date_range = parse_date_range(args.date_range) if args.date_range else None
+
+    if not args.date and not args.date_range and not args.no_store and \
+            not args.force_store:
         day_diff = 2 if args.check_for_missing else 1
         check_date = datetime.now(tz=HELSINKI_TZ).date() - timedelta(days=day_diff)
 
@@ -227,6 +264,11 @@ def main():
         for fetch_date in args.date.split(','):
             handle_storage(args, config['db'],
                            fetch_consumption_data(login_data, fetch_date))
+    elif args.date_range:
+        for fetch_date in parsed_date_range:
+            handle_storage(args, config['db'],
+                           fetch_consumption_data(login_data,
+                                                  fetch_date.isoformat()))
     elif args.check_for_missing:
         fetch_date = datetime.now(tz=HELSINKI_TZ).date() - timedelta(days=2)
 
