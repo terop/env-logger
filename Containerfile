@@ -20,7 +20,6 @@ RUN BASE_MODS="$($JAVA_HOME/bin/jdeps \
         --strip-debug \
         --no-man-pages \
         --no-header-files \
-        --compress 2 \
         --output /customjre
 
 # Main app image
@@ -30,15 +29,14 @@ ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 COPY --from=temurin-jdk /customjre ${JAVA_HOME}
 
-RUN apk update && apk upgrade
-
-RUN apk add --no-cache dumb-init
+RUN apk upgrade --no-cache \
+    && apk add --no-cache dumb-init
 
 # Add user to run the app
 ARG APPLICATION_USER=appuser
-RUN adduser --no-create-home -u 1000 -D ${APPLICATION_USER}
-
-RUN mkdir /app && chown -R ${APPLICATION_USER} /app
+RUN adduser --no-create-home -u 1000 -D ${APPLICATION_USER} \
+    && mkdir /app \
+    && chown -R ${APPLICATION_USER} /app
 
 USER ${APPLICATION_USER}
 

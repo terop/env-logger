@@ -1,20 +1,17 @@
 FROM ghcr.io/astral-sh/uv:python3.14-alpine AS builder
 ENV UV_COMPILE_BYTECODE=1
 
-# Remove when upstream nordpool package is again used
-RUN apk update && apk add git
-
 WORKDIR /app
 RUN --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --no-install-project --no-dev
+    uv sync --frozen --no-install-project --no-dev --no-cache
 
 LABEL org.opencontainers.image.authors="tero.paloheimo@iki.fi"
 
 FROM docker.io/python:3.14-alpine
 ENV PYTHONUNBUFFERED=true
 
-RUN apk update && apk upgrade
+RUN apk upgrade --no-cache
 
 # Add user to run the app
 ARG APPLICATION_USER=appuser
