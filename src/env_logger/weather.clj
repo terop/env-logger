@@ -24,6 +24,9 @@
 
 (def retry-count 3)
 
+(def ^:private json-decode-opts
+  (j/object-mapper {:decode-key-fn true}))
+
 ;; Utilities
 
 (defn calculate-start-time
@@ -47,6 +50,21 @@
   (convert-time->iso8601-str (jt/with-zone
                                datetime
                                (:weather-timezone env))))
+
+(defn- fmi-current-retain-keys
+  "Return the ISO8601 keys for current and previous 10-minute FMI slots."
+  []
+  (let [start-time (calculate-start-time)]
+    #{(-convert-dt->tz-iso8601-str start-time)
+      (-convert-dt->tz-iso8601-str (jt/minus start-time (jt/minutes 10)))}))
+
+(defn- store-fmi-current-entry!
+  "Store one FMI observation and drop entries outside the active time window."
+  [time-key observation]
+  (swap! fmi-current
+         (fn [current]
+           (-> (assoc current time-key observation)
+               (select-keys (fmi-current-retain-keys))))))
 
 (defn store-weather-data?
   "Tells whether to store FMI weather data.
@@ -198,8 +216,7 @@
                              "observations?fmisid=%s&observations=true")
                         station-id)
             parsed-json (j/read-value (:body (client/get url))
-                                      (j/object-mapper
-                                       {:decode-key-fn true}))]
+                                      json-decode-opts)]
         (if (and (:observations parsed-json)
                  (seq (:observations parsed-json)))
           (let [obs (last (:observations parsed-json))
@@ -230,8 +247,9 @@
                                  (:Humidity obs)
                                  nil)}]
             (when-not (nil? (:temperature wd))
-              (swap! fmi-current conj
-                     {(convert-time->iso8601-str (:time wd)) wd})))
+              (store-fmi-current-entry!
+               (convert-time->iso8601-str (:time wd))
+               wd)))
           (do
             (error "No FMI weather data (JSON)")
             nil))))
@@ -253,8 +271,7 @@
                         station-id
                         (-convert-dt->tz-iso8601-str (calculate-start-time)))
             parsed-json (j/read-value (:body (client/get url))
-                                      (j/object-mapper
-                                       {:decode-key-fn true}))]
+                                      json-decode-opts)]
         (when (seq parsed-json)
           (let [obs (last parsed-json)
                 time-str (subs (str/replace (:time obs) "T" "") 0 12)
@@ -282,9 +299,9 @@
                                  (:humidity obs)
                                  nil)}]
             (when wd
-              (swap! fmi-current
-                     conj
-                     {(convert-time->iso8601-str (:time wd)) wd}))))))
+              (store-fmi-current-entry!
+               (convert-time->iso8601-str (:time wd))
+               wd))))))
     (catch Exception ex
       (error ex "FMI weather data (time series) fetch failed")
       nil)))
@@ -378,11 +395,10 @@
                      (error ex "Astronomy data fetch failed")))]
         (when (= 200 (:status resp))
           (let [all-data (j/read-value (:body resp)
-                                       (j/object-mapper
-                                        {:decode-key-fn true}))]
-            (reset! ast-data (assoc @ast-data (:date all-data)
-                                    {:sunrise (:sunrise all-data)
-                                     :sunset (:sunset all-data)}))))))))
+                                       json-decode-opts)]
+            (reset! ast-data {(:date all-data)
+                              {:sunrise (:sunrise all-data)
+                               :sunset (:sunset all-data)}})))))))
 
 ;; General
 

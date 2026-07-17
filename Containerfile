@@ -47,4 +47,14 @@ COPY --chown=${APPLICATION_USER}:${APPLICATION_USER} \
 WORKDIR /app
 
 EXPOSE 8080
-ENTRYPOINT ["dumb-init", "java", "-Dconfig=/etc/config.edn", "-jar", "/app/env-logger.jar"]
+ENTRYPOINT ["dumb-init", "java", \
+    "-XX:+UseG1GC", \
+    "-Xms64m", \
+    "-Xmx128m", \
+    "-XX:MaxMetaspaceSize=96m", \
+    "-XX:ReservedCodeCacheSize=48m", \
+    "-XX:MaxDirectMemorySize=32m", \
+    "-XX:+ExitOnOutOfMemoryError", \
+    "-XX:+UseStringDeduplication", \
+    "-Dconfig=/etc/config.edn", \
+    "-jar", "/app/env-logger.jar"]

@@ -32,11 +32,17 @@
 
 (defn clear-weather-cache
   [test-fn]
+  (reset! w/fmi-current {})
   (reset! w/fmi-forecast nil)
   (reset! w/ast-data {})
   (test-fn)
+  (reset! w/fmi-current {})
   (reset! w/fmi-forecast nil)
   (reset! w/ast-data {}))
+
+(def ^:private test-fmi-slot-time
+  (jt/zoned-date-time (jt/instant "2024-11-10T06:20:00Z")
+                      (jt/zone-id "UTC")))
 
 (use-fixtures :each clear-weather-cache)
 
@@ -133,7 +139,8 @@
                                    :winddirection 254.0
                                    :windspeed 1.1
                                    :temperature 1.4
-                                   :humidity 90}])]
+                                   :humidity 90}])
+                  calculate-start-time (fn [] test-fmi-slot-time)]
       (let [wd-all (-update-fmi-weather-data-ts 87874)
             wd (get wd-all (first (keys wd-all)))]
         (is (rel= 1.4 (:temperature wd) :tol 0.01))
@@ -166,7 +173,8 @@
                     jt/as (fn [dt unit]
                             (if (= unit :minute-of-hour)
                               5
-                              (orig-as dt unit)))]
+                              (orig-as dt unit)))
+                    calculate-start-time (fn [] test-fmi-slot-time)]
         (let [wd-all (-update-fmi-weather-data-json 87874)
               wd (get wd-all (first (keys wd-all)))]
           (is (rel= 1.4 (:temperature wd) :tol 0.01))

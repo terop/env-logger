@@ -30,8 +30,10 @@
                                         get-weather-data
                                         fetch-all-weather-data]])
   (:import (java.time Instant
+                      LocalDate
                       ZoneId)
            java.time.DateTimeException
+           java.time.temporal.ChronoUnit
            java.time.zone.ZoneRulesException)
   (:gen-class))
 
@@ -91,6 +93,20 @@
                        :rt-data rt-data
                        :weather-data (get-fmi-weather-data)}))))))
 
+(defn display-interval-valid?
+  "Returns true when start/end are not both set, or when both are set with an
+  inclusive span of at most max-days."
+  [start-date end-date max-days]
+  (if (and (seq start-date) (seq end-date))
+    (if (and (db/validate-date start-date) (db/validate-date end-date))
+      (let [start (jt/local-date start-date)
+            end (jt/local-date end-date)]
+        (when (jt/not-after? start end)
+          (let [days (inc (LocalDate/.until start end ChronoUnit/DAYS))]
+            (<= days max-days))))
+      false)
+    true))
+
 (defn get-plot-page-data
   "Returns data needed for rendering the plot page."
   [request]
@@ -148,13 +164,19 @@
   [request]
   (if-not (access-ok? (:oid-auth env) request)
     auth/response-unauthorized
-    (serve-json
-     (merge {:weather-data (get-weather-data)
-             :tb-image-basepath (:tb-image-basepath env)
-             :rt-names (:ruuvitag-names env)
-             :rt-default-show (:ruuvitag-default-show env)
-             :rt-default-values (:ruuvitag-default-values env)}
-            (get-plot-page-data request)))))
+    (let [start-date (get (:params request) "startDate")
+          end-date (get (:params request) "endDate")
+          max-days (or (:max-display-days env) 90)]
+      (if (and (seq start-date) (seq end-date)
+               (not (display-interval-valid? start-date end-date max-days)))
+        (bad-request "Date range too large")
+        (serve-json
+         (merge {:weather-data (get-weather-data)
+                 :tb-image-basepath (:tb-image-basepath env)
+                 :rt-names (:ruuvitag-names env)
+                 :rt-default-show (:ruuvitag-default-show env)
+                 :rt-default-values (:ruuvitag-default-values env)}
+                (get-plot-page-data request)))))))
 
 (defn get-auth-params
   "Returns the parameters needed for authentication."
@@ -276,6 +298,7 @@
         ;; XSS protection is disabled as it is no longer recommended to
         ;; be enabled.
         ;; :params and :static options are disabled as Reitit handles them.
+        ;; WebSocket keepalive is unused; disable to avoid extra middleware.
         defaults-config (-> defaults
                             (assoc-in [:security :anti-forgery]
                                       false)
@@ -284,6 +307,7 @@
                             (assoc-in [:params :keywordize] false)
                             (assoc-in [:params :nested] false)
                             (assoc-in [:params :urlencoded] false)
+                            (assoc-in [:websocket :keepalive] false)
                             (assoc :static false))]
     [parameters/parameters-middleware
      add-cache-control

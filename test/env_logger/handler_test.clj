@@ -80,6 +80,27 @@
                                                  "Europe/Helsinki"}})))]
         (is (= 3 (get resp "offset-hour")))))))
 
+(deftest display-interval-valid?-test
+  (testing "Display interval validation"
+    (is (h/display-interval-valid? nil nil 90))
+    (is (h/display-interval-valid? "2020-01-01" nil 90))
+    (is (h/display-interval-valid? "2020-01-01" "2020-03-30" 90))
+    (is (not (h/display-interval-valid? "2020-01-01" "2020-03-31" 90)))
+    (is (not (h/display-interval-valid? "2020-04-01" "2020-01-01" 90)))))
+
+(deftest get-display-data-date-range-test
+  (testing "get-display-data date range limits"
+    (is (= 401 (:status (h/get-display-data {}))))
+    (with-redefs [access-ok? (fn [_ _] true)]
+      (is (= 400 (:status (h/get-display-data
+                           {:params {"startDate" "2020-01-01"
+                                     "endDate" "2020-03-31"}}))))
+      (with-redefs [h/get-plot-page-data (fn [_] {:obs-data {}})
+                    w/get-weather-data (fn [] [])]
+        (is (= 200 (:status (h/get-display-data
+                             {:params {"startDate" "2020-01-01"
+                                       "endDate" "2020-03-30"}}))))))))
+
 (deftest elec-consumption-data-upload-test
   (testing "Electricity consumption data upload"
     (is (= {:status "error"

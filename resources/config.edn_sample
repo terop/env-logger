@@ -68,4 +68,6 @@
  ;; Authentication code for observation and image storage
  :auth-code "somebadvalue"
  ;; Maximum time difference for FMI Testbed images in minutes
- :image-max-time-diff 15}
+ :image-max-time-diff 15
+ ;; Maximum inclusive date span for /data/display queries
+ :max-display-days 90}
