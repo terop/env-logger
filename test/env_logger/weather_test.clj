@@ -4,8 +4,7 @@
             [clojure.string :as str]
             [clojure.xml :refer [parse]]
             [config.core :refer [env]]
-            [clj-http.fake :refer [with-fake-routes]]
-            [clj-http.client :as client]
+            [env-logger.http :as http]
             [jsonista.core :as j]
             [java-time.api :as jt]
             [next.jdbc :as jdbc]
@@ -128,10 +127,10 @@
 
 (deftest test-weather-data-ts-update
   (testing "Tests FMI weather data (time series) updating"
-    (with-redefs [client/get (fn [_] {:body "{}"})
+    (with-redefs [http/http-get (fn [_] {:body "{}"})
                   j/read-value (fn [_ _] [])]
       (is (nil? (-update-fmi-weather-data-ts 87874))))
-    (with-redefs [client/get (fn [_] {:body "{}"})
+    (with-redefs [http/http-get (fn [_] {:body "{}"})
                   j/read-value (fn [_ _]
                                  [{:cloudiness 8.0
                                    :tz "Europe/Helsinki"
@@ -153,16 +152,16 @@
 
 (deftest test-weather-data-json-update
   (testing "Tests FMI weather data (JSON) updating"
-    (with-redefs [client/get (fn [_] {:body "{}"})
+    (with-redefs [http/http-get (fn [_] {:body "{}"})
                   j/read-value (fn [_ _]
                                  {:observations []})]
       (is (nil? (-update-fmi-weather-data-json 87874))))
-    (with-redefs [client/get (fn [_] {:body "{}"})
+    (with-redefs [http/http-get (fn [_] {:body "{}"})
                   j/read-value (fn [_ _]
                                  {:observations nil})]
       (is (nil? (-update-fmi-weather-data-json 87874))))
     (let [orig-as jt/as]
-      (with-redefs [client/get (fn [_] {:body "{}"})
+      (with-redefs [http/http-get (fn [_] {:body "{}"})
                     j/read-value (fn [_ _]
                                    {:observations [{:localtime "20241110T102000"
                                                     :t2m 1.4
@@ -291,12 +290,10 @@
 
 (deftest test-fetch-astronomy-data
   (testing "Tests astronomy data fetching"
-    (with-fake-routes {#"https://api.ipgeolocation.io/astronomy(.+)"
-                       (fn [_] {:status 403})}
+    (with-redefs [http/http-get (fn [_] {:status 403})]
       (is (nil? (-fetch-astronomy-data "foo" 456 789))))
-    (with-fake-routes {#"https://api.ipgeolocation.io/astronomy(.+)"
-                       (fn [_] {:status 200
-                                :body ipgeol-api-resp})}
+    (with-redefs [http/http-get (fn [_] {:status 200
+                                         :body ipgeol-api-resp})]
       (is (= {"2024-11-04" {:sunrise "07:52", :sunset "16:15"}}
              (-fetch-astronomy-data "foo" 456 789))))))
 

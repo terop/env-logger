@@ -8,7 +8,7 @@
             [config.core :refer [env]]
             [taoensso.timbre :refer [error info warn]]
             [jsonista.core :as j]
-            [clj-http.client :as client]
+            [env-logger.http :as http]
             [next.jdbc :as jdbc]
             [java-time.api :as jt]
             [env-logger.db :refer [rs-opts convert-time->iso8601-str]])
@@ -215,7 +215,7 @@
       (let [url (format (str "https://www.ilmatieteenlaitos.fi/api/weather/"
                              "observations?fmisid=%s&observations=true")
                         station-id)
-            parsed-json (j/read-value (:body (client/get url))
+            parsed-json (j/read-value (:body (http/http-get url))
                                       json-decode-opts)]
         (if (and (:observations parsed-json)
                  (seq (:observations parsed-json)))
@@ -270,7 +270,7 @@
                              "&format=json&precision=double&starttime=%s")
                         station-id
                         (-convert-dt->tz-iso8601-str (calculate-start-time)))
-            parsed-json (j/read-value (:body (client/get url))
+            parsed-json (j/read-value (:body (http/http-get url))
                                       json-decode-opts)]
         (when (seq parsed-json)
           (let [obs (last parsed-json)
@@ -390,7 +390,7 @@
     (when (or (empty? @ast-data)
               (nil? (get @ast-data date-str)))
       (let [resp (try
-                   (client/get url)
+                   (http/http-get url)
                    (catch Exception ex
                      (error ex "Astronomy data fetch failed")))]
         (when (= 200 (:status resp))
