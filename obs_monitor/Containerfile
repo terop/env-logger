@@ -11,9 +11,8 @@ LABEL org.opencontainers.image.authors="tero.paloheimo@iki.fi"
 ENV PYTHONUNBUFFERED=true
 
 ARG APPLICATION_USER=appuser
-# Update and add user to run the app
-RUN apk update && apk upgrade --no-cache \
-    && adduser --no-create-home -u 1000 -D ${APPLICATION_USER}
+# Add user to run the app
+RUN adduser --no-create-home -u 1000 -D ${APPLICATION_USER}
 
 WORKDIR /usr/src/app
 

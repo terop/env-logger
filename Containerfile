@@ -30,8 +30,7 @@ ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 COPY --from=temurin-jdk /customjre ${JAVA_HOME}
 
-RUN apk upgrade --no-cache \
-    && apk add --no-cache dumb-init
+RUN apk add --no-cache dumb-init
 
 # Add user to run the app
 ARG APPLICATION_USER=appuser

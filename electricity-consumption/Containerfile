@@ -10,8 +10,6 @@ LABEL org.opencontainers.image.authors="tero.paloheimo@iki.fi"
 FROM docker.io/python:3.14-alpine
 ENV PYTHONUNBUFFERED=true
 
-RUN apk upgrade --no-cache
-
 # Add user to run the app
 ARG APPLICATION_USER=appuser
 RUN adduser --no-create-home -u 1000 -D ${APPLICATION_USER}
