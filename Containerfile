@@ -17,6 +17,7 @@ RUN BASE_MODS="$($JAVA_HOME/bin/jdeps \
         --verbose \
         --module-path "$JAVA_HOME/jmods" \
         --add-modules "$MODS" \
+        --compress zip-6 \
         --strip-debug \
         --no-man-pages \
         --no-header-files \

@@ -9,6 +9,12 @@
 (def basis (b/create-basis {:project "deps.edn"}))
 (def uber-file (format "target/%s-%s-standalone.jar" (name lib) version))
 
+(def uber-exclude-patterns
+  "Packaging metadata not needed at runtime."
+  [#"META-INF/maven/.*"
+   #"META-INF/leiningen/.*"
+   #"META-INF/licenses/.*"])
+
 (defn clean [_]
   (b/delete {:path "target"}))
 
@@ -25,4 +31,5 @@
   (b/uber {:class-dir class-dir
            :uber-file uber-file
            :basis basis
-           :main main}))
+           :main main
+           :exclude uber-exclude-patterns}))
