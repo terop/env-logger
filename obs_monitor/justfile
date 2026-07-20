@@ -9,4 +9,4 @@ image: update
     podman tag {{IMAGE_NAME}} ${REGISTRY}/$(whoami)/{{IMAGE_NAME}}
 
 update: # update base images
-    podman pull docker.io/python:3.14-slim ghcr.io/astral-sh/uv:python3.14-trixie-slim
+    podman pull docker.io/python:3.14-alpine ghcr.io/astral-sh/uv:python3.14-alpine
