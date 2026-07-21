@@ -117,29 +117,34 @@
           end-date (when (seq end-date-val) end-date-val)
           obs-dates (db/get-obs-date-interval con)
           initial-days (:initial-show-days env)
-          ruuvitag-names (:ruuvitag-names env)]
+          ruuvitag-names (:ruuvitag-names env)
+          day-count (if (and (seq start-date) (seq end-date))
+                      (let [start (jt/local-date start-date)
+                            end (jt/local-date end-date)]
+                        (inc (LocalDate/.until start end ChronoUnit/DAYS)))
+                      initial-days)
+          resolution (db/display-resolution-for-days day-count)]
       (if (or start-date end-date)
-        {:obs-data (merge (db/get-obs-interval con
-                                               {:start start-date
-                                                :end end-date})
-                          (db/get-ruuvi-air-obs con
-                                                (db/make-local-dt start-date "start")
-                                                (db/make-local-dt end-date "end")))
+        {:obs-data (db/get-obs-for-display con
+                                           {:start start-date
+                                            :end end-date}
+                                           day-count
+                                           (db/make-local-dt start-date "start")
+                                           (db/make-local-dt end-date "end"))
          :obs-dates {:current {:start start-date
                                :end end-date}}
-         :rt-data (db/get-ruuvitag-obs
+         :rt-data (db/get-ruuvitag-for-display
                    con
                    (db/make-local-dt start-date "start")
                    (db/make-local-dt end-date "end")
-                   ruuvitag-names)
-         :weather-obs-data (db/get-weather-interval con
-                                                    {:start start-date
-                                                     :end end-date})}
-        {:obs-data (merge (db/get-obs-days con
-                                           initial-days)
-                          (db/get-ruuvi-air-obs con
-                                                (db/get-midnight-dt initial-days)
-                                                (jt/local-date-time)))
+                   ruuvitag-names
+                   day-count)
+         :weather-obs-data (db/get-weather-for-display con
+                                                       {:start start-date
+                                                        :end end-date}
+                                                       day-count)
+         :display-resolution resolution}
+        {:obs-data (db/get-obs-for-display-days con initial-days)
          :obs-dates {:current {:start
                                (when (:end obs-dates)
                                  (jt/format :iso-local-date
@@ -151,13 +156,14 @@
                                :end (:end obs-dates)}
                      :min-max {:start (:start obs-dates)
                                :end (:end obs-dates)}}
-         :rt-data (db/get-ruuvitag-obs
+         :rt-data (db/get-ruuvitag-for-display
                    con
                    (db/get-midnight-dt initial-days)
                    (jt/local-date-time)
-                   ruuvitag-names)
-         :weather-obs-data (db/get-weather-days con
-                                                initial-days)}))))
+                   ruuvitag-names
+                   initial-days)
+         :weather-obs-data (db/get-weather-for-display-days con initial-days)
+         :display-resolution (db/display-resolution-for-days initial-days)}))))
 
 (defn get-display-data
   "Returns the data to be displayed in the front-end."
@@ -169,13 +175,16 @@
           max-days (or (:max-display-days env) 90)]
       (if (and (seq start-date) (seq end-date)
                (not (display-interval-valid? start-date end-date max-days)))
-        (bad-request "Date range too large")
+        (-> (bad-request (j/write-value-as-string {:error "date-range-too-large"
+                                                   :max-days max-days}))
+            (content-type "application/json"))
         (serve-json
          (merge {:weather-data (get-weather-data)
                  :tb-image-basepath (:tb-image-basepath env)
                  :rt-names (:ruuvitag-names env)
                  :rt-default-show (:ruuvitag-default-show env)
-                 :rt-default-values (:ruuvitag-default-values env)}
+                 :rt-default-values (:ruuvitag-default-values env)
+                 :max-display-days max-days}
                 (get-plot-page-data request)))))))
 
 (defn get-auth-params

@@ -57,6 +57,12 @@
                 margin-left: 30px;
             }
 
+            #displayResolutionNote {
+                margin-top: 8px;
+                font-size: 0.9em;
+                color: #555;
+            }
+
             #infoText {
                 margin-top: 15px;
                 margin-bottom: 10px;
@@ -71,6 +77,11 @@
             #noDataError {
                 width: 1350px;
                 margin-top: 20px;
+            }
+
+            #dateRangeError {
+                width: 1350px;
+                margin-top: 8px;
             }
 
             #elecDataDiv {
@@ -148,6 +159,8 @@
                     <input type="date" id="endDate">
                     <input type="button" class="btn btn-primary" id="updateBtn" value="Update">
                 </form>
+                <div class="display-none" id="displayResolutionNote"></div>
+                <div class="display-none alert alert-danger" id="dateRangeError" role="alert"></div>
             </div>
 
             <div class="display-none" id="infoText"></div>

@@ -45,7 +45,15 @@
               add-tz-offset-to-dt
               test-db-connection
               validate-date
-              round-number]])
+              round-number
+              display-bucket-minutes
+              display-resolution-label
+              display-resolution-for-days
+              merge-obs-and-ruuvi-air
+              get-weather-observations-bucketed
+              get-observations-bucketed
+              get-ruuvitag-obs-bucketed
+              get-weather-for-display]])
   (:import (org.postgresql.util PSQLException
                                 PSQLState)
            (java.time LocalDateTime
@@ -876,6 +884,143 @@
     ;; Reading the password from a file is not tested because of the difficulty
     ;; of setting environment variables in Clojure / Java
     ))
+
+(deftest display-bucket-minutes-test
+  (testing "Adaptive bucket sizing targets ~1500 points"
+    (with-redefs [env (assoc env :display-bucket-target-points 1500)]
+      (is (nil? (display-bucket-minutes 2 4)))
+      (is (= 30 (display-bucket-minutes 14 4)))
+      (is (= 120 (display-bucket-minutes 90 4)))
+      (is (= 180 (display-bucket-minutes 200 4)))
+      (is (= 30 (display-bucket-minutes 14 10))))))
+
+(deftest display-resolution-for-days-test
+  (testing "Resolution label follows observation bucketing"
+    (with-redefs [env (assoc env :display-bucket-target-points 1500)]
+      (is (nil? (display-resolution-for-days 2)))
+      (is (= "10min" (display-resolution-for-days 7)))
+      (is (= "30min" (display-resolution-for-days 14))))))
+
+(deftest display-resolution-label-test
+  (testing "Resolution label mapping"
+    (is (nil? (display-resolution-label nil)))
+    (is (= "10min" (display-resolution-label 10)))
+    (is (= "hourly" (display-resolution-label 60)))
+    (is (= "2hourly" (display-resolution-label 120)))
+    (is (= "3hourly" (display-resolution-label 180)))
+    (is (= "3hourly" (display-resolution-label 360)))))
+
+(deftest merge-obs-and-ruuvi-air-test
+  (testing "Ruuvi Air values align to observation timestamps"
+    (let [obs {:recorded [1000 2000 3000]
+               :inside-light [1 2 3]}
+          air {:recorded [1000 3000]
+               :ruuvi-co2 [400 500]
+               :pm-25 [1.0 2.0]
+               :iaqs [10 20]}
+          merged (merge-obs-and-ruuvi-air obs air)]
+      (is (= [400 nil 500] (:ruuvi-co2 merged)))
+      (is (= [1.0 nil 2.0] (:pm-25 merged)))
+      (is (= [10 nil 20] (:iaqs merged)))
+      (is (= [1 2 3] (:inside-light merged))))))
+
+(deftest bucketed-weather-fetch-test
+  (testing "Weather data is aggregated into time buckets"
+    (jdbc/execute! test-ds (sql/format {:delete-from :weather_data}))
+    (let [obs-id (insert-plain-observation test-ds
+                                           {:timestamp (jt/zoned-date-time)
+                                            :insideLight 0
+                                            :insideTemperature 20.0
+                                            :co2 400
+                                            :outsideTemperature 5.0
+                                            :outsideLight 0
+                                            :vocIndex 0
+                                            :noxIndex 0})
+          base-time (jt/local-date-time 2024 6 1 12 0 0)]
+      (doseq [n (range 6)]
+        (insert-wd test-ds obs-id
+                   {:time (jt/sql-timestamp (jt/plus base-time (jt/minutes (* n 10))))
+                    :temperature (float (+ 20 n))
+                    :cloudiness n
+                    :wind-speed (float (inc (* 0.5 n)))}))
+      (let [start (jt/minus base-time (jt/minutes 1))
+            end (jt/plus base-time (jt/minutes 55))
+            bucketed (get-weather-observations-bucketed test-ds 30 start end)]
+        (is (= 2 (count (:time bucketed))))
+        (is (rel= 21.0 (nth (:temperature bucketed) 0) :tol 0.01))
+        (is (rel= 24.0 (nth (:temperature bucketed) 1) :tol 0.01))))))
+
+(deftest bucketed-observations-fetch-test
+  (testing "Observations are aggregated into time buckets"
+    (jdbc/execute! test-ds (sql/format {:delete-from :observations}))
+    (let [base (jt/zoned-date-time "2024-06-01T12:00:00Z")]
+      (doseq [[idx minutes] (map vector (range 4) [0 15 30 45])]
+        (insert-plain-observation test-ds
+                                  {:timestamp (jt/plus base (jt/minutes minutes))
+                                   :insideLight idx
+                                   :insideTemperature (float (+ 20 idx))
+                                   :co2 (+ 400 idx)
+                                   :outsideTemperature (float (+ 5 idx))
+                                   :outsideLight 0
+                                   :vocIndex 0
+                                   :noxIndex 0}))
+      (let [start (jt/local-date-time 2024 6 1 12 0 0)
+            end (jt/plus start (jt/minutes 45))
+            bucketed (get-observations-bucketed test-ds 30 start end)]
+        (is (= 2 (count (:recorded bucketed))))
+        (is (rel= 20.5 (nth (:inside-temperature bucketed) 0) :tol 0.01))
+        (is (rel= 22.5 (nth (:inside-temperature bucketed) 1) :tol 0.01))
+        (is (= 1 (nth (:inside-light bucketed) 0)))
+        (is (= 401 (nth (:co2 bucketed) 0)))))))
+
+(deftest bucketed-ruuvitag-fetch-test
+  (testing "RuuviTag data is aggregated per tag and bucket"
+    (jdbc/execute! test-ds (sql/format {:delete-from :ruuvitag_observations}))
+    (let [base-time (jt/zoned-date-time "2024-06-01T12:00:00Z")]
+      (insert-ruuvi-device-observations
+       test-ds base-time
+       [{:name "indoor" :type "tag"
+         :temperature 20.0 :humidity 40.0
+         :pressure 1000 :battery_voltage 2.9 :rssi -70}
+        {:name "bathroom" :type "tag"
+         :temperature 21.0 :humidity 41.0
+         :pressure 1000 :battery_voltage 2.9 :rssi -71}])
+      (insert-ruuvi-device-observations
+       test-ds (jt/plus base-time (jt/minutes 30))
+       [{:name "indoor" :type "tag"
+         :temperature 22.0 :humidity 42.0
+         :pressure 1000 :battery_voltage 2.9 :rssi -70}])
+      (let [start (jt/local-date-time 2024 6 1 11 59 0)
+            end (jt/local-date-time 2024 6 1 12 35 0)
+            bucketed (get-ruuvitag-obs-bucketed test-ds 30 start end ["indoor"])]
+        (is (= 2 (count (:recorded bucketed))))
+        (is (= ["indoor" "indoor"] (vec (:name bucketed))))
+        (is (rel= 20.0 (nth (:temperature bucketed) 0) :tol 0.01))
+        (is (rel= 22.0 (nth (:temperature bucketed) 1) :tol 0.01))))))
+
+(deftest get-weather-for-display-test
+  (testing "Long ranges use bucketed weather fetch"
+    (jdbc/execute! test-ds (sql/format {:delete-from :weather_data}))
+    (jdbc/execute! test-ds (sql/format {:delete-from :observations}))
+    (let [obs-id (insert-plain-observation test-ds
+                                           {:timestamp (jt/zoned-date-time)
+                                            :insideLight 0
+                                            :insideTemperature 20.0
+                                            :co2 400
+                                            :outsideTemperature 5.0
+                                            :outsideLight 0
+                                            :vocIndex 0
+                                            :noxIndex 0})
+          wd {:time (jt/sql-timestamp (jt/local-date-time 2020 1 15 12 0 0))
+              :temperature 18.0
+              :cloudiness 3
+              :wind-speed 2.0}]
+      (insert-wd test-ds obs-id wd)
+      (with-redefs [env (assoc env :display-bucket-target-points 1500)]
+        (is (seq (:time (get-weather-for-display test-ds
+                                                 {:start "2020-01-01"
+                                                  :end "2020-01-20"}
+                                                 20))))))))
 
 (deftest test-round-number
   (testing "Rounding of number"

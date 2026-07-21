@@ -153,12 +153,94 @@
   [number]
   (Float/parseFloat (DecimalFormat/.format df-inst number)))
 
+(def ^:private display-bucket-sizes-minutes
+  [10 30 60 120 180])
+
+(defn display-bucket-minutes
+  "Returns nil for raw data or bucket width in minutes when point count would
+  exceed :display-bucket-target-points."
+  [day-count native-interval-minutes]
+  (let [target (or (:display-bucket-target-points env) 1500)
+        total-minutes (* day-count 24 60)
+        points (/ total-minutes native-interval-minutes)]
+    (when (> points target)
+      (or (first (filter #(<= (/ total-minutes %) target)
+                         display-bucket-sizes-minutes))
+          (last display-bucket-sizes-minutes)))))
+
+(defn display-resolution-label
+  "Returns a human-readable resolution label for the given bucket width, or nil
+  when data is shown at native resolution (no bucketing)."
+  [bucket-minutes]
+  (when bucket-minutes
+    (case bucket-minutes
+      10 "10min"
+      30 "30min"
+      60 "hourly"
+      120 "2hourly"
+      180 "3hourly"
+      (cond
+        (<= bucket-minutes 10) "10min"
+        (<= bucket-minutes 30) "30min"
+        (<= bucket-minutes 60) "hourly"
+        (<= bucket-minutes 120) "2hourly"
+        :else "3hourly"))))
+
+(defn display-resolution-for-days
+  "Returns the display resolution label for the given day count. Uses the
+  bucket width from whichever series requires bucketing first (observations at
+  ~4 min or weather at ~10 min)."
+  [day-count]
+  (display-resolution-label
+   (or (display-bucket-minutes day-count 4)
+       (display-bucket-minutes day-count 10))))
+
+(defn- first-in-bucket
+  "Returns the first value from a PostgreSQL array_agg ORDER BY ... DESC result."
+  [value]
+  (cond
+    (nil? value) nil
+    (instance? java.sql.Array value) (first (java.sql.Array/.getArray value))
+    (sequential? value) (first value)
+    :else value))
+
+(defn merge-obs-and-ruuvi-air
+  "Merge Ruuvi Air series onto observation data by matching bucket timestamps."
+  [obs ruuvi-air]
+  (if (empty? (:recorded obs))
+    obs
+    (let [air-by-time (when (seq (:recorded ruuvi-air))
+                        (zipmap (:recorded ruuvi-air)
+                                (map vector (:ruuvi-co2 ruuvi-air)
+                                     (:pm-25 ruuvi-air)
+                                     (:iaqs ruuvi-air))))
+          merged (reduce (fn [acc t]
+                           (let [[co2 pm iaqs] (get air-by-time t [nil nil nil])]
+                             (-> acc
+                                 (update :ruuvi-co2 conj co2)
+                                 (update :pm-25 conj pm)
+                                 (update :iaqs conj iaqs))))
+                         {:ruuvi-co2 [] :pm-25 [] :iaqs []}
+                         (:recorded obs))]
+      (merge obs merged))))
+
 (defn- transform-row->column
   "Do a row to column transform of the given iterable containing maps
   as its content."
   [rows]
   (let [keys (keys (first rows))]
     (into {} (map (fn [k] [k (mapv k rows)]) keys))))
+
+(defn- columnar-with-display-timestamps
+  "Transform JDBC rows to columnar data with display timezone epoch-ms timestamps."
+  [rows time-col]
+  (if (empty? rows)
+    {}
+    (let [tz-offset (get-tz-offset (:display-timezone env))
+          results (transform-row->column rows)
+          updated-times (map #(convert->epoch-ms tz-offset %)
+                             (get results time-col))]
+      (assoc results time-col updated-times))))
 
 (defn insert-plain-observation
   "Insert a row into observations table."
@@ -453,6 +535,144 @@
                    dates
                    :time))
 
+(defn get-weather-observations-bucketed
+  "Fetches FMI weather observations aggregated into time buckets."
+  [db-con bucket-minutes start-dt end-dt]
+  (try
+    (let [bucket-secs (* bucket-minutes 60)
+          query ["SELECT to_timestamp(floor(extract(epoch FROM time) / ?) * ?) AS time,
+                         round(avg(temperature)::numeric, 1) AS temperature,
+                         round(avg(cloudiness))::int AS cloudiness,
+                         round(avg(wind_speed)::numeric, 1) AS wind_speed
+                  FROM weather_data
+                  WHERE time >= ? AND time <= ?
+                  GROUP BY 1
+                  ORDER BY 1 ASC"
+                 bucket-secs bucket-secs start-dt end-dt]
+          rows (jdbc/execute! db-con query rs-opts)]
+      (columnar-with-display-timestamps rows :time))
+    (catch PSQLException pe
+      (error pe "Bucketed weather observation fetch failed")
+      {})))
+
+(defn- display-interval-bounds
+  "Returns [start-dt end-dt] for a date interval map."
+  [dates]
+  [(if (:start dates)
+     (make-local-dt (:start dates) "start")
+     (jt/local-date-time 2010 1 1))
+   (if (:end dates)
+     (make-local-dt (:end dates) "end")
+     (jt/local-date-time))])
+
+(defn get-weather-for-display
+  "Fetches weather observations, bucketed when the range exceeds the target
+  point count."
+  [db-con dates day-count]
+  (if-let [bucket (display-bucket-minutes day-count 10)]
+    (let [[start-dt end-dt] (display-interval-bounds dates)]
+      (get-weather-observations-bucketed db-con bucket start-dt end-dt))
+    (get-weather-interval db-con dates)))
+
+(defn get-weather-for-display-days
+  "Fetches weather observations for the last N days, bucketed when needed."
+  [db-con day-count]
+  (if-let [bucket (display-bucket-minutes day-count 10)]
+    (get-weather-observations-bucketed db-con bucket
+                                       (get-midnight-dt day-count)
+                                       (jt/local-date-time))
+    (get-weather-days db-con day-count)))
+
+(defn get-observations-bucketed
+  "Fetches observations aggregated into time buckets."
+  [db-con bucket-minutes start-dt end-dt]
+  (try
+    (let [bucket-secs (* bucket-minutes 60)
+          query ["SELECT to_timestamp(floor(extract(epoch FROM o.recorded) / ?) * ?) AS recorded,
+                         round(avg(o.inside_light))::int AS inside_light,
+                         round(avg(o.inside_temperature)::numeric, 1) AS inside_temperature,
+                         round(avg(o.co2))::int AS co2,
+                         round(avg(o.outside_temperature)::numeric, 1) AS outside_temperature,
+                         round(avg(b.rssi))::int AS beacon_rssi,
+                         (array_agg(b.battery_level ORDER BY o.recorded DESC))[1]
+                           AS beacon_battery,
+                         (array_agg(b.mac_address ORDER BY o.recorded DESC))[1]
+                           AS mac_address,
+                         (array_agg(o.tb_image_name ORDER BY o.recorded DESC))[1]
+                           AS tb_image_name
+                  FROM observations o
+                  LEFT JOIN beacons b ON o.id = b.obs_id
+                  WHERE o.recorded >= ? AND o.recorded <= ?
+                  GROUP BY 1
+                  ORDER BY 1 ASC"
+                 bucket-secs bucket-secs start-dt end-dt]
+          rows (jdbc/execute! db-con query rs-opts)
+          beacon-name (:beacon-name env)
+          post-process-row (fn [row]
+                             (let [mac (first-in-bucket (:mac-address row))]
+                               (-> row
+                                   (update :beacon-battery first-in-bucket)
+                                   (update :tb-image-name first-in-bucket)
+                                   (assoc :beacon-name (get beacon-name mac nil))
+                                   (dissoc :mac-address))))
+          rows (map post-process-row rows)
+          results (columnar-with-display-timestamps rows :recorded)]
+      (as-> results res
+        (assoc res :co2 (or (:co-2 res) (:co2 res)))
+        (dissoc res :co-2)))
+    (catch PSQLException pe
+      (error pe "Bucketed observation fetch failed")
+      {})))
+
+(defn get-ruuvi-air-obs-bucketed
+  "Fetches Ruuvi Air observations aggregated into time buckets."
+  [db-con bucket-minutes start end]
+  (try
+    (let [bucket-secs (* bucket-minutes 60)
+          query ["SELECT to_timestamp(floor(extract(epoch FROM recorded) / ?) * ?)
+                           AS recorded,
+                         round(avg(co2))::int AS ruuvi_co2,
+                         round(avg(pm_2_5)::numeric, 1) AS pm_25,
+                         round(avg(iaqs))::int AS iaqs
+                  FROM ruuvi_air_observations
+                  WHERE recorded >= ? AND recorded <= ?
+                  GROUP BY 1
+                  ORDER BY 1 ASC"
+                 bucket-secs bucket-secs start end]
+          rows (jdbc/execute! db-con query rs-opts)
+          results (columnar-with-display-timestamps rows :recorded)]
+      (as-> results res
+        (assoc res :ruuvi-co2 (or (:ruuvi-co2 res) (:ruuvi-co-2 res)))
+        (dissoc res :ruuvi-co-2)))
+    (catch PSQLException pe
+      (error pe "Bucketed Ruuvi Air observation fetch failed")
+      {})))
+
+(defn get-ruuvitag-obs-bucketed
+  "Returns RuuviTag observations aggregated into time buckets per tag."
+  [db-con bucket-minutes start end names]
+  (try
+    (let [bucket-secs (* bucket-minutes 60)
+          in-clause (str/join "," (repeat (count names) "?"))
+          query (into [(str "SELECT to_timestamp(floor(extract(epoch FROM recorded) / ?) * ?)
+                                   AS recorded,
+                                 name,
+                                 round(avg(temperature)::numeric, 1) AS temperature,
+                                 round(avg(humidity)::numeric, 1) AS humidity
+                          FROM ruuvitag_observations
+                          WHERE name IN (" in-clause ")
+                            AND recorded >= ? AND recorded <= ?
+                          GROUP BY 1, 2
+                          ORDER BY 1 ASC, 2 ASC")]
+                      (concat [bucket-secs bucket-secs]
+                              names
+                              [start end]))
+          rows (jdbc/execute! db-con query rs-opts)]
+      (columnar-with-display-timestamps rows :recorded))
+    (catch PSQLException pe
+      (error pe "Bucketed RuuviTag observation fetch failed")
+      {})))
+
 (defn get-ruuvitag-obs
   "Returns RuuviTag observations being between the provided timestamps
   and having the given name(s)."
@@ -495,6 +715,36 @@
     (catch PSQLException pe
       (error pe "Ruuvi Air observation fetch failed")
       {})))
+
+(defn get-obs-for-display
+  "Fetches observation and Ruuvi Air data, bucketed when needed."
+  [db-con dates day-count start-dt end-dt]
+  (if-let [bucket (display-bucket-minutes day-count 4)]
+    (merge-obs-and-ruuvi-air
+     (get-observations-bucketed db-con bucket start-dt end-dt)
+     (get-ruuvi-air-obs-bucketed db-con bucket start-dt end-dt))
+    (merge (get-obs-interval db-con dates)
+           (get-ruuvi-air-obs db-con start-dt end-dt))))
+
+(defn get-obs-for-display-days
+  "Fetches observation and Ruuvi Air data for the last N days, bucketed when
+  needed."
+  [db-con day-count]
+  (let [start-dt (get-midnight-dt day-count)
+        end-dt (jt/local-date-time)]
+    (if-let [bucket (display-bucket-minutes day-count 4)]
+      (merge-obs-and-ruuvi-air
+       (get-observations-bucketed db-con bucket start-dt end-dt)
+       (get-ruuvi-air-obs-bucketed db-con bucket start-dt end-dt))
+      (merge (get-obs-days db-con day-count)
+             (get-ruuvi-air-obs db-con start-dt end-dt)))))
+
+(defn get-ruuvitag-for-display
+  "Returns RuuviTag observations, bucketed when needed."
+  [db-con start end names day-count]
+  (if-let [bucket (display-bucket-minutes day-count 4)]
+    (get-ruuvitag-obs-bucketed db-con bucket start end names)
+    (get-ruuvitag-obs db-con start end names)))
 
 (defn- parse-tax-optional-date
   "Coerces an optional :elec-tax interval boundary to a LocalDate or nil.

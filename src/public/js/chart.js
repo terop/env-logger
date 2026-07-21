@@ -48,10 +48,129 @@ const elecPriceBarColours = {
 let elecMinutePriceData = {};
 let elecPriceThresholds = {};
 let testbedImageBasepath = '';
+let maxDisplayDays = 90;
+
+const getAxiosErrorStatus = (error) =>
+  error?.response?.status ?? error?.status;
+
+const inclusiveDayCount = (startDate, endDate) =>
+  Math.floor(DateTime.fromISO(endDate).diff(DateTime.fromISO(startDate), 'days').days) + 1;
+
+const dateRangeTooLargeMessage = (maxDays) =>
+  `Date range exceeds the maximum of ${maxDays} days`;
+
+const showDateRangeError = (message) => {
+  const note = document.getElementById('dateRangeError');
+  note.textContent = message;
+  note.classList.remove('display-none');
+};
+
+const hideDateRangeError = () => {
+  const note = document.getElementById('dateRangeError');
+  note.textContent = '';
+  note.classList.add('display-none');
+};
+
+const handleDisplayDataError = (error) => {
+  const status = getAxiosErrorStatus(error);
+
+  if (status === 401) {
+    redirectToLogin();
+    return;
+  }
+
+  if (status === 400) {
+    const data = error?.response?.data;
+    if (typeof data === 'object' && data?.error === 'date-range-too-large') {
+      showDateRangeError(dateRangeTooLargeMessage(data['max-days'] ?? maxDisplayDays));
+      return;
+    }
+    if (typeof data === 'string' && data.includes('Date range')) {
+      showDateRangeError(dateRangeTooLargeMessage(maxDisplayDays));
+      return;
+    }
+  }
+
+  showDateRangeError('Failed to load chart data');
+  console.log(`Display data fetch error: ${error}`);
+};
+
+let displayResolution = null;
 
 const redirectToLogin = () => {
   window.location.href = `${applicationUrl}login`;
 };
+
+const displayResolutionLabels = {
+  '10min': 'Showing 10 minute averages',
+  '30min': 'Showing 30 minute averages',
+  'hourly': 'Showing hourly averages',
+  '2hourly': 'Showing 2-hour averages',
+  '3hourly': 'Showing 3-hour averages'
+};
+
+const showDisplayResolution = (resolution) => {
+  displayResolution = resolution || null;
+  const note = document.getElementById('displayResolutionNote');
+  const label = resolution && displayResolutionLabels[resolution];
+
+  if (label) {
+    note.textContent = label;
+    note.classList.remove('display-none');
+  } else {
+    note.textContent = '';
+    note.classList.add('display-none');
+  }
+};
+
+const getRawXAxisTickSize = (diffInDays) => {
+  const tickOneHour = 3600000;
+  let tickSize = tickOneHour;
+
+  if (diffInDays >= 3 && diffInDays < 6) {
+    tickSize = 2 * tickOneHour;
+  } else if (diffInDays >= 6 && diffInDays < 10) {
+    tickSize = 3 * tickOneHour;
+  } else if (diffInDays >= 10 && diffInDays < 20) {
+    tickSize = 5 * tickOneHour;
+  } else if (diffInDays >= 20) {
+    tickSize = 6 * tickOneHour;
+  }
+
+  return tickSize;
+};
+
+const getRawXAxisConfig = (diffInDays) => ({
+  dtick: getRawXAxisTickSize(diffInDays),
+  tickformat: '%H',
+  tickangle: -45
+});
+
+const getBucketedXAxisConfig = (diffInDays) => {
+  const hour = 3600000;
+  const day = 86400000;
+  const targetTicks = 12;
+  const steps = [
+    hour, 2 * hour, 3 * hour, 6 * hour, 12 * hour,
+    day, 2 * day, 7 * day, 14 * day, 30 * day
+  ];
+  const spanMs = Math.max(diffInDays, 1 / 24) * day;
+  const dtick = steps.find((step) => spanMs / step <= targetTicks) || 30 * day;
+
+  let tickformat = '%H';
+  let tickangle = -45;
+  if (dtick >= day) {
+    tickformat = dtick >= 14 * day ? '%d.%m.%Y' : '%d.%m.';
+    tickangle = dtick >= 7 * day ? 0 : -45;
+  } else if (dtick >= 6 * hour) {
+    tickformat = '%d.%m. %H';
+  }
+
+  return { dtick, tickformat, tickangle };
+};
+
+const getXAxisConfig = (diffInDays) =>
+  (displayResolution ? getBucketedXAxisConfig : getRawXAxisConfig)(diffInDays);
 
 const loadPage = () => {
   // Parse RuuviTag observations
@@ -136,9 +255,16 @@ const loadPage = () => {
     fieldNames.other.forEach((value) => {
       dataSets.other[value] = otherData[value];
 
-      // Pad the array if there is missing values in the beginning
-      dataSets.other[value] = padArrayFromStart(dataSets.other[value],
-                                                dataLabels.other.length, null);
+      if (['ruuvi-co2', 'pm-25', 'iaqs'].includes(value)) {
+        const paddingLength = dataLabels.other.length - dataSets.other[value].length;
+        if (paddingLength > 0) {
+          dataSets.other[value] = padArrayFromStart(dataSets.other[value],
+                                                    dataLabels.other.length, null);
+        }
+      } else {
+        dataSets.other[value] = padArrayFromStart(dataSets.other[value],
+                                                  dataLabels.other.length, null);
+      }
     });
   };
 
@@ -460,6 +586,7 @@ const loadPage = () => {
       const extValuesPrice = getDataExtremeValues([data.price]);
 
       const generateElecLayoutConfig = (diffInDays) => {
+        const xAxis = getXAxisConfig(diffInDays);
         return {
           width: 1300,
           height: 650,
@@ -471,9 +598,9 @@ const loadPage = () => {
               text: 'Time'
             },
             type: 'date',
-            dtick: getXAxisTickSize(diffInDays),
-            tickformat: '%H',
-            tickangle: -45
+            dtick: xAxis.dtick,
+            tickformat: xAxis.tickformat,
+            tickangle: xAxis.tickangle
           },
           yaxis: {
             title: {
@@ -688,6 +815,7 @@ const loadPage = () => {
       const extValuesPrice = getDataExtremeValues([data.price]);
 
       const generateElecLayoutConfig = (diffInDays) => {
+        const xAxis = getXAxisConfig(diffInDays);
         return {
           width: 1300,
           height: 650,
@@ -699,8 +827,9 @@ const loadPage = () => {
               text: 'Time'
             },
             type: 'date',
-            dtick: getXAxisTickSize(diffInDays),
-            tickformat: '%H'
+            dtick: xAxis.dtick,
+            tickformat: xAxis.tickformat,
+            tickangle: xAxis.tickangle
           },
           yaxis: {
             title: {
@@ -977,24 +1106,6 @@ const loadPage = () => {
       return [minValue, maxValue];
     };
 
-    // Return the desired plot x-axis tick size for the given x-values difference
-    const getXAxisTickSize = (diffInDays) => {
-      const tickOneHour = 3600000;
-      let tickSize = tickOneHour;
-
-      if (diffInDays >= 3 && diffInDays < 6) {
-        tickSize = 2 * tickOneHour;
-      } else if (diffInDays >= 6 && diffInDays < 10) {
-        tickSize = 3 * tickOneHour;
-      } else if (diffInDays >= 10 && diffInDays < 20) {
-        tickSize = 5 * tickOneHour;
-      } else if (diffInDays >= 20) {
-        tickSize = 6 * tickOneHour;
-      }
-
-      return tickSize;
-    };
-
     // Return the "padding" i.e. amount of empty area for the y-axis
     const getYAxisPadding = (extremeValues) => {
       const diff = Math.abs(extremeValues[1] - extremeValues[0]);
@@ -1010,16 +1121,21 @@ const loadPage = () => {
 
 
     var generateTraceConfig = (plotType) => {
-      const xValues = plotType === 'weather' ? dataLabels.weather : dataLabels.other;
+      const xValues = plotType === 'weather'
+        ? dataLabels.weather
+        : plotType === 'ruuvitag'
+          ? dataLabels.rt
+          : dataLabels.other;
+      const pointCount = xValues.length;
       const traces = [];
       const commonOpts = {
-        type: 'scatter',
-        mode: 'lines+markers',
+        type: pointCount > 2000 ? 'scattergl' : 'scatter',
+        mode: pointCount > 500 ? 'lines' : 'lines+markers',
         marker: {
           size: 3
         },
         xhoverformat: '<b>%d.%m. %H:%M:%S</b>',
-        hovertemplate: '%{y}%{text}'
+        hovertemplate: pointCount > 500 ? '%{y}' : '%{y}%{text}'
       };
       let changingOpts;
 
@@ -1031,6 +1147,12 @@ const loadPage = () => {
         }
       };
 
+      const traceText = (label) => {
+        return pointCount > 500
+          ? undefined
+          : Array(xValues.length).fill(addUnitSuffix(label));
+      };
+
       if (plotType !== 'ruuvitag') {
         for (const key of plotType === 'weather' ? fieldNames.weather : fieldNames.other) {
           changingOpts = {
@@ -1038,7 +1160,7 @@ const loadPage = () => {
             y: dataSets[plotType][key],
             name: labelValues[plotType][key],
             visible: getTraceVisibility(false),
-            text: Array(xValues.length).fill(addUnitSuffix(labelValues[plotType][key]))
+            text: traceText(labelValues[plotType][key])
           };
           traces.push({ ...changingOpts, ...commonOpts });
         }
@@ -1052,7 +1174,7 @@ const loadPage = () => {
               y: dataSets.rt[name][meas],
               name: labelValues.rt[name][meas],
               visible: getTraceVisibility(true),
-              text: Array(xValues.length).fill(addUnitSuffix(labelValues.rt[name][meas]))
+              text: traceText(labelValues.rt[name][meas])
             };
             traces.push({ ...changingOpts, ...commonOpts });
           }
@@ -1115,9 +1237,16 @@ const loadPage = () => {
 
 
     var generateLayoutConfig = (plotType, isUpdate = false) => {
-      const xValues = plotType === 'weather' ? dataLabels.weather : dataLabels.other;
-      const diffInDays = DateTime.fromJSDate(xValues[xValues.length - 1]).diff(
-        DateTime.fromJSDate(xValues[0]), 'days').toObject().days;
+      const xValues = plotType === 'weather'
+        ? dataLabels.weather
+        : plotType === 'ruuvitag'
+          ? dataLabels.rt
+          : dataLabels.other;
+      const diffInDays = xValues.length > 1
+        ? DateTime.fromJSDate(xValues[xValues.length - 1]).diff(
+          DateTime.fromJSDate(xValues[0]), 'days').toObject().days
+        : 1;
+      const xAxis = getXAxisConfig(diffInDays);
 
       const plotTitleStart = (plotType === 'weather')
         ? 'FMI weather' : plotType === 'other'
@@ -1154,9 +1283,9 @@ const loadPage = () => {
           },
           type: 'date',
           range: [xValues[0], xValues[xValues.length - 1]],
-          dtick: getXAxisTickSize(diffInDays),
-          tickformat: '%H',
-          tickangle: -45
+          dtick: xAxis.dtick,
+          tickformat: xAxis.tickformat,
+          tickangle: xAxis.tickangle
         },
         yaxis: {
           title: {
@@ -1336,6 +1465,14 @@ const loadPage = () => {
       return;
     }
 
+    if (inclusiveDayCount(startDate, endDate) > maxDisplayDays) {
+      showDateRangeError(dateRangeTooLargeMessage(maxDisplayDays));
+      event.preventDefault();
+      return;
+    }
+
+    hideDateRangeError();
+
     const diff = DateTime.fromISO(endDate).diff(
       DateTime.fromISO(startDate), ['days']);
 
@@ -1347,18 +1484,16 @@ const loadPage = () => {
     const plotUpdateAfterReset = (plotType) => {
       const plot = document.getElementById(`${plotType}Plot`);
       const traceVisibility = plot.data.map(trace => trace.visible);
+      const newTraces = generateTraceConfig(plotType);
       const visTraceData = [];
 
-      for (const trace of plot.data) {
-        if (trace.visible === true) {
-          visTraceData.push(trace.y);
+      for (let i = 0; i < newTraces.length; i++) {
+        if (traceVisibility[i] === true) {
+          visTraceData.push(newTraces[i].y);
         }
       }
 
-      Plotly.react(plot,
-        generateTraceConfig(plotType),
-        generateLayoutConfig(plotType, true));
-
+      Plotly.react(plot, newTraces, generateLayoutConfig(plotType));
       Plotly.restyle(plot, { visible: traceVisibility });
       if (visTraceData.length) {
         updateAnnotationAndRangeYValues(plot, visTraceData);
@@ -1377,10 +1512,13 @@ const loadPage = () => {
       .then(resp => {
         const rData = resp.data;
 
+        hideDateRangeError();
         data.weather = rData['weather-data'];
         data.weatherObs = rData['weather-obs-data'];
         data.other = rData['obs-data'];
         data.rt = rData['rt-data'];
+
+        showDisplayResolution(rData['display-resolution']);
 
         document.getElementById('startDate').value = rData['obs-dates'].current.start;
         document.getElementById('endDate').value = rData['obs-dates'].current.end;
@@ -1391,13 +1529,7 @@ const loadPage = () => {
         plotUpdateAfterReset('other');
         plotUpdateAfterReset('ruuvitag');
       })
-      .catch(error => {
-        if (error.status === 401) {
-          redirectToLogin();
-        } else {
-          console.log(`Display data fetch error: ${error}`);
-        }
-      })
+      .catch(handleDisplayDataError)
       .then(() => {
         if (isSpinnerShown) {
           toggleLoadingSpinner();
@@ -1773,6 +1905,9 @@ axios.get('data/display')
     data.other = rData['obs-data'];
     data.rt = rData['rt-data'];
     names.ruuvitag = rData['rt-names'];
+    maxDisplayDays = rData['max-display-days'] ?? maxDisplayDays;
+
+    showDisplayResolution(rData['display-resolution']);
 
     if (rData['obs-dates']['min-max']) {
       const intMinMax = rData['obs-dates']['min-max'];
@@ -1791,13 +1926,7 @@ axios.get('data/display')
 
     loadPage();
   })
-  .catch(error => {
-    if (error.status === 401) {
-      redirectToLogin();
-    } else {
-      console.log(`Initial display data fetch error: ${error}`);
-    }
-  });
+  .catch(handleDisplayDataError);
 
 setInterval(() => {
   refreshTokensIfNeeded();

@@ -1,5 +1,6 @@
 (ns env-logger.handler-test
   (:require [clojure.test :refer [deftest is testing]]
+            [config.core :refer [env]]
             [jsonista.core :as j]
             [terop.openid-connect-auth :refer [access-ok?]]
             [env-logger.db :as db]
@@ -95,11 +96,46 @@
       (is (= 400 (:status (h/get-display-data
                            {:params {"startDate" "2020-01-01"
                                      "endDate" "2020-03-31"}}))))
-      (with-redefs [h/get-plot-page-data (fn [_] {:obs-data {}})
+      (let [resp (h/get-display-data
+                  {:params {"startDate" "2020-01-01"
+                            "endDate" "2020-03-31"}})
+            body (j/read-value (:body resp) j/keyword-keys-object-mapper)]
+        (is (= "date-range-too-large" (:error body)))
+        (is (= 90 (:max-days body))))
+      (with-redefs [h/get-plot-page-data (fn [_] {:obs-data {}
+                                                  :display-resolution "hourly"})
                     w/get-weather-data (fn [] [])]
         (is (= 200 (:status (h/get-display-data
                              {:params {"startDate" "2020-01-01"
                                        "endDate" "2020-03-30"}}))))))))
+
+(deftest get-plot-page-data-resolution-test
+  (testing "get-plot-page-data includes display-resolution for long ranges"
+    (with-redefs [db/postgres-ds test-ds
+                  db/get-obs-date-interval (fn [_] {:start "2020-01-01"
+                                                    :end "2020-03-01"})
+                  env (assoc env :display-bucket-target-points 1500
+                             :initial-show-days 30)]
+      (let [result (h/get-plot-page-data {:params {"startDate" "2020-01-01"
+                                                   "endDate" "2020-02-15"}})]
+        (is (contains? result :display-resolution))
+        (is (not= "10min" (:display-resolution result))))))
+  (testing "get-plot-page-data omits averaging label for short ranges"
+    (with-redefs [db/postgres-ds test-ds
+                  db/get-obs-date-interval (fn [_] {:start "2020-01-01"
+                                                    :end "2020-03-01"})
+                  env (assoc env :display-bucket-target-points 1500
+                             :initial-show-days 2)]
+      (let [result (h/get-plot-page-data {:params {}})]
+        (is (nil? (:display-resolution result))))))
+  (testing "get-plot-page-data shows 10min label when observations are bucketed"
+    (with-redefs [db/postgres-ds test-ds
+                  db/get-obs-date-interval (fn [_] {:start "2020-01-01"
+                                                    :end "2020-03-01"})
+                  env (assoc env :display-bucket-target-points 1500
+                             :initial-show-days 7)]
+      (let [result (h/get-plot-page-data {:params {}})]
+        (is (= "10min" (:display-resolution result)))))))
 
 (deftest elec-consumption-data-upload-test
   (testing "Electricity consumption data upload"

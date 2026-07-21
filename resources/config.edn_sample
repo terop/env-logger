@@ -70,4 +70,6 @@
  ;; Maximum time difference for FMI Testbed images in minutes
  :image-max-time-diff 15
  ;; Maximum inclusive date span for /data/display queries
- :max-display-days 90}
+ :max-display-days 90
+ ;; Target max data points per chart series before adaptive time-bucketing
+ :display-bucket-target-points 1500}
