@@ -45,6 +45,19 @@
   (jt/zoned-date-time (jt/instant "2024-11-10T06:20:00Z")
                       (jt/zone-id "UTC")))
 
+(def ^:private current-slot-key
+  (-convert-dt->tz-iso8601-str test-fmi-slot-time))
+
+(def ^:private previous-slot-key
+  (-convert-dt->tz-iso8601-str (jt/minus test-fmi-slot-time (jt/minutes 10))))
+
+(defn seed-fmi-current!
+  [current-key current-obs & [previous-key previous-obs]]
+  (reset! w/fmi-current
+          (cond-> {}
+            current-key (assoc current-key current-obs)
+            previous-key (assoc previous-key previous-obs))))
+
 (use-fixtures :each clear-weather-cache)
 
 (def expected-forecast
@@ -216,10 +229,36 @@
           (is (rel= 90.0 (:humidity wd) :tol 0.01))
           (is (rel= -0.4 (:feels-like wd) :tol 0.01)))))))
 
-(deftest fmi-weather-data-fetch
-  (testing "Tests FMI weather data fetch"
-    ;; Dummy test case, should be improved in the future
-    (is (nil? (get-fmi-weather-data)))))
+(deftest test-get-fmi-weather-data
+  (testing "Tests FMI weather data fetch from cache"
+    (testing "empty cache returns nil"
+      (is (nil? (get-fmi-weather-data)))
+      (is (nil? (get-fmi-weather-data true))))
+    (testing "Current slot only"
+      (with-redefs [calculate-start-time (fn [] test-fmi-slot-time)]
+        (let [current-obs {:temperature 1.4}]
+          (seed-fmi-current! current-slot-key current-obs)
+          (is (= current-obs (get-fmi-weather-data)))
+          (is (= current-obs (get-fmi-weather-data true))))))
+    (testing "Previous slot only falls back for default arity"
+      (with-redefs [calculate-start-time (fn [] test-fmi-slot-time)]
+        (let [previous-obs {:temperature 0.5}]
+          (seed-fmi-current! nil nil previous-slot-key previous-obs)
+          (is (= previous-obs (get-fmi-weather-data)))
+          (is (nil? (get-fmi-weather-data true))))))
+    (testing "Both slots prefer current"
+      (with-redefs [calculate-start-time (fn [] test-fmi-slot-time)]
+        (let [current-obs {:temperature 1.4}
+              previous-obs {:temperature 0.5}]
+          (seed-fmi-current! current-slot-key current-obs
+                             previous-slot-key previous-obs)
+          (is (= current-obs (get-fmi-weather-data)))
+          (is (= current-obs (get-fmi-weather-data true))))))
+    (testing "Single-arity delegates to only-latest false"
+      (with-redefs [calculate-start-time (fn [] test-fmi-slot-time)]
+        (seed-fmi-current! current-slot-key {:temperature 1.4})
+        (is (= (get-fmi-weather-data false)
+               (get-fmi-weather-data)))))))
 
 (deftest test-store-weather-data
   (testing "Tests if FMI weather data needs to be stored"
