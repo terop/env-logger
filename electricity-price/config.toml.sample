@@ -1,0 +1,8 @@
+[db]
+host = "myhost"
+user = "myuser"
+password = "myawesomepassword"
+name = "env_logger"
+
+[fetch]
+area_code = "FI"

@@ -3,9 +3,9 @@
 """A script for inserting electricity prices into a PostgreSQL database."""
 
 import argparse
-import json
 import logging
 import sys
+import tomllib
 from datetime import datetime, timedelta
 from math import isinf
 from os import environ
@@ -94,9 +94,9 @@ def create_db_conn_string(db_config):
     """Create the database connection string."""
     db_config = {
         'host': environ['DB_HOST'] if 'DB_HOST' in environ else db_config['host'],
-        'name': environ['DB_NAME'] if 'DB_NAME' in environ else db_config['dbname'],
+        'name': environ['DB_NAME'] if 'DB_NAME' in environ else db_config['name'],
         'username': environ['DB_USERNAME'] if 'DB_USERNAME' in environ
-        else db_config['username'],
+        else db_config['user'],
         'password': db_config.get('password', None)
     }
     if not db_config['password']:
@@ -127,6 +127,20 @@ def fetch_and_store(config, fetch_date, hourly=True):
     store_prices(config['db'], prices, hourly)
 
 
+def load_config(config_file):
+    """Load and validate the configuration file."""
+    if not Path(config_file).exists() or not Path(config_file).is_file():
+        logger.error('Could not find configuration file: %s', config_file)
+        sys.exit(1)
+
+    with Path(config_file).open('rb') as conf_file:
+        try:
+            return tomllib.load(conf_file)
+        except tomllib.TOMLDecodeError:
+            logger.exception('Could not parse configuration file')
+            sys.exit(1)
+
+
 def main():
     """Run the module code."""
     logging.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s',
@@ -135,19 +149,13 @@ def main():
     parser = argparse.ArgumentParser(description='Fetch and store electricity price '
                                      'into a database. By default fetches prices for '
                                      'the next day.')
-    parser.add_argument('--config', type=str, help='configuration file to use')
+    parser.add_argument('--config', type=str,
+                        help='TOML configuration file to use')
     parser.add_argument('--date', type=str, help='date (in YYYY-MM-DD format) for '
                         'which to fetch data')
 
     args = parser.parse_args()
-    config_file = args.config or 'config.json'
-
-    if not Path(config_file).exists():
-        logger.error('Could not find configuration file "%s"', config_file)
-        sys.exit(1)
-
-    with Path(config_file).open('r', encoding='utf-8') as cfg_file:
-        config = json.load(cfg_file)
+    config = load_config(args.config or 'config.toml')
 
     # 60 minute resolution
     fetch_and_store(config, args.date, True)
