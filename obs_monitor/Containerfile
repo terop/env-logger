@@ -21,7 +21,7 @@ COPY --from=builder --chown=${APPLICATION_USER}:${APPLICATION_USER} \
      /app/.venv ./.venv
 
 COPY --chown=${APPLICATION_USER}:${APPLICATION_USER} \
-     monitor.cfg monitor.py .
+     monitor_config.toml monitor.py .
 
 # Place executables in the environment at the front of the path
 ENV PATH="/usr/src/app/.venv/bin:${PATH}"

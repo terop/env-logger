@@ -1,3 +1,2 @@
-venv/
-monitor.cfg
+monitor_config.toml
 monitor_state.json

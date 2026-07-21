@@ -6,12 +6,12 @@ specified time.
 """
 
 import argparse
-import configparser
 import json
 import logging
 import smtplib
 import ssl
 import sys
+import tomllib
 from datetime import datetime
 from email.mime.text import MIMEText
 from os import environ
@@ -40,7 +40,7 @@ class ObservationMonitor:
                            'ORDER BY id DESC LIMIT 1')
             result = cursor.fetchone()
             return result[0] if result else datetime.now(
-                tz=ZoneInfo(self._config['db']['DisplayTimezone']))
+                tz=ZoneInfo(self._config['db']['display_timezone']))
 
     def check_observation(self):
         """Check when the last observation has been received.
@@ -51,11 +51,11 @@ class ObservationMonitor:
 
         last_obs_time = self.get_obs_time()
         last_obs_time_tz = last_obs_time.astimezone(
-                    ZoneInfo(self._config['db']['DisplayTimezone']))
+                    ZoneInfo(self._config['db']['display_timezone']))
         time_diff = datetime.now(tz=last_obs_time.tzinfo) - last_obs_time
 
         if int(time_diff.total_seconds() / 60) > \
-           int(self._config['observation']['Timeout']):
+           self._config['observation']['timeout']:
             logger.warning('No observations received since %s',
                            last_obs_time_tz.isoformat())
             if self._state['email_sent'] == 'False':
@@ -64,7 +64,7 @@ class ObservationMonitor:
                               'No observations have been received in the env-logger '
                               'backend after {} (timeout {} minutes). Please check for '
                               'possible problems.'.format(last_obs_time_tz.isoformat(),
-                                                          self._config['observation']['Timeout'])):
+                                                          self._config['observation']['timeout'])):
                     self._state['email_sent'] = 'True'
                 else:
                     self._state['email_sent'] = 'False'
@@ -100,7 +100,7 @@ class ObservationsColumnMonitor:
         is returned with a timestamp value of the latest observed value.
         """
         end_threshold = 30
-        timezone = ZoneInfo(self._config['db']['DisplayTimezone'])
+        timezone = ZoneInfo(self._config['db']['display_timezone'])
         current_dt = datetime.now(tz=timezone)
 
         with psycopg.connect(create_db_conn_string(self._config['db'])) as conn, \
@@ -115,7 +115,7 @@ class ObservationsColumnMonitor:
                 for res in result:
                     recorded_tz = res[0].astimezone(timezone)
                     time_diff_min = (current_dt - recorded_tz).total_seconds() / 60
-                    if time_diff_min > int(self._timeout) and \
+                    if time_diff_min > self._timeout and \
                        time_diff_min < end_threshold:
                         logger.warning('No %s value received since %s',
                                        self._column_human_name,
@@ -176,7 +176,7 @@ class BeaconMonitor:
                            '(SELECT obs_id FROM beacons ORDER BY id DESC LIMIT 1)')
             result = cursor.fetchone()
             return result[0] if result else datetime.now(
-                tz=ZoneInfo(self._config['db']['DisplayTimezone']))
+                tz=ZoneInfo(self._config['db']['display_timezone']))
 
     def check_beacon(self):
         """Check the latest BLE beacon scan time.
@@ -187,12 +187,12 @@ class BeaconMonitor:
 
         last_obs_time = self.get_beacon_scan_time()
         last_obs_time_tz = last_obs_time.astimezone(ZoneInfo(
-            self._config['db']['DisplayTimezone']))
+            self._config['db']['display_timezone']))
         time_diff = datetime.now(tz=last_obs_time.tzinfo) - last_obs_time
 
         # Timeout is in hours
         if int(time_diff.total_seconds()) > \
-           int(self._config['blebeacon']['Timeout']) * 60 * 60:
+           self._config['blebeacon']['timeout'] * 60 * 60:
             logger.warning('No BLE beacon has been scanned after %s',
                            last_obs_time_tz.isoformat())
             if self._state['email_sent'] == 'False' and \
@@ -201,7 +201,7 @@ class BeaconMonitor:
                           'No BLE beacon has been scanned in env-logger '
                           'after {} (timeout {} hours). Please check for '
                           'possible problems.'.format(last_obs_time_tz.isoformat(),
-                                                      self._config['blebeacon']['Timeout'])):
+                                                      self._config['blebeacon']['timeout'])):
                 self._state['email_sent'] = 'True'
         elif self._state['email_sent'] == 'True':
             send_email(self._config['email'],
@@ -230,13 +230,13 @@ class RuuvitagMonitor:
 
         with psycopg.connect(create_db_conn_string(self._config['db'])) as conn, \
              conn.cursor() as cursor:
-            for name in self._config['ruuvitag']['Name'].split(','):
+            for name in self._config['ruuvitag']['names']:
                 cursor.execute(t"""SELECT recorded FROM ruuvitag_observations WHERE
                 name = {name} ORDER BY recorded DESC LIMIT 1""")
 
                 result = cursor.fetchone()
                 results[name] = result[0] if result else datetime.now(
-                    tz=ZoneInfo(self._config['db']['DisplayTimezone']))
+                    tz=ZoneInfo(self._config['db']['display_timezone']))
 
         return results
 
@@ -249,15 +249,15 @@ class RuuvitagMonitor:
 
         last_obs_time = self.get_ruuvitag_scan_time()
 
-        for name in self._config['ruuvitag']['Name'].split(','):
+        for name in self._config['ruuvitag']['names']:
             time_diff = datetime.now(tz=last_obs_time[name].tzinfo) \
                 - last_obs_time[name]
             last_obs_time_tz = last_obs_time[name].astimezone(
-                ZoneInfo(self._config['db']['DisplayTimezone']))
+                ZoneInfo(self._config['db']['display_timezone']))
 
             # Timeout is in minutes
             if int(time_diff.total_seconds()) > \
-               int(self._config['ruuvitag']['Timeout']) * 60:
+               self._config['ruuvitag']['timeout'] * 60:
                 if self._state[name]['email_sent'] == 'False':
                     logger.warning('No RuuviTag observation for name "%s" has '
                                    'been scanned after %s',
@@ -270,7 +270,7 @@ class RuuvitagMonitor:
                                   '(timeout {} minutes). Please check for possible '
                                   'problems.'
                                   .format(name, last_obs_time_tz.isoformat(),
-                                          self._config['ruuvitag']['Timeout'])):
+                                          self._config['ruuvitag']['timeout'])):
                         self._state[name]['email_sent'] = 'True'
                     else:
                         self._state[name]['email_sent'] = 'False'
@@ -292,8 +292,8 @@ class RuuvitagMonitor:
 def create_smtp_connection(config):
     """Create a SMTP SSL connection which can be used to send email."""
     email_username = environ['EMAIL_USERNAME'] if 'EMAIL_USERNAME' in environ \
-        else config['Username']
-    email_password = config.get('Password', None)
+        else config['username']
+    email_password = config.get('password', None)
     if not email_password:
         password_file = environ.get('EMAIL_PASSWORD_FILE', None)
         if password_file:
@@ -304,7 +304,7 @@ def create_smtp_connection(config):
             sys.exit(1)
 
     try:
-        instance = smtplib.SMTP_SSL(config['Server'],
+        instance = smtplib.SMTP_SSL(config['server'],
                                     context=ssl.create_default_context())
         instance.login(email_username, email_password)
     except smtplib.SMTPException:
@@ -318,8 +318,8 @@ def send_email(config, subject, message):
     """Send an email with provided subject and message to specified recipient(s)."""
     msg = MIMEText(message)
     msg['Subject'] = subject
-    msg['From'] = config['Sender']
-    msg['To'] = config['Recipient']
+    msg['From'] = config['sender']
+    msg['To'] = config['recipient']
 
     global smtp_connection  # noqa: PLW0603
 
@@ -342,11 +342,11 @@ def send_email(config, subject, message):
 def create_db_conn_string(db_config):
     """Create the database connection string."""
     db_config = {
-        'host': environ['DB_HOST'] if 'DB_HOST' in environ else db_config['Host'],
-        'name': environ['DB_NAME'] if 'DB_NAME' in environ else db_config['Name'],
+        'host': environ['DB_HOST'] if 'DB_HOST' in environ else db_config['host'],
+        'name': environ['DB_NAME'] if 'DB_NAME' in environ else db_config['name'],
         'username': environ['DB_USERNAME'] if 'DB_USERNAME' in environ
-        else db_config['User'],
-        'password': db_config.get('Password', None)
+        else db_config['user'],
+        'password': db_config.get('password', None)
     }
     if not db_config['password']:
         password_file = environ.get('DB_PASSWORD_FILE', None)
@@ -363,72 +363,89 @@ def create_db_conn_string(db_config):
     )
 
 
-def main():  # noqa: C901
-    """Run the module code."""
-    logging.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s',
-                        level=logging.INFO)
-
-    parser = argparse.ArgumentParser(description='Monitors observation reception.')
-    parser.add_argument('--config', type=str, help='configuration file to use '
-                        '(default: monitor.cfg)')
-
-    args = parser.parse_args()
-    config_file = args.config or 'monitor.cfg'
-
-    if not Path(config_file).exists():
-        logger.error('Could not find configuration file "%s"', args.config_file)
+def load_config(config_file):
+    """Load and validate the monitor configuration file."""
+    if not Path(config_file).exists() or not Path(config_file).is_file():
+        logger.error('Could not find configuration file: %s', config_file)
         sys.exit(1)
 
-    config = configparser.ConfigParser()
-    config.read(config_file)
+    with Path(config_file).open('rb') as conf_file:
+        try:
+            return tomllib.load(conf_file)
+        except tomllib.TOMLDecodeError:
+            logger.exception('Could not parse configuration file')
+            sys.exit(1)
 
-    state_file_dir = None
-    if 'STATE_FILE_DIRECTORY' in environ:
-        state_file_dir = environ['STATE_FILE_DIRECTORY']
+
+def resolve_state_file_name():
+    """Return the path to the monitor state file."""
+    state_file_dir = environ.get('STATE_FILE_DIRECTORY')
+    if state_file_dir:
         if not Path(state_file_dir).exists() or not Path(state_file_dir).is_dir():
             logger.error('State file directory "%s" does not exist', state_file_dir)
             sys.exit(1)
+        return f'{state_file_dir}/monitor_state.json'
+    return 'monitor_state.json'
 
-    state_file_name = 'monitor_state.json' if not state_file_dir \
-        else f'{state_file_dir}/monitor_state.json'
 
+def load_monitor_state(state_file_name, config):
+    """Load monitor state from disk, or return initial state if missing."""
     try:
         with Path(state_file_name).open('r', encoding='utf-8') as state_file:
-            state = json.load(state_file)
+            return json.load(state_file)
     except FileNotFoundError:
         state = {'observation': {'email_sent': 'False'},
                  'outsidetemp': {'email_sent': 'False'},
                  'outsidelight': {'email_sent': 'False'},
                  'blebeacon': {'email_sent': 'False'},
                  'ruuvitag': {}}
-        for name in config['ruuvitag']['Name'].split(','):
-            state['ruuvitag'][name] = {}
-            state['ruuvitag'][name]['email_sent'] = 'False'
+        for name in config['ruuvitag']['names']:
+            state['ruuvitag'][name] = {'email_sent': 'False'}
+        return state
 
-    if config['observation']['Enabled'] == 'True':
+
+def run_monitors(config, state):
+    """Run enabled monitors and update state."""
+    if config['observation']['enabled']:
         obs = ObservationMonitor(config, state['observation'])
         obs.check_observation()
         state['observation'] = obs.get_state()
-    if config['outsidetemp']['Enabled'] == 'True':
+    if config['outsidetemp']['enabled']:
         otm = ObservationsColumnMonitor(config, state['outsidetemp'],
-                                        config['outsidetemp']['Timeout'],
+                                        config['outsidetemp']['timeout'],
                                         'outside_temperature', 'outside temperature')
         otm.handle_status_data()
         state['outsidetemp'] = otm.get_state()
-    if config['outsidelight']['Enabled'] == 'True':
+    if config['outsidelight']['enabled']:
         olm = ObservationsColumnMonitor(config, state['outsidelight'],
-                                        config['outsidelight']['Timeout'],
+                                        config['outsidelight']['timeout'],
                                         'outside_light', 'outside light')
         olm.handle_status_data()
         state['outsidelight'] = olm.get_state()
-    if config['blebeacon']['Enabled'] == 'True':
+    if config['blebeacon']['enabled']:
         beacon = BeaconMonitor(config, state['blebeacon'])
         beacon.check_beacon()
         state['blebeacon'] = beacon.get_state()
-    if config['ruuvitag']['Enabled'] == 'True':
+    if config['ruuvitag']['enabled']:
         ruuvitag = RuuvitagMonitor(config, state['ruuvitag'])
         ruuvitag.check_ruuvitag()
         state['ruuvitag'] = ruuvitag.get_state()
+
+
+def main():
+    """Run the module code."""
+    logging.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s',
+                        level=logging.INFO)
+
+    parser = argparse.ArgumentParser(description='Monitors observation reception.')
+    parser.add_argument('--config', type=str, help='TOML configuration file to use '
+                        '(default: monitor_config.toml)')
+
+    args = parser.parse_args()
+    config = load_config(args.config or 'monitor_config.toml')
+    state_file_name = resolve_state_file_name()
+    state = load_monitor_state(state_file_name, config)
+    run_monitors(config, state)
 
     with Path(state_file_name).open('w', encoding='utf-8') as state_file:
         json.dump(state, state_file, indent=4)

@@ -1,0 +1,34 @@
+[db]
+host = "example.com"
+user = "theuser"
+password = "b4dpassw0rd"
+name = "env_logger"
+display_timezone = "UTC"
+
+[observation]
+enabled = true
+timeout = 5 # minutes
+
+[outsidetemp]
+enabled = true
+timeout = 5 # minutes
+
+[outsidelight]
+enabled = true
+timeout = 5 # minutes
+
+[blebeacon]
+enabled = true
+timeout = 24 # hours
+
+[ruuvitag]
+enabled = true
+timeout = 10 # minutes
+names = ["inside", "outside"]
+
+[email]
+server = "example.com"
+username = "theuser"
+password = "b4dpassw0rd"
+sender = "mon@example.com"
+recipient = "me@example.com"
