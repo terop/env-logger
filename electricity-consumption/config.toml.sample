@@ -1,0 +1,9 @@
+[db]
+host = "myhost"
+user = "myuser"
+password = "myawesomepassword"
+name = "env_logger"
+
+[fetch]
+username = "myuser"
+password = "mypassword"

@@ -8,6 +8,6 @@ into a PostgreSQL database.
 [uv](https://github.com/astral-sh/uv) is required so install it first unless it is
 already installed.
 Then run `uv sync --frozen` to install required dependencies. A sample configuration
-file is available at `config.json.sample`, copy it to `config.json` and modify
+file is available at `config.toml.sample`, copy it to `config.toml` and modify
 accordingly. Finally run the script itself with the `uv run python store_consumption.py`
 command, add the `-h` flag to see the available flags.

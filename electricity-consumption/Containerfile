@@ -23,7 +23,7 @@ COPY --from=builder --chown=${APPLICATION_USER}:${APPLICATION_USER} \
      /app .
 
 COPY --chown=${APPLICATION_USER}:${APPLICATION_USER} \
-     config.json store_consumption.py .
+     config.toml store_consumption.py .
 
 # Place executables in the environment at the front of the path
 ENV PATH="/usr/src/app/.venv/bin:${PATH}"

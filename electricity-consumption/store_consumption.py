@@ -6,9 +6,9 @@ The fetched data is stored into a PostgreSQL database.
 """
 
 import argparse
-import json
 import logging
 import sys
+import tomllib
 from datetime import date, datetime, timedelta
 from os import environ
 from pathlib import Path
@@ -170,9 +170,9 @@ def create_db_conn_string(db_config):
     """Create the database connection string."""
     db_config = {
         'host': environ['DB_HOST'] if 'DB_HOST' in environ else db_config['host'],
-        'name': environ['DB_NAME'] if 'DB_NAME' in environ else db_config['dbname'],
+        'name': environ['DB_NAME'] if 'DB_NAME' in environ else db_config['name'],
         'username': environ['DB_USERNAME'] if 'DB_USERNAME' in environ
-        else db_config['username'],
+        else db_config['user'],
         'password': db_config.get('password', None)
     }
     if not db_config['password']:
@@ -188,6 +188,20 @@ def create_db_conn_string(db_config):
         f'host={db_config["host"]} user={db_config["username"]} '
         f'password={db_config["password"]} dbname={db_config["name"]}'
     )
+
+
+def load_config(config_file):
+    """Load and validate the configuration file."""
+    if not Path(config_file).exists() or not Path(config_file).is_file():
+        logger.error('Could not find configuration file: %s', config_file)
+        sys.exit(1)
+
+    with Path(config_file).open('rb') as conf_file:
+        try:
+            return tomllib.load(conf_file)
+        except tomllib.TOMLDecodeError:
+            logger.exception('Could not parse configuration file')
+            sys.exit(1)
 
 
 def handle_storage(args, db_config, consumption_data):
@@ -220,7 +234,8 @@ def main():
     parser = argparse.ArgumentParser(description='Stores electricity consumption data '
                                      'into a PostgreSQL database. By default data for '
                                      'the previous day is fetched.')
-    parser.add_argument('--config', type=str, help='configuration file to use')
+    parser.add_argument('--config', type=str,
+                        help='TOML configuration file to use')
     parser.add_argument('--date', type=str, help='date (in YYYY-MM-DD format) for '
                         'which to fetch data, multiple comma separated values are '
                         'supported')
@@ -238,14 +253,7 @@ def main():
                         help='print returned consumption data')
 
     args = parser.parse_args()
-    config_file = args.config or 'config.json'
-
-    if not Path(config_file).exists():
-        logger.error('Could not find configuration file "%s"', config_file)
-        sys.exit(1)
-
-    with Path(config_file).open('r', encoding='utf-8') as cfg_file:
-        config = json.load(cfg_file)
+    config = load_config(args.config or 'config.toml')
 
     parsed_date_range = parse_date_range(args.date_range) if args.date_range else None
 
