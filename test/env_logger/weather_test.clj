@@ -15,6 +15,8 @@
               -calculate-feels-like-temp
               calculate-start-time
               -calculate-summer-simmer
+              -observation-time->cache-key
+              -observation-time->sql-timestamp
               extract-forecast-data
               -fetch-astronomy-data
               -update-fmi-weather-forecast
@@ -125,6 +127,36 @@
       (let [res (-update-fmi-weather-forecast 12.34 56.78)]
         (is (nil? @res))))))
 
+(deftest test-observation-time-conversion
+  (testing "FMI observation local time converts to :weather-timezone"
+    (let [local-dt (jt/local-date-time "yyyyMMddHHmm" "202411100820")]
+      (is (= "2024-11-10T06:20:00Z"
+             (-observation-time->cache-key local-dt "Europe/Helsinki")))
+      (is (= (jt/instant "2024-11-10T06:20:00Z")
+             (java.sql.Timestamp/.toInstant
+              (-observation-time->sql-timestamp local-dt "Europe/Helsinki"))))
+      (is (= (-observation-time->cache-key local-dt "Europe/Helsinki")
+             (-convert-dt->tz-iso8601-str test-fmi-slot-time))))))
+
+(deftest test-fmi-current-retains-matching-observation
+  (testing "Observation is kept in cache when its key matches the active slot"
+    (with-redefs [http/http-get (fn [_] {:body "{}"})
+                  j/read-value (fn [_ _]
+                                 [{:cloudiness 8.0
+                                   :tz "Europe/Helsinki"
+                                   :time "20241110T082000"
+                                   :winddirection 254.0
+                                   :windspeed 1.1
+                                   :temperature 1.4
+                                   :humidity 90}])
+                  calculate-start-time (fn [] test-fmi-slot-time)]
+      (let [expected-key (-observation-time->cache-key
+                          (jt/local-date-time "yyyyMMddHHmm" "202411100820")
+                          "Europe/Helsinki")]
+        (-update-fmi-weather-data-ts 87874)
+        (is (= expected-key (-convert-dt->tz-iso8601-str test-fmi-slot-time)))
+        (is (= #{expected-key} (set (keys @w/fmi-current))))))))
+
 (deftest test-weather-data-ts-update
   (testing "Tests FMI weather data (time series) updating"
     (with-redefs [http/http-get (fn [_] {:body "{}"})
@@ -134,7 +166,7 @@
                   j/read-value (fn [_ _]
                                  [{:cloudiness 8.0
                                    :tz "Europe/Helsinki"
-                                   :time "20241110T102000"
+                                   :time "20241110T082000"
                                    :winddirection 254.0
                                    :windspeed 1.1
                                    :temperature 1.4
@@ -163,7 +195,7 @@
     (let [orig-as jt/as]
       (with-redefs [http/http-get (fn [_] {:body "{}"})
                     j/read-value (fn [_ _]
-                                   {:observations [{:localtime "20241110T102000"
+                                   {:observations [{:localtime "20241110T082000"
                                                     :t2m 1.4
                                                     :TotalCloudCover 8
                                                     :WindSpeedMS 1.1

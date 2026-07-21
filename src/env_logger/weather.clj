@@ -12,8 +12,7 @@
             [next.jdbc :as jdbc]
             [java-time.api :as jt]
             [env-logger.db :refer [rs-opts convert-time->iso8601-str]])
-  (:import (java.time LocalDateTime ZonedDateTime)
-           java.time.temporal.ChronoUnit
+  (:import (java.time ZonedDateTime)
            org.postgresql.util.PSQLException))
 (refer-clojure :exclude '[filter for group-by into partition-by set update])
 (require '[honey.sql :as sql])
@@ -57,6 +56,25 @@
   (let [start-time (calculate-start-time)]
     #{(-convert-dt->tz-iso8601-str start-time)
       (-convert-dt->tz-iso8601-str (jt/minus start-time (jt/minutes 10)))}))
+
+(defn- observation-time->zoned
+  "Interpret local FMI observation time in source-tz and convert to
+  :weather-timezone preserving the instant."
+  [local-dt source-tz]
+  (jt/with-zone-same-instant
+    (jt/zoned-date-time local-dt source-tz)
+    (jt/zone-id (:weather-timezone env))))
+
+(defn -observation-time->cache-key
+  "Return the ISO8601 cache key for an FMI observation time."
+  [local-dt source-tz]
+  (convert-time->iso8601-str (observation-time->zoned local-dt source-tz)))
+
+(defn -observation-time->sql-timestamp
+  "Convert a local FMI observation time in source-tz to a Timestamp in
+  :weather-timezone without relying on the JVM default time zone."
+  [local-dt source-tz]
+  (java.sql.Timestamp/from (jt/instant (observation-time->zoned local-dt source-tz))))
 
 (defn- store-fmi-current-entry!
   "Store one FMI observation and drop entries outside the active time window."
@@ -225,16 +243,7 @@
                 ;; Assume that the timestamp is always in local (i.e.
                 ;; Europe/Helsinki) time zone
                 tz-str "Europe/Helsinki"
-                offset (ChronoUnit/.between
-                        ChronoUnit/HOURS
-                        (LocalDateTime/.atZone local-dt (jt/zone-id tz-str))
-                        (LocalDateTime/.atZone local-dt
-                                               (jt/zone-id (:weather-timezone
-                                                            env))))
-                wd {:time (jt/sql-timestamp (jt/minus
-                                             (jt/zoned-date-time local-dt
-                                                                 tz-str)
-                                             (jt/hours offset)))
+                wd {:time (-observation-time->sql-timestamp local-dt tz-str)
                     :temperature (:t2m obs)
                     :cloudiness (if-not (nil? (:TotalCloudCover obs))
                                   (:TotalCloudCover obs) 9)
@@ -248,7 +257,7 @@
                                  nil)}]
             (when-not (nil? (:temperature wd))
               (store-fmi-current-entry!
-               (convert-time->iso8601-str (:time wd))
+               (-observation-time->cache-key local-dt tz-str)
                wd)))
           (do
             (error "No FMI weather data (JSON)")
@@ -276,17 +285,7 @@
           (let [obs (last parsed-json)
                 time-str (subs (str/replace (:time obs) "T" "") 0 12)
                 local-dt (jt/local-date-time "yyyyMMddHHmm" time-str)
-                offset (ChronoUnit/.between
-                        ChronoUnit/HOURS
-                        (LocalDateTime/.atZone local-dt (jt/zone-id (:tz obs)))
-                        (LocalDateTime/.atZone local-dt
-                                               (jt/zone-id (:weather-timezone
-                                                            env))))
-                wd {:time
-                    (jt/sql-timestamp
-                     (jt/minus
-                      (jt/zoned-date-time local-dt (:tz obs))
-                      (jt/hours offset)))
+                wd {:time (-observation-time->sql-timestamp local-dt (:tz obs))
                     :temperature (:temperature obs)
                     :cloudiness (if-not (nil? (:cloudiness obs))
                                   (int (:cloudiness obs)) 9)
@@ -300,7 +299,7 @@
                                  nil)}]
             (when wd
               (store-fmi-current-entry!
-               (convert-time->iso8601-str (:time wd))
+               (-observation-time->cache-key local-dt (:tz obs))
                wd))))))
     (catch Exception ex
       (error ex "FMI weather data (time series) fetch failed")
