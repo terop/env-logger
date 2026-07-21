@@ -148,12 +148,17 @@ def process_ruuvi_device_data(device_type, device_data):
                 'rssi': device_data[1]['rssi']}
 
     if device_type == 'air':
-        return {'co2': device_data[1]['co2'],
-                'nox': device_data[1]['nox'],
-                'voc': device_data[1]['voc'],
-                'pm_2_5': device_data[1]['pm_2_5'],
-                'iaqs': calculate_iaqs(device_data[1]['co2'],
-                                       device_data[1]['pm_2_5'])}
+        data = device_data[1]
+        if any(data[k] is None for k in ('co2', 'nox', 'voc')):
+            logger.error('Received invalid measurement values from Ruuvi Air, '
+                         'not sending')
+            return None
+
+        return {'co2': data['co2'],
+                'nox': data['nox'],
+                'voc': data['voc'],
+                'pm_2_5': data['pm_2_5'],
+                'iaqs': calculate_iaqs(data['co2'], data['pm_2_5'])}
 
     logger.error('Unknown Ruuvi device configured')
 
