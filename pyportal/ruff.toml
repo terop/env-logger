@@ -1,1 +1,7 @@
 extend = "../ruff.toml"
+
+# PyPortal/CircuitPython requires the main entry point to be named code.py, which
+# shadows the stdlib code module and triggers ruff A005 when checked from the
+# repository root.
+[lint.flake8-builtins]
+allowed-modules = ["code"]
