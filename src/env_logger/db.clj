@@ -294,7 +294,8 @@
                     :time (:time weather-data)
                     :temperature (:temperature weather-data)
                     :cloudiness (:cloudiness weather-data)
-                    :wind_speed (:wind-speed weather-data)}
+                    :wind_speed (:wind-speed weather-data)
+                    :wind_direction (:wind-direction weather-data)}
                    rs-opts)))
 
 (defn insert-ruuvi-device-observations
@@ -504,7 +505,8 @@
   (let [base-query {:select [:time
                              :temperature
                              :cloudiness
-                             :wind_speed]
+                             :wind_speed
+                             :wind_direction]
                     :from [:weather_data]}
         where-query (if where
                       (assoc base-query :where where)
@@ -543,7 +545,17 @@
           query ["SELECT to_timestamp(floor(extract(epoch FROM time) / ?) * ?) AS time,
                          round(avg(temperature)::numeric, 1) AS temperature,
                          round(avg(cloudiness))::int AS cloudiness,
-                         round(avg(wind_speed)::numeric, 1) AS wind_speed
+                         round(avg(wind_speed)::numeric, 1) AS wind_speed,
+                         CASE
+                           WHEN avg(wind_speed) < 0.5 THEN NULL
+                           ELSE MOD(
+                             (ATAN2(
+                               avg(SIN(radians(wind_direction))),
+                               avg(COS(radians(wind_direction)))
+                             ) * 180 / PI() + 360)::numeric,
+                             360::numeric
+                           )::int
+                         END AS wind_direction
                   FROM weather_data
                   WHERE time >= ? AND time <= ?
                   GROUP BY 1

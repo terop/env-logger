@@ -210,8 +210,8 @@
        :wind-speed (Float/parseFloat (format "%.1f" (Float/parseFloat
                                                      (nth values 1))))
        :cloudiness (round (Float/parseFloat (nth values 2)))
-       :wind-direction (get-wd-str (Float/parseFloat
-                                    (nth values 3)))
+       :wind-direction-str (get-wd-str (Float/parseFloat
+                                        (nth values 3)))
        :precipitation (Float/parseFloat (format "%.1f" (Float/parseFloat
                                                         (nth values 4))))
        :humidity (Float/parseFloat (format "%.1f" (Float/parseFloat
@@ -248,7 +248,8 @@
                     :cloudiness (if-not (nil? (:TotalCloudCover obs))
                                   (:TotalCloudCover obs) 9)
                     :wind-speed (:WindSpeedMS obs)
-                    :wind-direction (get-wd-str (:WindDirection obs))
+                    :wind-direction (:WindDirection obs)
+                    :wind-direction-str (get-wd-str (:WindDirection obs))
                     :humidity (:Humidity obs)
                     :feels-like (-calculate-feels-like-temp
                                  (:t2m obs)
@@ -290,7 +291,8 @@
                     :cloudiness (if-not (nil? (:cloudiness obs))
                                   (int (:cloudiness obs)) 9)
                     :wind-speed (:windspeed obs)
-                    :wind-direction (get-wd-str (:winddirection obs))
+                    :wind-direction (:winddirection obs)
+                    :wind-direction-str (get-wd-str (:winddirection obs))
                     :humidity (:humidity obs)
                     :feels-like (-calculate-feels-like-temp
                                  (:temperature obs)

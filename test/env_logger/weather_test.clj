@@ -64,7 +64,7 @@
   {:temperature 17.0
    :wind-speed 4.0
    :cloudiness 0
-   :wind-direction {:long "south east", :short "SE"}
+   :wind-direction-str {:long "south east", :short "SE"}
    :precipitation 1.0
    :humidity 93.0
    :time #inst "2022-06-07T16:00:00.000000000-00:00"
@@ -98,7 +98,7 @@
       (is (= {:temperature 17.0
               :wind-speed 4.0
               :cloudiness 0
-              :wind-direction {:long "south east", :short "SE"}
+              :wind-direction-str {:long "south east", :short "SE"}
               :precipitation 1.0
               :humidity 93.0
               :radiation 85.0}
@@ -190,8 +190,9 @@
         (is (rel= 1.4 (:temperature wd) :tol 0.01))
         (is (rel= 1.1 (:wind-speed wd) :tol 0.01))
         (is (= 8 (:cloudiness wd)))
+        (is (rel= 254.0 (:wind-direction wd) :tol 0.01))
         (is (= {:short "W"
-                :long "west"} (:wind-direction wd)))
+                :long "west"} (:wind-direction-str wd)))
         (is (rel= 90.0 (:humidity wd) :tol 0.01))
         (is (rel= -0.4 (:feels-like wd) :tol 0.01))))))
 
@@ -224,8 +225,9 @@
           (is (rel= 1.4 (:temperature wd) :tol 0.01))
           (is (rel= 1.1 (:wind-speed wd) :tol 0.01))
           (is (= 8 (:cloudiness wd)))
+          (is (= 254 (:wind-direction wd)))
           (is (= {:short "W"
-                  :long "west"} (:wind-direction wd)))
+                  :long "west"} (:wind-direction-str wd)))
           (is (rel= 90.0 (:humidity wd) :tol 0.01))
           (is (rel= -0.4 (:feels-like wd) :tol 0.01)))))))
 
@@ -380,7 +382,7 @@
         (is (rel= (:temperature expected-forecast) (:temperature forecast) :tol 0.01))
         (is (rel= (:wind-speed expected-forecast) (:wind-speed forecast) :tol 0.01))
         (is (= (:cloudiness expected-forecast) (:cloudiness forecast)))
-        (is (= (:wind-direction expected-forecast) (:wind-direction forecast)))
+        (is (= (:wind-direction-str expected-forecast) (:wind-direction-str forecast)))
         (is (rel= (:precipitation expected-forecast) (:precipitation forecast) :tol 0.01))
         (is (rel= (:humidity expected-forecast) (:humidity forecast) :tol 0.01))
         (is (rel= (:feels-like expected-forecast) (:feels-like forecast) :tol 0.01)))

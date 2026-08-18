@@ -389,7 +389,7 @@ const loadPage = () => {
         for (const key of weatherKeys) {
           switch (key) {
           case 'wind-speed':
-            observationText += `wind: ${wd['wind-direction'].long} ` +
+            observationText += `wind: ${wd['wind-direction-str'].long} ` +
               `${wd[key]} ${addUnitSuffix(key)}, `;
             break;
           case 'fmi-temperature':
@@ -481,7 +481,7 @@ const loadPage = () => {
           `: temperature: ${forecast.temperature} ${addUnitSuffix('temperature')}, ` +
           `feels like: ${forecast['feels-like']} ${addUnitSuffix('temperature')}, ` +
           `cloudiness: ${forecast.cloudiness} %, ` +
-          `wind: ${forecast['wind-direction'].long} ${forecast['wind-speed']} ${addUnitSuffix('wind')}, ` +
+          `wind: ${forecast['wind-direction-str'].long} ${forecast['wind-speed']} ${addUnitSuffix('wind')}, ` +
           `precipitation: ${forecast.precipitation} ${addUnitSuffix('precipitation')}, ` +
           `humidity: ${forecast.humidity} ${addUnitSuffix('humidity')}`;
       }

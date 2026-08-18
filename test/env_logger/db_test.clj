@@ -50,6 +50,7 @@
               display-resolution-label
               display-resolution-for-days
               merge-obs-and-ruuvi-air
+              get-weather-observations
               get-weather-observations-bucketed
               get-observations-bucketed
               get-ruuvitag-obs-bucketed
@@ -299,13 +300,37 @@
           weather-data {:time (jt/local-date-time)
                         :temperature 20
                         :cloudiness 2
-                        :wind-speed 5.0}]
+                        :wind-speed 5.0
+                        :wind-direction 254}]
       (is (pos? (insert-wd test-ds
                            obs-id
                            weather-data)))
       (is (pos? (insert-wd test-ds
                            obs-id
                            (assoc weather-data :cloudiness nil)))))))
+
+(deftest weather-observations-fetch-test
+  (testing "Weather observations include wind direction"
+    (jdbc/execute! test-ds (sql/format {:delete-from :weather_data}))
+    (let [obs-id (insert-plain-observation test-ds
+                                           {:timestamp (jt/zoned-date-time)
+                                            :insideLight 0
+                                            :insideTemperature 20.0
+                                            :co2 400
+                                            :outsideTemperature 5.0
+                                            :outsideLight 0
+                                            :vocIndex 0
+                                            :noxIndex 0})
+          obs-time (jt/sql-timestamp (jt/local-date-time 2024 6 1 12 0 0))]
+      (insert-wd test-ds obs-id
+                 {:time obs-time
+                  :temperature 18.0
+                  :cloudiness 3
+                  :wind-speed 2.5
+                  :wind-direction 270})
+      (let [result (get-weather-observations test-ds
+                                             :where [:= :time obs-time])]
+        (is (= [270] (:wind-direction result)))))))
 
 (deftest ruuvitag-observation-insert
   (testing "Insert of RuuviTag observation"
@@ -942,13 +967,47 @@
                    {:time (jt/sql-timestamp (jt/plus base-time (jt/minutes (* n 10))))
                     :temperature (float (+ 20 n))
                     :cloudiness n
-                    :wind-speed (float (inc (* 0.5 n)))}))
+                    :wind-speed (float (inc (* 0.5 n)))
+                    :wind-direction (+ 180 (* n 15))}))
       (let [start (jt/minus base-time (jt/minutes 1))
             end (jt/plus base-time (jt/minutes 55))
             bucketed (get-weather-observations-bucketed test-ds 30 start end)]
         (is (= 2 (count (:time bucketed))))
         (is (rel= 21.0 (nth (:temperature bucketed) 0) :tol 0.01))
-        (is (rel= 24.0 (nth (:temperature bucketed) 1) :tol 0.01))))))
+        (is (rel= 24.0 (nth (:temperature bucketed) 1) :tol 0.01))
+        (is (seq (:wind-direction bucketed)))))))
+
+(deftest bucketed-wind-direction-circular-mean-test
+  (testing "Bucketed wind direction uses circular mean near 0/360 wrap"
+    (jdbc/execute! test-ds (sql/format {:delete-from :weather_data}))
+    (let [obs-id (insert-plain-observation test-ds
+                                           {:timestamp (jt/zoned-date-time)
+                                            :insideLight 0
+                                            :insideTemperature 20.0
+                                            :co2 400
+                                            :outsideTemperature 5.0
+                                            :outsideLight 0
+                                            :vocIndex 0
+                                            :noxIndex 0})
+          base-time (jt/local-date-time 2024 6 1 12 0 0)]
+      (insert-wd test-ds obs-id
+                 {:time (jt/sql-timestamp base-time)
+                  :temperature 10.0
+                  :cloudiness 1
+                  :wind-speed 3.0
+                  :wind-direction 350})
+      (insert-wd test-ds obs-id
+                 {:time (jt/sql-timestamp (jt/plus base-time (jt/minutes 10)))
+                  :temperature 11.0
+                  :cloudiness 2
+                  :wind-speed 4.0
+                  :wind-direction 10})
+      (let [start (jt/minus base-time (jt/minutes 1))
+            end (jt/plus base-time (jt/minutes 15))
+            bucketed (get-weather-observations-bucketed test-ds 30 start end)
+            avg-deg (first (:wind-direction bucketed))]
+        (is (= 1 (count (:time bucketed))))
+        (is (or (zero? avg-deg) (= 360 avg-deg)))))))
 
 (deftest bucketed-observations-fetch-test
   (testing "Observations are aggregated into time buckets"

@@ -33,10 +33,24 @@ CREATE TABLE weather_data (
        time TIMESTAMP WITH TIME ZONE NOT NULL,
        temperature REAL,
        cloudiness SMALLINT,
-       wind_speed REAL
+       wind_speed REAL,
+       wind_direction SMALLINT
 );
 
 CREATE INDEX weather_data_time_brin ON weather_data USING BRIN (time);
+
+-- View for bucketing wind direction into values between 0-7. This may be used
+-- to display wind direction e.g. in Grafana.
+-- CREATE OR REPLACE VIEW wind_direction_display AS
+-- SELECT
+--     time,
+--     wind_direction,
+--     CASE
+--         WHEN wind_direction IS NULL THEN NULL
+--         WHEN wind_speed < 0.5 THEN NULL
+--         ELSE (FLOOR((wind_direction + 22.5) / 45)::int % 8)
+--     END AS wind_direction_bucket
+-- FROM weather_data;
 
 -- RuuviTag beacon observation data
 CREATE TABLE ruuvitag_observations (

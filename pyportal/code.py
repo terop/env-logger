@@ -316,7 +316,7 @@ def render_weather_rows(display, observation, weather_data, utc_offset_hour, tim
     )
     display[2].text = (
         f'clouds {weather["cloudiness"]}, wind '
-        f'{weather["wind-direction"]["short"]} {weather["wind-speed"]} m/s, '
+        f'{weather["wind-direction-str"]["short"]} {weather["wind-speed"]} m/s, '
         f'humidity {int(weather["humidity"])} %H'
     )
 
@@ -341,7 +341,7 @@ def render_forecast_rows(display, weather_data, utc_offset_hour):
                 )
                 display[4].text = (
                     f'clouds {forecast["cloudiness"]} %, '
-                    f'wind {forecast["wind-direction"]["short"]} '
+                    f'wind {forecast["wind-direction-str"]["short"]} '
                     f'{forecast["wind-speed"]} m/s, precip '
                     f'{forecast["precipitation"]} mm'
                 )
