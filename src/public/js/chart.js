@@ -50,6 +50,132 @@ let elecPriceThresholds = {};
 let testbedImageBasepath = '';
 let maxDisplayDays = 90;
 
+const CALM_WIND_SPEED = 0.5;
+const WIND_DIRECTION_TRACE = 'Wind direction';
+const WIND_ARROW_Y = 0.92;
+const WIND_ARROW_COLOR = '#838383';
+const WIND_ARROW_SYMBOL = 'triangle-up';
+const WIND_ARROW_SIZE = 11;
+const WIND_ARROW_SIZE_MIN = 9;
+const WIND_ARROW_MAX_COUNT = 80;
+const WIND_DIRECTION_LEGEND_GROUP = 'wind-direction';
+
+const isMainYAxisTrace = (trace) =>
+  trace && trace.name !== WIND_DIRECTION_TRACE && trace.yaxis !== 'y2';
+
+const degreesToCompassShort = (deg) => {
+  if (deg == null || Number.isNaN(deg)) {
+    return '?';
+  }
+  if (deg >= 0 && deg < 25) {
+    return 'N';
+  }
+  if (deg >= 25 && deg < 65) {
+    return 'NE';
+  }
+  if (deg >= 65 && deg < 115) {
+    return 'E';
+  }
+  if (deg >= 115 && deg < 155) {
+    return 'SE';
+  }
+  if (deg >= 155 && deg < 205) {
+    return 'S';
+  }
+  if (deg >= 205 && deg < 245) {
+    return 'SW';
+  }
+  if (deg >= 245 && deg < 295) {
+    return 'W';
+  }
+  if (deg >= 295 && deg < 335) {
+    return 'NW';
+  }
+  if (deg >= 335 && deg <= 360) {
+    return 'N';
+  }
+  return '?';
+};
+
+const windFlowAngle = (fromDeg) => (fromDeg + 180) % 360;
+
+const windDirectionMarker = (size = WIND_ARROW_SIZE) => ({
+  symbol: WIND_ARROW_SYMBOL,
+  size,
+  color: WIND_ARROW_COLOR
+});
+
+const buildWindDirectionTraces = (xValues, windDirections, windSpeeds, pointCount) => {
+  if (!windDirections || !windSpeeds || !xValues.length) {
+    return [];
+  }
+
+  const arrowStep = Math.max(1, Math.ceil(pointCount / WIND_ARROW_MAX_COUNT));
+  const arrowSize = arrowStep === 1
+    ? WIND_ARROW_SIZE
+    : arrowStep === 2
+      ? 10
+      : WIND_ARROW_SIZE_MIN;
+  const x = [];
+  const y = [];
+  const angle = [];
+  const customdata = [];
+
+  for (let i = 0; i < xValues.length; i++) {
+    const dir = windDirections[i];
+    const speed = windSpeeds[i];
+    const showArrow = i % arrowStep === 0
+      && dir != null
+      && speed != null
+      && speed >= CALM_WIND_SPEED;
+
+    if (showArrow) {
+      x.push(xValues[i]);
+      y.push(WIND_ARROW_Y);
+      angle.push(windFlowAngle(dir));
+      customdata.push(`${dir}\u00b0 (${degreesToCompassShort(dir)})`);
+    }
+  }
+
+  if (!x.length) {
+    return [];
+  }
+
+  return [
+    {
+      type: 'scatter',
+      mode: 'markers',
+      x: [x[0]],
+      y: [2],
+      yaxis: 'y2',
+      name: WIND_DIRECTION_TRACE,
+      legendgroup: WIND_DIRECTION_LEGEND_GROUP,
+      showlegend: true,
+      hoverinfo: 'skip',
+      marker: windDirectionMarker()
+    },
+    {
+      type: 'scatter',
+      mode: 'markers',
+      x,
+      y,
+      yaxis: 'y2',
+      customdata,
+      name: WIND_DIRECTION_TRACE,
+      legendgroup: WIND_DIRECTION_LEGEND_GROUP,
+      showlegend: false,
+      cliponaxis: false,
+      hovertemplate: '%{customdata}<extra></extra>',
+      marker: {
+        ...windDirectionMarker(arrowSize),
+        angle,
+        angleref: 'up'
+      },
+      xhoverformat: '<b>%d.%m. %H:%M:%S</b>'
+    }
+  ];
+};
+
 const getAxiosErrorStatus = (error) =>
   error?.response?.status ?? error?.status;
 
@@ -240,6 +366,10 @@ const loadPage = () => {
     fieldNames.weather.forEach((value) => {
       dataSets.weather[value] = weatherData[value];
     });
+
+    if (weatherData['wind-direction']) {
+      dataSets.weather['wind-direction'] = weatherData['wind-direction'];
+    }
   };
 
   const parseOtherData = (otherData) => {
@@ -1164,6 +1294,15 @@ const loadPage = () => {
           };
           traces.push({ ...changingOpts, ...commonOpts });
         }
+
+        if (plotType === 'weather') {
+          traces.push(...buildWindDirectionTraces(
+            xValues,
+            dataSets.weather['wind-direction'],
+            dataSets.weather['wind-speed'],
+            pointCount
+          ));
+        }
       } else {
         const rtMeasurables = ['temperature', 'humidity'];
 
@@ -1263,7 +1402,7 @@ const loadPage = () => {
       } else {
         const plot = document.getElementById(`${plotType}Plot`);
         for (const trace of plot.data) {
-          if (trace.visible === true) {
+          if (trace.visible === true && isMainYAxisTrace(trace)) {
             traceData.push(trace.y);
           }
         }
@@ -1301,6 +1440,20 @@ const loadPage = () => {
         },
         hovermode: 'x unified'
       };
+
+      if (plotType === 'weather') {
+        layout.yaxis2 = {
+          overlaying: 'y',
+          side: 'right',
+          range: [0, 1],
+          showgrid: false,
+          zeroline: false,
+          showticklabels: false,
+          ticks: '',
+          showline: false,
+          fixedrange: true
+        };
+      }
 
       // other and ruuvitag plot types share the same annotation indexes
       const annConfig = generateAnnotationConfig(plotType === 'weather' ? plotType : 'other', traceData);
@@ -1387,10 +1540,14 @@ const loadPage = () => {
           const traceData = [];
 
           for (const i of visTraceArray) {
-            traceData.push(eData[i].y);
+            if (isMainYAxisTrace(eData[i])) {
+              traceData.push(eData[i].y);
+            }
           }
 
-          updateAnnotationAndRangeYValues(plot, traceData);
+          if (traceData.length) {
+            updateAnnotationAndRangeYValues(plot, traceData);
+          }
         } else {
           resetAnnotationAndRangeYValues(plot);
         }
@@ -1488,7 +1645,7 @@ const loadPage = () => {
       const visTraceData = [];
 
       for (let i = 0; i < newTraces.length; i++) {
-        if (traceVisibility[i] === true) {
+        if (traceVisibility[i] === true && isMainYAxisTrace(newTraces[i])) {
           visTraceData.push(newTraces[i].y);
         }
       }
@@ -1722,7 +1879,9 @@ const loadPage = () => {
     const traceData = [];
 
     for (const trace of plotElem.data) {
-      traceData.push(trace.y);
+      if (isMainYAxisTrace(trace)) {
+        traceData.push(trace.y);
+      }
     }
     updateAnnotationAndRangeYValues(plotElem, traceData);
   };
