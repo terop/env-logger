@@ -1,4 +1,4 @@
-/* global applicationUrl,axios,luxon,Plotly,refreshTokensIfNeeded */
+/* global applicationUrl,axios,echarts,luxon,refreshTokensIfNeeded */
 
 const DateTime = luxon.DateTime;
 
@@ -49,19 +49,113 @@ let elecMinutePriceData = {};
 let elecPriceThresholds = {};
 let testbedImageBasepath = '';
 let maxDisplayDays = 90;
+let weatherChart = null;
+let otherChart = null;
+let ruuvitagChart = null;
+let hourElecChart = null;
+let dayElecChart = null;
+let minuteElecChart = null;
+let hourElecPriceCache = { xValues: [], prices: [] };
+let minuteElecPriceCache = { xValues: [], prices: [] };
 
-const CALM_WIND_SPEED = 0.5;
-const WIND_DIRECTION_TRACE = 'Wind direction';
-const WIND_ARROW_Y = 0.92;
-const WIND_ARROW_COLOR = '#838383';
-const WIND_ARROW_SYMBOL = 'triangle-up';
-const WIND_ARROW_SIZE = 11;
-const WIND_ARROW_SIZE_MIN = 9;
-const WIND_ARROW_MAX_COUNT = 80;
-const WIND_DIRECTION_LEGEND_GROUP = 'wind-direction';
+const WIND_DIRECTION_SERIES = 'Wind direction';
+const DAY_MARK_LINE_SERIES = '__dayMarkLines__';
 
-const isMainYAxisTrace = (trace) =>
-  trace && trace.name !== WIND_DIRECTION_TRACE && trace.yaxis !== 'y2';
+const buildDayMarkLineSeries = (markLineData, {
+  xAxisIndex = 0,
+  yAxisIndex = 0
+} = {}) => ({
+  id: DAY_MARK_LINE_SERIES,
+  name: DAY_MARK_LINE_SERIES,
+  type: 'line',
+  xAxisIndex,
+  yAxisIndex,
+  data: [],
+  silent: true,
+  symbol: 'none',
+  lineStyle: { opacity: 0 },
+  legendHoverLink: false,
+  tooltip: { show: false },
+  markLine: {
+    silent: true,
+    symbol: 'none',
+    lineStyle: { color: '#838b93', width: 1, type: 'solid' },
+    label: { show: false },
+    data: markLineData
+  }
+});
+
+// Observation charts only (Weather / Other / RuuviTag)
+const buildXyDataZoom = ({
+  xAxisIndex = 0,
+  yAxisIndex = 0,
+  sliderBottom = 36
+} = {}) => [
+  {
+    type: 'inside',
+    xAxisIndex,
+    filterMode: 'none'
+  },
+  {
+    type: 'inside',
+    yAxisIndex,
+    filterMode: 'none'
+  },
+  {
+    type: 'slider',
+    xAxisIndex,
+    height: 22,
+    bottom: sliderBottom,
+    filterMode: 'none'
+  }
+];
+
+// Bottom stack: multi-row plain legend, then zoom slider, then plot.
+const buildObsBottomLayout = (seriesCount, {
+  chartWidth = 1300,
+  avgItemWidth = 170
+} = {}) => {
+  const usableWidth = chartWidth * 0.9;
+  const itemsPerRow = Math.max(1, Math.floor(usableWidth / avgItemWidth));
+  const legendRows = Math.max(1, Math.ceil(seriesCount / itemsPerRow));
+  const legendRowHeight = 22;
+  const legendBottom = 4;
+  const legendHeight = legendRows * legendRowHeight;
+  const sliderHeight = 22;
+  const sliderGap = 10;
+  const sliderBottom = legendBottom + legendHeight + sliderGap;
+  // Room for tick labels plus x-axis name (nameGap: 30).
+  const axisLabelGap = 50;
+  const gridBottom = sliderBottom + sliderHeight + axisLabelGap;
+
+  return {
+    legend: {
+      type: 'plain',
+      orient: 'horizontal',
+      left: 'center',
+      bottom: legendBottom,
+      width: '90%'
+    },
+    sliderBottom,
+    gridBottom
+  };
+};
+
+const tooltipPointValue = (param) => {
+  if (Array.isArray(param.data)) {
+    return param.data[1];
+  }
+  if (param.data && Array.isArray(param.data.value)) {
+    return param.data.value[1];
+  }
+  if (Array.isArray(param.value)) {
+    return param.value[1];
+  }
+  return param.data;
+};
+
+const hasTooltipPointData = (value) =>
+  value != null && !Number.isNaN(value);
 
 const degreesToCompassShort = (deg) => {
   if (deg == null || Number.isNaN(deg)) {
@@ -99,81 +193,37 @@ const degreesToCompassShort = (deg) => {
 
 const windFlowAngle = (fromDeg) => (fromDeg + 180) % 360;
 
-const windDirectionMarker = (size = WIND_ARROW_SIZE) => ({
-  symbol: WIND_ARROW_SYMBOL,
-  size,
-  color: WIND_ARROW_COLOR
-});
+const buildWindArrowPoints = (xValues, windDirections, windSpeeds, pointCount) => {
+  const calmWindSpeed = 0.5;
+  const windArrowY = 0.5;
+  const windArrowMaxCount = 90;
 
-const buildWindDirectionTraces = (xValues, windDirections, windSpeeds, pointCount) => {
   if (!windDirections || !windSpeeds || !xValues.length) {
-    return [];
+    return { points: [], symbolSize: 14 };
   }
 
-  const arrowStep = Math.max(1, Math.ceil(pointCount / WIND_ARROW_MAX_COUNT));
-  const arrowSize = arrowStep === 1
-    ? WIND_ARROW_SIZE
-    : arrowStep === 2
-      ? 10
-      : WIND_ARROW_SIZE_MIN;
-  const x = [];
-  const y = [];
-  const angle = [];
-  const customdata = [];
+  const arrowStep = Math.max(1, Math.ceil(pointCount / windArrowMaxCount));
+  const symbolSize = arrowStep === 1 ? 14 : arrowStep === 2 ? 12 : 10;
+  const points = [];
 
   for (let i = 0; i < xValues.length; i++) {
     const dir = windDirections[i];
     const speed = windSpeeds[i];
-    const showArrow = i % arrowStep === 0
-      && dir != null
-      && speed != null
-      && speed >= CALM_WIND_SPEED;
-
-    if (showArrow) {
-      x.push(xValues[i]);
-      y.push(WIND_ARROW_Y);
-      angle.push(windFlowAngle(dir));
-      customdata.push(`${dir}\u00b0 (${degreesToCompassShort(dir)})`);
+    if (i % arrowStep !== 0
+        || dir == null
+        || speed == null
+        || speed < calmWindSpeed) {
+      continue;
     }
+
+    points.push({
+      value: [xValues[i].getTime(), windArrowY],
+      symbolRotate: windFlowAngle(dir),
+      label: `${degreesToCompassShort(dir)} (${dir}\u00b0)`
+    });
   }
 
-  if (!x.length) {
-    return [];
-  }
-
-  return [
-    {
-      type: 'scatter',
-      mode: 'markers',
-      x: [x[0]],
-      y: [2],
-      yaxis: 'y2',
-      name: WIND_DIRECTION_TRACE,
-      legendgroup: WIND_DIRECTION_LEGEND_GROUP,
-      showlegend: true,
-      hoverinfo: 'skip',
-      marker: windDirectionMarker()
-    },
-    {
-      type: 'scatter',
-      mode: 'markers',
-      x,
-      y,
-      yaxis: 'y2',
-      customdata,
-      name: WIND_DIRECTION_TRACE,
-      legendgroup: WIND_DIRECTION_LEGEND_GROUP,
-      showlegend: false,
-      cliponaxis: false,
-      hovertemplate: '%{customdata}<extra></extra>',
-      marker: {
-        ...windDirectionMarker(arrowSize),
-        angle,
-        angleref: 'up'
-      },
-      xhoverformat: '<b>%d.%m. %H:%M:%S</b>'
-    }
-  ];
+  return { points, symbolSize };
 };
 
 const getAxiosErrorStatus = (error) =>
@@ -298,6 +348,208 @@ const getBucketedXAxisConfig = (diffInDays) => {
 const getXAxisConfig = (diffInDays) =>
   (displayResolution ? getBucketedXAxisConfig : getRawXAxisConfig)(diffInDays);
 
+const niceAxisDecimals = (value) => {
+  const abs = Math.abs(value);
+  if (abs >= 100) {
+    return 0;
+  }
+  if (abs >= 10) {
+    return 1;
+  }
+  return 2;
+};
+
+const niceAxisStep = (range, targetTicks = 5) => {
+  if (range <= 0) {
+    return 0.1;
+  }
+
+  const rough = range / targetTicks;
+  const magnitude = 10 ** Math.floor(Math.log10(rough));
+  const normalized = rough / magnitude;
+  let niceNormalized;
+
+  if (normalized <= 1) {
+    niceNormalized = 1;
+  } else if (normalized <= 2) {
+    niceNormalized = 2;
+  } else if (normalized <= 5) {
+    niceNormalized = 5;
+  } else {
+    niceNormalized = 10;
+  }
+
+  return niceNormalized * magnitude;
+};
+
+const snapAxisBound = (value, step, direction) => {
+  const snapped = direction === 'min'
+    ? Math.floor(value / step + 1e-9) * step
+    : Math.ceil(value / step - 1e-9) * step;
+  const decimals = niceAxisDecimals(step);
+  return Number(snapped.toFixed(decimals));
+};
+
+const formatNiceAxisLabel = (value) => {
+  const decimals = niceAxisDecimals(value);
+  return Number(value.toFixed(decimals)).toString();
+};
+
+const getNiceYAxisRange = (minValue, maxValue, {
+  minPadding = 0,
+  maxPadding = 0,
+  minFloor = 0
+} = {}) => {
+  const rawMin = Math.max(minFloor, minValue - minPadding);
+  const rawMax = maxValue + maxPadding;
+  const interval = niceAxisStep(rawMax - rawMin);
+  let min = snapAxisBound(rawMin, interval, 'min');
+  let max = snapAxisBound(rawMax, interval, 'max');
+
+  min = Math.max(minFloor, min);
+  if (max <= min) {
+    max = min + interval;
+  }
+
+  return { min, max, interval };
+};
+
+// Price axes start at 0, or at the (padded) minimum when prices are negative.
+const getElecPriceYAxisRange = (minPrice, maxPrice, {
+  minPadding = 0.5,
+  maxPadding = 0.5
+} = {}) => {
+  if (minPrice < 0) {
+    return getNiceYAxisRange(minPrice, maxPrice, {
+      minPadding,
+      maxPadding,
+      minFloor: Number.NEGATIVE_INFINITY
+    });
+  }
+
+  return getNiceYAxisRange(0, maxPrice, {
+    minPadding: 0,
+    maxPadding,
+    minFloor: 0
+  });
+};
+
+const getDataExtremeValues = (plotData) => {
+  let minValue = Infinity;
+  let maxValue = -Infinity;
+  let hasValue = false;
+
+  for (let i = 0; i < plotData.length; i++) {
+    const series = plotData[i].filter((item) => !Number.isNaN(item) && item !== null);
+    if (!series.length) {
+      continue;
+    }
+
+    hasValue = true;
+    const seriesMin = Math.min(...series);
+    const seriesMax = Math.max(...series);
+
+    if (seriesMin < minValue) {
+      minValue = seriesMin;
+    }
+    if (seriesMax > maxValue) {
+      maxValue = seriesMax;
+    }
+  }
+
+  if (!hasValue) {
+    return null;
+  }
+
+  return [minValue, maxValue];
+};
+
+const computeObsAxisPadding = (minValue, maxValue, {
+  ratio = 0.05,
+  minAbsolute = 0.25
+} = {}) => {
+  const span = maxValue - minValue;
+  if (span === 0) {
+    return Math.max(minAbsolute, Math.abs(minValue) * ratio || minAbsolute);
+  }
+  return Math.max(minAbsolute, span * ratio);
+};
+
+const shouldAnchorObsAxisAtZero = (minValue, maxValue, span) => {
+  if (minValue < 0) {
+    return false;
+  }
+  if (minValue === 0) {
+    return true;
+  }
+  return minValue <= Math.max(span * 0.25, maxValue * 0.05);
+};
+
+const getObsYAxisRange = (minValue, maxValue) => {
+  const padding = computeObsAxisPadding(minValue, maxValue);
+  const span = maxValue - minValue;
+
+  if (span === 0) {
+    if (minValue === 0) {
+      return getNiceYAxisRange(0, maxValue, {
+        minPadding: 0,
+        maxPadding: padding,
+        minFloor: 0
+      });
+    }
+
+    return getNiceYAxisRange(minValue, maxValue, {
+      minPadding: padding,
+      maxPadding: padding,
+      minFloor: Number.NEGATIVE_INFINITY
+    });
+  }
+
+  if (shouldAnchorObsAxisAtZero(minValue, maxValue, span)) {
+    return getNiceYAxisRange(0, maxValue, {
+      minPadding: 0,
+      maxPadding: padding,
+      minFloor: 0
+    });
+  }
+
+  if (minValue < 0) {
+    const result = getNiceYAxisRange(minValue, maxValue, {
+      minPadding: padding,
+      maxPadding: padding,
+      minFloor: Number.NEGATIVE_INFINITY
+    });
+
+    // Mixed-scale charts (e.g. RSSI near -100 dBm with CO2/light in hundreds)
+    // can snap the axis minimum far below the data when the full-span interval
+    // is coarse. Limit the min bound using a step sized for the negative side.
+    const minOnlyInterval = niceAxisStep(
+      Math.max(Math.abs(minValue) + padding, 0.5)
+    );
+    const minBound = snapAxisBound(minValue - padding, minOnlyInterval, 'min');
+    return {
+      ...result,
+      min: Math.max(result.min, minBound)
+    };
+  }
+
+  return getNiceYAxisRange(minValue, maxValue, {
+    minPadding: padding,
+    maxPadding: padding,
+    minFloor: Number.NEGATIVE_INFINITY
+  });
+};
+
+const yRangeFromVisibleSeries = (seriesDataList) => {
+  const extremes = getDataExtremeValues(seriesDataList);
+  if (!extremes) {
+    return { yMin: 0, yMax: 1, yInterval: 0.5 };
+  }
+
+  const { min, max, interval } = getObsYAxisRange(extremes[0], extremes[1]);
+  return { yMin: min, yMax: max, yInterval: interval };
+};
+
 const loadPage = () => {
   // Parse RuuviTag observations
   // rtObservations - observations as JSON
@@ -398,7 +650,7 @@ const loadPage = () => {
     });
   };
 
-  // Transform data to Plotly compatible format. Returns the data series labels.
+  // Transform data to chart-compatible format. Returns the data series labels.
   const transformData = () => {
     annotationIndices.weather = [];
     annotationIndices.other = [];
@@ -624,30 +876,18 @@ const loadPage = () => {
     // Show the hourly electricity price and consumption data in a chart
     var plotElectricityDataHour = (elecData, updateDate = false,
                                    removeLast = false) => {
-
-      const generateElecAnnotationConfig = (xValues, yValues) => {
-        const shapes = [];
-        const extValues = getDataExtremeValues(yValues);
-        const yMinMax = [extValues[0] - 0.4, extValues[1] + 0.4];
-
+      const buildHourElecDayMarkLines = (xValues, yMin, yMax) => {
+        const data = [];
         // Skip first and last data points as lines are not needed there
         for (let i = 1; i < xValues.length - 1; i++) {
           if (DateTime.fromJSDate(xValues[i]).hour === 0) {
-            shapes.push({
-              type: 'line',
-              x0: xValues[i],
-              y0: yMinMax[0],
-              x1: xValues[i],
-              y1: yMinMax[1],
-              line: {
-                color: '#838b93',
-                width: 1
-              }
-            });
+            data.push([
+              { xAxis: xValues[i].getTime(), yAxis: yMin },
+              { xAxis: xValues[i].getTime(), yAxis: yMax }
+            ]);
           }
         }
-
-        return shapes;
+        return data;
       };
 
       const arraySum = (array) => {
@@ -671,106 +911,172 @@ const loadPage = () => {
         data.consumption.push(item.consumption);
       }
 
+      hourElecPriceCache = { xValues, prices: data.price };
+
       if (updateDate) {
         document.getElementById('elecEndDate').value = xValues.length
           ? DateTime.fromJSDate(xValues[xValues.length - 1]).toISODate()
           : DateTime.now().toISODate();
       }
 
-        document.getElementById('elecInfoBox').innerHTML = 'Current interval: consumption: ' +
-          `${arraySum(data.consumption).toFixed(2)} kWh, average price: ` +
-          `${arrayAverage(data.price).toFixed(2)} c / kWh, ` +
-          'total cost: <span id="intervalCost"></span> €';
-
-      const generateElecTraceConfig = () => {
-        return [{
-          x: xValues,
-          y: data.price,
-          name: 'Price',
-          type: 'bar',
-          xhoverformat: '<b>%d.%m. %H:%M</b>',
-          hovertemplate: '%{y}%{text}',
-          text: Array(xValues.length).fill(' c / kWh'),
-          textposition: 'none',
-          marker: {
-            color: generateElecHourBarChartColours(xValues, data.price)
-          }
-        },
-        {
-          x: xValues,
-          y: data.consumption,
-          name: 'Consumption',
-          type: 'lines',
-          line: {
-            color: 'rgb(0, 0, 0)',
-            width: 2,
-          },
-          yaxis: 'y2',
-          xhoverformat: '<b>%d.%m. %H:%M</b>',
-          hovertemplate: '%{text}',
-          text: data.consumption.map((value) => `${value} kWh`)
-        }];
-      };
+      document.getElementById('elecInfoBox').innerHTML = 'Current interval: consumption: ' +
+        `${arraySum(data.consumption).toFixed(2)} kWh, average price: ` +
+        `${arrayAverage(data.price).toFixed(2)} c / kWh, ` +
+        'total cost: <span id="intervalCost"></span> €';
 
       const extValuesConsp = getDataExtremeValues([data.consumption]);
       const extValuesPrice = getDataExtremeValues([data.price]);
+      const { min: priceMin, max: priceMax, interval: priceInterval } =
+        getElecPriceYAxisRange(
+          extValuesPrice[0],
+          extValuesPrice[extValuesPrice.length - 1]
+        );
+      const { min: conspMin, max: conspMax, interval: conspInterval } =
+        getNiceYAxisRange(
+          extValuesConsp[0],
+          extValuesConsp[extValuesConsp.length - 1],
+          { minPadding: 0.1, maxPadding: 0.1 }
+        );
+      const barColours = generateElecHourBarChartColours(xValues, data.price);
 
-      const generateElecLayoutConfig = (diffInDays) => {
-        const xAxis = getXAxisConfig(diffInDays);
-        return {
-          width: 1300,
-          height: 650,
-          title: {
-            text: 'Hourly electricity price and consumption'
+      const priceData = xValues.map((dt, i) => ({
+        value: [dt.getTime(), data.price[i]],
+        itemStyle: { color: barColours[i] }
+      }));
+      const consumptionData = xValues.map((dt, i) => [
+        dt.getTime(),
+        data.consumption[i]
+      ]);
+
+      const option = {
+        title: {
+          text: 'Hourly electricity price and consumption',
+          left: 'center'
+        },
+        legend: {
+          orient: 'horizontal',
+          bottom: 0
+        },
+        grid: {
+          left: 60,
+          right: 60,
+          top: 50,
+          bottom: 60
+        },
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: { type: 'shadow' },
+          formatter: (params) => {
+            if (!params || !params.length) {
+              return '';
+            }
+            const ts = DateTime.fromMillis(params[0].axisValue)
+              .toFormat('dd.MM. HH:mm');
+            let html = `<b>${ts}</b>`;
+            for (const p of params) {
+              const y = tooltipPointValue(p);
+              if (!hasTooltipPointData(y)) {
+                continue;
+              }
+              if (p.seriesName === 'Price') {
+                html += `<br/>${p.marker}${p.seriesName}: ${y} c / kWh`;
+              } else {
+                html += `<br/>${p.marker}${p.seriesName}: ${y} kWh`;
+              }
+            }
+            return html;
+          }
+        },
+        xAxis: {
+          type: 'time',
+          name: 'Time',
+          nameLocation: 'middle',
+          nameGap: 30,
+          axisLabel: {
+            hideOverlap: true,
+            formatter: (value) =>
+              DateTime.fromMillis(value).toFormat('dd.MM. HH:mm')
+          }
+        },
+        yAxis: [
+          {
+            type: 'value',
+            name: 'Price (c / kWh)',
+            min: priceMin,
+            max: priceMax,
+            interval: priceInterval,
+            scale: false,
+            axisLabel: {
+              formatter: formatNiceAxisLabel
+            }
           },
-          xaxis: {
-            title: {
-              text: 'Time'
-            },
-            type: 'date',
-            dtick: xAxis.dtick,
-            tickformat: xAxis.tickformat,
-            tickangle: xAxis.tickangle
+          {
+            type: 'value',
+            name: 'Consumption (kWh)',
+            min: conspMin,
+            max: conspMax,
+            interval: conspInterval,
+            scale: false,
+            axisLabel: {
+              formatter: formatNiceAxisLabel
+            }
+          }
+        ],
+        series: [
+          {
+            name: 'Price',
+            type: 'bar',
+            yAxisIndex: 0,
+            barMaxWidth: 24,
+            data: priceData,
+            markLine: {
+              silent: true,
+              symbol: 'none',
+              lineStyle: { color: '#838b93', width: 1, type: 'solid' },
+              label: { show: false },
+              data: buildHourElecDayMarkLines(xValues, priceMin, priceMax)
+            }
           },
-          yaxis: {
-            title: {
-              text: 'Price (c / kWh)'
-            },
-            range: [extValuesPrice[0] - 0.5,
-                    extValuesPrice[extValuesPrice.length - 1] + 0.5]
-          },
-          yaxis2: {
-            title: {
-              text: 'Consumption (kWh)'
-            },
-            overlaying: 'y',
-            side: 'right',
-            range: [extValuesConsp[0] - 0.1, extValuesConsp[extValuesConsp.length - 1] + 0.1]
-          },
-          legend: {
-            orientation: 'h'
-          },
-          hovermode: 'x unified',
-          shapes: generateElecAnnotationConfig(xValues, [data.price, data.consumption])
-        };
+          {
+            name: 'Consumption',
+            type: 'line',
+            yAxisIndex: 1,
+            showSymbol: false,
+            lineStyle: { color: '#000000', width: 2 },
+            itemStyle: { color: '#000000' },
+            data: consumptionData
+          }
+        ]
       };
 
-      const diffInDays = DateTime.fromJSDate(xValues[xValues.length - 1]).diff(
-        DateTime.fromJSDate(xValues[0]), 'days').toObject().days;
-      if (!document.getElementById('hourElecDataPlot').data) {
-        Plotly.newPlot('hourElecDataPlot',
-          generateElecTraceConfig(),
-          generateElecLayoutConfig(diffInDays));
-      } else {
-        Plotly.react('hourElecDataPlot',
-          generateElecTraceConfig(),
-          generateElecLayoutConfig(diffInDays));
+      const el = document.getElementById('hourElecDataPlot');
+      if (!hourElecChart) {
+        hourElecChart = echarts.init(el);
       }
+      hourElecChart.setOption(option, { notMerge: true });
+      hourElecChart.resize();
+    };
+
+    var refreshHourElecBarColours = () => {
+      if (!hourElecChart || !hourElecPriceCache.xValues.length) {
+        return;
+      }
+      const colours = generateElecHourBarChartColours(
+        hourElecPriceCache.xValues,
+        hourElecPriceCache.prices
+      );
+      const priceData = hourElecPriceCache.xValues.map((dt, i) => ({
+        value: [dt.getTime(), hourElecPriceCache.prices[i]],
+        itemStyle: { color: colours[i] }
+      }));
+      hourElecChart.setOption({
+        series: [{ data: priceData }]
+      });
     };
 
     // Show the daily electricity price and consumption data in a chart
     var plotElectricityDataDay = (elecData, removeLast = false) => {
-      const labels = [];
+      const xValues = [];
       const data = {
         price: [],
         consumption: []
@@ -778,79 +1084,138 @@ const loadPage = () => {
 
       for (let i = 0; i < elecData.length - (removeLast ? 1 : 0); i++) {
         const item = elecData[i];
-        labels.push(item.date);
+        if (!item) {
+          continue;
+        }
+        xValues.push(DateTime.fromISO(item.date).toJSDate());
         data.price.push(item.price);
         data.consumption.push(item.consumption);
       }
 
-      const generateElecTraceConfig = () => {
-        return [{
-          x: labels,
-          y: data.price,
-          name: 'Average price',
-          mode: 'lines',
-          line: {
-            width: 2
-          },
-          xhoverformat: '<b>%d.%m.%Y</b>',
-          hovertemplate: '%{y}%{text}',
-          text: Array(labels.length).fill(' c / kWh')
+      const priceData = xValues.map((dt, i) => [dt.getTime(), data.price[i]]);
+      const consumptionData = xValues.map((dt, i) => [
+        dt.getTime(),
+        data.consumption[i]
+      ]);
+
+      const extValuesConsp = getDataExtremeValues([data.consumption]);
+      const conspMaxValue = extValuesConsp[extValuesConsp.length - 1];
+      // Extra headroom so bar value labels stay inside the plot area
+      const {
+        min: conspMin,
+        max: conspMax,
+        interval: conspInterval
+      } = conspMaxValue <= 0
+        ? { min: 0, max: 1, interval: 0.5 }
+        : getNiceYAxisRange(0, conspMaxValue, {
+          maxPadding: conspMaxValue * 0.1,
+          minFloor: 0
+        });
+
+      const option = {
+        title: {
+          text: 'Daily electricity price and consumption',
+          left: 'center'
         },
-        {
-          x: labels,
-          y: data.consumption,
-          name: 'Consumption',
-          type: 'bar',
-          yaxis: 'y2',
-          xhoverformat: '<b>%d.%m.%Y</b>',
-          hovertemplate: '%{text}',
-          text: data.consumption.map((value) => `${value} kWh`)
-        }];
+        legend: {
+          orient: 'horizontal',
+          bottom: 0
+        },
+        grid: {
+          left: 60,
+          right: 60,
+          top: 50,
+          bottom: 60
+        },
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: { type: 'shadow' },
+          formatter: (params) => {
+            if (!params || !params.length) {
+              return '';
+            }
+            const ts = DateTime.fromMillis(params[0].axisValue)
+              .toFormat('dd.MM.yyyy');
+            let html = `<b>${ts}</b>`;
+            for (const p of params) {
+              const y = tooltipPointValue(p);
+              if (!hasTooltipPointData(y)) {
+                continue;
+              }
+              if (p.seriesName === 'Average price') {
+                html += `<br/>${p.marker}${p.seriesName}: ${y} c / kWh`;
+              } else {
+                html += `<br/>${p.marker}${p.seriesName}: ${y} kWh`;
+              }
+            }
+            return html;
+          }
+        },
+        xAxis: {
+          type: 'time',
+          name: 'Date',
+          nameLocation: 'middle',
+          nameGap: 30,
+          minInterval: 24 * 3600 * 1000,
+          axisLabel: {
+            hideOverlap: true,
+            formatter: (value) =>
+              DateTime.fromMillis(value).toFormat('dd.MM.yyyy')
+          }
+        },
+        yAxis: [
+          {
+            type: 'value',
+            name: 'Average price (c / kWh)'
+          },
+          {
+            type: 'value',
+            name: 'Consumption (kWh)',
+            min: conspMin,
+            max: conspMax,
+            interval: conspInterval,
+            scale: false,
+            axisLabel: {
+              formatter: formatNiceAxisLabel
+            }
+          }
+        ],
+        series: [
+          {
+            name: 'Average price',
+            type: 'line',
+            yAxisIndex: 0,
+            showSymbol: false,
+            lineStyle: { width: 2 },
+            data: priceData
+          },
+          {
+            name: 'Consumption',
+            type: 'bar',
+            yAxisIndex: 1,
+            barMaxWidth: 24,
+            data: consumptionData,
+            label: {
+              show: true,
+              position: 'top',
+              formatter: (params) => {
+                const y = Array.isArray(params.value) ? params.value[1] : params.value;
+                if (y == null || Number.isNaN(y)) {
+                  return '';
+                }
+                return `${y} kWh`;
+              }
+            }
+          }
+        ]
       };
 
-      const generateElecLayoutConfig = () => {
-        return {
-          width: 1300,
-          height: 550,
-          title: {
-            text: 'Daily electricity price and consumption'
-          },
-          xaxis: {
-            title: {
-              text: 'Date'
-            },
-            type: 'date',
-            dtick: 86400000,
-            tickformat: '%d.%m.%Y'
-          },
-          yaxis: {
-            title: {
-              text: 'Average price (c / kWh)'
-            },
-            overlaying: 'y2',
-          },
-          yaxis2: {
-            title: {
-              text: 'Consumption (kWh)'
-            },
-            side: 'right'
-          },
-          legend: {
-            orientation: 'h'
-          },
-          hovermode: 'x unified'
-        };
-      };
-
-      if (!document.getElementById('dayElecDataPlot').data) {
-        Plotly.newPlot('dayElecDataPlot',
-          generateElecTraceConfig(),
-          generateElecLayoutConfig());
-      } else {
-        Plotly.react('dayElecDataPlot',
-          generateElecTraceConfig(),
-          generateElecLayoutConfig());
+      const el = document.getElementById('dayElecDataPlot');
+      if (!dayElecChart) {
+        dayElecChart = echarts.init(el);
       }
+      dayElecChart.setOption(option, { notMerge: true });
+      dayElecChart.resize();
     };
 
     // Highlight the current hour's values in the hourly electricity
@@ -926,66 +1291,111 @@ const loadPage = () => {
         data.price.push(item.price);
       }
 
-      const generateElecTraceConfig = () => {
-        return [{
-          x: xValues,
-          y: data.price,
-          name: 'Price',
-          type: 'bar',
-          xhoverformat: '<b>%d.%m. %H:%M</b>',
-          hovertemplate: '%{y}%{text}',
-          text: Array(xValues.length).fill(' c / kWh'),
-          textposition: 'none',
-          marker: {
-            color: generateElecMinuteChartBarColours(xValues, data.price)
-          }
-        }];
-      };
+      minuteElecPriceCache = { xValues, prices: data.price };
 
       const extValuesPrice = getDataExtremeValues([data.price]);
+      const { min: priceMin, max: priceMax, interval: priceInterval } =
+        getElecPriceYAxisRange(
+          extValuesPrice[0],
+          extValuesPrice[extValuesPrice.length - 1],
+          { maxPadding: 0.4 }
+        );
+      const barColours = generateElecMinuteChartBarColours(xValues, data.price);
+      const priceSeriesData = xValues.map((dt, i) => ({
+        value: [dt.getTime(), data.price[i]],
+        itemStyle: { color: barColours[i] }
+      }));
 
-      const generateElecLayoutConfig = (diffInDays) => {
-        const xAxis = getXAxisConfig(diffInDays);
-        return {
-          width: 1300,
-          height: 650,
-          title: {
-            text: 'Electricity price (15 minute resolution)'
-          },
-          xaxis: {
-            title: {
-              text: 'Time'
-            },
-            type: 'date',
-            dtick: xAxis.dtick,
-            tickformat: xAxis.tickformat,
-            tickangle: xAxis.tickangle
-          },
-          yaxis: {
-            title: {
-              text: 'Price (c / kWh)'
-            },
-            range: [extValuesPrice[0] - 0.4,
-                    extValuesPrice[extValuesPrice.length - 1] + 0.4]
-          },
-          legend: {
-            orientation: 'h'
-          },
-          hovermode: 'x unified'
-        };
+      const option = {
+        title: {
+          text: 'Electricity price (15 minute resolution)',
+          left: 'center'
+        },
+        legend: {
+          orient: 'horizontal',
+          bottom: 0
+        },
+        grid: {
+          left: 60,
+          right: 40,
+          top: 50,
+          bottom: 60
+        },
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: { type: 'shadow' },
+          formatter: (params) => {
+            if (!params || !params.length) {
+              return '';
+            }
+            const ts = DateTime.fromMillis(params[0].axisValue)
+              .toFormat('dd.MM. HH:mm');
+            let html = `<b>${ts}</b>`;
+            for (const p of params) {
+              const y = tooltipPointValue(p);
+              if (!hasTooltipPointData(y)) {
+                continue;
+              }
+              html += `<br/>${p.marker}${p.seriesName}: ${y} c / kWh`;
+            }
+            return html;
+          }
+        },
+        xAxis: {
+          type: 'time',
+          name: 'Time',
+          nameLocation: 'middle',
+          nameGap: 30,
+          axisLabel: {
+            hideOverlap: true,
+            formatter: (value) =>
+              DateTime.fromMillis(value).toFormat('dd.MM. HH:mm')
+          }
+        },
+        yAxis: {
+          type: 'value',
+          name: 'Price (c / kWh)',
+          min: priceMin,
+          max: priceMax,
+          interval: priceInterval,
+          scale: false,
+          axisLabel: {
+            formatter: formatNiceAxisLabel
+          }
+        },
+        series: [
+          {
+            name: 'Price',
+            type: 'bar',
+            barMaxWidth: 24,
+            data: priceSeriesData
+          }
+        ]
       };
 
-      const diffInDays = DateTime.fromJSDate(xValues[xValues.length - 1]).diff(
-        DateTime.fromJSDate(xValues[0]), 'days').toObject().days;
-      if (!document.getElementById('minuteElecDataPlot').data) {
-        Plotly.newPlot('minuteElecDataPlot',
-          generateElecTraceConfig(),
-          generateElecLayoutConfig(diffInDays));
-      } else {
-        Plotly.react('minuteElecDataPlot',
-          generateElecTraceConfig(),
-          generateElecLayoutConfig(diffInDays));
+      const el = document.getElementById('minuteElecDataPlot');
+      if (!minuteElecChart) {
+        minuteElecChart = echarts.init(el);
       }
+      minuteElecChart.setOption(option, { notMerge: true });
+      minuteElecChart.resize();
+    };
+
+    var refreshMinuteElecBarColours = () => {
+      if (!minuteElecChart || !minuteElecPriceCache.xValues.length) {
+        return;
+      }
+      const colours = generateElecMinuteChartBarColours(
+        minuteElecPriceCache.xValues,
+        minuteElecPriceCache.prices
+      );
+      const priceData = minuteElecPriceCache.xValues.map((dt, i) => ({
+        value: [dt.getTime(), minuteElecPriceCache.prices[i]],
+        itemStyle: { color: colours[i] }
+      }));
+      minuteElecChart.setOption({
+        series: [{ data: priceData }]
+      });
     };
 
 
@@ -1121,12 +1531,9 @@ const loadPage = () => {
 
             if (DateTime.fromISO(document.getElementById('elecEndDate').value) >=
                 DateTime.fromISO(DateTime.now().toISODate())) {
-              // Regularly update the current hour annotation to match the current hour
+              // Regularly update the current hour bar colour to match the current hour
               setInterval(() => {
-                const plot = document.getElementById('hourElecDataPlot');
-                const update = {'marker.color': [generateElecHourBarChartColours(plot.data[0].x,
-                                                                                 plot.data[0].y)]};
-                Plotly.restyle(plot, update, [0]);
+                refreshHourElecBarColours();
               }, 120000);
             }
           }
@@ -1167,10 +1574,7 @@ const loadPage = () => {
           dateField.min = elecData['date-min'];
 
           setInterval(() => {
-            const plot = document.getElementById('minuteElecDataPlot');
-            const update = {'marker.color': [generateElecMinuteChartBarColours(plot.data[0].x,
-                                                                               plot.data[0].y)]};
-            Plotly.restyle(plot, update, [0]);
+            refreshMinuteElecBarColours();
           }, 120000);
         })
         .catch(error => {
@@ -1214,378 +1618,693 @@ const loadPage = () => {
       }
     };
 
-    // Return extreme (min and max) values for all plot data y-axis values
-    const getDataExtremeValues = (plotData) => {
-      let minValue = 1000000;
-      let maxValue = -100000;
+    const weatherSeriesNames = () =>
+      fieldNames.weather.map((key) => labelValues.weather[key]).concat([WIND_DIRECTION_SERIES]);
 
-      for (let i = 0; i < plotData.length; i++) {
-        const series = plotData[i].filter((item) => !Number.isNaN(item) && item !== null);
-
-        const seriesMin = Math.min(...series);
-        const seriesMax = Math.max(...series);
-
-        if (seriesMin < minValue) {
-          minValue = seriesMin;
-        }
-        if (seriesMax > maxValue) {
-          maxValue = seriesMax;
-        }
+    const buildWeatherDayMarkLines = (yMin, yMax) => {
+      const labels = dataLabels.weather;
+      if (!annotationIndices.weather.length || !labels.length) {
+        return [];
       }
 
-      return [minValue, maxValue];
-    };
-
-    // Return the "padding" i.e. amount of empty area for the y-axis
-    const getYAxisPadding = (extremeValues) => {
-      const diff = Math.abs(extremeValues[1] - extremeValues[0]);
-
-      if (diff < 20) {
-        return 1;
-      } else if (diff >= 20 && diff < 100) {
-        return 4;
-      } else {
-        return 8;
+      const oneDay = labels[0].getDate() === labels[labels.length - 1].getDate();
+      if (oneDay) {
+        return [];
       }
+
+      const data = [];
+      for (let i = 0; i < annotationIndices.weather.length; i++) {
+        if (i === 0) {
+          continue;
+        }
+        data.push([
+          { xAxis: annotationIndices.weather[i].getTime(), yAxis: yMin },
+          { xAxis: annotationIndices.weather[i].getTime(), yAxis: yMax }
+        ]);
+      }
+      return data;
     };
 
+    const buildWeatherEchartsOption = (legendSelected = null) => {
+      // Arrows sit centered in a dedicated top grid band (never over value series).
+      // Narrow dart pointing up; ECharts rotates with symbolRotate (degrees, clockwise).
+      const windArrowBandTop = 48;
+      const windArrowBandHeight = 56;
+      const windArrowPath = 'path://M0,-14 L1.4,6 L0,2 L-1.4,6 Z';
 
-    var generateTraceConfig = (plotType) => {
-      const xValues = plotType === 'weather'
-        ? dataLabels.weather
-        : plotType === 'ruuvitag'
-          ? dataLabels.rt
-          : dataLabels.other;
+      const xValues = dataLabels.weather;
       const pointCount = xValues.length;
-      const traces = [];
-      const commonOpts = {
-        type: pointCount > 2000 ? 'scattergl' : 'scatter',
-        mode: pointCount > 500 ? 'lines' : 'lines+markers',
-        marker: {
-          size: 3
-        },
-        xhoverformat: '<b>%d.%m. %H:%M:%S</b>',
-        hovertemplate: pointCount > 500 ? '%{y}' : '%{y}%{text}'
-      };
-      let changingOpts;
+      const showMarkers = pointCount <= 500;
+      // const showMarkers = false;
+      const selected = legendSelected || Object.fromEntries(
+        weatherSeriesNames().map((name) => [name, true])
+      );
 
-      const getTraceVisibility = (isRuuvitag) => {
-        if (plotType === 'weather' || !isRuuvitag) {
-          return true;
-        } else {
-          return 'legendonly';
-        }
-      };
-
-      const traceText = (label) => {
-        return pointCount > 500
-          ? undefined
-          : Array(xValues.length).fill(addUnitSuffix(label));
-      };
-
-      if (plotType !== 'ruuvitag') {
-        for (const key of plotType === 'weather' ? fieldNames.weather : fieldNames.other) {
-          changingOpts = {
-            x: xValues,
-            y: dataSets[plotType][key],
-            name: labelValues[plotType][key],
-            visible: getTraceVisibility(false),
-            text: traceText(labelValues[plotType][key])
-          };
-          traces.push({ ...changingOpts, ...commonOpts });
-        }
-
-        if (plotType === 'weather') {
-          traces.push(...buildWindDirectionTraces(
-            xValues,
-            dataSets.weather['wind-direction'],
-            dataSets.weather['wind-speed'],
-            pointCount
-          ));
-        }
-      } else {
-        const rtMeasurables = ['temperature', 'humidity'];
-
-        for (const name of names.ruuvitag) {
-          for (const meas of rtMeasurables) {
-            changingOpts = {
-              x: dataLabels.rt,
-              y: dataSets.rt[name][meas],
-              name: labelValues.rt[name][meas],
-              visible: getTraceVisibility(true),
-              text: traceText(labelValues.rt[name][meas])
-            };
-            traces.push({ ...changingOpts, ...commonOpts });
-          }
+      const visibleSeriesData = [];
+      for (const key of fieldNames.weather) {
+        const name = labelValues.weather[key];
+        if (selected[name] !== false) {
+          visibleSeriesData.push(dataSets.weather[key]);
         }
       }
 
-      return traces;
+      const { yMin, yMax, yInterval } = yRangeFromVisibleSeries(visibleSeriesData);
+
+      const xMin = xValues[0].getTime();
+      const xMax = xValues[xValues.length - 1].getTime();
+      const mainGridTop = windArrowBandTop + windArrowBandHeight + 8;
+
+      const series = [
+        buildDayMarkLineSeries(buildWeatherDayMarkLines(yMin, yMax), {
+          xAxisIndex: 1,
+          yAxisIndex: 1
+        }),
+        ...fieldNames.weather.map((key) => {
+        const name = labelValues.weather[key];
+        return {
+          name,
+          type: 'line',
+          xAxisIndex: 1,
+          yAxisIndex: 1,
+          showSymbol: showMarkers,
+          symbolSize: 2, // showMarkers ? 2 : 4,
+          triggerLineEvent: true,
+          data: xValues.map((dt, i) => [dt.getTime(), dataSets.weather[key][i]])
+        };
+      })
+      ];
+
+      const { points: windPoints, symbolSize } = buildWindArrowPoints(
+        xValues,
+        dataSets.weather['wind-direction'],
+        dataSets.weather['wind-speed'],
+        pointCount
+      );
+
+      if (windPoints.length) {
+        series.push({
+          name: WIND_DIRECTION_SERIES,
+          type: 'scatter',
+          xAxisIndex: 0,
+          yAxisIndex: 0,
+          symbol: windArrowPath,
+          symbolSize,
+          // Keep arrow tips visible at band / chart edges.
+          clip: false,
+          itemStyle: { color: '#838383' },
+          data: windPoints,
+          z: 10
+        });
+      }
+
+      const weatherNames = weatherSeriesNames();
+      const bottomLayout = buildObsBottomLayout(weatherNames.length);
+
+      return {
+        title: {
+          text: 'FMI weather observations',
+          left: 'center'
+        },
+        legend: {
+          ...bottomLayout.legend,
+          selected,
+          symbolRotate: 0,
+          symbolKeepAspect: true,
+          itemWidth: 12,
+          itemHeight: 12,
+          data: weatherNames.map((name) => (
+            name === WIND_DIRECTION_SERIES
+              ? { name, icon: 'triangle' }
+              : name
+          ))
+        },
+        // Separate top band for wind arrows so they never overlap value series.
+        grid: [
+          {
+            left: 60,
+            right: 30,
+            top: windArrowBandTop,
+            height: windArrowBandHeight
+          },
+          {
+            left: 60,
+            right: 30,
+            top: mainGridTop,
+            bottom: bottomLayout.gridBottom
+          }
+        ],
+        dataZoom: buildXyDataZoom({
+          xAxisIndex: [0, 1],
+          yAxisIndex: 1,
+          sliderBottom: bottomLayout.sliderBottom
+        }),
+        axisPointer: {
+          link: [{ xAxisIndex: 'all' }]
+        },
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: { type: 'line' },
+          formatter: (params) => {
+            if (!params || !params.length) {
+              return '';
+            }
+            const ts = DateTime.fromMillis(params[0].axisValue)
+              .toFormat('dd.MM. HH:mm:ss');
+            let html = `<b>${ts}</b>`;
+            for (const p of params) {
+              if (p.seriesName === WIND_DIRECTION_SERIES) {
+                const label = p.data && p.data.label ? p.data.label : '';
+                if (!label) {
+                  continue;
+                }
+                html += `<br/>${p.marker}${p.seriesName}: ${label}`;
+              } else {
+                const y = tooltipPointValue(p);
+                if (!hasTooltipPointData(y)) {
+                  continue;
+                }
+                const unit = addUnitSuffix(p.seriesName);
+                html += `<br/>${p.marker}${p.seriesName}: ${y}${unit}`;
+              }
+            }
+            return html;
+          }
+        },
+        xAxis: [
+          {
+            type: 'time',
+            gridIndex: 0,
+            min: xMin,
+            max: xMax,
+            show: false
+          },
+          {
+            type: 'time',
+            gridIndex: 1,
+            name: 'Time',
+            nameLocation: 'middle',
+            nameGap: 30,
+            min: xMin,
+            max: xMax,
+            axisLabel: {
+              hideOverlap: true,
+              formatter: (value) =>
+                DateTime.fromMillis(value).toFormat('dd.MM. HH:mm')
+            }
+          }
+        ],
+        yAxis: [
+          {
+            type: 'value',
+            gridIndex: 0,
+            min: 0,
+            max: 1,
+            show: false
+          },
+          {
+            type: 'value',
+            gridIndex: 1,
+            name: 'Value',
+            min: yMin,
+            max: yMax,
+            interval: yInterval,
+            scale: false,
+            axisLabel: {
+              formatter: formatNiceAxisLabel
+            }
+          }
+        ],
+        series
+      };
     };
 
+    var updateWeatherYAxisForSelection = (selected) => {
+      if (!weatherChart) {
+        return;
+      }
 
-    const generateAnnotationConfig = (plotType, traceData) => {
-      if (annotationIndices[plotType].length) {
-        const shapes = [];
-        let yValues;
-        let oneDay = false;
-        let index;
-        let shape;
-
-        if (traceData.length) {
-          yValues = getDataExtremeValues(traceData);
-          const padding = getYAxisPadding(yValues);
-          yValues[0] -= padding;
-          yValues[1] += padding;
-        } else {
-          yValues = [-1, 4];
+      const visibleSeriesData = [];
+      for (const key of fieldNames.weather) {
+        const name = labelValues.weather[key];
+        if (selected[name] !== false) {
+          visibleSeriesData.push(dataSets.weather[key]);
         }
+      }
 
-        const labels = dataLabels[plotType];
-        if (labels[0].getDate() === labels[labels.length - 1].getDate()) {
-          oneDay = true;
-        }
+      const { yMin, yMax, yInterval } = yRangeFromVisibleSeries(visibleSeriesData);
 
-        for (let i = 0; i < annotationIndices[plotType].length; i++) {
-          index = annotationIndices[plotType][i];
-          shape = {
-              type: 'line',
-              x0: index,
-              y0: yValues[0],
-              x1: index,
-              y1: yValues[1],
-              line: {
-                color: '#838b93',
-                width: 1
-              }
-          };
-
-          if (oneDay) {
-            shape['visible'] = false;
-            shapes.push(shape);
-          } else if (i > 0) {
-            // Do not show the needless annotation at the beginning of the chart
-            shapes.push(shape);
+      weatherChart.setOption({
+        yAxis: [
+          {},
+          { min: yMin, max: yMax, interval: yInterval }
+        ],
+        series: [
+          {
+            id: DAY_MARK_LINE_SERIES,
+            markLine: {
+              data: buildWeatherDayMarkLines(yMin, yMax)
+            }
           }
-        }
+        ]
+      });
+    };
 
-        return shapes;
+    var initOrUpdateWeatherChart = (preserveLegend = false) => {
+      let legendSelected = null;
+      if (preserveLegend && weatherChart) {
+        const option = weatherChart.getOption();
+        legendSelected = option.legend && option.legend[0]
+          ? option.legend[0].selected
+          : null;
+      }
+
+      const el = document.getElementById('weatherPlot');
+      if (!weatherChart) {
+        weatherChart = echarts.init(el);
+        weatherChart.on('click', (params) => {
+          let ts = null;
+          if (Array.isArray(params.value)) {
+            ts = params.value[0];
+          } else if (params.data && Array.isArray(params.data.value)) {
+            ts = params.data.value[0];
+          } else if (params.seriesName !== WIND_DIRECTION_SERIES
+                     && params.dataIndex != null
+                     && dataLabels.weather[params.dataIndex]) {
+            ts = dataLabels.weather[params.dataIndex].getTime();
+          }
+
+          if (ts == null || Number.isNaN(ts)) {
+            return;
+          }
+
+          document.getElementById('showImages').checked = true;
+          document.getElementById('imageDiv').classList.remove('display-none');
+          const pointDt = DateTime.fromMillis(ts).toFormat("yyyy-MM-dd'T'HH:mm:ss");
+          showTestbedImage(pointDt);
+        });
+        weatherChart.on('legendselectchanged', (params) => {
+          updateWeatherYAxisForSelection(params.selected);
+        });
+      }
+
+      weatherChart.setOption(buildWeatherEchartsOption(legendSelected), { notMerge: true });
+      weatherChart.resize();
+    };
+
+    var hideAllWeatherSeries = () => {
+      if (!weatherChart) {
+        return;
+      }
+      const selected = Object.fromEntries(
+        weatherSeriesNames().map((name) => [name, false])
+      );
+      weatherChart.setOption(buildWeatherEchartsOption(selected), { notMerge: true });
+    };
+
+    const otherSeriesNames = () =>
+      fieldNames.other.map((key) => labelValues.other[key]);
+
+    const ruuvitagSeriesNames = () => {
+      const seriesNames = [];
+      for (const name of names.ruuvitag) {
+        seriesNames.push(labelValues.rt[name].temperature);
+        seriesNames.push(labelValues.rt[name].humidity);
+      }
+      return seriesNames;
+    };
+
+    const getOtherSeriesDataByName = (seriesName) => {
+      for (const key of fieldNames.other) {
+        if (labelValues.other[key] === seriesName) {
+          return dataSets.other[key];
+        }
       }
       return null;
     };
 
+    const getRuuvitagSeriesDataByName = (seriesName) => {
+      for (const name of names.ruuvitag) {
+        if (labelValues.rt[name].temperature === seriesName) {
+          return dataSets.rt[name].temperature;
+        }
+        if (labelValues.rt[name].humidity === seriesName) {
+          return dataSets.rt[name].humidity;
+        }
+      }
+      return null;
+    };
 
-    var generateLayoutConfig = (plotType, isUpdate = false) => {
-      const xValues = plotType === 'weather'
-        ? dataLabels.weather
-        : plotType === 'ruuvitag'
-          ? dataLabels.rt
-          : dataLabels.other;
-      const diffInDays = xValues.length > 1
-        ? DateTime.fromJSDate(xValues[xValues.length - 1]).diff(
-          DateTime.fromJSDate(xValues[0]), 'days').toObject().days
-        : 1;
-      const xAxis = getXAxisConfig(diffInDays);
+    const buildObsDayMarkLines = (xLabels, yMin, yMax) => {
+      if (!annotationIndices.other.length || !xLabels.length) {
+        return [];
+      }
 
-      const plotTitleStart = (plotType === 'weather')
-        ? 'FMI weather' : plotType === 'other'
-          ? 'Other' : 'Ruuvitag';
+      const oneDay = xLabels[0].getDate() === xLabels[xLabels.length - 1].getDate();
+      if (oneDay) {
+        return [];
+      }
 
+      const markData = [];
+      for (let i = 0; i < annotationIndices.other.length; i++) {
+        if (i === 0) {
+          continue;
+        }
+        markData.push([
+          { xAxis: annotationIndices.other[i].getTime(), yAxis: yMin },
+          { xAxis: annotationIndices.other[i].getTime(), yAxis: yMax }
+        ]);
+      }
+      return markData;
+    };
 
-      const traceData = [];
-      if (!isUpdate) {
-        if (plotType !== 'ruuvitag') {
-          for (const key of plotType === 'weather' ? fieldNames.weather : fieldNames.other) {
-            traceData.push(dataSets[plotType][key]);
-          }
+    const buildObsEchartsOption = (plotType, legendSelected = null) => {
+      const isRuuvitag = plotType === 'ruuvitag';
+      const xValues = isRuuvitag ? dataLabels.rt : dataLabels.other;
+      const pointCount = xValues.length;
+      const showMarkers = pointCount <= 500;
+      const seriesNameList = isRuuvitag
+        ? ruuvitagSeriesNames()
+        : otherSeriesNames();
+      const selected = legendSelected || Object.fromEntries(
+        seriesNameList.map((name) => [name, !isRuuvitag])
+      );
+
+      const visibleSeriesData = [];
+      for (const seriesName of seriesNameList) {
+        if (selected[seriesName] === false) {
+          continue;
+        }
+        const seriesData = isRuuvitag
+          ? getRuuvitagSeriesDataByName(seriesName)
+          : getOtherSeriesDataByName(seriesName);
+        if (seriesData) {
+          visibleSeriesData.push(seriesData);
+        }
+      }
+
+      const { yMin, yMax, yInterval } = yRangeFromVisibleSeries(visibleSeriesData);
+      const xMin = xValues[0].getTime();
+      const xMax = xValues[xValues.length - 1].getTime();
+      const dayMarkLines = buildObsDayMarkLines(xValues, yMin, yMax);
+
+      const series = [
+        buildDayMarkLineSeries(dayMarkLines)
+      ];
+      if (!isRuuvitag) {
+        for (let i = 0; i < fieldNames.other.length; i++) {
+          const key = fieldNames.other[i];
+          const name = labelValues.other[key];
+          series.push({
+            name,
+            type: 'line',
+            showSymbol: showMarkers,
+            symbolSize: 3,
+            triggerLineEvent: true,
+            data: xValues.map((dt, idx) => [dt.getTime(), dataSets.other[key][idx]])
+          });
         }
       } else {
-        const plot = document.getElementById(`${plotType}Plot`);
-        for (const trace of plot.data) {
-          if (trace.visible === true && isMainYAxisTrace(trace)) {
-            traceData.push(trace.y);
+        for (const tagName of names.ruuvitag) {
+          for (const meas of ['temperature', 'humidity']) {
+            const name = labelValues.rt[tagName][meas];
+            series.push({
+              name,
+              type: 'line',
+              showSymbol: showMarkers,
+              symbolSize: 3,
+              triggerLineEvent: true,
+              data: xValues.map((dt, idx) => [
+                dt.getTime(),
+                dataSets.rt[tagName][meas][idx]
+              ])
+            });
           }
         }
       }
-      const yMinMax = getDataExtremeValues(traceData);
-      const padding = getYAxisPadding(yMinMax);
 
-      const layout = {
-        width: 1300,
-        height: 700,
+      const bottomLayout = buildObsBottomLayout(seriesNameList.length);
+
+      return {
         title: {
-          text: `${plotTitleStart} observations`
-        },
-        xaxis: {
-          title: {
-            text: 'Time'
-          },
-          type: 'date',
-          range: [xValues[0], xValues[xValues.length - 1]],
-          dtick: xAxis.dtick,
-          tickformat: xAxis.tickformat,
-          tickangle: xAxis.tickangle
-        },
-        yaxis: {
-          title: {
-            text: 'Value'
-          },
-          range: [yMinMax[0] - padding, yMinMax[1] + padding]
+          text: `${isRuuvitag ? 'Ruuvitag' : 'Other'} observations`,
+          left: 'center'
         },
         legend: {
-          orientation: 'h'
+          ...bottomLayout.legend,
+          selected,
+          data: seriesNameList
         },
-        hoverlabel: {
-          namelength: -1
+        grid: {
+          left: 60,
+          right: 30,
+          top: 50,
+          bottom: bottomLayout.gridBottom
         },
-        hovermode: 'x unified'
+        dataZoom: buildXyDataZoom({
+          xAxisIndex: 0,
+          yAxisIndex: 0,
+          sliderBottom: bottomLayout.sliderBottom
+        }),
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: { type: 'line' },
+          formatter: (params) => {
+            if (!params || !params.length) {
+              return '';
+            }
+            const chart = isRuuvitag ? ruuvitagChart : otherChart;
+            const liveSelected = chart?.getOption()?.legend?.[0]?.selected;
+            const ts = DateTime.fromMillis(params[0].axisValue)
+              .toFormat('dd.MM. HH:mm:ss');
+            let html = `<b>${ts}</b>`;
+            for (const p of params) {
+              if (liveSelected && liveSelected[p.seriesName] === false) {
+                continue;
+              }
+              const y = tooltipPointValue(p);
+              if (!hasTooltipPointData(y)) {
+                continue;
+              }
+              const unit = addUnitSuffix(p.seriesName);
+              html += `<br/>${p.marker}${p.seriesName}: ${y}${unit}`;
+            }
+            return html;
+          }
+        },
+        xAxis: {
+          type: 'time',
+          name: 'Time',
+          nameLocation: 'middle',
+          nameGap: 30,
+          min: xMin,
+          max: xMax,
+          axisLabel: {
+            hideOverlap: true,
+            formatter: (value) =>
+              DateTime.fromMillis(value).toFormat('dd.MM. HH:mm')
+          }
+        },
+        yAxis: {
+          type: 'value',
+          name: 'Value',
+          min: yMin,
+          max: yMax,
+          interval: yInterval,
+          scale: false,
+          axisLabel: {
+            formatter: formatNiceAxisLabel
+          }
+        },
+        series
       };
-
-      if (plotType === 'weather') {
-        layout.yaxis2 = {
-          overlaying: 'y',
-          side: 'right',
-          range: [0, 1],
-          showgrid: false,
-          zeroline: false,
-          showticklabels: false,
-          ticks: '',
-          showline: false,
-          fixedrange: true
-        };
-      }
-
-      // other and ruuvitag plot types share the same annotation indexes
-      const annConfig = generateAnnotationConfig(plotType === 'weather' ? plotType : 'other', traceData);
-      if (annConfig) {
-        layout.shapes = annConfig;
-      }
-
-      return layout;
     };
 
-    var resetAnnotationAndRangeYValues = (plot) => {
-      const update = {};
-      const dataExtremes = [-1, 4];
+    const updateObsYAxisForSelection = (plotType, selected) => {
+      const chart = plotType === 'ruuvitag' ? ruuvitagChart : otherChart;
+      if (!chart) {
+        return;
+      }
 
-      update['yaxis.range'] = dataExtremes;
-      if (plot.layout.shapes) {
-        for (let i = 0; i < plot.layout.shapes.length; i++) {
-          update[`shapes[${i}].y0`] = dataExtremes[0];
-          update[`shapes[${i}].y1`] = dataExtremes[1];
+      const isRuuvitag = plotType === 'ruuvitag';
+      const xValues = isRuuvitag ? dataLabels.rt : dataLabels.other;
+      const seriesNameList = isRuuvitag
+        ? ruuvitagSeriesNames()
+        : otherSeriesNames();
+      const visibleSeriesData = [];
+
+      for (const seriesName of seriesNameList) {
+        if (selected[seriesName] === false) {
+          continue;
+        }
+        const seriesData = isRuuvitag
+          ? getRuuvitagSeriesDataByName(seriesName)
+          : getOtherSeriesDataByName(seriesName);
+        if (seriesData) {
+          visibleSeriesData.push(seriesData);
         }
       }
 
-      Plotly.relayout(plot, update);
-    };
-
-    // Updates y-axis annotation and range values based on currently visible traces
-    var updateAnnotationAndRangeYValues = (plot, traceData) => {
-      const update = {};
-      const dataExtremes = getDataExtremeValues(traceData);
-      const padding = getYAxisPadding(dataExtremes);
-      dataExtremes[0] -= padding;
-      dataExtremes[1] += padding;
-
-      update['yaxis.range'] = dataExtremes;
-      if (plot.layout.shapes) {
-        for (let i = 0; i < plot.layout.shapes.length; i++) {
-          update[`shapes[${i}].y0`] = dataExtremes[0];
-          update[`shapes[${i}].y1`] = dataExtremes[1];
-        }
-      }
-
-      Plotly.relayout(plot, update);
-    };
-
-
-    // Event handler for trace click events
-    const updatePlot = (event) => {
-      const plotTitle = event.layout.title.text.toLowerCase();
-
-      const plotType = plotTitle.includes('weather')
-        ? 'weather' : plotTitle.includes('other')
-          ? 'other' : 'ruuvitag';
-
-      const plot = document.getElementById(`${plotType}Plot`);
-      const eData = event.data;
-      const traceIndex = event.curveNumber;
-      const traceVis = eData[traceIndex].visible;
-      const visTraceArray = [];
-      let visTraceCount = 0;
-
-      for (let i = 0; i < event.data.length; i++) {
-        if (event.data[i].visible === true) {
-          visTraceCount++;
-          visTraceArray.push(i);
-        }
-      }
-
-      // Update trace tooltips
-      if (visTraceCount === 0) {
-        visTraceArray.push(traceIndex);
-      } else {
-        if (traceVis === true) {
-          // Currently visible
-          visTraceArray.splice(visTraceArray.indexOf(traceIndex), 1);
-        } else {
-          // Currently hidden
-          visTraceArray.push(traceIndex);
-        }
-      }
-
-      // Update annotation y-axis values
-      if (plot.layout.shapes) {
-        if (visTraceArray.length) {
-          const traceData = [];
-
-          for (const i of visTraceArray) {
-            if (isMainYAxisTrace(eData[i])) {
-              traceData.push(eData[i].y);
+      const { yMin, yMax, yInterval } = yRangeFromVisibleSeries(visibleSeriesData);
+      chart.setOption({
+        yAxis: { min: yMin, max: yMax, interval: yInterval },
+        series: [
+          {
+            id: DAY_MARK_LINE_SERIES,
+            markLine: {
+              data: buildObsDayMarkLines(xValues, yMin, yMax)
             }
           }
-
-          if (traceData.length) {
-            updateAnnotationAndRangeYValues(plot, traceData);
-          }
-        } else {
-          resetAnnotationAndRangeYValues(plot);
-        }
-      }
+        ]
+      });
     };
 
-    Plotly.newPlot('weatherPlot',
-      generateTraceConfig('weather'),
-      generateLayoutConfig('weather'));
+    var initOrUpdateOtherChart = (preserveLegend = false) => {
+      let legendSelected = null;
+      if (preserveLegend && otherChart) {
+        const option = otherChart.getOption();
+        legendSelected = option.legend && option.legend[0]
+          ? option.legend[0].selected
+          : null;
+      }
 
-    document.getElementById('weatherPlot').on('plotly_click', (data) => {
-      document.getElementById('showImages').checked = true;
-      document.getElementById('imageDiv').classList.remove('display-none');
+      const el = document.getElementById('otherPlot');
+      if (!otherChart) {
+        otherChart = echarts.init(el);
+        otherChart.on('click', (params) => {
+          let ts = null;
+          if (Array.isArray(params.value)) {
+            ts = params.value[0];
+          } else if (params.data && Array.isArray(params.data.value)) {
+            ts = params.data.value[0];
+          } else if (params.dataIndex != null
+                     && dataLabels.other[params.dataIndex]) {
+            ts = dataLabels.other[params.dataIndex].getTime();
+          }
 
-      showTestbedImage(data.points[0].x);
-    });
+          if (ts == null || Number.isNaN(ts)) {
+            return;
+          }
 
-    document.getElementById('weatherPlot').on('plotly_legendclick', updatePlot);
+          document.getElementById('showImages').checked = true;
+          document.getElementById('imageDiv').classList.remove('display-none');
+          const pointDt = DateTime.fromMillis(ts).toFormat("yyyy-MM-dd'T'HH:mm:ss");
+          showTestbedImage(pointDt);
+        });
+        otherChart.on('legendselectchanged', (params) => {
+          updateObsYAxisForSelection('other', params.selected);
+        });
+      }
 
-    Plotly.newPlot('otherPlot',
-                   generateTraceConfig('other'),
-                   generateLayoutConfig('other'));
+      otherChart.setOption(buildObsEchartsOption('other', legendSelected), {
+        notMerge: true
+      });
+      otherChart.resize();
+    };
 
-    document.getElementById('otherPlot').on('plotly_click', (data) => {
-      document.getElementById('showImages').checked = true;
-      document.getElementById('imageDiv').classList.remove('display-none');
+    var initOrUpdateRuuvitagChart = (preserveLegend = false) => {
+      let legendSelected = null;
+      if (preserveLegend && ruuvitagChart) {
+        const option = ruuvitagChart.getOption();
+        legendSelected = option.legend && option.legend[0]
+          ? option.legend[0].selected
+          : null;
+      }
 
-      showTestbedImage(data.points[0].x);
-    });
+      const el = document.getElementById('ruuvitagPlot');
+      if (!ruuvitagChart) {
+        ruuvitagChart = echarts.init(el);
+        ruuvitagChart.on('legendselectchanged', (params) => {
+          updateObsYAxisForSelection('ruuvitag', params.selected);
+        });
+      }
 
-    document.getElementById('otherPlot').on('plotly_legendclick', updatePlot);
+      ruuvitagChart.setOption(buildObsEchartsOption('ruuvitag', legendSelected), {
+        notMerge: true
+      });
+      ruuvitagChart.resize();
+    };
 
-    Plotly.newPlot('ruuvitagPlot',
-                   generateTraceConfig('ruuvitag'),
-                   generateLayoutConfig('ruuvitag'));
-    resetAnnotationAndRangeYValues(document.getElementById('ruuvitagPlot'));
+    var setObsLegendSelection = (plotType, selected) => {
+      const chart = plotType === 'ruuvitag' ? ruuvitagChart : otherChart;
+      if (!chart) {
+        return;
+      }
+      chart.setOption(buildObsEchartsOption(plotType, selected), { notMerge: true });
+    };
 
-    document.getElementById('ruuvitagPlot').on('plotly_legendclick', updatePlot);
+    var hideAllObsSeries = (plotType) => {
+      const seriesNameList = plotType === 'ruuvitag'
+        ? ruuvitagSeriesNames()
+        : otherSeriesNames();
+      const selected = Object.fromEntries(
+        seriesNameList.map((name) => [name, false])
+      );
+      setObsLegendSelection(plotType, selected);
+    };
+
+    var showAllObsSeries = (plotType) => {
+      const seriesNameList = plotType === 'ruuvitag'
+        ? ruuvitagSeriesNames()
+        : otherSeriesNames();
+      const selected = Object.fromEntries(
+        seriesNameList.map((name) => [name, true])
+      );
+      setObsLegendSelection(plotType, selected);
+    };
+
+    var showRuuvitagSeriesType = (type) => {
+      const selected = {};
+      for (const seriesName of ruuvitagSeriesNames()) {
+        selected[seriesName] = seriesName.includes(type);
+      }
+      setObsLegendSelection('ruuvitag', selected);
+    };
+
+    initOrUpdateWeatherChart();
+    initOrUpdateOtherChart();
+    initOrUpdateRuuvitagChart();
+
+    document.getElementById('weatherPlotAccordion')
+      .addEventListener('shown.bs.collapse', () => {
+        if (weatherChart) {
+          weatherChart.resize();
+        }
+      });
+
+    document.getElementById('otherPlotAccordion')
+      .addEventListener('shown.bs.collapse', () => {
+        if (otherChart) {
+          otherChart.resize();
+        }
+      });
+
+    document.getElementById('ruuvitagPlotAccordion')
+      .addEventListener('shown.bs.collapse', () => {
+        if (ruuvitagChart) {
+          ruuvitagChart.resize();
+        }
+      });
+
+    document.getElementById('elecHourPlotAccordion')
+      .addEventListener('shown.bs.collapse', () => {
+        if (hourElecChart) {
+          hourElecChart.resize();
+        }
+      });
+
+    document.getElementById('elecDayPlotAccordion')
+      .addEventListener('shown.bs.collapse', () => {
+        if (dayElecChart) {
+          dayElecChart.resize();
+        }
+      });
+
+    document.getElementById('elecMinutePlotAccordion')
+      .addEventListener('shown.bs.collapse', () => {
+        if (minuteElecChart) {
+          minuteElecChart.resize();
+        }
+      });
   }
 
   const toggleClassForElement = (elementId, className) => {
@@ -1639,23 +2358,16 @@ const loadPage = () => {
     }
 
     const plotUpdateAfterReset = (plotType) => {
-      const plot = document.getElementById(`${plotType}Plot`);
-      const traceVisibility = plot.data.map(trace => trace.visible);
-      const newTraces = generateTraceConfig(plotType);
-      const visTraceData = [];
-
-      for (let i = 0; i < newTraces.length; i++) {
-        if (traceVisibility[i] === true && isMainYAxisTrace(newTraces[i])) {
-          visTraceData.push(newTraces[i].y);
-        }
+      if (plotType === 'weather') {
+        initOrUpdateWeatherChart(true);
+        return;
       }
-
-      Plotly.react(plot, newTraces, generateLayoutConfig(plotType));
-      Plotly.restyle(plot, { visible: traceVisibility });
-      if (visTraceData.length) {
-        updateAnnotationAndRangeYValues(plot, visTraceData);
-      } else {
-        resetAnnotationAndRangeYValues(plot);
+      if (plotType === 'other') {
+        initOrUpdateOtherChart(true);
+        return;
+      }
+      if (plotType === 'ruuvitag') {
+        initOrUpdateRuuvitagChart(true);
       }
     };
 
@@ -1832,58 +2544,14 @@ const loadPage = () => {
     refreshElecMinutePriceForDate(document.getElementById('elecMinuteDate').value);
   };
 
-  // Set visibility (shown / hidden) for all traces
-  const setAllTracesVisibility = (plotId, showTraces) => {
-    const plot = document.getElementById(plotId);
-    const update = { visible: [] };
-
-    for (let i = 0; i < plot.data.length; i++) {
-      update.visible.push(showTraces ? true : 'legendonly');
-    }
-
-    Plotly.restyle(plotId, update);
-  };
-
-  // Show all RuuviTag series of type: temperature or humidity
-  const showRuuvitagSeriesType = (type) => {
-    setAllTracesVisibility('ruuvitagPlot', false);
-
-    const plot = document.getElementById('ruuvitagPlot');
-    const traceData = [];
-    const traceVisibility = [];
-
-    for (const trace of plot.data) {
-      if (trace.name.includes(type)) {
-        traceData.push(trace.y);
-        traceVisibility.push(true);
-      } else {
-        traceVisibility.push('legendonly');
-      }
-    }
-
-    Plotly.restyle(plot, { visible: traceVisibility });
-    updateAnnotationAndRangeYValues(plot, traceData);
-  };
-
   // Hide all series for a plot
-  const plotHideAll = (plot) => {
-    setAllTracesVisibility(plot, false);
-    resetAnnotationAndRangeYValues(document.getElementById(plot));
+  const plotHideAll = (plotType) => {
+    hideAllObsSeries(plotType);
   };
 
   // Show all series for a plot
-  const plotShowAll = (plot) => {
-    setAllTracesVisibility(plot, true);
-
-    const plotElem = document.getElementById(plot);
-    const traceData = [];
-
-    for (const trace of plotElem.data) {
-      if (isMainYAxisTrace(trace)) {
-        traceData.push(trace.y);
-      }
-    }
-    updateAnnotationAndRangeYValues(plotElem, traceData);
+  const plotShowAll = (plotType) => {
+    showAllObsSeries(plotType);
   };
 
   const updateMinuteElecPrice = (direction) => {
@@ -1990,7 +2658,7 @@ const loadPage = () => {
   document.getElementById('weatherHideAll').addEventListener(
     'click',
     () => {
-      plotHideAll('weatherPlot');
+      hideAllWeatherSeries();
     },
     false);
 
@@ -2006,28 +2674,28 @@ const loadPage = () => {
     document.getElementById('otherHideAll')
       .addEventListener('click',
                         () => {
-                          plotHideAll('otherPlot');
+                          plotHideAll('other');
         },
         false);
 
     document.getElementById('otherShowAll')
       .addEventListener('click',
                         () => {
-                          plotShowAll('otherPlot');
+                          plotShowAll('other');
         },
         false);
 
     document.getElementById('ruuvitagHideAll')
       .addEventListener('click',
                         () => {
-                          plotHideAll('ruuvitagPlot');
+                          plotHideAll('ruuvitag');
         },
         false);
 
     document.getElementById('ruuvitagShowAll')
       .addEventListener('click',
                         () => {
-                          plotShowAll('ruuvitagPlot');
+                          plotShowAll('ruuvitag');
         },
         false);
 
