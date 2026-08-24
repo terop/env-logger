@@ -65,8 +65,6 @@
             </form>
         </main>
 
-        <script src="https://cdn.jsdelivr.net/npm/axios@1.19.0/dist/axios.min.js"
-                integrity="sha256-MqDOyD14FMn5IfvW+lIfohKtwoSdyRr2Eki1JCukeYU=" crossorigin="anonymous"></script>
         <script>
             document.getElementById('uploadButton').
                      addEventListener('click',
@@ -77,39 +75,46 @@
                                               return;
                                           }
 
-                                          let formData = new FormData();
+                                          const formData = new FormData();
                                           formData.append('consumption-file', files[0]);
-                                          axios.post('{{ app-url }}misc/elec-consumption', formData,
-                                                     { headers: { 'Content-Type': 'multipart/form-data' }
+                                          fetch('{{ app-url }}misc/elec-consumption', {
+                                              method: 'POST',
+                                              body: formData
                                           })
-                                               .then((response) => {
-                                                   if (response.data.status !== 'error') {
-                                                       document.getElementById('successAlert').classList.remove('hidden');
-                                                   } else {
-                                                       if (response.data.cause) {
-                                                           const cause = response.data.cause;
-                                                           let text = 'An error occurred';
+                                              .then((response) => {
+                                                  if (!response.ok) {
+                                                      throw new Error(`HTTP ${response.status}`);
+                                                  }
+                                                  return response.json();
+                                              })
+                                              .then((data) => {
+                                                  if (data.status !== 'error') {
+                                                      document.getElementById('successAlert').classList.remove('hidden');
+                                                  } else {
+                                                      if (data.cause) {
+                                                          const cause = data.cause;
+                                                          let text = 'An error occurred';
 
-                                                           switch (cause) {
-                                                               case 'invalid-filename':
-                                                                   text = 'The input file must end with .csv';
-                                                                   break;
-                                                               case 'no-data':
-                                                                   text = 'The input file does not contain enough data';
-                                                                   break;
-                                                               case 'invalid-format':
-                                                                   text = 'The input file has an invalid format';
-                                                                   break;
-                                                           };
-                                                           document.getElementById('errorAlert').innerHTML = text;
-                                                       }
-                                                       document.getElementById('errorAlert').classList.remove('hidden');
-                                                   }
-                                               })
-                                               .catch((error) => {
-                                                   document.getElementById('errorAlert').classList.remove('hidden');
-                                                   console.log(`Upload error: ${error}`);
-                                               })
+                                                          switch (cause) {
+                                                              case 'invalid-filename':
+                                                                  text = 'The input file must end with .csv';
+                                                                  break;
+                                                              case 'no-data':
+                                                                  text = 'The input file does not contain enough data';
+                                                                  break;
+                                                              case 'invalid-format':
+                                                                  text = 'The input file has an invalid format';
+                                                                  break;
+                                                          }
+                                                          document.getElementById('errorAlert').innerHTML = text;
+                                                      }
+                                                      document.getElementById('errorAlert').classList.remove('hidden');
+                                                  }
+                                              })
+                                              .catch((error) => {
+                                                  document.getElementById('errorAlert').classList.remove('hidden');
+                                                  console.log(`Upload error: ${error}`);
+                                              });
                      });
         </script>
     </body>
