@@ -45,7 +45,7 @@ the database password on one line.
 ## Running
 ### Locally
 
-To start the application locally run `clojure -M:run`.
+To start the application locally run `clojure -M:dev`.
 
 ## Running tests
 

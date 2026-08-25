@@ -961,7 +961,7 @@ const loadPage = () => {
           left: 60,
           right: 60,
           top: 50,
-          bottom: 60
+          bottom: 75
         },
         tooltip: {
           trigger: 'axis',
@@ -1125,7 +1125,7 @@ const loadPage = () => {
           left: 60,
           right: 60,
           top: 50,
-          bottom: 60
+          bottom: 75
         },
         tooltip: {
           trigger: 'axis',
@@ -1319,7 +1319,7 @@ const loadPage = () => {
           left: 60,
           right: 40,
           top: 50,
-          bottom: 60
+          bottom: 75
         },
         tooltip: {
           trigger: 'axis',
@@ -1917,6 +1917,16 @@ const loadPage = () => {
       }
       const selected = Object.fromEntries(
         weatherSeriesNames().map((name) => [name, false])
+      );
+      weatherChart.setOption(buildWeatherEchartsOption(selected), { notMerge: true });
+    };
+
+    var showAllWeatherSeries = () => {
+      if (!weatherChart) {
+        return;
+      }
+      const selected = Object.fromEntries(
+        weatherSeriesNames().map((name) => [name, true])
       );
       weatherChart.setOption(buildWeatherEchartsOption(selected), { notMerge: true });
     };
@@ -2659,6 +2669,13 @@ const loadPage = () => {
     'click',
     () => {
       hideAllWeatherSeries();
+    },
+    false);
+
+  document.getElementById('weatherShowAll').addEventListener(
+    'click',
+    () => {
+      showAllWeatherSeries();
     },
     false);
 
