@@ -1,7 +1,7 @@
 """Code for showing various data on a PyPortal Titano display."""
 
+import gc
 import time
-from collections import OrderedDict
 from os import getenv
 
 import adafruit_requests
@@ -11,7 +11,6 @@ import neopixel
 import rtc
 import supervisor
 from adafruit_bitmap_font import bitmap_font
-from adafruit_datetime import datetime, timedelta
 from adafruit_esp32spi import adafruit_esp32spi
 from adafruit_esp32spi.adafruit_esp32spi_wifimanager import WiFiManager
 from adafruit_simple_text_display import SimpleTextDisplay
@@ -21,9 +20,9 @@ HTTP_STATUS_CODE_OK = 200
 HTTP_STATUS_CODE_UNAUTHORIZED = 401
 
 # URL for the backend
-BACKEND_URL = getenv('BACKEND_URL')
+BACKEND_URL = getenv("BACKEND_URL")
 # Path to the bitmap font to use, must include the degree symbol (U+00B0)
-FONT = bitmap_font.load_font("fonts/DejaVuSansMono-16.pcf")
+FONT_PATH = "fonts/DejaVuSansMono-16.pcf"
 # Sleep time (in seconds) between data refreshes
 SLEEP_TIME = 85
 # Sleep time (in seconds) between clock setting
@@ -43,14 +42,19 @@ BACKLIGHT_DIMMING_END = 7
 BACKLIGHT_DIMMING_VALUE = 0.5
 # Network failure threshold after which the board is rebooted
 NW_FAILURE_THRESHOLD = 3
-
+# Maximum SimpleTextDisplay rows to manage
+DISPLAY_MAX_ROWS = 25
+# Seconds between electricity price metadata refreshes
+ELEC_PRICE_FETCH_THRESHOLD = 1800
+# Second-of-minute when periodic observation refresh runs
+DATA_UPDATE_SECOND = 40
 
 def connect_to_wlan():
     """Connect to WLAN."""
     try:
         esp32_cs = DigitalInOut(board.ESP_CS)
     except ValueError as ve:
-        print(f'Error: ESP32 error: {ve}')
+        print(f"Error: ESP32 error: {ve}")
         time.sleep(5)
         supervisor.reload()
 
@@ -60,10 +64,11 @@ def connect_to_wlan():
     spi = busio.SPI(board.SCK, board.MOSI, board.MISO)
     esp = adafruit_esp32spi.ESP_SPIcontrol(spi, esp32_cs, esp32_ready, esp32_reset)
     status_pixel = neopixel.NeoPixel(board.NEOPIXEL, 1, brightness=0.2)
-    wifi = WiFiManager(esp, getenv('WIFI_SSID'), getenv('WIFI_PASSWORD'),
-                       status_pixel=status_pixel)
+    wifi = WiFiManager(
+        esp, getenv("WIFI_SSID"), getenv("WIFI_PASSWORD"), status_pixel=status_pixel
+    )
 
-    print('Connecting to AP')
+    print("Connecting to AP")
     wifi.connect()
     return wifi
 
@@ -74,49 +79,89 @@ def fetch_token(wifi):
     backend_failure_count = 0
 
     while True:
+        resp = None
         try:
-            resp = wifi.post(getenv('OID_TOKEN_ENDPOINT'),
-                             data={'grant_type': 'client_credentials',
-                                   'client_id': getenv('OID_CLIENT_ID'),
-                                   'client_secret': getenv('OID_CLIENT_SECRET')})
-            if resp.status_code != HTTP_STATUS_CODE_OK:
-                backend_failure_count += 1
-                print('Error: token acquisition failed, failure count '
-                      f'{backend_failure_count}')
+            try:
+                resp = wifi.post(
+                    getenv("OID_TOKEN_ENDPOINT"),
+                    data={
+                        "grant_type": "client_credentials",
+                        "client_id": getenv("OID_CLIENT_ID"),
+                        "client_secret": getenv("OID_CLIENT_SECRET"),
+                    },
+                )
+                if resp.status_code != HTTP_STATUS_CODE_OK:
+                    backend_failure_count += 1
+                    print(
+                        "Error: token acquisition failed, failure count "
+                        f"{backend_failure_count}"
+                    )
 
-                if backend_failure_count >= NW_FAILURE_THRESHOLD:
-                    print('Error: token fetch failed: authentication service problem, '
-                          f'failure count {backend_failure_count}')
-                    return None, None
+                    if backend_failure_count >= NW_FAILURE_THRESHOLD:
+                        print(
+                            "Error: token fetch failed: authentication service "
+                            f"problem, failure count {backend_failure_count}"
+                        )
+                        return None, None
 
-                time.sleep(20)
-                continue
+                    time.sleep(20)
+                    continue
 
-            break
-        except (RuntimeError, BrokenPipeError) as ex:
-            failure_count += 1
-            print(f'Error: token fetch failed: "{ex}", failure count {failure_count}')
-            time.sleep(5)
-
-            if failure_count >= NW_FAILURE_THRESHOLD:
-                print(f'Error: token fetch failed {failure_count} times, '
-                      'reloading board')
+                gc.collect()
+                token_resp = resp.json()
+                access_token_expiry_time = time.time() + token_resp["expires_in"]
+                return token_resp["access_token"], access_token_expiry_time
+            except (RuntimeError, BrokenPipeError) as ex:
+                failure_count += 1
+                print(
+                    f'Error: token fetch failed: "{ex}", failure count {failure_count}'
+                )
                 time.sleep(5)
-                supervisor.reload()
 
-    token_resp = resp.json()
-    access_token_expiry_time = datetime.now() + timedelta(
-        seconds=token_resp['expires_in'])
+                if failure_count >= NW_FAILURE_THRESHOLD:
+                    print(
+                        f"Error: token fetch failed {failure_count} times, "
+                        "reloading board"
+                    )
+                    time.sleep(5)
+                    supervisor.reload()
+        finally:
+            if resp is not None:
+                resp.close()
 
-    return token_resp['access_token'], access_token_expiry_time
+
+def blank_display_rows(display, start_row):
+    """Blank display rows from start_row onward."""
+    for i in range(start_row, DISPLAY_MAX_ROWS):
+        display[i].text = ""
 
 
-def clear_display(display):
-    """Clear, i.e. removes all rows, from the given display."""
-    max_row = 25
+def wifi_get_endpoint(wifi, endpoint, token, params=None):
+    """GET a backend endpoint and return the response object."""
+    url = f"{BACKEND_URL}/{endpoint}"
+    headers = {"Bearer": token}
+    if params:
+        return wifi.get(url, data=params, headers=headers)
+    return wifi.get(url, headers=headers)
 
-    for i in range(max_row):
-        display[i].text = ''
+
+def handle_endpoint_http_error(wifi, endpoint, resp, token, token_expiry):
+    """Handle a non-OK HTTP status. Returns updated (token, token_expiry)."""
+    if resp.status_code == HTTP_STATUS_CODE_UNAUTHORIZED:
+        print("Error: request was unauthorised, getting new token")
+        return fetch_token(wifi)
+    print(f'Error: failed to fetch content from "{endpoint}"')
+    return token, token_expiry
+
+
+def reload_after_endpoint_failures(endpoint, failure_count, sleep_time):
+    """Reload the board after repeated endpoint fetch failures."""
+    print(
+        f'Error: endpoint "{endpoint}" fetch failed '
+        f"{failure_count} times, reloading board"
+    )
+    time.sleep(sleep_time)
+    supervisor.reload()
 
 
 def get_backend_endpoint_content(wifi, endpoint, token, token_expiry, params=None):
@@ -129,37 +174,31 @@ def get_backend_endpoint_content(wifi, endpoint, token, token_expiry, params=Non
 
     try:
         while failure_count <= NW_FAILURE_THRESHOLD:
+            resp = None
             try:
-                if params:
-                    resp = wifi.get(f'{BACKEND_URL}/{endpoint}',
-                                    data=params,
-                                    headers={'Bearer': token})
-                else:
-                    resp = wifi.get(f'{BACKEND_URL}/{endpoint}',
-                                    headers={'Bearer': token})
-                if resp.status_code != HTTP_STATUS_CODE_OK:
-                    if resp.status_code == HTTP_STATUS_CODE_UNAUTHORIZED:
-                        print('Error: request was unauthorised, getting new token')
-                        token, token_expiry = fetch_token(wifi)
-                        if not token:
-                            continue
-                    else:
-                        print(f'Error: failed to fetch content from "{endpoint}"')
-                    continue
+                try:
+                    resp = wifi_get_endpoint(wifi, endpoint, token, params)
+                    if resp.status_code != HTTP_STATUS_CODE_OK:
+                        token, token_expiry = handle_endpoint_http_error(
+                            wifi, endpoint, resp, token, token_expiry
+                        )
+                        continue
 
-                break
-            except (RuntimeError, BrokenPipeError) as ex:
-                failure_count += 1
-                print(f'Error: got exception "{ex}", failure count {failure_count}')
-                time.sleep(sleep_time)
-
-                if failure_count >= NW_FAILURE_THRESHOLD:
-                    print(f'Error: endpoint "{endpoint}" fetch failed {failure_count} '
-                          'times, reloading board')
+                    gc.collect()
+                    payload = resp.json()
+                except (RuntimeError, BrokenPipeError) as ex:
+                    failure_count += 1
+                    print(f'Error: got exception "{ex}", failure count {failure_count}')
                     time.sleep(sleep_time)
-                    supervisor.reload()
-
-        return (token, token_expiry, resp.json())
+                    if failure_count >= NW_FAILURE_THRESHOLD:
+                        reload_after_endpoint_failures(
+                            endpoint, failure_count, sleep_time
+                        )
+                else:
+                    return (token, token_expiry, payload)
+            finally:
+                if resp is not None:
+                    resp.close()
     except (ConnectionError, TimeoutError, adafruit_requests.OutOfRetries) as ex:
         print(f'Error: endpoint "{endpoint}" fetch failed: {ex}, reloading board')
         time.sleep(sleep_time)
@@ -170,22 +209,25 @@ def set_time(wifi, timezone):
     """Get and set local time for the board. Returns the offset to UTC in hours."""
     while True:
         try:
-            with wifi.get(f'{BACKEND_URL}/misc/time',
-                          data={'timezone': timezone}) as resp:
+            with wifi.get(
+                f"{BACKEND_URL}/misc/time", data={"timezone": timezone}
+            ) as resp:
                 time_info = resp.json()
-                if 'error' in time_info:
-                    print(f'Error: time fetching failed: "{time_info["error"]}", '
-                          'retrying')
+                if "error" in time_info:
+                    print(
+                        f'Error: time fetching failed: "{time_info["error"]}", retrying'
+                    )
                     time.sleep(10)
                     continue
-                utc_offset_hour = time_info['offset-hour']
+                utc_offset_hour = time_info["offset-hour"]
 
-                rtc.RTC().datetime = time.localtime(time_info['timestamp'] +
-                                                    utc_offset_hour * 3600)
+                rtc.RTC().datetime = time.localtime(
+                    time_info["timestamp"] + utc_offset_hour * 3600
+                )
 
                 return utc_offset_hour
         except (RuntimeError, TimeoutError) as ex:
-            print(f'Error: an exception occurred in set_time: {ex}')
+            print(f"Error: an exception occurred in set_time: {ex}")
             time.sleep(5)
             supervisor.reload()
 
@@ -193,8 +235,10 @@ def set_time(wifi, timezone):
 def adjust_backlight(display):
     """Adjust backlight value based on the current time."""
     current_time = time.localtime()
-    if current_time.tm_hour >= BACKLIGHT_DIMMING_START or \
-       current_time.tm_hour < BACKLIGHT_DIMMING_END:
+    if (
+        current_time.tm_hour >= BACKLIGHT_DIMMING_START
+        or current_time.tm_hour < BACKLIGHT_DIMMING_END
+    ):
         display.brightness = BACKLIGHT_DIMMING_VALUE
     else:
         display.brightness = BACKLIGHT_DEFAULT_VALUE
@@ -205,178 +249,304 @@ def validate_elec_data(elec_data):
     if not elec_data:
         return False
 
-    if 'error' in elec_data and elec_data['error'] != 'not-enabled':
-        print(f'Electricity price data fetch failed: {elec_data["error"]}')
+    if "error" in elec_data and elec_data["error"] != "not-enabled":
+        print(f"Electricity price data fetch failed: {elec_data['error']}")
         return False
 
     return True
 
 
-def parse_hourly_prices(elec_data, utc_offset_hours):
-    """Build a mapping of local start times to hourly electricity prices."""
-    prices = OrderedDict()
-    tz_delta = timedelta(hours=utc_offset_hours)
-    for item in elec_data['data-hour']:
-        prices[datetime.fromisoformat(item['start-time'].replace('Z', '')) +
-               tz_delta] = item['price']
-
-    return prices
-
-
-def closest_price_start(prices, now):
-    """Find the price slot closest to the given time."""
-    smallest_diff = 1000000000
-    smallest = None
-
-    for start_time in prices:
-        diff = abs((start_time - now).total_seconds())
-        if diff < smallest_diff:
-            smallest_diff = diff
-            smallest = start_time
-
-    # Special case handling for the situation when the next hour is closer than
-    # the current is
-    if now.hour < smallest.hour:
-        smallest -= timedelta(hours=1)
-
-    return smallest
+def _parse_iso_to_epoch(iso_str):
+    """Parse an ISO 8601 string (with or without trailing Z) to epoch seconds."""
+    s = iso_str.replace("Z", "")
+    return time.mktime((
+        int(s[0:4]), int(s[5:7]), int(s[8:10]),
+        int(s[11:13]), int(s[14:16]), int(s[17:19]),
+        -1, -1, -1,
+    ))
 
 
-def build_elec_display_values(elec_data, prices, start_time):
-    """Assemble electricity display values from prepared price data."""
-    values = {'current': [start_time, prices[start_time]]}
+def compress_elec_hours(elec_data, utc_offset_hours):
+    """Compress hourly electricity JSON into a compact hour-keyed map."""
+    tz_offset_sec = utc_offset_hours * 3600
+    hours = {}
+    latest_hour_key = None
+    for item in elec_data["data-hour"]:
+        local = time.localtime(_parse_iso_to_epoch(item["start-time"]) + tz_offset_sec)
+        hour_key = (
+            ((local.tm_year * 100 + local.tm_mon) * 100 + local.tm_mday) * 100
+            + local.tm_hour
+        )
+        hours[hour_key] = item["price"]
+        if latest_hour_key is None or hour_key > latest_hour_key:
+            latest_hour_key = hour_key
+    return hours, latest_hour_key
 
-    next_hour = start_time + timedelta(hours=1)
-    if next_hour in prices:
-        values['next'] = [next_hour, prices[next_hour]]
 
-    if elec_data['month-price-avg'] is not None:
-        values['average'] = elec_data['month-price-avg']
+def store_elec_metadata(elec_price_metadata, elec_data, utc_offset_hours):
+    """Store a compact electricity payload and drop the bulky JSON."""
+    if not validate_elec_data(elec_data):
+        elec_price_metadata["hours"] = None
+        elec_price_metadata["month-price-avg"] = None
+        elec_price_metadata["month-consumption"] = None
+        elec_price_metadata["month-cost"] = None
+        elec_price_metadata["latest-hour-key"] = None
+        elec_price_metadata["fetched"] = time.time()
+        return
 
-    if elec_data['month-consumption'] is not None:
-        values['month-consumption'] = elec_data['month-consumption']
+    hours = None
+    latest_hour_key = None
+    if elec_data.get("data-hour"):
+        hours, latest_hour_key = compress_elec_hours(elec_data, utc_offset_hours)
 
-    if elec_data['month-cost'] is not None:
-        values['month-cost'] = elec_data['month-cost']
+    elec_price_metadata["hours"] = hours
+    elec_price_metadata["latest-hour-key"] = latest_hour_key
+    elec_price_metadata["month-price-avg"] = elec_data.get("month-price-avg")
+    elec_price_metadata["month-consumption"] = elec_data.get("month-consumption")
+    elec_price_metadata["month-cost"] = elec_data.get("month-cost")
+    elec_price_metadata["fetched"] = time.time()
+
+
+def hour_key_for_struct_time(c_time):
+    """Return comparable YYYYMMDDHH integer for a struct_time."""
+    return (((c_time.tm_year * 100 + c_time.tm_mon) * 100 + c_time.tm_mday) * 100) + (
+        c_time.tm_hour
+    )
+
+
+def prepare_elec_data(elec_price_metadata):
+    """Prepare current/next electricity display values from compact hour data."""
+    hours = elec_price_metadata.get("hours")
+    if not hours:
+        return None
+
+    now_seconds = time.time()
+    now_local = time.localtime(now_seconds)
+    current_hour_key = hour_key_for_struct_time(now_local)
+    latest_hour_key = elec_price_metadata.get("latest-hour-key")
+    if latest_hour_key is not None and current_hour_key > latest_hour_key:
+        return None
+
+    current_price = hours.get(current_hour_key)
+    if current_price is None:
+        return None
+
+    values = {"current": [now_local.tm_hour, 0, current_price]}
+    next_local = time.localtime(now_seconds + 3600)
+    next_hour_key = hour_key_for_struct_time(next_local)
+    next_price = hours.get(next_hour_key)
+    if next_price is not None:
+        values["next"] = [next_local.tm_hour, 0, next_price]
+
+    if elec_price_metadata["month-price-avg"] is not None:
+        values["average"] = elec_price_metadata["month-price-avg"]
+    if elec_price_metadata["month-consumption"] is not None:
+        values["month-consumption"] = elec_price_metadata["month-consumption"]
+    if elec_price_metadata["month-cost"] is not None:
+        values["month-cost"] = elec_price_metadata["month-cost"]
 
     return values
 
 
-def prepare_elec_data(elec_data, utc_offset_hours):
-    """Fetch and prepare electricity data for display."""
-    if not validate_elec_data(elec_data):
-        return None
+def slim_observation(raw, hidden_ruuvitags):
+    """Keep only observation fields needed for display."""
+    if not raw:
+        return {
+            "weather-data": None,
+            "data": {},
+            "rt-data": [],
+        }
 
-    prices = parse_hourly_prices(elec_data, utc_offset_hours)
-    if datetime.now() > max(prices):
-        # No suitable values to show
-        return None
+    weather = raw.get("weather-data")
+    if weather:
+        wind = weather.get("wind-direction-str") or {}
+        weather_data = {
+            "time": weather.get("time"),
+            "temperature": weather.get("temperature"),
+            "feels-like": weather.get("feels-like"),
+            "cloudiness": weather.get("cloudiness"),
+            "wind-speed": weather.get("wind-speed"),
+            "humidity": weather.get("humidity"),
+            "wind-direction-str": {"short": wind.get("short")},
+        }
+    else:
+        weather_data = weather
 
-    start_time = closest_price_start(prices, datetime.now())
-    return build_elec_display_values(elec_data, prices, start_time)
+    o_data = raw.get("data") or {}
+    data = {
+        "outside-temperature": o_data.get("outside-temperature"),
+        "beacon-rssi": o_data.get("beacon-rssi"),
+        "iaqs": o_data.get("iaqs"),
+        "ruuvi-co2": o_data.get("ruuvi-co2"),
+        "pm-25": o_data.get("pm-25"),
+    }
+
+    seen_names = set()
+    rt_data = []
+    for tag in raw.get("rt-data") or []:
+        name = tag.get("name")
+        if (name in seen_names) or (name in hidden_ruuvitags):
+            continue
+        rt_data.append(
+            {
+                "name": name,
+                "temperature": tag.get("temperature"),
+                "humidity": tag.get("humidity"),
+                "recorded": tag.get("recorded"),
+            }
+        )
+        seen_names.add(name)
+
+    return {
+        "weather-data": weather_data,
+        "data": data,
+        "rt-data": rt_data,
+    }
+
+
+def slim_weather(raw):
+    """Keep only weather/astronomy fields needed for display."""
+    if not raw:
+        return {
+            "ast": {"sunrise": None, "sunset": None},
+            "fmi": {"forecast": None},
+        }
+
+    ast = raw.get("ast") or {}
+    fmi = raw.get("fmi") or {}
+    forecast = fmi.get("forecast")
+    if forecast:
+        wind = forecast.get("wind-direction-str") or {}
+        forecast = {
+            "time": forecast.get("time"),
+            "temperature": forecast.get("temperature"),
+            "feels-like": forecast.get("feels-like"),
+            "cloudiness": forecast.get("cloudiness"),
+            "wind-speed": forecast.get("wind-speed"),
+            "precipitation": forecast.get("precipitation"),
+            "wind-direction-str": {"short": wind.get("short")},
+        }
+
+    return {
+        "ast": {
+            "sunrise": ast.get("sunrise"),
+            "sunset": ast.get("sunset"),
+        },
+        "fmi": {"forecast": forecast},
+    }
 
 
 def format_local_time():
-    """Format the current local time for display."""
+    """Format the current local time for display (minute resolution)."""
     c_time = time.localtime()
     return (
-        f'{c_time.tm_mday}.{c_time.tm_mon}.{c_time.tm_year} '
-        f'{c_time.tm_hour:02}:{c_time.tm_min:02}:{c_time.tm_sec:02}'
+        f"{c_time.tm_mday}.{c_time.tm_mon}.{c_time.tm_year} "
+        f"{c_time.tm_hour:02}:{c_time.tm_min:02}"
     )
 
 
-def update_time_row(display, time_str):
-    """Update only the clock row, preserving sunrise / sunset suffix if present."""
-    if 'sr' in display[0].text:
-        sr_text = display[0].text[display[0].text.index('sr'):]
-        display[0].text = f'{time_str}           {sr_text}'
+def update_time_row(display, time_str, clock_suffix):
+    """Update only the clock row, using a cached sunrise / sunset suffix."""
+    if clock_suffix:
+        display[0].text = f"{time_str}           {clock_suffix}"
     else:
         display[0].text = time_str
 
 
 def render_weather_rows(display, observation, weather_data, utc_offset_hour, time_str):
-    """Render the header clock row and current weather rows."""
-    display[0].text = time_str
+    """Render the header clock row and current weather rows.
 
-    if not observation['weather-data']:
-        return
+    Returns the clock row sunrise / sunset suffix for later time-only updates.
+    """
+    clock_suffix = ""
+    if observation["weather-data"]:
+        clock_suffix = (
+            f"sr {weather_data['ast']['sunrise']} ss {weather_data['ast']['sunset']}"
+        )
+        display[0].text = f"{time_str}           {clock_suffix}"
+    else:
+        display[0].text = time_str
+        return clock_suffix
 
-    display[0].text += (
-        f'           sr {weather_data['ast']['sunrise']} '
-        f'ss {weather_data['ast']['sunset']}'
-    )
-
-    weather = observation['weather-data']
-    dt_time = datetime.fromisoformat(weather['time'].replace('Z', ''))
-    weather_time_str = f'{dt_time.hour + utc_offset_hour:02}:{dt_time.minute:02}'
+    weather = observation["weather-data"]
+    w_epoch = _parse_iso_to_epoch(weather["time"]) + utc_offset_hour * 3600
+    w_local = time.localtime(w_epoch)
+    weather_time_str = f"{w_local.tm_hour:02}:{w_local.tm_min:02}"
 
     display[1].text = (
-        f'Weather ({weather_time_str}): temp {weather["temperature"]} \u00b0C, '
-        f'feel {weather["feels-like"]} \u00b0C,'
+        f"Weather ({weather_time_str}): temp {weather['temperature']} \u00b0C, "
+        f"feel {weather['feels-like']} \u00b0C,"
     )
     display[2].text = (
-        f'clouds {weather["cloudiness"]}, wind '
-        f'{weather["wind-direction-str"]["short"]} {weather["wind-speed"]} m/s, '
-        f'humidity {int(weather["humidity"])} %H'
+        f"clouds {weather['cloudiness']}, wind "
+        f"{weather['wind-direction-str']['short']} {weather['wind-speed']} m/s, "
+        f"humidity {int(weather['humidity'])} %H"
     )
+
+    return clock_suffix
 
 
 def render_forecast_rows(display, weather_data, utc_offset_hour):
     """Render forecast rows and return the next row index for following sections."""
-    if weather_data['fmi']['forecast']:
-        forecast = weather_data['fmi']['forecast']
-        forecast_dt = datetime.fromisoformat(forecast['time'].replace('Z', ''))
-
-        if forecast:
-            display[3].text = 'Forecast'
-            if forecast_dt and forecast_dt.hour is not None \
-               and forecast_dt.minute is not None:
-                display[3].text += (
-                    f' ({forecast_dt.hour + utc_offset_hour:02}:'
-                    f'{forecast_dt.minute:02})'
-                )
-                display[3].text += (
-                    f': temp {forecast["temperature"]} \u00b0C, '
-                    f'feel {forecast["feels-like"]} \u00b0C, '
-                )
-                display[4].text = (
-                    f'clouds {forecast["cloudiness"]} %, '
-                    f'wind {forecast["wind-direction-str"]["short"]} '
-                    f'{forecast["wind-speed"]} m/s, precip '
-                    f'{forecast["precipitation"]} mm'
-                )
-                return 5
-    else:
+    forecast = weather_data["fmi"]["forecast"]
+    if not forecast:
         return 1
 
-    return None
+    try:
+        f_epoch = _parse_iso_to_epoch(forecast["time"]) + utc_offset_hour * 3600
+        f_local = time.localtime(f_epoch)
+    except (ValueError, TypeError):
+        return None
+
+    display[3].text = (
+        f"Forecast ({f_local.tm_hour:02}:"
+        f"{f_local.tm_min:02}): temp {forecast['temperature']} \u00b0C, "
+        f"feel {forecast['feels-like']} \u00b0C, "
+    )
+    display[4].text = (
+        f"clouds {forecast['cloudiness']} %, "
+        f"wind {forecast['wind-direction-str']['short']} "
+        f"{forecast['wind-speed']} m/s, precip "
+        f"{forecast['precipitation']} mm"
+    )
+    return 5
 
 
 def render_electricity_month_rows(display, elec_data, row):
     """Render electricity monthly stats rows and return the next row index."""
-    if 'average' not in elec_data and 'month-consumption' not in elec_data:
+    if "average" not in elec_data and "month-consumption" not in elec_data:
         return row
 
-    display[row].text += 'Current month: '
+    month_consumption = elec_data.get("month-consumption")
+    month_average = elec_data.get("average")
+    month_cost = elec_data.get("month-cost")
 
-    if 'month-consumption' in elec_data:
-        display[row].text += \
-            f'consumption {elec_data["month-consumption"]} kWh'
-    if 'average' in elec_data:
-        if display[row].text[-1] != ' ':
-            display[row].text += ','
+    line = "Current month:"
+    if month_consumption is not None:
+        line += f" consumption {month_consumption} kWh"
+
+    if month_average is not None:
+        if month_consumption is not None:
+            display[row].text = f"{line},"
             row += 1
+            line = f"average price {month_average} c / kWh"
+        else:
+            line += f" average price {month_average} c / kWh"
 
-        display[row].text += \
-            f'average price {elec_data["average"]} c / kWh'
+    if month_cost is not None:
+        if month_consumption is None and month_average is not None:
+            # Keep cost on a separate row to avoid very long row strings.
+            display[row].text = line
+            row += 1
+            display[row].text = f"cost {month_cost} €"
+            return row + 1
 
-    if 'month-cost' in elec_data:
-        if 'average' in elec_data or 'month-consumption' in elec_data:
-            display[row].text += ', '
-            if 'month-consumption' not in elec_data and 'average' in elec_data:
-                row += 1
+        if month_consumption is not None or month_average is not None:
+            line += f", cost {month_cost} €"
+        else:
+            line += f" cost {month_cost} €"
 
-        display[row].text += f'cost {elec_data["month-cost"]} €'
+    display[row].text = line
 
     return row + 1
 
@@ -386,39 +556,52 @@ def render_electricity_rows(display, elec_data, row):
     if not elec_data:
         return row
 
-    if 'current' in elec_data:
-        current_val = elec_data['current']
-        display[row].text = (
-            f'Elec price: {current_val[0].hour}:'
-            f'{current_val[0].minute:02}: {current_val[1]} c'
+    row_text = ""
+    if "current" in elec_data:
+        current_val = elec_data["current"]
+        row_text = (
+            f"Elec price: {current_val[0]}:"
+            f"{current_val[1]:02} {current_val[2]} c"
         )
-    if 'next' in elec_data:
-        next_val = elec_data['next']
-        display[row].text += (
-            f', {next_val[0].hour}:{next_val[0].minute:02}: {next_val[1]} c'
-        )
+    if "next" in elec_data:
+        next_val = elec_data["next"]
+        next_text = f"{next_val[0]}:{next_val[1]:02} {next_val[2]} c"
+        if row_text:
+            row_text = f"{row_text}, {next_text}"
+        else:
+            row_text = f"Elec price: {next_text}"
+
+    display[row].text = row_text
     row += 1
     return render_electricity_month_rows(display, elec_data, row)
 
 
 def render_observation_rows(display, observation, rt_recorded, row):
     """Render observation summary rows and return the next row index."""
-    display[row].text = ''
+    display[row].text = ""
     row += 1
 
-    display[row].text = rt_recorded
+    display[row].text = rt_recorded or ""
     row += 1
-    o_data = observation['data']
-    if o_data['outside-temperature'] is not None:
-        display[row].text = f'Outside temp {o_data["outside-temperature"]} \u00b0C'
-    if o_data['beacon-rssi'] is not None:
-        display[row].text += f', beacon RSSI {o_data["beacon-rssi"]} dBm,'
+    o_data = observation["data"]
 
-    if o_data['iaqs'] is not None:
+    outside = o_data["outside-temperature"]
+    rssi = o_data["beacon-rssi"]
+    summary_parts = []
+    if outside is not None:
+        summary_parts.append(f"Outside temp {outside} \u00b0C")
+    if rssi is not None:
+        summary_parts.append(f"beacon RSSI {rssi} dBm")
+    display[row].text = ", ".join(summary_parts) + ("," if summary_parts else "")
+
+    if o_data["iaqs"] is not None:
         row += 1
+        iaqs = o_data["iaqs"]
+        co2 = o_data["ruuvi-co2"]
+        pm25 = o_data["pm-25"]
         display[row].text = (
-            f'air: IAQS {o_data["iaqs"]}, CO\u2082 {o_data["ruuvi-co2"]} ppm, '
-            f'PM 2.5 {o_data["pm-25"]} \u00b5g/m\u00b3'
+            f"air: IAQS {iaqs}, CO\u2082 {co2} ppm, "
+            f"PM 2.5 {pm25} \u00b5g/m\u00b3"
         )
     row += 1
 
@@ -426,82 +609,181 @@ def render_observation_rows(display, observation, rt_recorded, row):
 
 
 def render_ruuvi_tag_rows(display, observation, row):
-    """Render RuuviTag rows and return the next row index."""
-    if not observation['rt-data']:
+    """Render RuuviTag rows and return the next row index.
+
+    Expects observation['rt-data'] already filtered (hidden names removed, deduped).
+    """
+    if not observation["rt-data"]:
         return row
 
-    rt_data = observation['rt-data']
-    seen_names = []
-    hidden_ruuvitags = getenv('HIDDEN_RUUVITAG_NAMES').split(',')
-
-    for tag in rt_data:
-        name = tag['name']
-
-        if (name in seen_names) or (name in hidden_ruuvitags):
-            continue
-
-        display[row].text = (
-            f'RuuviTag \"{name}\": temperature {tag["temperature"]} \u00b0C,'
-        )
-        display[row + 1].text = f'humidity {tag["humidity"]} %H'
+    for tag in observation["rt-data"]:
+        if row + 1 >= DISPLAY_MAX_ROWS:
+            display[DISPLAY_MAX_ROWS - 1].text = "RuuviTag rows truncated"
+            return DISPLAY_MAX_ROWS
+        display[
+            row
+        ].text = f'RuuviTag "{tag["name"]}": temperature {tag["temperature"]} \u00b0C,'
+        display[row + 1].text = f"humidity {tag['humidity']} %H"
         row += 2
-        seen_names.append(name)
 
     return row
 
 
-def update_screen(display, data, *, time_update_only=False):
+def update_screen(display, data, *, time_update_only=False, clock_suffix=""):
     """Update screen contents.
 
     data keys: observation, weather_data, elec_data, utc_offset_hour
+
+    Returns the clock row sunrise / sunset suffix for later time-only updates.
     """
     time_str = format_local_time()
 
     if time_update_only:
-        update_time_row(display, time_str)
-        return
+        update_time_row(display, time_str, clock_suffix)
+        gc.collect()
+        return clock_suffix
 
-    observation = data['observation']
-    weather_data = data['weather_data']
-    elec_data = data['elec_data']
-    utc_offset_hour = data['utc_offset_hour']
+    observation = data["observation"]
+    weather_data = data["weather_data"]
+    elec_data = data["elec_data"]
+    utc_offset_hour = data["utc_offset_hour"]
 
-    rt_recorded = max(tag['recorded'] for tag in observation['rt-data']) \
-        if observation['rt-data'] else None
+    rt_recorded = (
+        max(tag["recorded"] for tag in observation["rt-data"])
+        if observation["rt-data"]
+        else None
+    )
 
-    clear_display(display)
-    render_weather_rows(display, observation, weather_data, utc_offset_hour, time_str)
+    gc.collect()
+    clock_suffix = render_weather_rows(
+        display, observation, weather_data, utc_offset_hour, time_str
+    )
     row = render_forecast_rows(display, weather_data, utc_offset_hour)
     row = render_electricity_rows(display, elec_data, row)
     row = render_observation_rows(display, observation, rt_recorded, row)
-    render_ruuvi_tag_rows(display, observation, row)
+    row = render_ruuvi_tag_rows(display, observation, row)
+    blank_display_rows(display, row)
     display.show()
+    gc.collect()
+    return clock_suffix
 
 
-def main():
+def fetch_and_slim_display_data(
+    wifi,
+    token,
+    access_token_expiry_time,
+    elec_price_metadata,
+    hidden_ruuvitags,
+):
+    """Fetch obs/weather, slim them, and prepare elec display values."""
+    elec_data = prepare_elec_data(elec_price_metadata)
+    gc.collect()
+
+    token, access_token_expiry_time, obs_raw = get_backend_endpoint_content(
+        wifi, "data/latest-obs", token, access_token_expiry_time
+    )
+    observation = slim_observation(obs_raw, hidden_ruuvitags)
+    obs_raw = None
+    gc.collect()
+
+    token, access_token_expiry_time, weather_raw = get_backend_endpoint_content(
+        wifi, "data/weather", token, access_token_expiry_time
+    )
+    weather_data = slim_weather(weather_raw)
+    weather_raw = None
+    gc.collect()
+
+    return (token, access_token_expiry_time, observation, weather_data, elec_data)
+
+
+def maybe_refresh_elec_prices(
+    wifi, token, access_token_expiry_time, elec_price_metadata, utc_offset_hour
+):
+    """Refresh compact electricity metadata when the cache is stale."""
+    fetched = elec_price_metadata["fetched"]
+    if fetched and (time.time() - fetched) <= ELEC_PRICE_FETCH_THRESHOLD:
+        return token, access_token_expiry_time
+
+    token, access_token_expiry_time, elec_raw = get_backend_endpoint_content(
+        wifi,
+        "data/elec-data",
+        token,
+        access_token_expiry_time,
+        {"addFees": "true"},
+    )
+    store_elec_metadata(elec_price_metadata, elec_raw, utc_offset_hour)
+    gc.collect()
+    return token, access_token_expiry_time
+
+
+def maybe_update_display(display, screen_data, update_data, clock_minute, clock):
+    """Update the full screen or clock row when needed.
+
+    clock is (clock_suffix, last_clock_minute).
+    """
+    clock_suffix, last_clock_minute = clock
+    if update_data:
+        clock_suffix = update_screen(
+            display, screen_data, time_update_only=False, clock_suffix=clock_suffix
+        )
+        return clock_suffix, clock_minute
+    if last_clock_minute != clock_minute:
+        clock_suffix = update_screen(
+            display, screen_data, time_update_only=True, clock_suffix=clock_suffix
+        )
+        return clock_suffix, clock_minute
+    return clock_suffix, last_clock_minute
+
+
+def main():  # noqa: PLR0915
     """Run the main module loop."""
+    gc.collect()
+    font = bitmap_font.load_font(FONT_PATH)
+    gc.collect()
+
     wifi = connect_to_wlan()
+    gc.collect()
 
-    print('Getting current time from backend')
-    utc_offset_hour = set_time(wifi, getenv('TIMEZONE'))
-    print('Current time set')
+    print("Getting current time from backend")
+    utc_offset_hour = set_time(wifi, getenv("TIMEZONE"))
+    print("Current time set")
+    gc.collect()
 
-    display = SimpleTextDisplay(colors=[SimpleTextDisplay.WHITE], font=FONT)
+    display = SimpleTextDisplay(colors=[SimpleTextDisplay.WHITE], font=font)
+    del font
+    gc.collect()
     init_fetch_done = False
     time_set_seconds_slept = 0
     token = None
     access_token_expiry_time = None
+    observation = None
     weather_data = None
-    elec_price_metadata = {'raw_data': None,
-                           'fetched': None}
-    elec_price_fetch_threshold = 1800
-    data_update_second_threshold = 40
+    elec_data = None
+    elec_price_metadata = {
+        "hours": None,
+        "latest-hour-key": None,
+        "month-price-avg": None,
+        "month-consumption": None,
+        "month-cost": None,
+        "fetched": None,
+    }
+    hidden_ruuvitags = {
+        name for name in (getenv("HIDDEN_RUUVITAG_NAMES") or "").split(",") if name
+    }
+    screen_data = {
+        "observation": None,
+        "weather_data": None,
+        "elec_data": None,
+        "utc_offset_hour": utc_offset_hour,
+    }
+    clock_suffix = ""
+    last_clock_minute = None
 
     board.DISPLAY.brightness = BACKLIGHT_DEFAULT_VALUE
 
     while True:
         try:
-            if not token or datetime.now() >= access_token_expiry_time:
+            if not token or time.time() >= access_token_expiry_time:
                 token, access_token_expiry_time = fetch_token(wifi)
                 if not token:
                     continue
@@ -509,52 +791,65 @@ def main():
             if BACKLIGHT_DIMMING_ENABLED:
                 adjust_backlight(board.DISPLAY)
 
-            if not elec_price_metadata['fetched'] or \
-               (datetime.now() - elec_price_metadata['fetched']).total_seconds() > \
-               elec_price_fetch_threshold:
-                token, access_token_expiry_time, elec_price_metadata['raw_data'] = \
-                    get_backend_endpoint_content(
-                        wifi, 'data/elec-data', token, access_token_expiry_time,
-                        {'addFees': 'true'})
-                elec_price_metadata['fetched'] = datetime.now()
+            now = time.localtime()
+            update_data = (
+                now.tm_min % DATA_STORAGE_INTERVAL == 0
+                and now.tm_sec == DATA_UPDATE_SECOND
+            )
+            clock_minute = (now.tm_hour, now.tm_min)
 
-            now = datetime.now()
-            update_data = now.minute % DATA_STORAGE_INTERVAL == 0 and \
-                now.second == data_update_second_threshold
+            # Defer elec JSON parse so it never shares a loop turn with the
+            # 4 minute observation / weather fetch and full redraw
+            if not update_data:
+                token, access_token_expiry_time = maybe_refresh_elec_prices(
+                    wifi,
+                    token,
+                    access_token_expiry_time,
+                    elec_price_metadata,
+                    utc_offset_hour,
+                )
 
             if update_data or not init_fetch_done:
-                elec_data = prepare_elec_data(
-                    elec_price_metadata['raw_data'],
-                    utc_offset_hour)
-                token, access_token_expiry_time, observation = \
-                    get_backend_endpoint_content(
-                        wifi, 'data/latest-obs', token, access_token_expiry_time)
-                token, access_token_expiry_time, weather_data = \
-                    get_backend_endpoint_content(
-                        wifi, 'data/weather', token, access_token_expiry_time)
+                observation = None
+                weather_data = None
+                elec_data = None
+                gc.collect()
+                (
+                    token,
+                    access_token_expiry_time,
+                    observation,
+                    weather_data,
+                    elec_data,
+                ) = fetch_and_slim_display_data(
+                    wifi,
+                    token,
+                    access_token_expiry_time,
+                    elec_price_metadata,
+                    hidden_ruuvitags,
+                )
+                screen_data["observation"] = observation
+                screen_data["weather_data"] = weather_data
+                screen_data["elec_data"] = elec_data
                 if not init_fetch_done:
                     init_fetch_done = True
                     update_data = True
 
-            update_screen(
+            clock_suffix, last_clock_minute = maybe_update_display(
                 display,
-                {
-                    'observation': observation,
-                    'weather_data': weather_data,
-                    'elec_data': elec_data,
-                    'utc_offset_hour': utc_offset_hour,
-                },
-                time_update_only=not update_data,
+                screen_data,
+                update_data,
+                clock_minute,
+                (clock_suffix, last_clock_minute),
             )
 
             if time_set_seconds_slept >= TIME_SET_SLEEP_TIME:
-                set_time(wifi, getenv('TIMEZONE'))
+                set_time(wifi, getenv("TIMEZONE"))
                 time_set_seconds_slept = 0
 
             time_set_seconds_slept += 1
             time.sleep(1)
         except MemoryError:
-            # Reset board without prints as there may not be memory to print anything
+            print("MemoryError: reloading")
             supervisor.reload()
 
 
