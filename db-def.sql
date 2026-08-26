@@ -88,6 +88,8 @@ CREATE TABLE electricity_price (
        price REAL NOT NULL
 );
 
+CREATE INDEX electricity_price_start_time_idx ON electricity_price (start_time);
+
 -- Electricity price table for 15 minute resolution
 CREATE TABLE electricity_price_minute (
        id SERIAL PRIMARY KEY,
@@ -95,9 +97,13 @@ CREATE TABLE electricity_price_minute (
        price REAL NOT NULL
 );
 
+CREATE INDEX electricity_price_minute_start_time_idx ON electricity_price_minute (start_time);
+
 -- Electricity consumption table
 CREATE TABLE electricity_consumption (
        id SERIAL PRIMARY KEY,
        time TIMESTAMP WITH TIME ZONE NOT NULL,
        consumption REAL NOT NULL
 );
+
+CREATE INDEX electricity_consumption_time_idx ON electricity_consumption (time);

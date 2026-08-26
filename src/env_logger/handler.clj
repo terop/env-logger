@@ -175,19 +175,23 @@
     auth/response-unauthorized
     (let [start-date (get (:params request) "startDate")
           end-date (get (:params request) "endDate")
-          max-days (or (:max-display-days env) 90)]
+          max-days (or (:max-display-days env) 90)
+          include-meta (not= false
+                             (when-let [v (get (:params request) "includeMeta")]
+                               (Boolean/parseBoolean v)))]
       (if (and (seq start-date) (seq end-date)
                (not (display-interval-valid? start-date end-date max-days)))
         (-> (bad-request (j/write-value-as-string {:error "date-range-too-large"
                                                    :max-days max-days}))
             (content-type "application/json"))
         (serve-json
-         (merge {:weather-data (get-weather-data)
-                 :tb-image-basepath (:tb-image-basepath env)
-                 :rt-names (:ruuvitag-names env)
-                 :rt-default-show (:ruuvitag-default-show env)
-                 :rt-default-values (:ruuvitag-default-values env)
-                 :max-display-days max-days}
+         (merge (when include-meta
+                  {:weather-data (get-weather-data)
+                   :tb-image-basepath (:tb-image-basepath env)
+                   :rt-names (:ruuvitag-names env)
+                   :rt-default-show (:ruuvitag-default-show env)
+                   :rt-default-values (:ruuvitag-default-values env)
+                   :max-display-days max-days})
                 (get-plot-page-data request)))))))
 
 (defn get-auth-params

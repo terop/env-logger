@@ -46,10 +46,18 @@ export const applyDisplayPayload = (rData) => {
   if (rData['tb-image-basepath'] != null) {
     chartState.testbedImageBasepath = rData['tb-image-basepath'];
   }
-  chartState.data.weather = rData['weather-data'];
-  chartState.data.weatherObs = rData['weather-obs-data'];
-  chartState.data.other = rData['obs-data'];
-  chartState.data.rt = rData['rt-data'];
+  if (rData['weather-data'] != null) {
+    chartState.data.weather = rData['weather-data'];
+  }
+  if (rData['weather-obs-data'] != null) {
+    chartState.data.weatherObs = rData['weather-obs-data'];
+  }
+  if (rData['obs-data'] != null) {
+    chartState.data.other = rData['obs-data'];
+  }
+  if (rData['rt-data'] != null) {
+    chartState.data.rt = rData['rt-data'];
+  }
   if (rData['rt-names']) {
     chartState.names.ruuvitag = rData['rt-names'];
   }

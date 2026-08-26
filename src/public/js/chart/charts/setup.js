@@ -229,7 +229,11 @@ export const showElectricityData = async () => {
 
 export const refreshElecDataForDateRange = async (startDate, endDate) => {
   try {
-    const elecData = await fetchElecData({ startDate, endDate });
+    const elecData = await fetchElecData({
+      startDate,
+      endDate,
+      includeSummary: false
+    });
 
     if (!elecData) {
       return;

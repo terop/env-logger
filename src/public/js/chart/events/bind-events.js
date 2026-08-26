@@ -71,7 +71,11 @@ const updateButtonClickHandler = async (event) => {
   }
 
   try {
-    const rData = await fetchDisplayData({ startDate, endDate });
+    const rData = await fetchDisplayData({
+      startDate,
+      endDate,
+      includeMeta: false
+    });
     applyDisplayPayload(rData);
     if (rData['obs-dates']?.current) {
       document.getElementById('startDate').value = rData['obs-dates'].current.start;

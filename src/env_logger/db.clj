@@ -837,35 +837,69 @@
                                                              :date]]
                                                    :from [:electricity_price]})
                                       rs-opts))]
-                        (add-tz-offset-to-dt (jt/local-date-time dt))))]
+                        (add-tz-offset-to-dt (jt/local-date-time dt))))
+          start-dt (if (string? start)
+                     (make-local-dt start "start")
+                     start)
+          end-dt (if (string? end-val)
+                   (make-local-dt end-val "end")
+                   end-val)]
       (if-not end-val
         [nil]
-        (for [date (take (inc (jt/time-between (jt/local-date start)
-                                               (jt/local-date end-val)
-                                               :days))
-                         (jt/iterate jt/plus (jt/local-date start)
-                                     (jt/days 1)))]
-          (let [query (sql/format {:select [[:%sum.consumption :consumption]
-                                            [:%avg.price :price]]
-                                   :from [[:electricity_price :p]]
-                                   :left-join [[:electricity_consumption :u]
-                                               [:= :p.start_time :u.time]]
-                                   :where [:and
-                                           [:>= :p.start_time
-                                            (make-local-dt date "start")]
-                                           [:<= :p.start_time
-                                            (make-local-dt date "end")]]})
-                result (jdbc/execute-one! db-con query rs-opts)]
-            (when (:price result)
-              (merge result
-                     {:date (jt/format :iso-local-date date)
-                      :price (when (:price result)
-                               (round-number (if add-fees
-                                               (+ (:price result)
-                                                  (get-elec-fees-for-date date))
-                                               (:price result))))
-                      :consumption (when (:consumption result)
-                                     (round-number (:consumption result)))}))))))
+        (let [query (sql/format {:select [:p.start_time
+                                          :p.price
+                                          :u.consumption]
+                                 :from [[:electricity_price :p]]
+                                 :left-join [[:electricity_consumption :u]
+                                             [:= :p.start_time :u.time]]
+                                 :where [:and
+                                         [:>= :p.start_time start-dt]
+                                         [:<= :p.start_time end-dt]]
+                                 :order-by [[:p.start_time :asc]]})
+              rows (jdbc/execute! db-con query rs-opts)
+              day-stats
+              (reduce (fn [acc row]
+                        (let [date (jt/local-date (jt/local-date-time
+                                                   (:start-time row)))
+                              current (get acc date
+                                           {:sum-price 0.0
+                                            :price-count 0
+                                            :sum-consumption 0.0
+                                            :consumption-count 0})]
+                          (assoc acc
+                                 date
+                                 (let [updated (-> current
+                                                   (update :sum-price
+                                                           + (double (:price row)))
+                                                   (update :price-count inc))]
+                                   (if (some? (:consumption row))
+                                     (-> updated
+                                         (update :sum-consumption
+                                                 + (double (:consumption row)))
+                                         (update :consumption-count inc))
+                                     updated)))))
+                      {}
+                      rows)]
+          (mapv (fn [date]
+                  (when-let [{:keys [sum-price
+                                     price-count
+                                     sum-consumption
+                                     consumption-count]}
+                             (get day-stats date)]
+                    (let [avg-price (/ sum-price price-count)
+                          price-with-fees (if add-fees
+                                            (+ avg-price
+                                               (get-elec-fees-for-date date))
+                                            avg-price)]
+                      {:date (jt/format :iso-local-date date)
+                       :price (round-number price-with-fees)
+                       :consumption (when (pos? consumption-count)
+                                      (round-number sum-consumption))})))
+                (take (inc (jt/time-between (jt/local-date start-dt)
+                                            (jt/local-date end-dt)
+                                            :days))
+                      (jt/iterate jt/plus (jt/local-date start-dt)
+                                  (jt/days 1)))))))
     (catch PSQLException pe
       (error pe "Daily electricity data fetch failed")
       [nil])))
@@ -1078,17 +1112,6 @@
                                                           [:>= :c.time interval-start]
                                                           [:<= :c.time interval-end]]})
                                      rs-opts))
-          total-cons (:cons (jdbc/execute-one! db-con
-                                               (sql/format {:select [[[:raw "COALESCE("
-                                                                       "SUM(consumption), 0)"]
-                                                                      :cons]]
-                                                            :from [:electricity_consumption]
-                                                            :where [:and
-                                                                    [:>= :time
-                                                                     interval-start]
-                                                                    [:<= :time
-                                                                     interval-end]]})
-                                               rs-opts))
           cons-rows (jdbc/execute! db-con
                                    (sql/format {:select [:time :consumption]
                                                 :from [:electricity_consumption]
@@ -1096,6 +1119,10 @@
                                                         [:>= :time interval-start]
                                                         [:<= :time interval-end]]})
                                    rs-opts)
+          total-cons (reduce (fn [acc row]
+                               (+ acc (double (or (:consumption row) 0.0))))
+                             0.0
+                             cons-rows)
           tax-on-consumption (reduce (fn [acc row]
                                        (+ acc
                                           (* (double (or (:consumption row) 0.0))
