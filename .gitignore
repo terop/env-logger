@@ -5,6 +5,7 @@ target/
 .eastwood
 .lsp/
 node_modules/
+src/public/js/chart.bundle.js
 resources/dev/config.edn
 resources/prod/config.edn
 resources/config.edn

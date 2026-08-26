@@ -13,7 +13,10 @@
             [ring.middleware.defaults :refer [wrap-defaults
                                               site-defaults
                                               secure-site-defaults]]
-            [ring.util.http-response :refer [bad-request content-type found]]
+            [ring.util.http-response :refer [bad-request
+                                             content-type
+                                             found
+                                             unauthorized]]
             [ring.util.response :refer [header]]
             [taoensso.timbre :refer [error set-min-level!]]
             [terop.openid-connect-auth :refer [access-ok?
@@ -333,6 +336,13 @@
 (def js-load-params {:app-url (:app-url env)
                      :static-asset-path (:static-asset-path env)})
 
+(defn store-id-token
+  "Validates and stores ID token in server-side auth state."
+  [request]
+  (if (receive-and-check-id-token (:oid-auth env) request)
+    (serve-text "OK")
+    (unauthorized "Not valid")))
+
 (def app
   (ring/ring-handler
    (ring/router
@@ -353,9 +363,8 @@
                                                       (:oid-auth env))))}]
      ["/do-logout" {:get (fn [_] (serve-template "templates/logout.html"
                                                  js-load-params))}]
-     ["/store-id-token" {:get #(serve-text (if (receive-and-check-id-token
-                                                (:oid-auth env) %)
-                                             "OK" "Not valid"))}]
+     ["/store-id-token" {:get store-id-token
+                         :post store-id-token}]
      ;; Data queries
      ["/data"
       ["/auth" {:get get-auth-params}]

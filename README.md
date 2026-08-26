@@ -47,6 +47,21 @@ the database password on one line.
 
 To start the application locally run `clojure -M:dev`.
 
+When developing frontend chart code, install Node dependencies once and build
+the chart bundle:
+
+`npm install`
+
+`npm run build:chart`
+
+For active frontend development, run the chart bundler in watch mode:
+
+`npm run build:chart:watch`
+
+Frontend tests can be run with:
+
+`npm test`
+
 ## Running tests
 
 Run tests with Kaocha:
@@ -68,6 +83,16 @@ variables as needed:
 * __POSTGRESQL_DB_PASSWORD_FILE__ (optional, if password is read from file)
 
 The test database name is fixed to `env_logger_test`.
+
+## Auth smoke check
+
+Run auth endpoint smoke checks locally:
+
+`./scripts/auth-smoke.sh`
+
+Optional base URL argument:
+
+`./scripts/auth-smoke.sh http://localhost/devsite/`
 
 ### Docker / podman
 

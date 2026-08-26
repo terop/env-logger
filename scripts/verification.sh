@@ -28,6 +28,7 @@ clojure -Tcljfmt check
 
 # Only run ruff when called from the env-logger repository to avoid ruff failures
 # when called from other repositories
+# shellcheck disable=SC2046,SC2086
 if [ "${CI}" ] && [ ${CIRCLE_PROJECT_REPONAME} = 'env-logger' ] || \
        [ $(basename $(pwd)) = 'env-logger' ]; then
     echo 'Running ruff for Python files'
@@ -42,7 +43,17 @@ fi
 
 if [ "${CI}" ]; then
     apt-get install -y npm
-    npm install --save-dev eslint@latest @eslint/js@latest
+    npm install
 fi
 echo 'Running ESLint for JavaScript files'
 npx eslint src/
+
+# shellcheck disable=SC2046,SC2086
+if [ "${CI}" ] && [ ${CIRCLE_PROJECT_REPONAME} = 'env-logger' ] || \
+       [ $(basename $(pwd)) = 'env-logger' ]; then
+    echo 'Building chart.bundle.js'
+    npm run build:chart
+
+    echo 'Running frontend unit tests'
+    npm test
+fi

@@ -37,12 +37,30 @@
         const applicationUrl = '{{ app-url }}';
         const staticAssetPath = '{{ static-asset-path }}';
     </script>
-    <script src="{{ static-asset-path }}/js/auth-load.js"></script>
+    <script src="{{ static-asset-path }}/auth-load.js"></script>
     <script>
         document.getElementById('oidLogin').addEventListener(
             'click',
-            () => {
-                doLogin();
+            async () => {
+                try {
+                    if (globalThis.authReady) {
+                        await globalThis.authReady;
+                    }
+                } catch (error) {
+                    console.error(`Authentication setup failed: ${error}`);
+                    return;
+                }
+
+                const loginFn =
+                    typeof globalThis.doLogin === 'function'
+                        ? globalThis.doLogin
+                        : (typeof doLogin === 'function' ? doLogin : null);
+
+                if (loginFn) {
+                    loginFn();
+                } else {
+                    console.error('OpenID login is unavailable: doLogin not loaded');
+                }
             },
             false);
     </script>

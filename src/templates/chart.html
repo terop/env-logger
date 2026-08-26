@@ -351,13 +351,11 @@
                 integrity="sha256-UWxf6lyCvfH7XEcrmq/cqc2m3IBrLBLOnWLC4Pw0gQQ=" crossorigin="anonymous"></script>
         <script src="https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js"
                 integrity="sha256-tmslrrTfhOMxmdwhaUAU0zbSIsvZ3rDlp8FL1qoND9A=" crossorigin="anonymous"></script>
-        <script src="https://cdn.jsdelivr.net/npm/axios@1.19.0/dist/axios.min.js"
-                integrity="sha256-MqDOyD14FMn5IfvW+lIfohKtwoSdyRr2Eki1JCukeYU=" crossorigin="anonymous"></script>
         <script>
             const applicationUrl = '{{ app-url }}';
             const staticAssetPath = '{{ static-asset-path }}';
         </script>
-        <script src="{{ static-asset-path }}/js/auth-load.js"></script>
-        <script src="js/chart.js"></script>
+        <script src="{{ static-asset-path }}/auth-load.js"></script>
+        <script src="js/chart.bundle.js"></script>
     </body>
 </html>

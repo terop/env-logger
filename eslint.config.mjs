@@ -3,6 +3,27 @@ import globals from "globals";
 import { defineConfig } from "eslint/config";
 
 export default defineConfig([
-  { files: ["**/*.{js,mjs,cjs}"], plugins: { js }, extends: ["js/recommended"], languageOptions: { globals: globals.browser } },
-  { files: ["**/*.js"], languageOptions: { sourceType: "script" } },
+  {
+    files: ["**/*.{js,mjs,cjs}"],
+    plugins: { js },
+    extends: ["js/recommended"],
+    languageOptions: { globals: globals.browser }
+  },
+  {
+    files: ["src/public/js/chart/**/*.js", "vitest.config.js"],
+    languageOptions: {
+      sourceType: "module",
+      globals: {
+        ...globals.browser,
+        ...globals.node
+      }
+    }
+  },
+  {
+    files: ["src/public/js/auth.js", "src/public/js/auth-load.js", "src/public/js/chart.bundle.js"],
+    languageOptions: { sourceType: "script" }
+  },
+  {
+    ignores: ["src/public/js/chart.bundle.js"]
+  }
 ]);
