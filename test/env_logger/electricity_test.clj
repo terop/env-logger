@@ -71,6 +71,44 @@
                (j/read-value (:body (e/electricity-data
                                      {:params {}})))))))))
 
+(deftest compact-elec-hour-bounds-test
+  (testing "Hour window is JVM-local current hour plus lookahead"
+    (let [[start end] (e/compact-elec-hour-bounds
+                       (jt/local-date-time 2026 8 26 14 20 0))]
+      (is (= (jt/local-date-time 2026 8 26 14 0 0) start))
+      (is (= (jt/local-date-time 2026 8 26 17 0 0) end)))))
+
+(deftest electricity-data-compact-test
+  (testing "Compact electricity payload for PyPortal omits chart-only fields"
+    (with-redefs [db/postgres-ds test-ds]
+      (with-redefs [env enabled-elec-env
+                    access-ok? (fn [_ _] true)
+                    db/get-elec-data-hour (fn [_ start end add-fees]
+                                            (is (some? start))
+                                            (is (some? end))
+                                            (is (true? add-fees))
+                                            (is (= e/compact-elec-lookahead-hours
+                                                   (jt/time-between start end :hours)))
+                                            [{:start-time "2026-08-26T07:00:00Z"
+                                              :price 10.0
+                                              :consumption 0.5}])
+                    db/get-month-avg-elec-price (fn [_ _] "10.0")
+                    db/get-month-elec-consumption (fn [_] "70.1")
+                    e/calculate-month-cost (fn [] 0.32)]
+        (let [body (j/read-value (:body (e/electricity-data
+                                         {:params {"compact" "true"
+                                                   "addFees" "true"}})))]
+          (is (= {"month-price-avg" "10.0"
+                  "month-consumption" "70.1"
+                  "month-cost" 0.32
+                  "data-hour" [{"start-time" "2026-08-26T07:00:00Z"
+                                "price" 10.0}]}
+                 body))
+          (is (not (contains? body "data-day")))
+          (is (not (contains? body "dates")))
+          (is (not (contains? body "interval-cost")))
+          (is (not (contains? body "price-thresholds"))))))))
+
 (deftest electricity-price-minute-test
   (testing "Electricity minute price fetching"
     (with-redefs [db/postgres-ds test-ds]

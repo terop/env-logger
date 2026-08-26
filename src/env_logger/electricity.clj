@@ -28,75 +28,126 @@
   (db/get-interval-elec-cost db/postgres-ds
                              start end))
 
+(def compact-elec-lookahead-hours
+  "Hours after the current store-timezone hour included in a compact payload."
+  3)
+
+(defn- parse-bool-param
+  "Parse a boolean request param. Missing or blank yields nil."
+  [params k]
+  (let [v (get params k)]
+    (when (seq v)
+      (Boolean/parseBoolean v))))
+
+(defn compact-elec-hour-bounds
+  "Return [start end] covering the current hour plus lookahead.
+
+  Bounds are JVM local datetimes so they match get-elec-data-hour parameters
+  against timestamptz (JDBC session TZ). Store-timezone wall clock must not
+  be used: on a UTC JVM that shifts the window forward by the UTC offset and
+  drops the current hour the PyPortal looks up.
+
+  Optional ldt is a LocalDateTime; defaults to now."
+  ([]
+   (compact-elec-hour-bounds (jt/local-date-time)))
+  ([ldt]
+   (let [start (jt/truncate-to ldt :hours)]
+     [start (jt/plus start (jt/hours compact-elec-lookahead-hours))])))
+
+(defn- slim-compact-hour-rows
+  [rows]
+  (when rows
+    (mapv #(select-keys % [:start-time :price]) rows)))
+
+(defn- compact-electricity-payload
+  "Return month stats plus a short hourly price window for the PyPortal."
+  [con add-fees]
+  (let [[start end] (compact-elec-hour-bounds)]
+    {:month-price-avg (db/get-month-avg-elec-price con add-fees)
+     :month-consumption (db/get-month-elec-consumption con)
+     :month-cost (calculate-month-cost)
+     :data-hour (slim-compact-hour-rows
+                 (db/get-elec-data-hour con start end add-fees))}))
+
 (defn electricity-data
-  "Returns data for the electricity data endpoint."
+  "Returns data for the electricity data endpoint.
+
+  Query params:
+  - addFees: include contract/transfer / tax in prices
+  - startDate / endDate: chart interval (browser)
+  - compact: when true, return only PyPortal fields (month stats and a few
+    hourly prices)
+
+  The default browser payload is unchanged."
   [request]
   (if-not (access-ok? (:oid-auth env) request)
     auth/response-unauthorized
     (if-not (:show-elec-price env)
       (serve-json {:error "not-enabled"})
       (with-open [con (jdbc/get-connection db/postgres-ds)]
-        (let [start-date-val (get (:params request) "startDate")
+        (let [params (:params request)
+              start-date-val (get params "startDate")
               start-date (when (seq start-date-val) start-date-val)
-              end-date-val (get (:params request) "endDate")
+              end-date-val (get params "endDate")
               end-date (when (seq end-date-val) end-date-val)
-              add-fees-val (get (:params request) "addFees")
-              add-fees (when (seq add-fees-val) (Boolean/parseBoolean add-fees-val))
-              resp-data {:month-price-avg (db/get-month-avg-elec-price con
-                                                                       add-fees)
-                         :month-consumption (db/get-month-elec-consumption con)
-                         :month-cost (calculate-month-cost)
-                         :price-thresholds (:elec-price-thresholds env)}]
-          (if (or start-date end-date)
-            (if-not start-date
-              (bad-request "Missing parameter")
-              (serve-json (merge resp-data
-                                 {:data-hour (db/get-elec-data-hour
-                                              con
-                                              (db/make-local-dt start-date
-                                                                "start")
-                                              (when end-date
-                                                (db/make-local-dt end-date
-                                                                  "end"))
-                                              add-fees)
-                                  :data-day (db/get-elec-data-day con
-                                                                  start-date
-                                                                  end-date
-                                                                  add-fees)
-                                  :dates {:current {:start start-date
-                                                    :end end-date}}
-                                  :interval-cost (calculate-interval-cost
-                                                  (db/make-local-dt start-date "start")
-                                                  (db/make-local-dt end-date "end"))})))
-            (let [start-date (db/get-midnight-dt (:initial-show-days env))
-                  interval-end (db/get-elec-price-interval-end con)]
-              (serve-json (merge resp-data
-                                 {:data-hour (db/get-elec-data-hour con
-                                                                    start-date
-                                                                    nil
-                                                                    add-fees)
-                                  :data-day (db/get-elec-data-day
-                                             con
-                                             (db/add-tz-offset-to-dt start-date)
-                                             nil
-                                             add-fees)
-                                  :dates {:current {:start
-                                                    (jt/format
-                                                     :iso-local-date
-                                                     (if (= (:display-timezone
-                                                             env) "UTC")
-                                                       (jt/plus start-date
-                                                                (jt/hours
-                                                                 (db/get-tz-offset
-                                                                  (:store-timezone env))))
-                                                       start-date))}
-                                          :max interval-end
-                                          :min (db/get-elec-consumption-interval-start
-                                                con)}
-                                  :interval-cost (calculate-interval-cost
-                                                  start-date
-                                                  (db/make-local-dt interval-end
-                                                                    "end"))})))))))))
+              add-fees (parse-bool-param params "addFees")]
+          (if (parse-bool-param params "compact")
+            (serve-json (compact-electricity-payload con add-fees))
+            (let [resp-data {:month-price-avg (db/get-month-avg-elec-price con
+                                                                           add-fees)
+                             :month-consumption (db/get-month-elec-consumption con)
+                             :month-cost (calculate-month-cost)
+                             :price-thresholds (:elec-price-thresholds env)}]
+              (if (or start-date end-date)
+                (if-not start-date
+                  (bad-request "Missing parameter")
+                  (serve-json (merge resp-data
+                                     {:data-hour (db/get-elec-data-hour
+                                                  con
+                                                  (db/make-local-dt start-date
+                                                                    "start")
+                                                  (when end-date
+                                                    (db/make-local-dt end-date
+                                                                      "end"))
+                                                  add-fees)
+                                      :data-day (db/get-elec-data-day con
+                                                                      start-date
+                                                                      end-date
+                                                                      add-fees)
+                                      :dates {:current {:start start-date
+                                                        :end end-date}}
+                                      :interval-cost (calculate-interval-cost
+                                                      (db/make-local-dt start-date "start")
+                                                      (db/make-local-dt end-date "end"))})))
+                (let [start-date (db/get-midnight-dt (:initial-show-days env))
+                      interval-end (db/get-elec-price-interval-end con)]
+                  (serve-json (merge resp-data
+                                     {:data-hour (db/get-elec-data-hour con
+                                                                        start-date
+                                                                        nil
+                                                                        add-fees)
+                                      :data-day (db/get-elec-data-day
+                                                 con
+                                                 (db/add-tz-offset-to-dt start-date)
+                                                 nil
+                                                 add-fees)
+                                      :dates {:current {:start
+                                                        (jt/format
+                                                         :iso-local-date
+                                                         (if (= (:display-timezone
+                                                                 env) "UTC")
+                                                           (jt/plus start-date
+                                                                    (jt/hours
+                                                                     (db/get-tz-offset
+                                                                      (:store-timezone env))))
+                                                           start-date))}
+                                              :max interval-end
+                                              :min (db/get-elec-consumption-interval-start
+                                                    con)}
+                                      :interval-cost (calculate-interval-cost
+                                                      start-date
+                                                      (db/make-local-dt interval-end
+                                                                        "end"))})))))))))))
 
 (defn electricity-price-minute
   "Returns data for the electricity price with 15 minute resolution endpoint."

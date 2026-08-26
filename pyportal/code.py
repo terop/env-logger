@@ -709,7 +709,7 @@ def maybe_refresh_elec_prices(
         "data/elec-data",
         token,
         access_token_expiry_time,
-        {"addFees": "true"},
+        {"addFees": "true", "compact": "true"},
     )
     store_elec_metadata(elec_price_metadata, elec_raw, utc_offset_hour)
     gc.collect()
