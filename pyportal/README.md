@@ -9,8 +9,8 @@ the top of the file and are documented there.
 The following files must be copied to the PyPortal Titano device for the display to work:
 
 * `code.py`
-* `secrets.py`: a template for this file is located in this directory and is called
-`secrets_template.py`. Copy the template and adjust necessary settings.
+* `settings.toml`: a template for this file is located in this directory and is called
+`settings.toml.sample`. Copy the template and adjust necessary settings.
 * A suitable bitmap font. See PyPortal documentation on how to convert the font file.
 The font file name is set at the top of `code.py`.
 * Necessary library files in PyPortal `<root>/lib` directory. The code is tested to work with the libraries below, however some of them may
@@ -18,11 +18,8 @@ not be needed.
 
     * `adafruit_bitmap_font/`
     * `adafruit_bus_device/`
-    * `adafruit_datetime.mpy`
-    * `adafruit_io/`
     * `adafruit_simple_text_display.mpy`
     * `adafruit_ticks.mpy`
-    * `simpleio.mpy`
 
     See the PyPortal documentation on how to acquire and copy them to the device.
 
