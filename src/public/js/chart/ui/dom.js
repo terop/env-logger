@@ -26,17 +26,28 @@ export const toggleLoadingSpinner = () => {
 export const dateRangeTooLargeMessage = (maxDays) =>
   `Date range exceeds the maximum of ${maxDays} days`;
 
-export const showDateRangeError = (message) => {
-  const note = document.getElementById('dateRangeError');
+export const showAlert = (elementId, message) => {
+  const note = document.getElementById(elementId);
+  if (!note) {
+    return;
+  }
   note.textContent = message;
   note.classList.remove('display-none');
 };
 
-export const hideDateRangeError = () => {
-  const note = document.getElementById('dateRangeError');
+export const hideAlert = (elementId) => {
+  const note = document.getElementById(elementId);
+  if (!note) {
+    return;
+  }
   note.textContent = '';
   note.classList.add('display-none');
 };
+
+export const showDateRangeError = (message) =>
+  showAlert('dateRangeError', message);
+
+export const hideDateRangeError = () => hideAlert('dateRangeError');
 
 export const showSetupError = (message) => {
   showDateRangeError(message);

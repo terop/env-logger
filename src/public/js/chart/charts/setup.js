@@ -158,7 +158,7 @@ export const showElectricityData = async () => {
 
     if (elecData.error) {
       if (elecData.error !== 'not-enabled') {
-        console.log(`Electricity data fetch error: ${elecData.error}`);
+        console.error(`Electricity data fetch error: ${elecData.error}`);
       }
       document.getElementById('elecDataDiv').classList.toggle('display-none');
       return;
@@ -223,7 +223,7 @@ export const showElectricityData = async () => {
     if (handleElecError(error)) {
       return;
     }
-    console.log(`Electricity setup error: ${error}`);
+    console.error(`Electricity setup error: ${error}`);
   }
 };
 
@@ -241,7 +241,7 @@ export const refreshElecDataForDateRange = async (startDate, endDate) => {
 
     if (elecData.error) {
       if (elecData.error !== 'not-enabled') {
-        console.log(`Electricity data fetch error: ${elecData.error}`);
+        console.error(`Electricity data fetch error: ${elecData.error}`);
       }
       return;
     }
@@ -269,7 +269,7 @@ export const refreshElecMinutePriceForDate = async (minuteDate) => {
   try {
     const elecData = await fetchMinutePrice(minuteDate);
     if (elecData.error) {
-      console.log(`Electricity data fetch error: ${elecData.error}`);
+      console.error(`Electricity data fetch error: ${elecData.error}`);
       return;
     }
     plotElectricityPriceMinute(elecData.prices);

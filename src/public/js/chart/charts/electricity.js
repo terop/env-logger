@@ -7,8 +7,8 @@ import {
 } from '../echarts/axis.js';
 import { buildHourBoundaryMarkLines } from '../echarts/mark-lines.js';
 import {
-  hasTooltipPointData,
-  tooltipPointValue
+  axisTooltipFormatter,
+  hasTooltipPointData
 } from '../echarts/tooltips.js';
 import { getDateTime } from '../globals.js';
 import {
@@ -35,6 +35,14 @@ export const baseElecGrid = {
 export const baseElecLegend = {
   orient: 'horizontal',
   bottom: 0
+};
+
+const elecTooltipLine = (seriesName, y, p) => {
+  if (!hasTooltipPointData(y)) {
+    return null;
+  }
+  const unit = seriesName === 'Consumption' ? 'kWh' : 'c / kWh';
+  return `<br/>${p.marker}${seriesName}: ${y} ${unit}`;
 };
 
 export const buildHourElecOption = (elecData, { removeLast = false } = {}) => {
@@ -100,26 +108,10 @@ export const buildHourElecOption = (elecData, { removeLast = false } = {}) => {
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
-        formatter: (params) => {
-          if (!params || !params.length) {
-            return '';
-          }
-          const ts = DateTime.fromMillis(params[0].axisValue)
-            .toFormat('dd.MM. HH:mm');
-          let html = `<b>${ts}</b>`;
-          for (const p of params) {
-            const y = tooltipPointValue(p);
-            if (!hasTooltipPointData(y)) {
-              continue;
-            }
-            if (p.seriesName === 'Price') {
-              html += `<br/>${p.marker}${p.seriesName}: ${y} c / kWh`;
-            } else {
-              html += `<br/>${p.marker}${p.seriesName}: ${y} kWh`;
-            }
-          }
-          return html;
-        }
+        formatter: axisTooltipFormatter({
+          timeFormat: 'dd.MM. HH:mm',
+          formatSeriesLine: elecTooltipLine
+        })
       },
       xAxis: {
         type: 'time',
@@ -227,26 +219,10 @@ export const buildDayElecOption = (elecData, { removeLast = false } = {}) => {
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
-      formatter: (params) => {
-        if (!params || !params.length) {
-          return '';
-        }
-        const ts = DateTime.fromMillis(params[0].axisValue)
-          .toFormat('dd.MM.yyyy');
-        let html = `<b>${ts}</b>`;
-        for (const p of params) {
-          const y = tooltipPointValue(p);
-          if (!hasTooltipPointData(y)) {
-            continue;
-          }
-          if (p.seriesName === 'Average price') {
-            html += `<br/>${p.marker}${p.seriesName}: ${y} c / kWh`;
-          } else {
-            html += `<br/>${p.marker}${p.seriesName}: ${y} kWh`;
-          }
-        }
-        return html;
-      }
+      formatter: axisTooltipFormatter({
+        timeFormat: 'dd.MM.yyyy',
+        formatSeriesLine: elecTooltipLine
+      })
     },
     xAxis: {
       type: 'time',
@@ -352,22 +328,10 @@ export const buildMinuteElecOption = (priceData) => {
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
-      formatter: (params) => {
-        if (!params || !params.length) {
-          return '';
-        }
-        const ts = DateTime.fromMillis(params[0].axisValue)
-          .toFormat('dd.MM. HH:mm');
-        let html = `<b>${ts}</b>`;
-        for (const p of params) {
-          const y = tooltipPointValue(p);
-          if (!hasTooltipPointData(y)) {
-            continue;
-          }
-          html += `<br/>${p.marker}${p.seriesName}: ${y} c / kWh`;
-        }
-        return html;
-      }
+      formatter: axisTooltipFormatter({
+        timeFormat: 'dd.MM. HH:mm',
+        formatSeriesLine: elecTooltipLine
+      })
     },
     xAxis: {
       type: 'time',

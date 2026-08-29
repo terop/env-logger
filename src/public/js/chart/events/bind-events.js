@@ -1,3 +1,8 @@
+import {
+  checkDateInterval,
+  dateIntervalErrorMessage,
+  isInvalidIsoDate
+} from '../data/dates.js';
 import { inclusiveDayCount } from '../echarts/axis.js';
 import { getDateTime } from '../globals.js';
 import { chartState } from '../state.js';
@@ -20,25 +25,36 @@ import {
 import { fetchMinutePrice, handleElecError } from '../api/electricity.js';
 import {
   dateRangeTooLargeMessage,
+  hideAlert,
   hideDateRangeError,
+  showAlert,
   showDateRangeError,
   toggleLoadingSpinner,
-  toggleVisibility
+  toggleVisibility,
+  scrollToBottom
 } from '../ui/dom.js';
-import { scrollToBottom } from '../ui/dom.js';
 
-const validateDateInterval = (startDate, endDate) => {
-  const DateTime = getDateTime();
-  if ((startDate && DateTime.fromISO(startDate).invalid) ||
-      (endDate && DateTime.fromISO(endDate).invalid)) {
-    alert('Error: either the start or end date is invalid');
-    return false;
+const OBS_DATE_ERROR = 'dateRangeError';
+const ELEC_DATE_ERROR = 'elecDateRangeError';
+const ELEC_MINUTE_DATE_ERROR = 'elecMinuteDateError';
+
+const bindClick = (elementId, handler) => {
+  document.getElementById(elementId).addEventListener('click', handler, false);
+};
+
+const bindShowHideAll = (plotType) => {
+  bindClick(`${plotType}HideAll`, () => hideAllObsSeries(plotType));
+  bindClick(`${plotType}ShowAll`, () => showAllObsSeries(plotType));
+};
+
+const validateDateInterval = (startDate, endDate, errorElementId) => {
+  const result = checkDateInterval(startDate, endDate);
+  if (result.ok) {
+    hideAlert(errorElementId);
+    return true;
   }
-  if (DateTime.fromISO(startDate) > DateTime.fromISO(endDate)) {
-    alert('Error: start date must be smaller than the end date');
-    return false;
-  }
-  return true;
+  showAlert(errorElementId, dateIntervalErrorMessage(result.error));
+  return false;
 };
 
 const updateButtonClickHandler = async (event) => {
@@ -47,7 +63,7 @@ const updateButtonClickHandler = async (event) => {
   const DateTime = getDateTime();
   let isSpinnerShown = false;
 
-  if (!validateDateInterval(startDate, endDate)) {
+  if (!validateDateInterval(startDate, endDate, OBS_DATE_ERROR)) {
     event.preventDefault();
     return;
   }
@@ -98,7 +114,7 @@ const elecUpdateButtonClickHandler = async (event) => {
   const startDate = document.getElementById('elecStartDate').value;
   const endDate = document.getElementById('elecEndDate').value;
 
-  if (!validateDateInterval(startDate, endDate)) {
+  if (!validateDateInterval(startDate, endDate, ELEC_DATE_ERROR)) {
     event.preventDefault();
     return false;
   }
@@ -109,14 +125,14 @@ const elecUpdateButtonClickHandler = async (event) => {
 
 const elecMinuteDateUpdateBtnClickHandler = async (event) => {
   const minuteDate = document.getElementById('elecMinuteDate').value;
-  const DateTime = getDateTime();
 
-  if (minuteDate && DateTime.fromISO(minuteDate).invalid) {
-    alert('Error: electricity price date is invalid');
+  if (isInvalidIsoDate(minuteDate)) {
+    showAlert(ELEC_MINUTE_DATE_ERROR, 'Electricity price date is invalid');
     event.preventDefault();
     return false;
   }
 
+  hideAlert(ELEC_MINUTE_DATE_ERROR);
   await refreshElecMinutePriceForDate(minuteDate);
   return true;
 };
@@ -132,167 +148,64 @@ const elecPriceShowFeesChangeHandler = () => {
 const updateMinuteElecPrice = async (direction) => {
   const DateTime = getDateTime();
   const dateField = document.getElementById('elecMinuteDate');
+  const stepDays = direction === 'forward' ? 1 : -1;
+  const newDate = DateTime.fromISO(dateField.value).plus({ days: stepDays });
+  const atLimit = direction === 'forward'
+    ? DateTime.fromISO(dateField.max) < newDate
+    : DateTime.fromISO(dateField.min) > newDate;
 
-  if (direction === 'forward') {
-    const newDate = DateTime.fromISO(dateField.value).plus({ days: 1 });
-    if (DateTime.fromISO(dateField.max) >= newDate) {
-      try {
-        const elecData = await fetchMinutePrice(newDate.toISODate());
-        if (elecData.error) {
-          console.log(`Electricity data fetch error: ${elecData.error}`);
-          return;
-        }
-        dateField.value = newDate.toISODate();
-        plotElectricityPriceMinute(elecData.prices);
-      } catch (error) {
-        handleElecError(error, 'Electricity price');
-      }
-    } else {
-      alert('You are already at the newest date');
+  if (atLimit) {
+    showAlert(
+      ELEC_MINUTE_DATE_ERROR,
+      direction === 'forward'
+        ? 'You are already at the newest date'
+        : 'You are already at the oldest date'
+    );
+    return;
+  }
+
+  hideAlert(ELEC_MINUTE_DATE_ERROR);
+
+  try {
+    const elecData = await fetchMinutePrice(newDate.toISODate());
+    if (elecData.error) {
+      console.error(`Electricity data fetch error: ${elecData.error}`);
+      return;
     }
-  } else {
-    const newDate = DateTime.fromISO(dateField.value).minus({ days: 1 });
-    if (DateTime.fromISO(dateField.min) <= newDate) {
-      try {
-        const elecData = await fetchMinutePrice(newDate.toISODate());
-        if (elecData.error) {
-          console.log(`Electricity data fetch error: ${elecData.error}`);
-          return;
-        }
-        dateField.value = newDate.toISODate();
-        plotElectricityPriceMinute(elecData.prices);
-      } catch (error) {
-        handleElecError(error, 'Electricity price');
-      }
-    } else {
-      alert('You are already at the oldest date');
-    }
+    dateField.value = newDate.toISODate();
+    plotElectricityPriceMinute(elecData.prices);
+  } catch (error) {
+    handleElecError(error, 'Electricity price');
   }
 };
 
 export const bindAlwaysEvents = () => {
-  document.getElementById('updateBtn').addEventListener(
-    'click',
-    updateButtonClickHandler,
-    false
-  );
-
-  document.getElementById('elecUpdateBtn').addEventListener(
-    'click',
-    elecUpdateButtonClickHandler,
-    false
-  );
-
-  document.getElementById('elecMinuteDateUpdateBtn').addEventListener(
-    'click',
-    elecMinuteDateUpdateBtnClickHandler,
-    false
-  );
-
+  bindClick('updateBtn', updateButtonClickHandler);
+  bindClick('elecUpdateBtn', elecUpdateButtonClickHandler);
+  bindClick('elecMinuteDateUpdateBtn', elecMinuteDateUpdateBtnClickHandler);
   document.getElementById('elecPriceShowFees').addEventListener(
     'change',
     elecPriceShowFeesChangeHandler,
     false
   );
-
-  document.getElementById('elecMinuteDayBackward').addEventListener(
-    'click',
-    () => {
-      updateMinuteElecPrice('backward');
-    },
-    false
-  );
-
-  document.getElementById('elecMinuteDayForward').addEventListener(
-    'click',
-    () => {
-      updateMinuteElecPrice('forward');
-    },
-    false
-  );
-
-  document.getElementById('showImages').addEventListener(
-    'click',
-    () => {
-      toggleVisibility('imageDiv');
-    },
-    false
-  );
-
-  document.getElementById('weatherHideAll').addEventListener(
-    'click',
-    () => {
-      hideAllObsSeries('weather');
-    },
-    false
-  );
-
-  document.getElementById('weatherShowAll').addEventListener(
-    'click',
-    () => {
-      showAllObsSeries('weather');
-    },
-    false
-  );
+  bindClick('elecMinuteDayBackward', () => updateMinuteElecPrice('backward'));
+  bindClick('elecMinuteDayForward', () => updateMinuteElecPrice('forward'));
+  bindClick('showImages', () => toggleVisibility('imageDiv'));
+  bindShowHideAll('weather');
 };
 
 export const bindDataEvents = () => {
-  document.getElementById('showInfoText').addEventListener(
-    'click',
-    () => {
-      toggleVisibility('infoText');
-    },
-    false
+  bindClick('showInfoText', () => toggleVisibility('infoText'));
+  bindShowHideAll('other');
+  bindShowHideAll('ruuvitag');
+  bindClick(
+    'ruuvitagShowTemperature',
+    () => showRuuvitagSeriesType('temperature')
   );
-
-  document.getElementById('otherHideAll').addEventListener(
-    'click',
-    () => {
-      hideAllObsSeries('other');
-    },
-    false
+  bindClick(
+    'ruuvitagShowHumidity',
+    () => showRuuvitagSeriesType('humidity')
   );
-
-  document.getElementById('otherShowAll').addEventListener(
-    'click',
-    () => {
-      showAllObsSeries('other');
-    },
-    false
-  );
-
-  document.getElementById('ruuvitagHideAll').addEventListener(
-    'click',
-    () => {
-      hideAllObsSeries('ruuvitag');
-    },
-    false
-  );
-
-  document.getElementById('ruuvitagShowAll').addEventListener(
-    'click',
-    () => {
-      showAllObsSeries('ruuvitag');
-    },
-    false
-  );
-
-  document.getElementById('ruuvitagShowTemperature').addEventListener(
-    'click',
-    () => {
-      showRuuvitagSeriesType('temperature');
-    },
-    false
-  );
-
-  document.getElementById('ruuvitagShowHumidity').addEventListener(
-    'click',
-    () => {
-      showRuuvitagSeriesType('humidity');
-    },
-    false
-  );
-
   document.getElementById('elecPlotAccordion').addEventListener(
     'shown.bs.collapse',
     () => {

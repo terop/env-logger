@@ -11,7 +11,7 @@ export const handleElecError = (error, label = 'Electricity data') => {
     redirectToLogin();
     return true;
   }
-  console.log(`${label} fetch error: ${error}`);
+  console.error(`${label} fetch error: ${error}`);
   return false;
 };
 

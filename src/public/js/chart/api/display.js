@@ -39,7 +39,7 @@ export const handleDisplayDataError = (error) => {
   }
 
   showDateRangeError('Failed to load chart data');
-  console.log(`Display data fetch error: ${error}`);
+  console.error(`Display data fetch error: ${error}`);
 };
 
 export const applyDisplayPayload = (rData) => {

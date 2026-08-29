@@ -84,6 +84,11 @@
                 margin-top: 8px;
             }
 
+            #elecDateRangeError,
+            #elecMinuteDateError {
+                margin-top: 8px;
+            }
+
             #elecDataDiv {
                 width: 1300px;
                 margin-top: 20px;
@@ -273,6 +278,7 @@
                     <input type="checkbox" id="elecPriceShowFees" checked />
                     <label for="elecPriceShowFees">Show price with fees</label>
                 </form>
+                <div class="display-none alert alert-danger" id="elecDateRangeError" role="alert"></div>
 
                 <div id="elecInfoBox"></div>
 
@@ -302,6 +308,7 @@
                                         </svg>
                                     </button>
                                 </form>
+                                <div class="display-none alert alert-danger" id="elecMinuteDateError" role="alert"></div>
                             </div>
                             <div id="minuteElecDataPlot"></div>
                         </div>

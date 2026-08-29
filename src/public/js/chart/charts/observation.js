@@ -11,8 +11,8 @@ import {
   buildDayMarkLines
 } from '../echarts/mark-lines.js';
 import {
-  hasTooltipPointData,
-  tooltipPointValue
+  axisTooltipFormatter,
+  hasTooltipPointData
 } from '../echarts/tooltips.js';
 import { getDateTime } from '../globals.js';
 import { buildWindArrowPoints } from '../wind.js';
@@ -21,6 +21,20 @@ import {
   getSeriesNames,
   weatherSeriesNames
 } from './series-meta.js';
+
+const obsTooltipLine = (seriesName, y, p, liveSelected) => {
+  if (liveSelected && liveSelected[seriesName] === false) {
+    return null;
+  }
+  if (seriesName === WIND_DIRECTION_SERIES) {
+    const label = p.data?.label ?? '';
+    return label ? `<br/>${p.marker}${seriesName}: ${label}` : null;
+  }
+  if (!hasTooltipPointData(y)) {
+    return null;
+  }
+  return `<br/>${p.marker}${seriesName}: ${y}${addUnitSuffix(seriesName)}`;
+};
 
 export const buildWeatherEchartsOption = (legendSelected = null) => {
   const windArrowBandTop = 48;
@@ -143,31 +157,11 @@ export const buildWeatherEchartsOption = (legendSelected = null) => {
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'line' },
-      formatter: (params) => {
-        if (!params || !params.length) {
-          return '';
-        }
-        const ts = DateTime.fromMillis(params[0].axisValue)
-          .toFormat('dd.MM. HH:mm:ss');
-        let html = `<b>${ts}</b>`;
-        for (const p of params) {
-          if (p.seriesName === WIND_DIRECTION_SERIES) {
-            const label = p.data && p.data.label ? p.data.label : '';
-            if (!label) {
-              continue;
-            }
-            html += `<br/>${p.marker}${p.seriesName}: ${label}`;
-          } else {
-            const y = tooltipPointValue(p);
-            if (!hasTooltipPointData(y)) {
-              continue;
-            }
-            const unit = addUnitSuffix(p.seriesName);
-            html += `<br/>${p.marker}${p.seriesName}: ${y}${unit}`;
-          }
-        }
-        return html;
-      }
+      formatter: axisTooltipFormatter({
+        timeFormat: 'dd.MM. HH:mm:ss',
+        formatSeriesLine: (seriesName, y, p) =>
+          obsTooltipLine(seriesName, y, p)
+      })
     },
     xAxis: [
       {
@@ -312,28 +306,14 @@ export const buildObsEchartsOption = (plotType, legendSelected = null) => {
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'line' },
-      formatter: (params) => {
-        if (!params || !params.length) {
-          return '';
+      formatter: axisTooltipFormatter({
+        timeFormat: 'dd.MM. HH:mm:ss',
+        formatSeriesLine: (seriesName, y, p) => {
+          const chart = chartState.charts[plotType]?.getInstance();
+          const liveSelected = chart?.getOption()?.legend?.[0]?.selected;
+          return obsTooltipLine(seriesName, y, p, liveSelected);
         }
-        const chart = chartState.charts[plotType]?.getInstance();
-        const liveSelected = chart?.getOption()?.legend?.[0]?.selected;
-        const ts = DateTime.fromMillis(params[0].axisValue)
-          .toFormat('dd.MM. HH:mm:ss');
-        let html = `<b>${ts}</b>`;
-        for (const p of params) {
-          if (liveSelected && liveSelected[p.seriesName] === false) {
-            continue;
-          }
-          const y = tooltipPointValue(p);
-          if (!hasTooltipPointData(y)) {
-            continue;
-          }
-          const unit = addUnitSuffix(p.seriesName);
-          html += `<br/>${p.marker}${p.seriesName}: ${y}${unit}`;
-        }
-        return html;
-      }
+      })
     },
     xAxis: {
       type: 'time',

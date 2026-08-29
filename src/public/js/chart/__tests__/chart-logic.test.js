@@ -13,8 +13,10 @@ import {
 } from '../charts/elec-colours.js';
 import {
   buildDayElecOption,
-  buildHourElecOption
+  buildHourElecOption,
+  buildMinuteElecOption
 } from '../charts/electricity.js';
+import { axisTooltipFormatter } from '../echarts/tooltips.js';
 import { elecPriceBarColours } from '../constants.js';
 import { DateTime } from 'luxon';
 import { AuthLoadError, getJson, HttpError } from '../api/http.js';
@@ -334,5 +336,72 @@ describe('buildDayElecOption', () => {
     ]);
     expect(option.yAxis[1].min).toBe(0);
     expect(option.yAxis[1].max).toBe(1);
+  });
+});
+
+describe('axisTooltipFormatter', () => {
+  it('returns an empty string for missing params', () => {
+    const formatter = axisTooltipFormatter({
+      timeFormat: 'dd.MM. HH:mm',
+      formatSeriesLine: () => '<br/>line'
+    });
+    expect(formatter(null)).toBe('');
+    expect(formatter([])).toBe('');
+  });
+
+  it('joins the timestamp with formatted series lines', () => {
+    const ts = DateTime.fromISO('2024-06-01T14:00:00').toMillis();
+    const formatter = axisTooltipFormatter({
+      timeFormat: 'dd.MM. HH:mm',
+      formatSeriesLine: (name, y, p) => `<br/>${p.marker}${name}: ${y}`
+    });
+    expect(formatter([
+      { axisValue: ts, marker: '*', seriesName: 'Price', data: [ts, 8.5] }
+    ])).toBe(`<b>${DateTime.fromMillis(ts).toFormat('dd.MM. HH:mm')}</b><br/>*Price: 8.5`);
+  });
+});
+
+describe('elec tooltip formatters', () => {
+  const point = (axisValue, name, y) => ({
+    axisValue,
+    marker: '',
+    seriesName: name,
+    data: name === 'Price' || name === 'Average price'
+      ? { value: [axisValue, y] }
+      : [axisValue, y]
+  });
+
+  it('uses c/kWh for price and kWh for consumption', () => {
+    const ts = DateTime.fromISO('2024-06-01T12:00:00').toMillis();
+    const { option } = buildHourElecOption([
+      { 'start-time': '2024-06-01T12:00:00', price: 8.5, consumption: 1.2 }
+    ]);
+    const html = option.tooltip.formatter([
+      point(ts, 'Price', 8.5),
+      point(ts, 'Consumption', 1.2)
+    ]);
+    expect(html).toContain('Price: 8.5 c / kWh');
+    expect(html).toContain('Consumption: 1.2 kWh');
+  });
+
+  it('formats daily average price with a date timestamp', () => {
+    const ts = DateTime.fromISO('2024-06-01').toMillis();
+    const option = buildDayElecOption([
+      { date: '2024-06-01', price: 8.5, consumption: 10 }
+    ]);
+    const html = option.tooltip.formatter([
+      point(ts, 'Average price', 8.5)
+    ]);
+    expect(html).toContain(DateTime.fromMillis(ts).toFormat('dd.MM.yyyy'));
+    expect(html).toContain('Average price: 8.5 c / kWh');
+  });
+
+  it('formats minute price tooltips', () => {
+    const ts = DateTime.fromISO('2024-06-01T12:15:00').toMillis();
+    const option = buildMinuteElecOption([
+      { 'start-time': '2024-06-01T12:15:00', price: 7.2 }
+    ]);
+    const html = option.tooltip.formatter([point(ts, 'Price', 7.2)]);
+    expect(html).toContain('Price: 7.2 c / kWh');
   });
 });
