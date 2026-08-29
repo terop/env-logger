@@ -35,7 +35,7 @@ fi
 
 day_directory="${target_directory}/$(date +%Y-%m-%d)"
 # Make directory for each day
-ssh "${ssh_con_string}" "ls ${day_directory}" >/dev/null
+ssh "${ssh_con_string}" "ls ${day_directory}" >/dev/null 2>&1
 if [ $? -ne 0 ]; then
     ssh "${ssh_con_string}" "mkdir ${day_directory}"
 fi
