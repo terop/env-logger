@@ -32,7 +32,11 @@ export const degreesToCompassShort = (deg) => {
   return '?';
 };
 
-export const windFlowAngle = (fromDeg) => (fromDeg + 180) % 360;
+// Meteorological wind direction is "from" (0° = N, 90° = E, clockwise).
+// The dart path points up at rest. ECharts/zrender symbolRotate is anticlockwise
+// (opposite of CSS). FMI-style arrows point where the wind is going, so rotate
+// by 180° − from.
+export const windFlowAngle = (fromDeg) => (180 - fromDeg + 360) % 360;
 
 export const buildWindArrowPoints = (xValues, windDirections, windSpeeds, pointCount) => {
   const calmWindSpeed = 0.5;

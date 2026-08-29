@@ -26,6 +26,48 @@ import {
   resetAuthRedirectPending,
   setAuthRedirectPending
 } from '../ui/dom.js';
+import { buildWindArrowPoints, windFlowAngle } from '../wind.js';
+
+describe('windFlowAngle', () => {
+  // Dart points up at 0°. ECharts rotation is anticlockwise; arrows show flow (to).
+  it('points south for a north wind', () => {
+    expect(windFlowAngle(0)).toBe(180);
+  });
+
+  it('points west for an east wind', () => {
+    expect(windFlowAngle(90)).toBe(90);
+  });
+
+  it('points north for a south wind', () => {
+    expect(windFlowAngle(180)).toBe(0);
+  });
+
+  it('points east for a west wind', () => {
+    expect(windFlowAngle(270)).toBe(270);
+  });
+
+  it('points south-west for a north-east wind', () => {
+    expect(windFlowAngle(45)).toBe(135);
+  });
+});
+
+describe('buildWindArrowPoints', () => {
+  it('rotates each arrow with the flow angle', () => {
+    const t0 = new Date('2024-01-01T00:00:00Z');
+    const t1 = new Date('2024-01-01T00:10:00Z');
+    const { points } = buildWindArrowPoints(
+      [t0, t1],
+      [270, 90],
+      [3, 4],
+      2
+    );
+    expect(points).toHaveLength(2);
+    expect(points[0].symbolRotate).toBe(270);
+    expect(points[0].label).toBe('W (270°)');
+    expect(points[1].symbolRotate).toBe(90);
+    expect(points[1].label).toBe('E (90°)');
+  });
+});
 
 describe('getRawXAxisTickSize', () => {
   it('uses 2h ticks for 3–5 day ranges', () => {
