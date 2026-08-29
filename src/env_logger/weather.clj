@@ -299,10 +299,9 @@
                                  (:windspeed obs)
                                  (:humidity obs)
                                  nil)}]
-            (when wd
-              (store-fmi-current-entry!
-               (-observation-time->cache-key local-dt (:tz obs))
-               wd))))))
+            (store-fmi-current-entry!
+             (-observation-time->cache-key local-dt (:tz obs))
+             wd)))))
     (catch Exception ex
       (error ex "FMI weather data (time series) fetch failed")
       nil)))
