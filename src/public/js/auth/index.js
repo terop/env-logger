@@ -1,30 +1,25 @@
 /* global luxon */
 
+import {
+  accessTokenExpiry,
+  authCookiePaths,
+  buildLoginUrl,
+  isIdTokenPostSuccess,
+  isRefreshSessionOver,
+  shouldRefreshAccessToken
+} from '../auth-logic.js';
+import { getTokens } from './get-tokens.js';
+
 let refreshPromise = null;
 
 const appBaseUrl = () =>
   globalThis.authSettings?.applicationUrl ?? globalThis.applicationUrl ?? '/';
 
-const authCookiePath = () => {
-  try {
-    const pathname = new URL(appBaseUrl(), window.location.href).pathname;
-    return pathname || '/';
-  } catch {
-    return '/';
-  }
-};
-
-const authCookiePaths = () => {
-  const path = authCookiePath();
-  const paths = new Set([path, '/']);
-  if (path.endsWith('/') && path.length > 1) {
-    paths.add(path.slice(0, -1));
-  }
-  return Array.from(paths);
-};
+const cookiePaths = () =>
+  authCookiePaths(appBaseUrl(), window.location.href);
 
 const clearAuthCookie = () => {
-  for (const path of authCookiePaths()) {
+  for (const path of cookiePaths()) {
     document.cookie =
       `X-Authorization-Token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path}`;
   }
@@ -40,21 +35,6 @@ const doLogout = () => {
   window.location.href = appBaseUrl();
 };
 
-const accessTokenExpiry = (tokens) => {
-  if (tokens.expires_in != null && tokens.expires_in !== '') {
-    return luxon.DateTime.now().plus({ seconds: Number(tokens.expires_in) });
-  }
-  try {
-    const payload = JSON.parse(atob(tokens.access_token.split('.')[1]));
-    if (payload.exp) {
-      return luxon.DateTime.fromSeconds(payload.exp);
-    }
-  } catch {
-    // ignore malformed token
-  }
-  return luxon.DateTime.now().plus({ seconds: 300 });
-};
-
 const storeTokens = (tokens) => {
   if (!tokens?.access_token) {
     throw new Error('Token response missing access_token');
@@ -62,12 +42,15 @@ const storeTokens = (tokens) => {
   if (tokens.refresh_token) {
     sessionStorage.setItem('refreshToken', tokens.refresh_token);
   }
-  sessionStorage.setItem('accessTokenExpiresAt', accessTokenExpiry(tokens).toISO());
+  sessionStorage.setItem(
+    'accessTokenExpiresAt',
+    accessTokenExpiry(tokens, luxon.DateTime.now(), luxon.DateTime).toISO()
+  );
 
   const tokenCookie = `X-Authorization-Token=${tokens.access_token}; SameSite=Lax`;
   // Write token for root and app-path variants so auth survives deployments
   // behind subpaths and proxy rewrites
-  for (const path of authCookiePaths()) {
+  for (const path of cookiePaths()) {
     document.cookie = `${tokenCookie}; path=${path}`;
   }
 };
@@ -109,14 +92,14 @@ const postIdToken = async (idToken) => {
     try {
       const response = await fetch(url, init);
       const body = await response.text();
-      if (response.ok && body.trim() === 'Not valid') {
-        console.error('ID token validation returned Not valid');
-        return false;
-      }
-      if (response.ok) {
+      if (isIdTokenPostSuccess(response, body)) {
         // Some local/proxied setups strip tiny text bodies from 2xx responses.
         // Treat generic 2xx as success unless backend explicitly says Not valid.
         return true;
+      }
+      if (response.ok) {
+        console.error('ID token validation returned Not valid');
+        return false;
       }
       lastStatus = `${response.status} body='${body.slice(0, 120)}'`;
     } catch (error) {
@@ -201,7 +184,7 @@ const updateTokens = () => {
           `Token refresh failed: HTTP ${response.status} ${responseBody}`
         );
         // Expired or revoked refresh token — session is over
-        if (response.status === 400 || response.status === 401) {
+        if (isRefreshSessionOver(response.status)) {
           doLogout();
         }
         return false;
@@ -225,11 +208,13 @@ const refreshTokensIfNeeded = (force = false) => {
     return Promise.resolve(false);
   }
 
-  const expiresAt = sessionStorage.getItem('accessTokenExpiresAt');
-  const expiry = expiresAt ? luxon.DateTime.fromISO(expiresAt) : null;
-  // Refresh one minute early so API calls do not race an already-expired cookie
-  if (!force && expiry?.isValid &&
-      expiry > luxon.DateTime.now().plus({ seconds: 60 })) {
+  if (!shouldRefreshAccessToken({
+    refreshToken: sessionStorage.getItem('refreshToken'),
+    expiresAt: sessionStorage.getItem('accessTokenExpiresAt'),
+    force,
+    now: luxon.DateTime.now(),
+    DateTime: luxon.DateTime
+  })) {
     return Promise.resolve(true);
   }
   return updateTokens();
@@ -263,8 +248,11 @@ const doLogin = async () => {
       throw new Error('Network response was not ok');
     }
     const config = await response.json();
-    const loginUrl = `${config.authorization_endpoint}?client_id=${globalThis.authSettings['clientId']}&` +
-          `redirect_uri=${globalThis.authSettings['applicationUrl']}login&response_type=code&scope=openid`;
+    const loginUrl = buildLoginUrl({
+      authorizationEndpoint: config.authorization_endpoint,
+      clientId: globalThis.authSettings['clientId'],
+      applicationUrl: globalThis.authSettings['applicationUrl']
+    });
 
     window.location.href = loginUrl;
   } catch (error) {
@@ -274,47 +262,14 @@ const doLogin = async () => {
 
 globalThis.doLogin = doLogin;
 
-const getTokens = async () => {
-  const urlParams = new URLSearchParams(window.location.search);
-
-  if (urlParams.has('code')) {
-    fetch(`${globalThis.authSettings['oidBaseUrl']}/protocol/openid-connect/token`,
-          {
-            method: 'POST',
-            credentials: 'omit',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams({
-              grant_type: 'authorization_code',
-              client_id: globalThis.authSettings['clientId'],
-              redirect_uri: `${globalThis.authSettings['applicationUrl']}login`,
-              code: urlParams.get('code'),
-            }),
-          }
-         )
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error('Failed to exchange code for tokens');
-        }
-        return response.json();
-      })
-      .then((tokens) => {
-        storeTokens(tokens);
-
-        return tokens;
-      })
-      .then((tokens) => {
-        storeIdToken(tokens);
-      })
-      .catch((error) => {
-        console.error(`Error exchanging code for tokens: ${error}`);
-      });
-  }
-};
-
 if (window.location.pathname.includes('logout')) {
   doLogout();
 } else {
-  getTokens();
+  getTokens({
+    search: window.location.search,
+    authSettings: globalThis.authSettings,
+    fetchFn: fetch,
+    storeTokens,
+    storeIdToken
+  });
 }

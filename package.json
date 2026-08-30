@@ -18,8 +18,11 @@
     "test": "test"
   },
   "scripts": {
+    "build:js": "npm run build:chart && npm run build:auth",
     "build:chart": "esbuild src/public/js/chart/index.js --bundle --format=iife --outfile=src/public/js/chart.bundle.js --target=es2020",
     "build:chart:watch": "npm run build:chart -- --watch",
+    "build:auth": "esbuild src/public/js/auth/index.js --bundle --format=iife --outfile=src/public/js/auth.js --target=es2020",
+    "build:auth:watch": "npm run build:auth -- --watch",
     "test": "vitest run",
     "test:watch": "vitest"
   },

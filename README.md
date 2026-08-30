@@ -47,20 +47,33 @@ the database password on one line.
 
 To start the application locally run `clojure -M:dev`.
 
-When developing frontend chart code, install Node dependencies once and build
-the chart bundle:
+When developing frontend chart or auth code, install Node dependencies once
+and build the browser bundles:
 
 `npm install`
 
-`npm run build:chart`
+`npm run build:js`
 
-For active frontend development, run the chart bundler in watch mode:
+For active frontend development, run a bundler in watch mode:
 
 `npm run build:chart:watch`
+
+`npm run build:auth:watch`
 
 Frontend tests can be run with:
 
 `npm test`
+
+Production loads authentication scripts from `:static-asset-path`.
+After `npm run build:js`, upload only these files to that prefix:
+
+* `src/public/js/auth-load.js`
+* `src/public/js/auth.js` (the generated IIFE bundle)
+
+Do not upload `auth-logic.js` or `src/public/js/auth/` as separate scripts;
+they are bundled into `auth.js`. `chart.bundle.js` is served by the
+application, not from this prefix. If the prefix is date-versioned, point
+`:static-asset-path` at the new folder after the upload.
 
 ## Running tests
 
@@ -69,8 +82,8 @@ Run tests with Kaocha:
 `clojure -M:test`
 
 The `:test` alias uses `resources/config.edn_sample`.
-Kaocha randomization is enabled by default (from `tests.edn`).
-To disable randomization for a run, use:
+Kaocha randomisation is enabled by default (from `tests.edn`).
+To disable randomisation for a run, use:
 
 `clojure -M:test --no-randomize`
 

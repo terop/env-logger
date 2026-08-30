@@ -12,7 +12,7 @@ clean:
     clojure -T:build clean
 
 uberjar: # build the jar
-    npm run build:chart
+    npm run build:js
     clojure -T:build uber
     mv target/env-logger-*.jar target/env-logger.jar
 

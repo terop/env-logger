@@ -51,8 +51,8 @@ npx eslint src/
 # shellcheck disable=SC2046,SC2086
 if [ "${CI}" ] && [ ${CIRCLE_PROJECT_REPONAME} = 'env-logger' ] || \
        [ $(basename $(pwd)) = 'env-logger' ]; then
-    echo 'Building chart.bundle.js'
-    npm run build:chart
+    echo 'Building frontend JS bundles'
+    npm run build:js
 
     echo 'Running frontend unit tests'
     npm test

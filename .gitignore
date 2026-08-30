@@ -6,6 +6,7 @@ target/
 .lsp/
 node_modules/
 src/public/js/chart.bundle.js
+src/public/js/auth.js
 resources/dev/config.edn
 resources/prod/config.edn
 resources/config.edn
