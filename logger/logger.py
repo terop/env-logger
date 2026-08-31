@@ -316,7 +316,7 @@ async def scan_ble_beacon(config: dict[str, Any], bt_device: str) -> dict[str, A
         if not data['battery'] and config['ble_beacon_rescan_battery']:
             logger.info('Rescanning BLE beacon for battery data')
             try:
-                scanner = BleakScanner(callback, adapter=bt_device)
+                scanner = BleakScanner(callback, bluez={'adapter': bt_device})
 
                 await scanner.start()
                 await asyncio.sleep(BLE_BATTERY_RESCAN_SECONDS)
