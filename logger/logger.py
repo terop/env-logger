@@ -9,19 +9,18 @@ import logging
 import sys
 import time
 import tomllib
-from collections import OrderedDict
+from dataclasses import dataclass
 from datetime import datetime
 from math import hypot
 from pathlib import Path
 from statistics import mean, median
+from typing import Any
 from zoneinfo import ZoneInfo
 
 import requests
 from bleak import BleakScanner
 from bleak.exc import BleakDBusError, BleakError
-from requests.exceptions import ConnectionError as requests_ConnectionError
 from ruuvitag_sensor.ruuvi import RuuviTagSensor
-from urllib3.exceptions import ConnectTimeoutError, MaxRetryError, ReadTimeoutError
 
 logger = logging.getLogger(__name__)
 
@@ -32,90 +31,118 @@ PM25_SCALE = AQI_MAX / (PM25_MAX - PM25_MIN)
 CO2_MAX = 2300
 CO2_MIN = 420
 CO2_SCALE = AQI_MAX / (CO2_MAX - CO2_MIN)
+ARDUINO_REQUEST_TIMEOUT = 5
+ESP32_REQUEST_TIMEOUT = 10
+OUTSIDE_ESP32_REQUEST_TIMEOUT = 10
+AUTH_REQUEST_TIMEOUT = 10
+UPLOAD_REQUEST_TIMEOUT = 15
+RETRY_SLEEP_SECONDS = 10
+RUUVI_TIMEOUT_ADVANCE_SECONDS = 2
+RUUVI_PRE_SCAN_SLEEP_SECONDS = 4
+RUUVI_MIN_RETRY_TIMEOUT = 6
+BLE_SCAN_SECONDS = 8
+BLE_BATTERY_RESCAN_SECONDS = 4
 
 
-def get_timestamp(timezone):
+@dataclass(frozen=True)
+class Esp32EnvData:
+    """Environment values read from Xiao ESP32."""
+
+    light: int | None = None
+    temperature: float | None = None
+    co2: int | None = None
+    voc_index: int | None = None
+    nox_index: int | None = None
+
+
+def get_timestamp(timezone: str) -> str:
     """Return the current timestamp for the given timezone in ISO 8601 format."""
     return datetime.now(ZoneInfo(timezone)).isoformat()
 
 
-def get_data_from_arduino(env_settings):
+def fetch_json(
+    url: str,
+    timeout: int | float,
+    source_name: str,
+) -> dict[str, Any] | None:
+    """Fetch and decode JSON data from a given URL."""
+    try:
+        resp = requests.get(url, timeout=timeout)
+        resp.raise_for_status()
+    except (requests.RequestException, OSError) as err:
+        logger.error('%s request failed: %s', source_name, err)
+        return None
+
+    try:
+        return resp.json()
+    except ValueError as err:
+        logger.error('%s JSON response decode failed: %s', source_name, err)
+        return None
+
+
+def get_data_from_arduino(env_settings: dict[str, Any]) -> float | None:
     """Read environment data from Arduino.
 
     Returns the received data or None on failure.
     """
-    arduino_ok = True
+    arduino_data = fetch_json(env_settings['arduino_url'],
+                              ARDUINO_REQUEST_TIMEOUT,
+                              'Arduino')
+    if not arduino_data:
+        return None
+
+    outside_temp = arduino_data.get('extTempSensor')
+    if outside_temp is None:
+        logger.error("Arduino response missing 'extTempSensor'")
+        return None
+
     try:
-        resp = requests.get(env_settings['arduino_url'], timeout=5)
-    except (requests_ConnectionError, OSError) as err:
-        logger.error('Connection problem to Arduino: %s', err)
-        arduino_ok = False
-    if arduino_ok and not resp.ok:
-        logger.error('Cannot read Arduino data, status code: %s', resp.status_code)
-        arduino_ok = False
-
-    if arduino_ok:
-        try:
-            arduino_data = resp.json()
-        except json.JSONDecodeError as err:
-            logger.error('Arduino JSON response decode failed: %s', err)
-            arduino_ok = False
-
-    return round(arduino_data['extTempSensor'], 2) if arduino_ok else None
+        return round(float(outside_temp), 2)
+    except (TypeError, ValueError) as err:
+        logger.error("Arduino 'extTempSensor' value is invalid: %s", err)
+        return None
 
 
-def get_esp32_env_data(env_settings):
+def get_esp32_env_data(env_settings: dict[str, Any]) -> Esp32EnvData:
     """Read environment data from Xiao ESP32.
 
-    Returns the received data or None on failure for values which cannot be read.
+    Returns the received data, using None for values that cannot be read.
     """
-    esp32_ok = True
-    request_ok = True
+    esp32_data = fetch_json(env_settings['esp32_url'],
+                            ESP32_REQUEST_TIMEOUT,
+                            'ESP32')
+    if not esp32_data:
+        return Esp32EnvData()
 
-    try:
-        resp = requests.get(env_settings['esp32_url'], timeout=10)
-    except (requests_ConnectionError, OSError) as err:
-        logger.error('ESP32 data request failed: %s', err)
-        request_ok = False
+    logger.info('ESP32 values: humidity %s', esp32_data.get('humidity'))
+    temperature = esp32_data.get('temperature')
 
-    if not request_ok or not resp.ok:
-        esp32_ok = False
-    else:
-        try:
-            esp32_data = resp.json()
-        except json.JSONDecodeError as err:
-            logger.error('ESP32 JSON response decode failed: %s', err)
-            esp32_ok = False
-
-    if esp32_ok:
-        logger.info('ESP32 values: humidity %s', esp32_data['humidity'])
-
-        return (esp32_data['light'], round(esp32_data['temperature'], 2),
-                esp32_data['co2'], esp32_data['vocIndex'], esp32_data['noxIndex'])
-    return (None, None, None, None, None)
+    rounded_temperature = (
+        round(temperature, 2) if temperature is not None else None
+    )
+    return Esp32EnvData(
+        light=esp32_data.get('light'),
+        temperature=rounded_temperature,
+        co2=esp32_data.get('co2'),
+        voc_index=esp32_data.get('vocIndex'),
+        nox_index=esp32_data.get('noxIndex'),
+    )
 
 
-def get_outside_light_value(env_settings):
+def get_outside_light_value(env_settings: dict[str, Any]) -> int | None:
     """Read light sensor value from outside Xiao ESP32.
 
     Returns the received data or None on failure.
     """
-    try:
-        resp = requests.get(env_settings['outside_esp32_url'], timeout=10)
-    except (requests_ConnectionError, OSError) as err:
-        logger.error('ESP32 data request failed: %s', err)
+    esp32_data = fetch_json(env_settings['outside_esp32_url'],
+                            OUTSIDE_ESP32_REQUEST_TIMEOUT,
+                            'Outside ESP32')
+    if not esp32_data:
         return None
-
-    try:
-        esp32_data = resp.json()
-    except json.JSONDecodeError as err:
-        logger.error('ESP32 JSON response decode failed: %s', err)
-        return None
-
-    return esp32_data['light']
+    return esp32_data.get('light')
 
 
-def calculate_iaqs(co2_value, pm25_value):
+def calculate_iaqs(co2_value: int | None, pm25_value: int | None) -> int | None:
     """Calculate the Ruuvi indoor air quality score (IAQS).
 
     Documentation for the calculation algorithm can be found at
@@ -138,7 +165,10 @@ def calculate_iaqs(co2_value, pm25_value):
     return round(_clamp(AQI_MAX - r, 0, AQI_MAX))
 
 
-def process_ruuvi_device_data(device_type, device_data):
+def process_ruuvi_device_data(
+    device_type: str,
+    device_data: tuple[str, dict[str, Any]],
+) -> dict[str, Any] | None:
     """Process 'raw' Ruuvi device data."""
     if device_type == 'tag':
         return {'temperature': device_data[1]['temperature'],
@@ -165,10 +195,10 @@ def process_ruuvi_device_data(device_type, device_data):
     return None
 
 
-async def scan_ruuvi_devices(device_config, bt_device):  # noqa: C901,PLR0915
+async def scan_ruuvi_devices(device_config: dict[str, Any], bt_device: str):  # noqa: C901,PLR0915
     """Scan for Ruuvi devices (Tag and Air)."""
     scan_timeout = device_config.get('scan_timeout', 5)
-    pre_scan_sleep = 4
+    pre_scan_sleep = RUUVI_PRE_SCAN_SLEEP_SECONDS
     found_devices = {}
     devices = {}
     device_names = {}
@@ -177,11 +207,13 @@ async def scan_ruuvi_devices(device_config, bt_device):  # noqa: C901,PLR0915
         devices[device['mac']] = device['type']
         device_names[device['mac']] = device['name']
 
-    async def _async_device_scan(devices, scan_duration, run_until_completion=False):
+    async def _async_device_scan(devices: dict[str, str],
+                                 scan_duration: int,
+                                 run_until_completion: bool = False):
         expected_device_count = len(devices)
         found_count = 0
         start_time = time.monotonic()
-        timeout_advance = 2
+        timeout_advance = RUUVI_TIMEOUT_ADVANCE_SECONDS
 
         if run_until_completion:
             logger.info('Sleeping %s seconds before starting scan', pre_scan_sleep)
@@ -222,13 +254,10 @@ async def scan_ruuvi_devices(device_config, bt_device):  # noqa: C901,PLR0915
         if len(found_devices) < len(devices):
             # Try scan again for remaining devices
             logger.info('Retrying Ruuvi device scan')
-            found_devices_macs = list(found_devices.keys())
-            retry_devices = {}
-            for mac in list(devices.keys()):
-                if mac not in found_devices_macs:
-                    retry_devices[mac] = devices[mac]
+            retry_devices = {mac: devices[mac] for mac in devices
+                             if mac not in found_devices}
 
-            min_retry_timeout = 6
+            min_retry_timeout = RUUVI_MIN_RETRY_TIMEOUT
             # Use a shorter time for retry as there is likely less Ruuvi devices to
             # look for
             retry_timeout = max(scan_timeout - 10, min_retry_timeout)
@@ -257,39 +286,13 @@ async def scan_ruuvi_devices(device_config, bt_device):  # noqa: C901,PLR0915
     return list(found_devices.values())
 
 
-def store_ruuvi_device_data(config, access_token, timestamp, device_data):
-    """Send provided Ruuvi device data to the backend."""
-    json_data = json.dumps(device_data)
-    max_attempts = 2
-    attempt_count = 0
-
-    while attempt_count < max_attempts:
-        try:
-            resp = requests.post(config['ruuvi_device']['url'],
-                                 headers={'Bearer': access_token},
-                                 params={'observation': json_data,
-                                         'timestamp': timestamp},
-                                 timeout=15)
-        except (ConnectTimeoutError, MaxRetryError, OSError, ReadTimeoutError) as err:
-            logger.error('Ruuvi device data store failed: %s', err)
-            attempt_count += 1
-            time.sleep(10)
-            continue
-
-        logger.info("Ruuvi device observation: timestamp '%s', data: '%s', "
-                    "response: code %s, text '%s'",
-                    timestamp, json_data, resp.status_code, resp.text)
-        break
-
-
-async def scan_ble_beacon(config, bt_device):
+async def scan_ble_beacon(config: dict[str, Any], bt_device: str) -> dict[str, Any]:
     """Scan and return data on the configured Bluetooth LE beacon.
 
     Returns the MAC address, RSSI value and possibly battery level of the
     Bluetooth LE beacon.
     """
-    scan_time = 8
-    data = {'rssi': [], 'battery': []}
+    data: dict[str, list[int]] = {'rssi': [], 'battery': []}
     battery_service_uuid = '00002080-0000-1000-8000-00805f9b34fb'
 
     def callback(device, ad):
@@ -303,7 +306,7 @@ async def scan_ble_beacon(config, bt_device):
         scanner = BleakScanner(callback, bluez={'adapter': bt_device})
 
         await scanner.start()
-        await asyncio.sleep(scan_time)
+        await asyncio.sleep(BLE_SCAN_SECONDS)
         await scanner.stop()
     except BleakError as be:
         logger.error('BLE beacon scan failed: %s', be)
@@ -316,7 +319,7 @@ async def scan_ble_beacon(config, bt_device):
                 scanner = BleakScanner(callback, adapter=bt_device)
 
                 await scanner.start()
-                await asyncio.sleep(4)
+                await asyncio.sleep(BLE_BATTERY_RESCAN_SECONDS)
                 await scanner.stop()
             except BleakError as be:
                 logger.error('BLE beacon scan failed: %s', be)
@@ -328,7 +331,7 @@ async def scan_ble_beacon(config, bt_device):
     return {}
 
 
-async def do_scan(config, bt_device):
+async def do_scan(config: dict[str, Any], bt_device: str) -> dict[str, Any]:
     """Scan for BLE beacon and Ruuvi device(s)."""
     results = {}
 
@@ -342,50 +345,111 @@ async def do_scan(config, bt_device):
     return results
 
 
-def store_observation(config, access_token, timestamp, data):
+def store_observation(config: dict[str, Any],
+                      access_token: str,
+                      timestamp: str,
+                      data: dict[str, Any]) -> None:
     """Store the observation data to the backend database."""
-    if data == {}:
+    if not data:
         logger.error('Received no data, stopping')
         return
 
     max_attempts = 2
-    attempt_count = 0
     data['timestamp'] = timestamp
-    data = OrderedDict(sorted(data.items()))
+    data = dict(sorted(data.items()))
+    payload = json.dumps(data)
 
-    while attempt_count < max_attempts:
+    for attempt in range(1, max_attempts + 1):
         try:
             resp = requests.post(config['environment']['upload_url'],
                                  headers={'Bearer': access_token},
-                                 params={'observation': json.dumps(data)},
-                                 timeout=15)
-        except (ConnectTimeoutError, MaxRetryError, OSError, ReadTimeoutError,
-                TimeoutError) as err:
-            logger.error('Observation data store failed: %s', err)
-            attempt_count += 1
-            time.sleep(10)
+                                 params={'observation': payload},
+                                 timeout=UPLOAD_REQUEST_TIMEOUT)
+            resp.raise_for_status()
+        except (requests.RequestException, OSError, TimeoutError) as err:
+            logger.error('Observation data store failed (attempt %s/%s): %s',
+                         attempt, max_attempts, err)
+            if attempt < max_attempts:
+                time.sleep(RETRY_SLEEP_SECONDS)
             continue
 
         logger.info("Observation data: '%s', response: code %s, text '%s'",
-                    json.dumps(data), resp.status_code, resp.text)
-        break
+                    payload, resp.status_code, resp.text)
+        return
 
 
-def get_access_token(config):
+def get_access_token(config: dict[str, Any]) -> str | None:
     """Fetch JWT access token used for observation storage."""
-    resp = requests.post(config['auth']['token_endpoint'],
-                         data={'grant_type': 'client_credentials',
-                               'client_id': config['auth']['client_id'],
-                               'client_secret': config['auth']['client_secret']},
-                         timeout=10)
-    if not resp.ok:
-        logger.error('JWT token fetch failed')
+    try:
+        resp = requests.post(config['auth']['token_endpoint'],
+                             data={'grant_type': 'client_credentials',
+                                   'client_id': config['auth']['client_id'],
+                                   'client_secret': config['auth']['client_secret']},
+                             timeout=AUTH_REQUEST_TIMEOUT)
+        resp.raise_for_status()
+    except (requests.RequestException, OSError) as err:
+        logger.error('JWT token fetch failed: %s', err)
         return None
 
-    return resp.json()['access_token']
+    try:
+        return resp.json()['access_token']
+    except (ValueError, KeyError) as err:
+        logger.error('JWT token response did not contain access token: %s', err)
+        return None
 
 
-def main():
+def store_ruuvi_device_data(config: dict[str, Any],
+                            access_token: str,
+                            timestamp: str,
+                            device_data: list[dict[str, Any]]) -> None:
+    """Send provided Ruuvi device data to the backend."""
+    json_data = json.dumps(device_data)
+    max_attempts = 2
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            resp = requests.post(config['ruuvi_device']['url'],
+                                 headers={'Bearer': access_token},
+                                 params={'observation': json_data,
+                                         'timestamp': timestamp},
+                                 timeout=UPLOAD_REQUEST_TIMEOUT)
+            resp.raise_for_status()
+        except (requests.RequestException, OSError) as err:
+            logger.error('Ruuvi device data store failed (attempt %s/%s): %s',
+                         attempt, max_attempts, err)
+            if attempt < max_attempts:
+                time.sleep(RETRY_SLEEP_SECONDS)
+            continue
+
+        logger.info("Ruuvi device observation: timestamp '%s', data: '%s', "
+                    "response: code %s, text '%s'",
+                    timestamp, json_data, resp.status_code, resp.text)
+        return
+
+
+def build_dummy_env_data() -> dict[str, Any]:
+    """Build dummy environment data for test runs."""
+    return {'insideLight': 10,
+            'insideTemperature': 21,
+            'co2': 700,
+            'vocIndex': 100,
+            'noxIndex': 1,
+            'outsideTemperature': 5}
+
+
+def build_env_data(env_config: dict[str, Any]) -> dict[str, Any]:
+    """Build environment data from configured sensors."""
+    esp32_data = get_esp32_env_data(env_config)
+    return {'outsideTemperature': get_data_from_arduino(env_config),
+            'insideLight': esp32_data.light,
+            'insideTemperature': esp32_data.temperature,
+            'co2': esp32_data.co2,
+            'vocIndex': esp32_data.voc_index,
+            'noxIndex': esp32_data.nox_index,
+            'outsideLight': get_outside_light_value(env_config)}
+
+
+def main() -> None:
     """Run the module code."""
     logging.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s',
                         level=logging.INFO)
@@ -423,23 +487,7 @@ def main():
 
     logger.info('Logger run started')
 
-    if args.dummy:
-        env_data = {'insideLight': 10,
-                    'insideTemperature': 21,
-                    'co2': 700,
-                    'vocIndex': 100,
-                    'noxIndex': 1,
-                    'outsideTemperature': 5}
-    else:
-        env_data = {'outsideTemperature': get_data_from_arduino(env_config)}
-
-        esp32_data = get_esp32_env_data(env_config)
-        env_data['insideLight'] = esp32_data[0]
-        env_data['insideTemperature'] = esp32_data[1]
-        env_data['co2'] = esp32_data[2]
-        env_data['vocIndex'] = esp32_data[3]
-        env_data['noxIndex'] = esp32_data[4]
-        env_data['outsideLight'] = get_outside_light_value(env_config)
+    env_data = build_dummy_env_data() if args.dummy else build_env_data(env_config)
 
     timestamp = get_timestamp(config['timezone'])
     scan_result = asyncio.run(do_scan(config, bt_device))
