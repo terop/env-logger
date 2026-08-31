@@ -238,13 +238,19 @@ async def scan_ruuvi_devices(device_config, bt_device):  # noqa: C901,PLR0915
                                    timeout=retry_timeout + pre_scan_sleep)
 
     except (asyncio.CancelledError, BleakError, BleakDBusError, TimeoutError) as err:
+        missing_names = [device_names[mac] for mac in devices
+                         if mac not in found_devices]
         match err:
             case BleakError():
                 logger.error('Error from Bleak: %s', err)
             case asyncio.CancelledError():
                 logger.error('Ruuvi device scan was cancelled')
             case TimeoutError():
-                logger.error('Ruuvi device scan timed out')
+                if missing_names:
+                    logger.error('Ruuvi device scan timed out, devices not found: %s',
+                                 ','.join(missing_names))
+                else:
+                    logger.error('Ruuvi device scan timed out')
             case _:
                 logger.error('Ruuvi device scan failed for some other reason: %s', err)
 
