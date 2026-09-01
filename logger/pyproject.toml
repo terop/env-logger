@@ -18,3 +18,12 @@ extend = "../ruff.toml"
 
 [tool.uv.sources]
 ruuvitag-sensor = { git = "https://github.com/ttu/ruuvitag-sensor.git" }
+
+[[tool.mypy.overrides]]
+module = ["ruuvitag_sensor.ruuvi"]
+follow_untyped_imports = true
+
+[dependency-groups]
+dev = [
+    "mypy>=2.3.1",
+]

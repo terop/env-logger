@@ -27,7 +27,7 @@ fi
 clojure -Tcljfmt check
 
 # Only run ruff when called from the env-logger repository to avoid ruff failures
-# when called from other repositories
+# when called from other repositories. Run mypy for logger which has type annotations.
 # shellcheck disable=SC2046,SC2086
 if [ "${CI}" ] && [ ${CIRCLE_PROJECT_REPONAME} = 'env-logger' ] || \
        [ $(basename $(pwd)) = 'env-logger' ]; then
@@ -35,9 +35,11 @@ if [ "${CI}" ] && [ ${CIRCLE_PROJECT_REPONAME} = 'env-logger' ] || \
     if [ "${CI}" ]; then
         apt-get install -y python3.13-venv
         # shellcheck disable=SC1091
-        python3 -m venv .venv && . .venv/bin/activate && pip3 install ruff && ruff check
+        python3 -m venv .venv && . .venv/bin/activate && pip install ruff mypy uv && \
+            ruff check && (cd logger && uv sync --all-extras && uv run --active mypy logger.py)
     else
         ruff check
+        (cd logger && uv run mypy logger.py)
     fi
 fi
 
