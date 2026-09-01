@@ -607,6 +607,37 @@
       (jdbc/execute! test-ds (sql/format {:delete-from :electricity_consumption}))
       (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price})))))
 
+(deftest get-elec-data-day-utc-display-test
+  (testing "Daily electricity uses store timezone for bucketing and user dates for output"
+    (let [prod-env (assoc env
+                          :display-timezone "UTC"
+                          :store-timezone "Europe/Helsinki")
+          helsinki (jt/zone-id "Europe/Helsinki")
+          helsinki-midnight (fn [y m d]
+                              (jt/zoned-date-time
+                               (jt/local-date-time y m d 0 0 0)
+                               helsinki))]
+      (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))
+      (js/insert! test-ds
+                  :electricity_price
+                  {:start_time (jt/sql-timestamp (helsinki-midnight 2024 9 24))
+                   :price 5.0})
+      (js/insert! test-ds
+                  :electricity_price
+                  {:start_time (jt/sql-timestamp (helsinki-midnight 2024 9 25))
+                   :price 6.0})
+      (with-redefs [env prod-env]
+        (let [single-day (get-elec-data-day test-ds "2024-09-24" "2024-09-24" false)
+              two-day (get-elec-data-day test-ds "2024-09-24" "2024-09-25" false)]
+          (is (= 1 (count (remove nil? single-day))))
+          (is (= "2024-09-24" (:date (first single-day))))
+          (is (rel= 5.0 (:price (first single-day)) :tol 0.01))
+          (is (= ["2024-09-24" "2024-09-25"]
+                 (mapv :date (remove nil? two-day))))
+          (is (rel= 5.0 (:price (first (remove nil? two-day))) :tol 0.01))
+          (is (rel= 6.0 (:price (second (remove nil? two-day))) :tol 0.01))))
+      (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price})))))
+
 (deftest get-elec-fees-test
   (testing "Electricity fee calculation"
     (let [expected (* 100 (+ (:elec-contract-margin env)

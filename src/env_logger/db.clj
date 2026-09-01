@@ -406,6 +406,19 @@
              (jt/hours (get-tz-offset (:store-timezone env))))
     dt))
 
+(defn- elec-store-local-date
+  "Calendar date for electricity daily aggregation in store timezone."
+  [timestamp]
+  (jt/local-date
+   (jt/zoned-date-time timestamp (jt/zone-id (:store-timezone env)))))
+
+(defn- elec-day-output-end-date
+  "End calendar date for daily chart output (user-facing, not query bounds)."
+  [end end-val]
+  (if (string? end)
+    (jt/local-date end)
+    (jt/local-date end-val)))
+
 (defmacro get-by-interval
   "Fetches observations in an interval using the provided function."
   [fetch-fn db-con dates dt-column]
@@ -846,7 +859,9 @@
                    end-val)]
       (if-not end-val
         [nil]
-        (let [query (sql/format {:select [:p.start_time
+        (let [output-start-date (jt/local-date start)
+              output-end-date (elec-day-output-end-date end end-val)
+              query (sql/format {:select [:p.start_time
                                           :p.price
                                           :u.consumption]
                                  :from [[:electricity_price :p]]
@@ -859,8 +874,7 @@
               rows (jdbc/execute! db-con query rs-opts)
               day-stats
               (reduce (fn [acc row]
-                        (let [date (jt/local-date (jt/local-date-time
-                                                   (:start-time row)))
+                        (let [date (elec-store-local-date (:start-time row))
                               current (get acc date
                                            {:sum-price 0.0
                                             :price-count 0
@@ -895,10 +909,10 @@
                        :price (round-number price-with-fees)
                        :consumption (when (pos? consumption-count)
                                       (round-number sum-consumption))})))
-                (take (inc (jt/time-between (jt/local-date start-dt)
-                                            (jt/local-date end-dt)
+                (take (inc (jt/time-between output-start-date
+                                            output-end-date
                                             :days))
-                      (jt/iterate jt/plus (jt/local-date start-dt)
+                      (jt/iterate jt/plus output-start-date
                                   (jt/days 1)))))))
     (catch PSQLException pe
       (error pe "Daily electricity data fetch failed")
