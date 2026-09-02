@@ -448,7 +448,7 @@ def format_local_time():
 def update_time_row(display, time_str, clock_suffix):
     """Update only the clock row, using a cached sunrise / sunset suffix."""
     if clock_suffix:
-        display[0].text = f"{time_str}           {clock_suffix}"
+        display[0].text = f"{time_str}             {clock_suffix}"
     else:
         display[0].text = time_str
 
@@ -463,7 +463,7 @@ def render_weather_rows(display, observation, weather_data, utc_offset_hour, tim
         clock_suffix = (
             f"sr {weather_data['ast']['sunrise']} ss {weather_data['ast']['sunset']}"
         )
-        display[0].text = f"{time_str}           {clock_suffix}"
+        display[0].text = f"{time_str}             {clock_suffix}"
     else:
         display[0].text = time_str
         return clock_suffix
