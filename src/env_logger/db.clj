@@ -410,7 +410,7 @@
   "Calendar date for electricity daily aggregation in store timezone."
   [timestamp]
   (jt/local-date
-   (jt/zoned-date-time timestamp (jt/zone-id (:store-timezone env)))))
+   (jt/zoned-date-time (jt/instant timestamp) (jt/zone-id (:store-timezone env)))))
 
 (defn- elec-day-output-end-date
   "End calendar date for daily chart output (user-facing, not query bounds)."

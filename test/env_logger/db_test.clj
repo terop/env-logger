@@ -638,6 +638,41 @@
           (is (rel= 6.0 (:price (second (remove nil? two-day))) :tol 0.01))))
       (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price})))))
 
+(deftest get-elec-data-day-helsinki-midnight-bucketing-test
+  (testing "Consumption at Helsinki midnight (UTC prev day 21:00) is bucketed
+            to the Helsinki date, not the UTC date"
+    ;; This guards against the regression where elec-store-local-date converted
+    ;; the JDBC Timestamp via LocalDateTime (JVM-timezone-dependent) rather than
+    ;; via Instant (timezone-unambiguous). On a UTC JVM the first 3 Helsinki hours
+    ;; of each day were bucketed one day too early.
+    (let [prod-env (assoc env
+                          :display-timezone "UTC"
+                          :store-timezone "Europe/Helsinki")
+          helsinki (jt/zone-id "Europe/Helsinki")
+          ;; 2024-09-24 00:00:00 Helsinki = 2024-09-23 21:00:00 UTC
+          helsinki-midnight (jt/zoned-date-time
+                             (jt/local-date-time 2024 9 24 0 0 0)
+                             helsinki)]
+      (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))
+      (jdbc/execute! test-ds (sql/format {:delete-from :electricity_consumption}))
+      (js/insert! test-ds
+                  :electricity_price
+                  {:start_time (jt/sql-timestamp helsinki-midnight)
+                   :price 3.0})
+      (js/insert! test-ds
+                  :electricity_consumption
+                  {:time (jt/sql-timestamp helsinki-midnight)
+                   :consumption 0.12})
+      (with-redefs [env prod-env]
+        (let [result (get-elec-data-day test-ds "2024-09-24" "2024-09-24" false)
+              day (first (remove nil? result))]
+          (is (= 1 (count (remove nil? result)))
+              "Entry at Helsinki midnight should appear under the Helsinki date")
+          (is (= "2024-09-24" (:date day)))
+          (is (rel= 0.12 (:consumption day) :tol 0.01))))
+      (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))
+      (jdbc/execute! test-ds (sql/format {:delete-from :electricity_consumption})))))
+
 (deftest get-elec-fees-test
   (testing "Electricity fee calculation"
     (let [expected (* 100 (+ (:elec-contract-margin env)
