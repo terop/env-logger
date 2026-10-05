@@ -17,4 +17,4 @@ uberjar: # build the jar
     mv target/env-logger-*.jar target/env-logger.jar
 
 update: # update base images
-    podman pull docker.io/eclipse-temurin:25-alpine docker.io/alpine:latest
+    podman pull docker.io/eclipse-temurin:27-alpine docker.io/alpine:latest

@@ -1,4 +1,4 @@
-FROM docker.io/eclipse-temurin:25-alpine as temurin-jdk
+FROM docker.io/eclipse-temurin:27-alpine as temurin-jdk
 LABEL org.opencontainers.image.authors="tero.paloheimo@iki.fi"
 
 # Required for strip-debug to work
@@ -7,7 +7,7 @@ RUN apk add --no-cache binutils
 # Compute runtime modules from compiled classes and build small JRE
 COPY ./target/classes /tmp/classes
 RUN BASE_MODS="$($JAVA_HOME/bin/jdeps \
-    --multi-release 25 \
+    --multi-release 27 \
     --ignore-missing-deps \
     --print-module-deps \
     /tmp/classes)" \
