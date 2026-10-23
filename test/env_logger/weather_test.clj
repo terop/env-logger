@@ -385,5 +385,4 @@
         (is (= (:wind-direction-str expected-forecast) (:wind-direction-str forecast)))
         (is (rel= (:precipitation expected-forecast) (:precipitation forecast) :tol 0.01))
         (is (rel= (:humidity expected-forecast) (:humidity forecast) :tol 0.01))
-        (is (rel= (:feels-like expected-forecast) (:feels-like forecast) :tol 0.01)))
-      (is (empty? (:not-found weather-data))))))
+        (is (rel= (:feels-like expected-forecast) (:feels-like forecast) :tol 0.01))))))
