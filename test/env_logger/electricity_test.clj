@@ -75,6 +75,39 @@
                (j/read-value (:body (e/electricity-data
                                      {:params {}})))))))))
 
+(deftest electricity-data-default-day-uses-date-string-test
+  (testing "Default data-day start is a calendar date string so make-local-dt
+            applies the UTC display correction (avoids dropping early Helsinki hours)"
+    (let [captured (atom nil)
+          utc-env (assoc enabled-elec-env
+                         :display-timezone "UTC"
+                         :store-timezone "Europe/Helsinki"
+                         :initial-show-days 2)]
+      (with-redefs [db/postgres-ds test-ds
+                    env utc-env
+                    access-ok? (fn [_ _] true)
+                    db/get-elec-data-hour (fn [_ _ _ _] [])
+                    db/get-elec-data-day (fn [_ start end _]
+                                           (reset! captured {:start start :end end})
+                                           [{:date "2026-10-21"
+                                             :price 1.0
+                                             :consumption 3.5}])
+                    db/get-elec-consumption-interval-start (fn [_] "2026-10-01")
+                    db/get-elec-price-interval-end (fn [_] "2026-10-23")
+                    db/get-month-avg-elec-price (fn [_ _] "10.0")
+                    db/get-month-elec-consumption (fn [_] "70.1")
+                    e/calculate-interval-cost (fn
+                                                ([_ _] 0.31)
+                                                ([_ _ _] 0.31))
+                    e/calculate-month-cost (fn
+                                             ([] 0.32)
+                                             ([_] 0.32))]
+        (e/electricity-data {:params {}})
+        (is (string? (:start @captured))
+            "Must pass a date string, not an offset LocalDateTime")
+        (is (re-matches #"\d{4}-\d{2}-\d{2}" (:start @captured)))
+        (is (nil? (:end @captured)))))))
+
 (deftest compact-elec-hour-bounds-test
   (testing "Hour window is JVM-local current hour plus lookahead"
     (let [[start end] (e/compact-elec-hour-bounds

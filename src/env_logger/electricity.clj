@@ -130,7 +130,19 @@
                                                     (db/make-local-dt start-date "start")
                                                     (db/make-local-dt end-date "end"))})))
               (let [start-date (db/get-midnight-dt (:initial-show-days env))
-                    interval-end (db/get-elec-price-interval-end con)]
+                    interval-end (db/get-elec-price-interval-end con)
+                    ;; Calendar date for the UI and for get-elec-data-day.
+                    ;; Passing a date string (not an offset LocalDateTime) goes
+                    ;; through make-local-dt so the SQL lower bound is Helsinki
+                    ;; midnight on a UTC JVM.
+                    start-date-str
+                    (jt/format :iso-local-date
+                               (if (= (:display-timezone env) "UTC")
+                                 (jt/plus start-date
+                                          (jt/hours
+                                           (db/get-tz-offset
+                                            (:store-timezone env))))
+                                 start-date))]
                 (serve-json (merge resp-data
                                    {:data-hour (db/get-elec-data-hour con
                                                                       start-date
@@ -138,19 +150,10 @@
                                                                       add-fees)
                                     :data-day (db/get-elec-data-day
                                                con
-                                               (db/add-tz-offset-to-dt start-date)
+                                               start-date-str
                                                nil
                                                add-fees)
-                                    :dates {:current {:start
-                                                      (jt/format
-                                                       :iso-local-date
-                                                       (if (= (:display-timezone
-                                                               env) "UTC")
-                                                         (jt/plus start-date
-                                                                  (jt/hours
-                                                                   (db/get-tz-offset
-                                                                    (:store-timezone env))))
-                                                         start-date))}
+                                    :dates {:current {:start start-date-str}
                                             :max interval-end
                                             :min (db/get-elec-consumption-interval-start
                                                   con)}

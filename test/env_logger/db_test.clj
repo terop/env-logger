@@ -673,6 +673,40 @@
       (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))
       (jdbc/execute! test-ds (sql/format {:delete-from :electricity_consumption})))))
 
+(deftest get-elec-data-day-string-start-includes-early-helsinki-hours-test
+  (testing "Date-string start includes Helsinki 00-02 under UTC display TZ.
+            The default electricity path must pass a date string (via
+            make-local-dt), not an offset LocalDateTime: on a UTC JVM a
+            wall-clock midnight LocalDateTime is UTC midnight and drops the
+            first three Helsinki hours."
+    (let [prod-env (assoc env
+                          :display-timezone "UTC"
+                          :store-timezone "Europe/Helsinki")
+          helsinki (jt/zone-id "Europe/Helsinki")
+          hel-hour (fn [h]
+                     (jt/zoned-date-time
+                      (jt/local-date-time 2024 9 24 h 0 0)
+                      helsinki))]
+      (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))
+      (jdbc/execute! test-ds (sql/format {:delete-from :electricity_consumption}))
+      (doseq [h (range 4)]
+        (js/insert! test-ds
+                    :electricity_price
+                    {:start_time (jt/sql-timestamp (hel-hour h))
+                     :price 1.0})
+        (js/insert! test-ds
+                    :electricity_consumption
+                    {:time (jt/sql-timestamp (hel-hour h))
+                     :consumption 0.1}))
+      (with-redefs [env prod-env]
+        (let [result (get-elec-data-day test-ds "2024-09-24" "2024-09-24" false)
+              day (first (remove nil? result))]
+          (is (= "2024-09-24" (:date day)))
+          (is (rel= 0.4 (:consumption day) :tol 0.01)
+              "String start must include all four Helsinki hours")))
+      (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))
+      (jdbc/execute! test-ds (sql/format {:delete-from :electricity_consumption})))))
+
 (deftest get-elec-fees-test
   (testing "Electricity fee calculation"
     (let [expected (* 100 (+ (:elec-contract-margin env)
