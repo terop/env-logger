@@ -84,20 +84,16 @@ CREATE INDEX ruuvi_air_observations_recorded_brin ON ruuvi_air_observations USIN
 -- Electricity price table
 CREATE TABLE electricity_price (
        id SERIAL PRIMARY KEY,
-       start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+       start_time TIMESTAMP WITH TIME ZONE UNIQUE NOT NULL,
        price REAL NOT NULL
 );
-
-CREATE INDEX electricity_price_start_time_idx ON electricity_price (start_time);
 
 -- Electricity price table for 15 minute resolution
 CREATE TABLE electricity_price_minute (
        id SERIAL PRIMARY KEY,
-       start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+       start_time TIMESTAMP WITH TIME ZONE UNIQUE NOT NULL,
        price REAL NOT NULL
 );
-
-CREATE INDEX electricity_price_minute_start_time_idx ON electricity_price_minute (start_time);
 
 -- Electricity consumption table
 CREATE TABLE electricity_consumption (

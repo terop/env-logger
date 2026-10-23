@@ -76,7 +76,8 @@ def store_prices(db_config, price_data, hourly=True):
     """Store the prices to a database pointed by the DB config."""
     insert_query = (
         f'INSERT INTO electricity_price{"" if hourly else "_minute"} '  # noqa: S608
-        '(start_time, price) VALUES (%s, %s)'
+        '(start_time, price) VALUES (%s, %s) '
+        'ON CONFLICT (start_time) DO NOTHING'
     )
 
     try:
