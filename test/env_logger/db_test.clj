@@ -69,6 +69,14 @@
 (def current-dt (jt/minus (jt/local-date-time) (jt/days 4)))
 (def date-fmt :iso-local-date)
 
+(defn- instant-sql-timestamp
+  "Timestamp preserving the Instant of a zoned/offset temporal.
+  Prefer over jt/sql-timestamp for ZonedDateTime: that conversion goes via
+  LocalDateTime and reinterprets wall clock in the JVM default zone, so under
+  UTC CI a Helsinki midnight is stored as 00:00Z instead of 21:00Z/22:00Z."
+  [temporal]
+  (java.sql.Timestamp/from (jt/instant temporal)))
+
 (defn clean-test-database
   "Resets the test database to a known baseline for each test."
   [test-fn]
@@ -642,11 +650,11 @@
       (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))
       (js/insert! test-ds
                   :electricity_price
-                  {:start_time (jt/sql-timestamp (helsinki-midnight 2024 9 24))
+                  {:start_time (instant-sql-timestamp (helsinki-midnight 2024 9 24))
                    :price 5.0})
       (js/insert! test-ds
                   :electricity_price
-                  {:start_time (jt/sql-timestamp (helsinki-midnight 2024 9 25))
+                  {:start_time (instant-sql-timestamp (helsinki-midnight 2024 9 25))
                    :price 6.0})
       (with-redefs [env prod-env]
         (let [single-day (get-elec-data-day test-ds "2024-09-24" "2024-09-24" false)
@@ -679,11 +687,11 @@
       (jdbc/execute! test-ds (sql/format {:delete-from :electricity_consumption}))
       (js/insert! test-ds
                   :electricity_price
-                  {:start_time (jt/sql-timestamp helsinki-midnight)
+                  {:start_time (instant-sql-timestamp helsinki-midnight)
                    :price 3.0})
       (js/insert! test-ds
                   :electricity_consumption
-                  {:time (jt/sql-timestamp helsinki-midnight)
+                  {:time (instant-sql-timestamp helsinki-midnight)
                    :consumption 0.12})
       (with-redefs [env prod-env]
         (let [result (get-elec-data-day test-ds "2024-09-24" "2024-09-24" false)
@@ -714,11 +722,11 @@
       (doseq [h (range 4)]
         (js/insert! test-ds
                     :electricity_price
-                    {:start_time (jt/sql-timestamp (hel-hour h))
+                    {:start_time (instant-sql-timestamp (hel-hour h))
                      :price 1.0})
         (js/insert! test-ds
                     :electricity_consumption
-                    {:time (jt/sql-timestamp (hel-hour h))
+                    {:time (instant-sql-timestamp (hel-hour h))
                      :consumption 0.1}))
       (with-redefs [env prod-env]
         (let [result (get-elec-data-day test-ds "2024-09-24" "2024-09-24" false)
@@ -744,7 +752,7 @@
       (doseq [h [0 1 2]]
         (js/insert! test-ds
                     :electricity_price
-                    {:start_time (jt/sql-timestamp (hel-hour h))
+                    {:start_time (instant-sql-timestamp (hel-hour h))
                      :price (double h)}))
       (with-redefs [env prod-env]
         (let [rows (get-elec-data-hour test-ds
