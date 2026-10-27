@@ -240,8 +240,8 @@
           (let [obs (last (:observations parsed-json))
                 time-str (subs (str/replace (:localtime obs) "T" "") 0 12)
                 local-dt (jt/local-date-time "yyyyMMddHHmm" time-str)
-                ;; Assume that the timestamp is always in local (i.e.
-                ;; Europe/Helsinki) time zone
+                ;; FMI :localtime is Finnish wall clock (source-tz for
+                ;; observation-time->zoned); :weather-timezone is the target.
                 tz-str "Europe/Helsinki"
                 wd {:time (-observation-time->sql-timestamp local-dt tz-str)
                     :temperature (:t2m obs)

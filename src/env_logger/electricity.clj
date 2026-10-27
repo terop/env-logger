@@ -133,9 +133,9 @@
                     interval-end (db/get-elec-price-interval-end con)
                     ;; Calendar date for the UI and for get-elec-data-day.
                     ;; Passing a date string (not an offset LocalDateTime) goes
-                    ;; through make-local-dt so the SQL lower bound is Helsinki
-                    ;; midnight on a UTC JVM. Derive the date via zone rules so
-                    ;; DST transitions do not shift the calendar day.
+                    ;; through make-local-dt so the SQL lower bound is
+                    ;; store-timezone midnight on a UTC JVM. Derive the date via
+                    ;; zone rules so DST transitions do not shift the calendar day.
                     start-date-str
                     (jt/format :iso-local-date
                                (db/jdbc-ldt->store-local-date start-date))]

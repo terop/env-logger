@@ -77,7 +77,8 @@
 
 (deftest electricity-data-default-day-uses-date-string-test
   (testing "Default data-day start is a calendar date string so make-local-dt
-            applies the UTC display correction (avoids dropping early Helsinki hours)"
+            applies the UTC display correction (avoids dropping early
+            store-timezone hours)"
     (let [captured (atom nil)
           utc-env (assoc enabled-elec-env
                          :display-timezone "UTC"

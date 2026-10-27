@@ -73,7 +73,7 @@
   "Timestamp preserving the Instant of a zoned/offset temporal.
   Prefer over jt/sql-timestamp for ZonedDateTime: that conversion goes via
   LocalDateTime and reinterprets wall clock in the JVM default zone, so under
-  UTC CI a Helsinki midnight is stored as 00:00Z instead of 21:00Z/22:00Z."
+  UTC CI a store-timezone midnight is stored as 00:00Z instead of 21:00Z/22:00Z."
   [temporal]
   (java.sql.Timestamp/from (jt/instant temporal)))
 
@@ -289,7 +289,7 @@
                           :display-timezone "UTC"
                           :store-timezone "Europe/Helsinki")]
       (with-redefs [env prod-env]
-        ;; 2026-10-25 00:00 Helsinki was still EEST (+3) until 04:00
+        ;; 2026-10-25 00:00 store TZ was still EEST (+3) until 04:00
         (is (= (jt/local-date-time 2026 10 24 21 0)
                (make-local-dt "2026-10-25" "start")))
         (is (= (jt/local-date-time 2026 10 25 21 59 59)
@@ -642,19 +642,19 @@
     (let [prod-env (assoc env
                           :display-timezone "UTC"
                           :store-timezone "Europe/Helsinki")
-          helsinki (jt/zone-id "Europe/Helsinki")
-          helsinki-midnight (fn [y m d]
-                              (jt/zoned-date-time
-                               (jt/local-date-time y m d 0 0 0)
-                               helsinki))]
+          store-tz (jt/zone-id "Europe/Helsinki")
+          store-midnight (fn [y m d]
+                           (jt/zoned-date-time
+                            (jt/local-date-time y m d 0 0 0)
+                            store-tz))]
       (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))
       (js/insert! test-ds
                   :electricity_price
-                  {:start_time (instant-sql-timestamp (helsinki-midnight 2024 9 24))
+                  {:start_time (instant-sql-timestamp (store-midnight 2024 9 24))
                    :price 5.0})
       (js/insert! test-ds
                   :electricity_price
-                  {:start_time (instant-sql-timestamp (helsinki-midnight 2024 9 25))
+                  {:start_time (instant-sql-timestamp (store-midnight 2024 9 25))
                    :price 6.0})
       (with-redefs [env prod-env]
         (let [single-day (get-elec-data-day test-ds "2024-09-24" "2024-09-24" false)
@@ -668,91 +668,91 @@
           (is (rel= 6.0 (:price (second (remove nil? two-day))) :tol 0.01))))
       (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price})))))
 
-(deftest get-elec-data-day-helsinki-midnight-bucketing-test
-  (testing "Consumption at Helsinki midnight (UTC prev day 21:00) is bucketed
-            to the Helsinki date, not the UTC date"
+(deftest get-elec-data-day-store-midnight-bucketing-test
+  (testing "Consumption at store-timezone midnight (UTC prev day 21:00) is
+            bucketed to the store-timezone date, not the UTC date"
     ;; This guards against the regression where elec-store-local-date converted
     ;; the JDBC Timestamp via LocalDateTime (JVM-timezone-dependent) rather than
-    ;; via Instant (timezone-unambiguous). On a UTC JVM the first 3 Helsinki hours
-    ;; of each day were bucketed one day too early.
+    ;; via Instant (timezone-unambiguous). On a UTC JVM the first 3 store-timezone
+    ;; hours of each day were bucketed one day too early.
     (let [prod-env (assoc env
                           :display-timezone "UTC"
                           :store-timezone "Europe/Helsinki")
-          helsinki (jt/zone-id "Europe/Helsinki")
-          ;; 2024-09-24 00:00:00 Helsinki = 2024-09-23 21:00:00 UTC
-          helsinki-midnight (jt/zoned-date-time
-                             (jt/local-date-time 2024 9 24 0 0 0)
-                             helsinki)]
+          store-tz (jt/zone-id "Europe/Helsinki")
+          ;; 2024-09-24 00:00:00 store TZ (EEST) = 2024-09-23 21:00:00 UTC
+          store-midnight (jt/zoned-date-time
+                          (jt/local-date-time 2024 9 24 0 0 0)
+                          store-tz)]
       (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))
       (jdbc/execute! test-ds (sql/format {:delete-from :electricity_consumption}))
       (js/insert! test-ds
                   :electricity_price
-                  {:start_time (instant-sql-timestamp helsinki-midnight)
+                  {:start_time (instant-sql-timestamp store-midnight)
                    :price 3.0})
       (js/insert! test-ds
                   :electricity_consumption
-                  {:time (instant-sql-timestamp helsinki-midnight)
+                  {:time (instant-sql-timestamp store-midnight)
                    :consumption 0.12})
       (with-redefs [env prod-env]
         (let [result (get-elec-data-day test-ds "2024-09-24" "2024-09-24" false)
               day (first (remove nil? result))]
           (is (= 1 (count (remove nil? result)))
-              "Entry at Helsinki midnight should appear under the Helsinki date")
+              "Entry at store-timezone midnight should appear under the store date")
           (is (= "2024-09-24" (:date day)))
           (is (rel= 0.12 (:consumption day) :tol 0.01))))
       (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))
       (jdbc/execute! test-ds (sql/format {:delete-from :electricity_consumption})))))
 
-(deftest get-elec-data-day-string-start-includes-early-helsinki-hours-test
-  (testing "Date-string start includes Helsinki 00-02 under UTC display TZ.
+(deftest get-elec-data-day-string-start-includes-early-store-hours-test
+  (testing "Date-string start includes store-timezone 00-02 under UTC display TZ.
             The default electricity path must pass a date string (via
             make-local-dt), not an offset LocalDateTime: on a UTC JVM a
             wall-clock midnight LocalDateTime is UTC midnight and drops the
-            first three Helsinki hours."
+            first three store-timezone hours."
     (let [prod-env (assoc env
                           :display-timezone "UTC"
                           :store-timezone "Europe/Helsinki")
-          helsinki (jt/zone-id "Europe/Helsinki")
-          hel-hour (fn [h]
-                     (jt/zoned-date-time
-                      (jt/local-date-time 2024 9 24 h 0 0)
-                      helsinki))]
+          store-tz (jt/zone-id "Europe/Helsinki")
+          store-hour (fn [h]
+                       (jt/zoned-date-time
+                        (jt/local-date-time 2024 9 24 h 0 0)
+                        store-tz))]
       (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))
       (jdbc/execute! test-ds (sql/format {:delete-from :electricity_consumption}))
       (doseq [h (range 4)]
         (js/insert! test-ds
                     :electricity_price
-                    {:start_time (instant-sql-timestamp (hel-hour h))
+                    {:start_time (instant-sql-timestamp (store-hour h))
                      :price 1.0})
         (js/insert! test-ds
                     :electricity_consumption
-                    {:time (instant-sql-timestamp (hel-hour h))
+                    {:time (instant-sql-timestamp (store-hour h))
                      :consumption 0.1}))
       (with-redefs [env prod-env]
         (let [result (get-elec-data-day test-ds "2024-09-24" "2024-09-24" false)
               day (first (remove nil? result))]
           (is (= "2024-09-24" (:date day)))
           (is (rel= 0.4 (:consumption day) :tol 0.01)
-              "String start must include all four Helsinki hours")))
+              "String start must include all four store-timezone hours")))
       (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))
       (jdbc/execute! test-ds (sql/format {:delete-from :electricity_consumption})))))
 
 (deftest get-elec-data-hour-includes-dst-fallback-midnight-test
-  (testing "Hourly fetch under UTC display includes Helsinki 00:00 on DST
+  (testing "Hourly fetch under UTC display includes store-timezone 00:00 on DST
             fall-back day (offset was +3 at midnight, +2 afterwards)"
     (let [prod-env (assoc env
                           :display-timezone "UTC"
                           :store-timezone "Europe/Helsinki")
-          helsinki (jt/zone-id "Europe/Helsinki")
-          hel-hour (fn [h]
-                     (jt/zoned-date-time
-                      (jt/local-date-time 2026 10 25 h 0 0)
-                      helsinki))]
+          store-tz (jt/zone-id "Europe/Helsinki")
+          store-hour (fn [h]
+                       (jt/zoned-date-time
+                        (jt/local-date-time 2026 10 25 h 0 0)
+                        store-tz))]
       (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))
       (doseq [h [0 1 2]]
         (js/insert! test-ds
                     :electricity_price
-                    {:start_time (instant-sql-timestamp (hel-hour h))
+                    {:start_time (instant-sql-timestamp (store-hour h))
                      :price (double h)}))
       (with-redefs [env prod-env]
         (let [rows (get-elec-data-hour test-ds
@@ -762,7 +762,7 @@
               starts (mapv :start-time rows)]
           (is (= 3 (count rows)))
           (is (= "2026-10-24T21:00:00Z" (first starts))
-              "00:00 Helsinki EEST must be included (21:00Z, not 22:00Z)")))
+              "00:00 store TZ EEST must be included (21:00Z, not 22:00Z)")))
       (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price})))))
 
 (deftest get-elec-fees-test
@@ -874,7 +874,7 @@
                     (fn
                       ([] (LocalDateTime/of 2026 10 27 18 0 0))
                       ([& args] (apply real-ldt args)))]
-        ;; initial-show-days 2 from 2026-10-27 -> 2026-10-25 Helsinki midnight
+        ;; initial-show-days 2 from 2026-10-27 -> 2026-10-25 store midnight
         ;; = 2026-10-24T21:00Z (EEST), not 22:00Z from winter offset
         (is (= (jt/local-date-time 2026 10 24 21 0)
                (get-midnight-dt 2)))
