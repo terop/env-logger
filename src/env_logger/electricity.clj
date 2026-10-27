@@ -134,15 +134,11 @@
                     ;; Calendar date for the UI and for get-elec-data-day.
                     ;; Passing a date string (not an offset LocalDateTime) goes
                     ;; through make-local-dt so the SQL lower bound is Helsinki
-                    ;; midnight on a UTC JVM.
+                    ;; midnight on a UTC JVM. Derive the date via zone rules so
+                    ;; DST transitions do not shift the calendar day.
                     start-date-str
                     (jt/format :iso-local-date
-                               (if (= (:display-timezone env) "UTC")
-                                 (jt/plus start-date
-                                          (jt/hours
-                                           (db/get-tz-offset
-                                            (:store-timezone env))))
-                                 start-date))]
+                               (db/jdbc-ldt->store-local-date start-date))]
                 (serve-json (merge resp-data
                                    {:data-hour (db/get-elec-data-hour con
                                                                       start-date

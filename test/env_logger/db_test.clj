@@ -43,6 +43,7 @@
               insert-wd
               make-local-dt
               add-tz-offset-to-dt
+              jdbc-ldt->store-local-date
               test-db-connection
               validate-date
               round-number
@@ -273,6 +274,27 @@
            (str (make-local-dt "2020-09-27" "start"))))
     (is (= "2020-09-27T23:59:59"
            (str (make-local-dt "2020-09-27" "end"))))))
+
+(deftest make-local-dt-utc-display-dst-test
+  (testing "UTC display uses zone rules so DST fall-back midnight is not shifted"
+    (let [prod-env (assoc env
+                          :display-timezone "UTC"
+                          :store-timezone "Europe/Helsinki")]
+      (with-redefs [env prod-env]
+        ;; 2026-10-25 00:00 Helsinki was still EEST (+3) until 04:00
+        (is (= (jt/local-date-time 2026 10 24 21 0)
+               (make-local-dt "2026-10-25" "start")))
+        (is (= (jt/local-date-time 2026 10 25 21 59 59)
+               (make-local-dt "2026-10-25" "end")))
+        ;; Winter date: EET (+2)
+        (is (= (jt/local-date-time 2026 10 26 22 0)
+               (make-local-dt "2026-10-27" "start")))
+        ;; Summer date: EEST (+3)
+        (is (= (jt/local-date-time 2026 7 14 21 0)
+               (make-local-dt "2026-07-15" "start")))
+        (is (= (jt/local-date 2026 10 25)
+               (jdbc-ldt->store-local-date
+                (make-local-dt "2026-10-25" "start"))))))))
 
 (deftest test-add-tz-offset-to-dt
   (testing "TZ offset adding"
@@ -707,6 +729,34 @@
       (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))
       (jdbc/execute! test-ds (sql/format {:delete-from :electricity_consumption})))))
 
+(deftest get-elec-data-hour-includes-dst-fallback-midnight-test
+  (testing "Hourly fetch under UTC display includes Helsinki 00:00 on DST
+            fall-back day (offset was +3 at midnight, +2 afterwards)"
+    (let [prod-env (assoc env
+                          :display-timezone "UTC"
+                          :store-timezone "Europe/Helsinki")
+          helsinki (jt/zone-id "Europe/Helsinki")
+          hel-hour (fn [h]
+                     (jt/zoned-date-time
+                      (jt/local-date-time 2026 10 25 h 0 0)
+                      helsinki))]
+      (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price}))
+      (doseq [h [0 1 2]]
+        (js/insert! test-ds
+                    :electricity_price
+                    {:start_time (jt/sql-timestamp (hel-hour h))
+                     :price (double h)}))
+      (with-redefs [env prod-env]
+        (let [rows (get-elec-data-hour test-ds
+                                       (make-local-dt "2026-10-25" "start")
+                                       (make-local-dt "2026-10-25" "end")
+                                       false)
+              starts (mapv :start-time rows)]
+          (is (= 3 (count rows)))
+          (is (= "2026-10-24T21:00:00Z" (first starts))
+              "00:00 Helsinki EEST must be included (21:00Z, not 22:00Z)")))
+      (jdbc/execute! test-ds (sql/format {:delete-from :electricity_price})))))
+
 (deftest get-elec-fees-test
   (testing "Electricity fee calculation"
     (let [expected (* 100 (+ (:elec-contract-margin env)
@@ -797,10 +847,32 @@
 
 (deftest get-midnight-dt-test
   (testing "Datetime at midnight calculation"
-    (let [ref (jt/local-date-time 2023 2 21 0 0 0)]
-      (with-redefs [jt/local-date-time (fn [] (LocalDateTime/of 2023 2 22
-                                                                21 15 16))]
+    (let [ref (jt/local-date-time 2023 2 21 0 0 0)
+          real-ldt jt/local-date-time]
+      (with-redefs [jt/local-date-time (fn
+                                         ([] (LocalDateTime/of 2023 2 22
+                                                               21 15 16))
+                                         ([& args] (apply real-ldt args)))]
         (is (= ref (get-midnight-dt 1)))))))
+
+(deftest get-midnight-dt-utc-display-dst-test
+  (testing "UTC display midnight bound uses store-TZ zone rules across DST"
+    (let [prod-env (assoc env
+                          :display-timezone "UTC"
+                          :store-timezone "Europe/Helsinki")
+          real-ldt jt/local-date-time]
+      (with-redefs [env prod-env
+                    jt/local-date-time
+                    (fn
+                      ([] (LocalDateTime/of 2026 10 27 18 0 0))
+                      ([& args] (apply real-ldt args)))]
+        ;; initial-show-days 2 from 2026-10-27 -> 2026-10-25 Helsinki midnight
+        ;; = 2026-10-24T21:00Z (EEST), not 22:00Z from winter offset
+        (is (= (jt/local-date-time 2026 10 24 21 0)
+               (get-midnight-dt 2)))
+        (is (= "2026-10-25"
+               (jt/format :iso-local-date
+                          (jdbc-ldt->store-local-date (get-midnight-dt 2)))))))))
 
 (deftest convert->epoch-ms-test
   (testing "Unix epoch time calculation"

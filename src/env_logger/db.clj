@@ -108,27 +108,46 @@
       tb-image-name)))
 
 (defn get-tz-offset
-  "Returns the offset in hours to UTC for the given time zone."
+  "Returns the offset in hours to UTC for the given time zone at the current
+  instant."
   [tz]
   (/ (/ (/ (TimeZone/.getOffset (TimeZone/getTimeZone tz)
                                 (Date/.getTime (Date.))) 1000) 60) 60))
 
+(defn- store-wall-clock->jdbc-ldt
+  "Convert a store-timezone wall-clock LocalDateTime to a LocalDateTime for
+  JDBC binding against timestamptz.
+
+  When display-timezone is UTC (production JVM), return the equivalent UTC
+  local datetime using zone rules for that wall clock (DST-safe). Otherwise
+  return the wall clock unchanged (dev JVM matches store-timezone)."
+  [wall-ldt]
+  (if (= (:display-timezone env) "UTC")
+    (-> (jt/zoned-date-time wall-ldt (jt/zone-id (:store-timezone env)))
+        (jt/with-zone-same-instant (jt/zone-id "UTC"))
+        jt/local-date-time)
+    wall-ldt))
+
+(defn jdbc-ldt->store-local-date
+  "Calendar date in store-timezone for a JDBC-bound LocalDateTime produced by
+  store-wall-clock->jdbc-ldt / make-local-dt / get-midnight-dt."
+  [ldt]
+  (jt/local-date
+   (if (= (:display-timezone env) "UTC")
+     (jt/zoned-date-time ldt (jt/zone-id "UTC")
+                         (jt/zone-id (:store-timezone env)))
+     ldt)))
+
 (defn get-midnight-dt
   "Returns a LocalDateTime at midnight with N days subtracted from the current
-  date and time."
+  date and time. Under UTC display timezone the value is the UTC equivalent of
+  store-timezone midnight (DST-aware)."
   [n-days]
-  (let [ldt (jt/local-date-time)]
-    (jt/minus (jt/minus ldt
-                        (jt/days n-days)
-                        (jt/hours (LocalDateTime/.getHour ldt))
-                        (jt/minutes (LocalDateTime/.getMinute ldt))
-                        (jt/seconds (LocalDateTime/.getSecond ldt))
-                        (jt/nanos (LocalDateTime/.getNano ldt)))
-             ;; Correct generated datetime value when UTC is used as display
-             ;; time zone
-              (jt/hours (if (= (:display-timezone env) "UTC")
-                          (get-tz-offset (:store-timezone env))
-                          0)))))
+  (let [ldt (jt/local-date-time)
+        date (-> ldt
+                 (jt/minus (jt/days n-days))
+                 jt/local-date)]
+    (store-wall-clock->jdbc-ldt (jt/local-date-time date (jt/local-time 0)))))
 
 (defn convert->epoch-ms
   "Converts the given datetime value to Unix epoch time in milliseconds."
@@ -383,22 +402,21 @@
 
 (defn make-local-dt
   "Creates SQL datetime in local time from the provided date string.
-  Allowed values for the 'mode' parameter: start,end."
+  Allowed values for the 'mode' parameter: start,end.
+
+  Under UTC display timezone the result is the UTC equivalent of the
+  store-timezone wall clock for that date (DST-aware via zone rules)."
   [date mode]
-  (jt/minus (jt/local-date-time (format "%sT%s"
-                                        date
-                                        (if (= mode "start")
-                                          "00:00:00"
-                                          "23:59:59")))
-           ;; Correct generated datetime value when UTC is used as display
-           ;; time zone
-            (jt/hours (if (= (:display-timezone env) "UTC")
-                        (get-tz-offset (:store-timezone env))
-                        0))))
+  (store-wall-clock->jdbc-ldt
+   (jt/local-date-time (format "%sT%s"
+                               date
+                               (if (= mode "start")
+                                 "00:00:00"
+                                 "23:59:59")))))
 
 (defn add-tz-offset-to-dt
   "Add the TZ offset of the 'storing time zone' to the provided datetime if the
- system has different time zone than the 'storing time zone'."
+  system has different time zone than the 'storing time zone'."
   [dt]
   (if-not (= (ZoneId/systemDefault)
              (jt/zone-id (:store-timezone env)))
