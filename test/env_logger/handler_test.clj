@@ -2,12 +2,41 @@
   (:require [clojure.test :refer [deftest is testing]]
             [config.core :refer [env]]
             [jsonista.core :as j]
-            [terop.openid-connect-auth :refer [access-ok?]]
+            [terop.openid-connect-auth :refer [access-ok? make-logout-url]]
             [env-logger.db :as db]
             [env-logger.test-db :refer [test-ds]]
             [env-logger.electricity :as e]
             [env-logger.handler :as h]
             [env-logger.weather :as w]))
+
+(deftest auth-params-test
+  (testing "/data/auth exposes the IdP URL, client id, scopes and logout URL"
+    (with-redefs [env (assoc env :oid-auth
+                             {:base-url "https://idp.example/realms/app"
+                              :client-id "env-logger"
+                              :scopes "openid offline_access"
+                              :session-logout-url "https://idp.example/logout"})]
+      (is (= {"oid-base-url" "https://idp.example/realms/app"
+              "client-id" "env-logger"
+              "scopes" "openid offline_access"
+              "session-logout-url" "https://idp.example/logout"}
+             (j/read-value (:body (h/get-auth-params {})))))))
+  (testing "scopes default to openid when missing or nil"
+    (doseq [oid-auth [{} {:scopes nil}]]
+      (with-redefs [env (assoc env :oid-auth oid-auth)]
+        (is (= "openid"
+               (get (j/read-value (:body (h/get-auth-params {}))) "scopes")))))))
+
+(deftest logout-redirect-test
+  (let [do-logout-url (str (:app-url env) "do-logout")
+        logout (fn [] (h/app {:request-method :get :uri "/logout"}))]
+    (testing "redirects to the IdP end-session URL when one is available"
+      (with-redefs [make-logout-url (fn [_ _] "https://idp.example/logout")]
+        (is (= "https://idp.example/logout"
+               (get-in (logout) [:headers "Location"])))))
+    (testing "falls back to the local do-logout page when the IdP has no logout"
+      (with-redefs [make-logout-url (fn [_ _] nil)]
+        (is (= do-logout-url (get-in (logout) [:headers "Location"])))))))
 
 (deftest convert-epoch-ms->string-test
   (testing "Unix millisecond timestamp to string conversion"

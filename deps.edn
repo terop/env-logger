@@ -17,9 +17,8 @@
         com.github.seancorfield/next.jdbc {:mvn/version "1.4.72"}
         com.taoensso/timbre {:mvn/version "6.8.0"}
         com.fzakaria/slf4j-timbre {:mvn/version "0.4.1"}
-        ht.sr.terop/openid-connect-auth
-        {:git/url "https://git.sr.ht/~terop/openid-connect-auth"
-         :git/sha "824a38a76e8771bbb9401c680b74a1c812b34bf4"}}
+        com.github.terop/openid-connect-auth
+        {:git/sha "068ab189fc0926255fa061c1c0538d500e9ae751"}}
  :aliases
   {:dev {:extra-deps {ring/ring-devel {:mvn/version "1.15.6"}}
          :main-opts ["-m" "env-logger.handler"]

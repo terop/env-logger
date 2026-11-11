@@ -1,12 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DateTime } from 'luxon';
 import {
   accessTokenExpiry,
   authCookiePath,
   authCookiePaths,
   buildLoginUrl,
+  isCallbackStateValid,
   isIdTokenPostSuccess,
   isRefreshSessionOver,
+  pkceChallenge,
+  randomBase64Url,
   shouldRefreshAccessToken
 } from '../auth-logic.js';
 
@@ -161,19 +164,80 @@ describe('isRefreshSessionOver', () => {
 });
 
 describe('buildLoginUrl', () => {
+  const baseArgs = {
+    authorizationEndpoint: 'https://idp.example/auth',
+    clientId: 'env-logger',
+    applicationUrl: 'http://example.com/env-logger/',
+    state: 'state-abc',
+    codeChallenge: 'challenge-xyz'
+  };
+
   it('sets redirect_uri to applicationUrl + login without an extra slash', () => {
-    const loginUrl = buildLoginUrl({
-      authorizationEndpoint: 'https://idp.example/auth',
-      clientId: 'env-logger',
-      applicationUrl: 'http://example.com/env-logger/'
-    });
+    const loginUrl = buildLoginUrl(baseArgs);
     const params = new URL(loginUrl).searchParams;
 
     expect(params.get('client_id')).toBe('env-logger');
     expect(params.get('redirect_uri')).toBe(
       'http://example.com/env-logger/login'
     );
-    expect(params.get('scope')).toBe('openid');
     expect(loginUrl).not.toContain('env-logger//login');
+  });
+
+  it('includes state and PKCE S256 parameters', () => {
+    const params = new URL(buildLoginUrl(baseArgs)).searchParams;
+
+    expect(params.get('response_type')).toBe('code');
+    expect(params.get('state')).toBe('state-abc');
+    expect(params.get('code_challenge')).toBe('challenge-xyz');
+    expect(params.get('code_challenge_method')).toBe('S256');
+  });
+
+  it('defaults scope to openid', () => {
+    expect(new URL(buildLoginUrl(baseArgs)).searchParams.get('scope')).toBe(
+      'openid'
+    );
+  });
+
+  it('uses the configured scope, including offline_access for Authelia', () => {
+    const params = new URL(
+      buildLoginUrl({ ...baseArgs, scope: 'openid offline_access' })
+    ).searchParams;
+
+    expect(params.get('scope')).toBe('openid offline_access');
+  });
+});
+
+describe('PKCE and state helpers', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('computes the RFC 7636 appendix B challenge', async () => {
+    expect(
+      await pkceChallenge('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk')
+    ).toBe('E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM');
+  });
+
+  it('fails with a clear message when Web Crypto is unavailable (plain HTTP)', async () => {
+    vi.stubGlobal('crypto', { getRandomValues: () => {} });
+
+    await expect(pkceChallenge('verifier')).rejects.toThrow(
+      /secure context \(HTTPS or localhost\)/
+    );
+  });
+
+  it('generates URL-safe random values of the expected length', () => {
+    const value = randomBase64Url();
+    expect(value).toMatch(/^[A-Za-z0-9_-]+$/);
+    expect(value).toHaveLength(43);
+    expect(randomBase64Url()).not.toBe(value);
+  });
+
+  it('accepts only the state that was stored for this login', () => {
+    expect(isCallbackStateValid('?code=c&state=abc', 'abc')).toBe(true);
+    expect(isCallbackStateValid('?code=c&state=other', 'abc')).toBe(false);
+    expect(isCallbackStateValid('?code=c', 'abc')).toBe(false);
+    expect(isCallbackStateValid('?code=c&state=', '')).toBe(false);
+    expect(isCallbackStateValid('?code=c&state=abc', null)).toBe(false);
   });
 });

@@ -1,13 +1,17 @@
+import { isCallbackStateValid } from '../auth-logic.js';
+import { loadDiscovery } from './discovery.js';
+
 export const hasAuthorizationCode = (search) =>
   new URLSearchParams(search).has('code');
 
 export const buildCodeExchangeRequest = ({
-  oidBaseUrl,
+  tokenEndpoint,
   clientId,
   applicationUrl,
-  code
+  code,
+  codeVerifier
 }) => ({
-  url: `${oidBaseUrl}/protocol/openid-connect/token`,
+  url: tokenEndpoint,
   init: {
     method: 'POST',
     credentials: 'omit',
@@ -18,7 +22,8 @@ export const buildCodeExchangeRequest = ({
       grant_type: 'authorization_code',
       client_id: clientId,
       redirect_uri: `${applicationUrl}login`,
-      code
+      code,
+      code_verifier: codeVerifier
     })
   }
 });
@@ -28,18 +33,31 @@ export const getTokens = async ({
   authSettings,
   fetchFn,
   storeTokens,
-  storeIdToken
+  storeIdToken,
+  loadDiscoveryFn = loadDiscovery,
+  sessionStore = globalThis.sessionStorage
 }) => {
   if (!hasAuthorizationCode(search)) {
     return;
   }
 
+  // State and verifier are single use: read and clear them before anything else
+  const expectedState = sessionStore.getItem('oidcState');
+  const codeVerifier = sessionStore.getItem('oidcCodeVerifier');
+  sessionStore.removeItem('oidcState');
+  sessionStore.removeItem('oidcCodeVerifier');
+
   try {
+    if (!isCallbackStateValid(search, expectedState) || !codeVerifier) {
+      throw new Error('OpenID state mismatch or missing PKCE verifier');
+    }
+    const config = await loadDiscoveryFn(authSettings['oidBaseUrl']);
     const { url, init } = buildCodeExchangeRequest({
-      oidBaseUrl: authSettings['oidBaseUrl'],
+      tokenEndpoint: config.token_endpoint,
       clientId: authSettings['clientId'],
       applicationUrl: authSettings['applicationUrl'],
-      code: new URLSearchParams(search).get('code')
+      code: new URLSearchParams(search).get('code'),
+      codeVerifier
     });
     const response = await fetchFn(url, init);
     if (!response.ok) {

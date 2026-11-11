@@ -58,10 +58,59 @@ export const isIdTokenPostSuccess = (response, body) => {
 export const isRefreshSessionOver = (status) =>
   status === 400 || status === 401;
 
+const base64UrlEncode = (bytes) => {
+  let binary = '';
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+};
+
+// Random value for OAuth state and PKCE code_verifier (RFC 7636 allows 43-128 chars)
+export const randomBase64Url = (byteLength = 32) => {
+  const bytes = new Uint8Array(byteLength);
+  globalThis.crypto.getRandomValues(bytes);
+  return base64UrlEncode(bytes);
+};
+
+// PKCE S256 code_challenge for a code_verifier (requires a secure context)
+export const pkceChallenge = async (codeVerifier) => {
+  if (!globalThis.crypto?.subtle) {
+    throw new Error(
+      'OpenID login requires a secure context (HTTPS or localhost): ' +
+        'the Web Crypto API needed for PKCE is unavailable over plain HTTP'
+    );
+  }
+  const digest = await globalThis.crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(codeVerifier)
+  );
+  return base64UrlEncode(new Uint8Array(digest));
+};
+
+export const isCallbackStateValid = (search, expectedState) =>
+  Boolean(expectedState) &&
+  new URLSearchParams(search).get('state') === expectedState;
+
 export const buildLoginUrl = ({
   authorizationEndpoint,
   clientId,
-  applicationUrl
-}) =>
-  `${authorizationEndpoint}?client_id=${clientId}&` +
-  `redirect_uri=${applicationUrl}login&response_type=code&scope=openid`;
+  applicationUrl,
+  scope = 'openid',
+  state,
+  codeChallenge
+}) => {
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: `${applicationUrl}login`,
+    response_type: 'code',
+    scope,
+    state,
+    code_challenge: codeChallenge,
+    code_challenge_method: 'S256'
+  });
+  return `${authorizationEndpoint}?${params.toString()}`;
+};

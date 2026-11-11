@@ -47,10 +47,25 @@
  ;; ISO8601 dates, both default to nil (open-ended). First matching interval wins.
  :elec-tax [{:per-kwh 0.02917875 :start nil :end nil}]
  ;; OpenID Connect authentication settings
- :oid-auth {;; Base URL for all endpoints
+ :oid-auth {;; OpenID Connect issuer URL; must match the IdP discovery "issuer" exactly
             :base-url "https://example.com/keycloak/realms/myrealm"
             ;; Client name
             :client-id "myclient"
+            ;; Scopes requested at login. Add offline_access only for IdPs such as
+            ;; Authelia that need it for refresh tokens. Do NOT add it for Keycloak
+            ;; (it issues offline tokens that outlive the SSO session)
+            :scopes "openid"
+            ;; Audience expected in access token JWTs
+            ;; (Keycloak: ["account"]; Authelia: the audience set on the client)
+            :access-token-audience ["account"]
+            ;; ID token clock skew in seconds. /store-id-token accepts ID tokens
+            ;; this long after their exp, so keep it small. The browser keeps
+            ;; its stored ID token fresh from refresh responses, so restoring
+            ;; the session after a backend restart does not need a large value.
+            :id-token-clock-skew 300
+            ;; Optional: IdP session logout endpoint called on explicit logout when
+            ;; the IdP has no end_session_endpoint (Authelia: .../api/logout)
+            ;; :session-logout-url "https://auth.example.com/api/logout"
             ;; JWT subject UUIDs of authorised users
             :authorised-subject-uuids ["my-uuid"]}
  ;; Enable enforcing of HSTS, only use if HTTPS is not terminated by a reverse

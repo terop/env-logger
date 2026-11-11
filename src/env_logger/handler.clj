@@ -198,7 +198,9 @@
   "Returns the parameters needed for authentication."
   [_]
   (serve-json {:oid-base-url (:base-url (:oid-auth env))
-               :client-id (:client-id (:oid-auth env))}))
+               :client-id (:client-id (:oid-auth env))
+               :scopes (or (:scopes (:oid-auth env)) "openid")
+               :session-logout-url (:session-logout-url (:oid-auth env))}))
 
 (defn handle-observation-insert
   "Handles the insertion of an observation to the database."
@@ -362,9 +364,13 @@
      ;; Login and logout
      ["/login" {:get (fn [_] (serve-template "templates/login.html"
                                              js-load-params))}]
-     ["/logout" {:get (fn [_] (found (make-logout-url (str (:app-url env)
-                                                           "do-logout")
-                                                      (:oid-auth env))))}]
+     ["/logout" {:get (fn [_] (let [do-logout-url (str (:app-url env)
+                                                       "do-logout")]
+                                (found (or (make-logout-url do-logout-url
+                                                            (:oid-auth env))
+                                           ;; IdP has no end-session endpoint:
+                                           ;; clear only local state
+                                           do-logout-url))))}]
      ["/do-logout" {:get (fn [_] (serve-template "templates/logout.html"
                                                  js-load-params))}]
      ["/store-id-token" {:get store-id-token

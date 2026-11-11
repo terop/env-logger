@@ -6,9 +6,13 @@ import {
   buildLoginUrl,
   isIdTokenPostSuccess,
   isRefreshSessionOver,
+  pkceChallenge,
+  randomBase64Url,
   shouldRefreshAccessToken
 } from '../auth-logic.js';
 import { getTokens } from './get-tokens.js';
+import { loadDiscovery } from './discovery.js';
+import { endIdpSession } from './idp-session.js';
 
 let refreshPromise = null;
 
@@ -35,12 +39,24 @@ const doLogout = () => {
   window.location.href = appBaseUrl();
 };
 
+const logoutAndRedirect = () => {
+  // Do not leave local credentials active while waiting for the IdP.
+  // keepalive lets the request continue after the local redirect.
+  endIdpSession(globalThis.authSettings?.sessionLogoutUrl);
+  doLogout();
+};
+
 const storeTokens = (tokens) => {
   if (!tokens?.access_token) {
     throw new Error('Token response missing access_token');
   }
   if (tokens.refresh_token) {
     sessionStorage.setItem('refreshToken', tokens.refresh_token);
+  }
+  // restoreIdTokenSession re-posts this, and the backend only accepts ID
+  // tokens a few minutes past their exp
+  if (tokens.id_token) {
+    sessionStorage.setItem('idToken', tokens.id_token);
   }
   sessionStorage.setItem(
     'accessTokenExpiresAt',
@@ -148,9 +164,10 @@ const restoreIdTokenSession = async () => {
   }
 };
 
-// Refresh only updates the access-token cookie. Re-posting the ID token is
-// harmful on every refresh: the backend clears id-token-valid before validating,
-// so a missing or rejected id_token on refresh locks the session out.
+// Refresh updates the access-token cookie and the stored ID token but does not
+// post it. Re-posting the ID token is harmful on every refresh: the backend
+// clears id-token-valid before validating, so a missing or rejected id_token on
+// refresh locks the session out.
 const updateTokens = () => {
   const refreshToken = sessionStorage.getItem('refreshToken');
   if (!refreshToken) {
@@ -163,8 +180,9 @@ const updateTokens = () => {
 
   refreshPromise = (async () => {
     try {
+      const config = await loadDiscovery(globalThis.authSettings['oidBaseUrl']);
       const response = await fetch(
-        `${globalThis.authSettings['oidBaseUrl']}/protocol/openid-connect/token`,
+        config.token_endpoint,
         {
           method: 'POST',
           credentials: 'omit',
@@ -240,30 +258,34 @@ const doLogin = async () => {
       throw new Error('Authentication settings are not loaded');
     }
 
-    const response = await fetch(
-      `${globalThis.authSettings['oidBaseUrl']}/.well-known/openid-configuration`,
-      { credentials: 'omit' }
-    );
-    if (!response.ok) {
-      throw new Error('Network response was not ok');
-    }
-    const config = await response.json();
+    const config = await loadDiscovery(globalThis.authSettings['oidBaseUrl']);
+
+    // Fresh state and PKCE verifier per login; getTokens checks and clears them
+    const state = randomBase64Url();
+    const codeVerifier = randomBase64Url();
+    const codeChallenge = await pkceChallenge(codeVerifier);
+    sessionStorage.setItem('oidcState', state);
+    sessionStorage.setItem('oidcCodeVerifier', codeVerifier);
+
     const loginUrl = buildLoginUrl({
       authorizationEndpoint: config.authorization_endpoint,
       clientId: globalThis.authSettings['clientId'],
-      applicationUrl: globalThis.authSettings['applicationUrl']
+      applicationUrl: globalThis.authSettings['applicationUrl'],
+      scope: globalThis.authSettings['scopes'],
+      state,
+      codeChallenge
     });
 
     window.location.href = loginUrl;
   } catch (error) {
-    console.error(`Error fetching OpenID Connect server configuration: ${error}`);
+    console.error(`OpenID login failed: ${error}`);
   }
 };
 
 globalThis.doLogin = doLogin;
 
 if (window.location.pathname.includes('logout')) {
-  doLogout();
+  logoutAndRedirect();
 } else {
   getTokens({
     search: window.location.search,

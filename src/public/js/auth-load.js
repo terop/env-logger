@@ -55,7 +55,9 @@ const loadAuthJs = async (applicationUrl, staticAssetPath) => {
   globalThis.authSettings = {
     oidBaseUrl: params['oid-base-url'],
     applicationUrl: applicationUrl,
-    clientId: params['client-id']
+    clientId: params['client-id'],
+    scopes: params['scopes'],
+    sessionLogoutUrl: params['session-logout-url']
   };
 
   // Use exactly one auth asset source to avoid mixed local / CDN versions
